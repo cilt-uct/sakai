@@ -105,7 +105,25 @@
                                         <span>${rloader.sit_dashboard}</span>
                                     </a>
                                 </li>
-
+                                        <li class="Mrphs-userNav__submenuitem Mrphs-userNav__submenuitem-indented">
+                                    #if (${userType} == "staff" || ${userType} == "student" || ${userType} == "thirdparty" || ${userType} == "inactiveStudent")
+                                            <a role="menuitem" href="https://password.uct.ac.za" target="_blank" class="Mrphs-userNav__submenuitem--prefs">
+                                                <span>Change Password</span>
+                                            </a>
+                                    #else
+                                            <a role="menuitem" href="${tabsSites.mrphs_profileToolUrl}" class="Mrphs-userNav__submenuitem--prefs">
+                                                <span>Change Password</span>
+                                            </a>
+                                    #end
+                                        </li>
+                                    #if (${userType} == "staff" || ${userType} == "student")
+                                        #set( $psHref = "#if (${userType} == 'staff')http://staffonline.uct.ac.za#{else}http://studentsonline.uct.ac.za#end")
+                                        <li class="Mrphs-userNav__submenuitem Mrphs-userNav__submenuitem-indented Mrphs-userData">
+                                            <a role="menuitem" href="$psHref" target="_blank" class="Mrphs-userNav__submenuitem--prefs">
+                                                <span>PeopleSoft</span>
+                                            </a>
+                                        </li>
+                                    #end
                                     #if (${tabsSites.prefsToolUrl})
 
                                         <li class="Mrphs-userNav__submenuitem Mrphs-userNav__submenuitem-indented">
