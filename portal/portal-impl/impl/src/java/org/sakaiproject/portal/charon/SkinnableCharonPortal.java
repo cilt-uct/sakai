@@ -1873,6 +1873,26 @@ public class SkinnableCharonPortal extends HttpServlet implements Portal
 
                         if (userType != null) {
                                 rcontext.put("userType", userType);
+                                String passwordUrl = StringUtils.trimToNull(ServerConfigurationService.getString("passwordUrl." + userType));
+                                String userEditUrl = StringUtils.trimToNull(ServerConfigurationService.getString("institution.userDirectory.userEdit." + userType));
+                                String webmailUrl =  StringUtils.trimToNull(ServerConfigurationService.getString("webmailUrl." + userType));
+                                String orgUserProfileProvider =  StringUtils.trimToNull(ServerConfigurationService.getString("institution.userDirectory.name"));
+
+                                if (passwordUrl != null) {
+                                  rcontext.put("passwordUrl", passwordUrl);
+                                }
+
+                                if (userEditUrl != null) {
+                                  rcontext.put("userEditUrl", userEditUrl);
+                                }
+
+                                if (webmailUrl != null) {
+                                  rcontext.put("webmailUrl", webmailUrl);
+                                }
+
+                                if (orgUserProfileProvider != null) {
+                                  rcontext.put("orgUserProfileProvider", orgUserProfileProvider);
+                                }
                         }
                         else {
                                 rcontext.put("userType", "internal");
