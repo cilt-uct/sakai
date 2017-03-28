@@ -116,9 +116,16 @@
                                             </a>
                                     #end
                                         </li>
+                                    #if (${userType} == "staff" || ${userType} == "student" || ${userType} == "inactiveStudent")
+                                        <li class="Mrphs-userNav__submenuitem Mrphs-userNav__submenuitem-indented">
+                                            <a role="menuitem" href="https://outlook.office365.com/owa/" target="_blank" class="Mrphs-userNav__submenuitem--prefs">
+                                                <span>UCT Webmail</span>
+                                            </a>
+                                        </li>
+                                    #end
                                     #if (${userType} == "staff" || ${userType} == "student")
                                         #set( $psHref = "#if (${userType} == 'staff')http://staffonline.uct.ac.za#{else}http://studentsonline.uct.ac.za#end")
-                                        <li class="Mrphs-userNav__submenuitem Mrphs-userNav__submenuitem-indented Mrphs-userData">
+                                        <li class="Mrphs-userNav__submenuitem Mrphs-userNav__submenuitem-indented Mrphs-userData" style="background: transparent;">
                                             <a role="menuitem" href="$psHref" target="_blank" class="Mrphs-userNav__submenuitem--prefs">
                                                 <span>PeopleSoft</span>
                                             </a>
