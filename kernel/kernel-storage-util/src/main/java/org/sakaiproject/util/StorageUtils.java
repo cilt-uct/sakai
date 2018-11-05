@@ -57,6 +57,7 @@ import org.xml.sax.helpers.DefaultHandler;
 @Slf4j
 public class StorageUtils {
 	private static SAXParserFactory parserFactory;
+	private static DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
 
 	/**
 	 * Create a new DOM Document.
@@ -226,9 +227,7 @@ public class StorageUtils {
 		{
 			out = new FileOutputStream(fileName);
 //			 get an instance of the DOMImplementation registry
-			 DocumentBuilderFactory factory 
-			   = DocumentBuilderFactory.newInstance();
-			  DocumentBuilder builder = factory.newDocumentBuilder();
+			  DocumentBuilder builder = dbFactory.newDocumentBuilder();
 			  DOMImplementation impl = builder.getDOMImplementation();
 			  
 			DOMImplementationLS feature = (DOMImplementationLS) impl.getFeature("LS","3.0");
@@ -270,9 +269,7 @@ public class StorageUtils {
 			
 			StringWriter sw = new StringWriter();
 			
-			 DocumentBuilderFactory factory 
-			   = DocumentBuilderFactory.newInstance();
-			  DocumentBuilder builder = factory.newDocumentBuilder();
+			  DocumentBuilder builder = dbFactory.newDocumentBuilder();
 			  DOMImplementation impl = builder.getDOMImplementation();
 			  
 			
@@ -326,9 +323,7 @@ public class StorageUtils {
      */
     private static DocumentBuilder getDocumentBuilder() throws ParserConfigurationException
     {
-        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-
-        return dbf.newDocumentBuilder();
+        return dbFactory.newDocumentBuilder();
     }
 
 }
