@@ -194,6 +194,19 @@
 </h:panelGroup>
     <h:outputText id="honorPledgeRequired" value="#{deliveryMessages.honor_required}" styleClass="alertMessage" style="display:none"/>
 
+<div class="modal fade" id="multipleTabWarning" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header"><h4></h4></div>
+      <div class="modal-body"></div>
+      <div class="modal-footer">
+        <button class="btn btn-link pull-right" type="button">I understand</button>
+      </div>
+    </div>
+  </div>
+</div>
+<%@ include file="/js/checkmultipletabs.js" %>
+
 
 <p class="act">
 
