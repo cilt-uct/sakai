@@ -1,0 +1,56 @@
+[submodule "spml"]
+	path = spml
+	url = https://github.com/cilt-uct/spml
+	branch = 12.x
+[submodule "roleplay"]
+	path = roleplay
+	url = https://github.com/cilt-uct/roleplay
+	branch = 12.x
+[submodule "sms"]
+	path = sms
+	url = https://github.com/cilt-uct/sms
+	branch = 12.x
+[submodule "qna"]
+	path = qna
+	url = https://github.com/cilt-uct/qna
+	branch = 12.x
+[submodule "blogwow"]
+	path = blogwow
+	url = https://github.com/cilt-uct/blogwow
+	branch = 12.x
+[submodule "profilewow"]
+	path = profilewow
+	url = https://github.com/cilt-uct/profilewow
+	branch = 12.x
+[submodule "uct-quartz"]
+	path = uct-quartz
+	url = https://github.com/cilt-uct/uct-quartz
+	branch = 12.x
+[submodule "uct-site-manage"]
+	path = uct-site-manage
+	url = https://github.com/cilt-uct/uct-site-manage
+	branch = 12.x
+[submodule "linktool"]
+	path = linktool
+	url = https://github.com/cilt-uct/linktool
+	branch = 12.x
+[submodule "groupmanager"]
+	path = groupmanager
+	url = https://github.com/cilt-uct/groupmanager
+	branch = 12.x
+[submodule "evaluation"]
+	path = evaluation
+	url = https://github.com/cilt-uct/evaluation
+	branch = 12.x
+[submodule "roster"]
+	path = roster
+	url = https://github.com/cilt-uct/roster
+	branch = 12.x
+[submodule "profilesearch"]
+	path = profilesearch
+	url = https://github.com/cilt-uct/profilesearch
+	branch = 12.x
+[submodule "profile"]
+	path = profile
+	url = https://github.com/cilt-uct/profile
+	branch = 12.x

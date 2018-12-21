@@ -1,4 +1,4 @@
-.idea
+ .idea
 .project
 .classpath
 .settings
@@ -18,20 +18,4 @@ velocity.log
 node_modules
 bower_components
 rebel.xml
-roster
-profile
-evaluation
-login
-qna
-blogwow
-useralias
-sms
-turnitin
-providers
-uct-quartz
-linktool
-uct-site-manage
-profilesearch
-spml
-profilewow
-groupmanager
+

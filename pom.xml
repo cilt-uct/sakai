@@ -127,7 +127,7 @@
                 <module>profilewow</module>
 
        		<!-- contrib -->
-                <module>useralias</module>
+                <module>roleplay</module>
                 <module>sms</module>
                 <module>qna</module>
                 <module>groupmanager</module>
