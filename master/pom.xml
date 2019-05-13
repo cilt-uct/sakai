@@ -24,7 +24,7 @@
     <!-- Standard dependency versions -->
     <sakai.apache.httpcomponents.httpclient.version>4.1.4</sakai.apache.httpcomponents.httpclient.version>
     <sakai.commons.lang.version>2.6</sakai.commons.lang.version>
-    <sakai.commons.lang3.version>3.8.1</sakai.commons.lang3.version>
+    <sakai.commons.lang3.version>3.9</sakai.commons.lang3.version>
     <sakai.commons.fileupload.version>1.4</sakai.commons.fileupload.version>
     <sakai.commons-math3.version>3.6.1</sakai.commons-math3.version>
     <sakai.commons-validator.version>1.6</sakai.commons-validator.version>
@@ -71,8 +71,8 @@
     <sakai.xerces.impl.version>2.11.0</sakai.xerces.impl.version>
     <sakai.xerces.api.version>2.6.2</sakai.xerces.api.version>
     <sakai.log4j.version>1.2.17</sakai.log4j.version>
-    <sakai.slf4j.version>1.7.25</sakai.slf4j.version>
-    <sakai.poi.version>4.0.1</sakai.poi.version>
+    <sakai.slf4j.version>1.7.26</sakai.slf4j.version>
+    <sakai.poi.version>4.1.0</sakai.poi.version>
     <sakai.mockito.version>2.18.3</sakai.mockito.version>
     <sakai.powermock.version>2.0.0-beta.5</sakai.powermock.version>
     <sakai.okiosid.version>2.0</sakai.okiosid.version>
