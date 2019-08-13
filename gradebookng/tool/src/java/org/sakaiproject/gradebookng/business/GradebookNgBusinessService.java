@@ -16,6 +16,9 @@
 package org.sakaiproject.gradebookng.business;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.text.NumberFormat;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -745,10 +748,19 @@ public class GradebookNgBusinessService {
 		// concurrency check, if stored grade != old grade that was passed in,
 		// someone else has edited.
 		// if oldGrade == null, ignore concurrency check
-		BigDecimal storedBig = storedGradeAdjusted == null ? BigDecimal.ZERO : new BigDecimal(storedGradeAdjusted).setScale(2, BigDecimal.ROUND_HALF_UP);
-		BigDecimal oldBig = oldGradeAdjusted == null ? BigDecimal.ZERO : new BigDecimal(oldGradeAdjusted).setScale(2, BigDecimal.ROUND_HALF_UP);
-		if (oldGrade != null && (storedBig.compareTo(oldBig) != 0)) {
-			return GradeSaveResponse.CONCURRENT_EDIT;
+		if (oldGrade != null) {
+			try {
+				NumberFormat format = NumberFormat.getNumberInstance();
+				// SAK-42001 A stored value in database of 69.225 needs to match the 69.22 coming back from UI AJAX call
+				final BigDecimal storedBig = storedGradeAdjusted == null ? BigDecimal.ZERO : new BigDecimal(format.parse(storedGradeAdjusted).doubleValue()).setScale(2, RoundingMode.HALF_DOWN);
+				final BigDecimal oldBig = oldGradeAdjusted == null ? BigDecimal.ZERO : new BigDecimal(format.parse(oldGradeAdjusted).doubleValue()).setScale(2, RoundingMode.HALF_DOWN);
+				if (storedBig.compareTo(oldBig) != 0) {
+					log.warn("Rejected new grade because of concurrent edit: {} vs {}", storedBig, oldBig);
+					return GradeSaveResponse.CONCURRENT_EDIT;
+				}
+			} catch (ParseException pe) {
+				log.warn("Failed to parse adjusted grades in current locale");
+			}
 		}
 
 		GradeSaveResponse rval = null;
