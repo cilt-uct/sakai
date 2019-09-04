@@ -66,7 +66,10 @@ remove the javascript onclick stuff.
 <h:panelGroup rendered="#{delivery.actionString=='previewAssessment'}">
  <f:verbatim><div class="previewMessage"></f:verbatim>
      <h:outputText value="#{deliveryMessages.ass_preview}" />
-     <h:commandButton value="#{deliveryMessages.done}" action="#{person.cleanResourceIdListInPreview}" type="submit"/>
+     <h:commandButton value="#{deliveryMessages.done}"
+        action="#{person.cleanResourceIdListInPreview}"
+        type="submit"
+        onclick="return returnToHostUrl(\"#{delivery.selectURL}\");"/>
  <f:verbatim></div></f:verbatim>
 </h:panelGroup>
 
@@ -187,7 +190,9 @@ function saveTime()
 <h:panelGroup rendered="#{delivery.actionString=='previewAssessment'}">
  <f:verbatim><div class="previewMessage"></f:verbatim>
      <h:outputText value="#{deliveryMessages.ass_preview}" />
-     <h:commandButton value="#{deliveryMessages.done}" action="#{person.cleanResourceIdListInPreview}" type="submit"/>
+     <h:commandButton type="submit" value="#{deliveryMessages.done}"
+        action="#{person.cleanResourceIdListInPreview}"
+        onclick="return returnToHostUrl(\"#{delivery.selectURL}\");"/>
  <f:verbatim></div></f:verbatim>
 </h:panelGroup>
 
