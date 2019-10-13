@@ -1,9 +1,9 @@
-## Turnitin OC Content Review Implmentation
+## Turnitin OC Content Review Implementation
 
 This is the Turnitin Originality Check content review implementation which is for use with those that use the TurnitinOC service.
 
 ### Configuration
-
+```
 contentreview.enabledProviders=TurnitinOC
 contentreview.defaultProvider=TurnitinOC
 assignment.useContentReview=true
@@ -18,34 +18,47 @@ assignment.useContentReview=true
 # default: empty
 # example: turnitin.oc.apiKey=mysupersecret
 
-# turnitin.accept.all.files (Optional)
+# Maximum delay between retires after recoverable errors (Optional)
+# default: 240
+# turnitin.oc.max.retry.minutes=240
+
+# Maximum number of retries for recoverable errors (Optional)
+# default: 16
+# turnitin.oc.max.retry=16
+
+# Skips any delays intended to reduce traffic to the content review servers. (Optional)
+# For local development only; do not set this in production!
+# default: false
+# turnitin.oc.skip.delays=false
+
+# turnitin.oc.accept.all.files (Optional)
 # If true, any file type will be accepted by Sakai. Invalid file types will still be rejected by Turnitin.
 # default: false
-# example: turnitin.accept.all.files=false
+# example: turnitin.oc.accept.all.files=false
 
-# turnitin.acceptable.file.extensions (Optional)
-# Allows you to customize the set of file extensions that Sakai will allow you to submit to Turnitin. Invalid file types will still be rejected by Turnitin. This list must match the list set for turnitin.acceptable.mime.types and turnitin.acceptable.file.types
+# turnitin.oc.acceptable.file.extensions (Optional)
+# Allows you to customize the set of file extensions that Sakai will allow you to submit to Turnitin. Invalid file types will still be rejected by Turnitin. This list must match the list set for turnitin.oc.acceptable.mime.types and turnitin.oc.acceptable.file.types
 # default: A hard coded list of mime types
-# example: turnitin.acceptable.file.extensions.count=3
-# turnitin.acceptable.file.extensions.1=.pdf
-# turnitin.acceptable.file.extensions.2=.docx
-# turnitin.acceptable.file.extensions.3=.txt
+# example: turnitin.oc.acceptable.file.extensions.count=3
+# turnitin.oc.acceptable.file.extensions.1=.pdf
+# turnitin.oc.acceptable.file.extensions.2=.docx
+# turnitin.oc.acceptable.file.extensions.3=.txt
 
-# turnitin.acceptable.mime.types (Optional)
-# Allows you to customize the set of file extensions that Sakai will allow you to submit to Turnitin. Invalid file types will still be rejected by Turnitin. This list must match the list set for turnitin.acceptable.file.extensions and turnitin.acceptable.file.types
+# turnitin.oc.acceptable.mime.types (Optional)
+# Allows you to customize the set of file extensions that Sakai will allow you to submit to Turnitin. Invalid file types will still be rejected by Turnitin. This list must match the list set for turnitin.oc.acceptable.file.extensions and turnitin.oc.acceptable.file.types
 # default: A hard coded list of mime types
-# example: turnitin.acceptable.mime.types.count=3
-# turnitin.acceptable.mime.types.1=application/pdf
-# turnitin.acceptable.mime.types.2=application/msword
-# turnitin.acceptable.mime.types.3=text/plain
+# example: turnitin.oc.acceptable.mime.types.count=3
+# turnitin.oc.acceptable.mime.types.1=application/pdf
+# turnitin.oc.acceptable.mime.types.2=application/msword
+# turnitin.oc.acceptable.mime.types.3=text/plain
 
-# turnitin.acceptable.file.types (Optional)
-# Allows you to customize the set of file extensions that Sakai will allow you to submit to Turnitin. Invalid file types will still be rejected by Turnitin. This list must match the list set for turnitin.acceptable.file.extensions and turnitin.acceptable.mime.types
+# turnitin.oc.acceptable.file.types (Optional)
+# Allows you to customize the set of file extensions that Sakai will allow you to submit to Turnitin. Invalid file types will still be rejected by Turnitin. This list must match the list set for turnitin.oc.acceptable.file.extensions and turnitin.oc.acceptable.mime.types
 # default: A hard coded list of file type descriptions
-# example: turnitin.acceptable.file.types.count=3
-# turnitin.acceptable.file.types.1=PDF
-# turnitin.acceptable.file.types.2=Word Doc
-# turnitin.acceptable.file.types.3=Rich Text
+# example: turnitin.oc.acceptable.file.types.count=3
+# turnitin.oc.acceptable.file.types.1=PDF
+# turnitin.oc.acceptable.file.types.2=Word Doc
+# turnitin.oc.acceptable.file.types.3=Rich Text
 
 # turnitin.option.exclude_bibliographic (Optional)
 # Allows you to show or hide the "exclude bibliography" option when creating an assignment.
@@ -94,4 +107,50 @@ assignment.useContentReview=true
 # 2=At Due Date
 # default: turnitin.report_gen_speed.setting.value=0
 
+# turnitin.oc.auto_exclude_self_matching_scope
+# Allows you to set the default self matching exclude scope for all submissions
+# ALL (Exclude all self matching submissions from Similarity Report)
+# NONE (Exclude no self matching submissions from Similarity Report)
+# GROUP (Exclude all self matching submissions in current assignment from Similarity Report)
+# GROUP_CONTEXT (Exclude all self matching submissions in current course from Similarity Report)
+# default: GROUP
+
+# turnitin.oc.may_view_submission_full_source.student
+# Allows you to customize the default student role permission for being able to view the full source for a matching student paper in the report.
+# If left null, the default role permissions will apply.
+# FERPA Warning: These permissions provide access to data that is governed by federal and state laws. By altering these settings, you are certifying (1)
+# that all changes made to the permission settings comply fully with all of your organisation's policies regarding access to student records, and (2) that
+# the institution takes full and exclusive responsibility for access which the resulting permission settings control.
+# default: null
+# example: turnitin.oc.may_view_submission_full_source.student=true
+
+#turnitin.oc.may_view_match_submission_info.student
+# Allows you to customize the default student role permission for being able to view the user information for a matching student paper in the report.
+# If left null, the default role permissions will apply.
+# FERPA Warning: These permissions provide access to data that is governed by federal and state laws. By altering these settings, you are certifying (1)
+# that all changes made to the permission settings comply fully with all of your organisation's policies regarding access to student records, and (2) that
+# the institution takes full and exclusive responsibility for access which the resulting permission settings control.
+# default: null
+# example: turnitin.oc.may_view_match_submission_info.student=true
+
+#turnitin.oc.may_view_submission_full_source.instructor
+# Allows you to customize the default instructor role permission for being able to view the full source for a matching student paper in the report.
+# If left null, the default role permissions will apply.
+# FERPA Warning: These permissions provide access to data that is governed by federal and state laws. By altering these settings, you are certifying (1)
+# that all changes made to the permission settings comply fully with all of your organisation's policies regarding access to student records, and (2) that
+# the institution takes full and exclusive responsibility for access which the resulting permission settings control.
+# default: null
+# example: turnitin.oc.may_view_submission_full_source.instructor=true
+
+#turnitin.oc.may_view_match_submission_info.instructor
+# Allows you to customize the default instructor role permission for being able to view the user information for a matching student paper in the report.
+# If left null, the default role permissions will apply.
+# FERPA Warning: These permissions provide access to data that is governed by federal and state laws. By altering these settings, you are certifying (1)
+# that all changes made to the permission settings comply fully with all of your organisation's policies regarding access to student records, and (2) that
+# the institution takes full and exclusive responsibility for access which the resulting permission settings control.
+# default: null
+# example: turnitin.oc.may_view_match_submission_info.instructor=true
+
+
 # Please make sure the property 'version.sakai' is set correctly
+```
