@@ -23,3 +23,17 @@ rsf/sakai-rsf-web/test/overlays
 .mvn/wrapper/maven-wrapper.jar
 .checkstyle
 assets
+roster
+profile
+evaluation
+qna
+blogwow
+useralias
+sms
+uct-quartz
+linktool
+uct-site-manage
+profilesearch
+spml
+profilewow
+groupmanager
