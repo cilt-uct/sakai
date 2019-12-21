@@ -35,7 +35,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -6321,9 +6320,6 @@ public class AssignmentAction extends PagedResourceActionII {
         try {
             securityService.pushAdvisor(sa);
             ContentResource attachment = contentHostingService.addAttachmentResource(resourceId, siteId, toolName, contentType, contentStream, inlineProps);
-            // TODO: need to put this file in some kind of list to improve performance with web service impls of content-review service
-            String contentUserId = isOnBehalfOfStudent ? student.getId() : currentUser.getId();
-            contentReviewService.queueContent(contentUserId, siteId, AssignmentReferenceReckoner.reckoner().assignment(submission.getAssignment()).reckon().getReference(), Collections.singletonList(attachment));
 
             try {
                 Reference ref = entityManager.newReference(contentHostingService.getReference(attachment.getId()));
@@ -6954,8 +6950,8 @@ public class AssignmentAction extends PagedResourceActionII {
         if (groupAssignment) {
             Collection<String> users = usersInMultipleGroups(state, Assignment.Access.GROUP.toString().equals(range), (Assignment.Access.GROUP.toString().equals(range) ? data.getParameters().getStrings("selectedGroups") : null), false, null);
             if (!users.isEmpty()) {
-                String usersString = rb.getString("group.user.multiple.warning") + " " + String.join(",", users);
-                log.warn("{}", usersString);
+                String usersString = rb.getString("group.user.multiple.warning") + " " + formattedText.escapeHtml(String.join(",", users));
+                log.warn("at least one user in multiple groups: {}", usersString);
                 addAlert(state, usersString);
             }
         }
@@ -12952,7 +12948,7 @@ public class AssignmentAction extends PagedResourceActionII {
             while (_it.hasNext()) {
                 _sb.append(", " + _it.next());
             }
-            addAlert(state, _sb.toString());
+            addAlert(state, formattedText.escapeHtml(_sb.toString(), false));
         }
         return _dupUsers;
     }
@@ -14524,7 +14520,7 @@ public class AssignmentAction extends PagedResourceActionII {
      */
     protected void setScoringAgentProperties(Context context, Assignment assignment, AssignmentSubmission submission, boolean gradeView) {
         String associatedGbItem = assignment.getProperties().get(PROP_ASSIGNMENT_ASSOCIATE_GRADEBOOK_ASSIGNMENT);
-        if (submission != null && StringUtils.isNotBlank(associatedGbItem) && assignment.getTypeOfGrade() == SCORE_GRADE_TYPE) {
+        if (!assignment.getIsGroup() && submission != null && StringUtils.isNotBlank(associatedGbItem) && assignment.getTypeOfGrade() == SCORE_GRADE_TYPE) {
             ScoringService scoringService = (ScoringService) ComponentManager.get("org.sakaiproject.scoringservice.api.ScoringService");
             ScoringAgent scoringAgent = scoringService.getDefaultScoringAgent();
 
@@ -14533,9 +14529,8 @@ public class AssignmentAction extends PagedResourceActionII {
             Set<AssignmentSubmissionSubmitter> submitters = submission.getSubmitters();
             String currentUser = sessionManager.getCurrentSessionUserId();
             AssignmentSubmissionSubmitter submitter = submitters.stream()
-                    .filter(s -> s.getSubmitter().equals(currentUser)).findAny()
-                    .orElseGet(() -> submitters.stream()
-                            .filter(AssignmentSubmissionSubmitter::getSubmittee).findAny()
+                    .filter(s -> s.getSubmitter().equals(currentUser)).findAny() // If in student context, get student's specific submission
+                    .orElseGet(() -> submitters.stream().findAny() // If in instructor context, just get the first available submission (group assignments don't show the icon anyway)
                             .orElse(null));
 
             if (scoringAgentEnabled && submitter != null) {
@@ -14575,7 +14570,7 @@ public class AssignmentAction extends PagedResourceActionII {
                     // Determine if a scoring component (like a rubric) has been associated with this gradebook item
                     ScoringComponent component = scoringService.getScoringComponent(
                             scoringAgent.getAgentId(), gradebookUid, gbItemId);
-                    boolean scoringComponentEnabled = component != null && !assignment.getIsGroup();
+                    boolean scoringComponentEnabled = component != null;
 
                     context.put("scoringComponentEnabled", scoringComponentEnabled);
 
