@@ -90,6 +90,9 @@ import org.sakaiproject.tool.cover.SessionManager;
 import org.sakaiproject.tool.cover.ToolManager;
 import org.sakaiproject.util.ResourceLoader;
 
+import lombok.Getter;
+import lombok.Setter;
+
 /**
  *
  * @author casong
@@ -137,6 +140,12 @@ public class DeliveryBean
   private String confirmation;
   private String outcome;
   private String receiptEmailSetting;
+  @Getter @Setter
+  private Map<String, MediaData> submissionFiles = new HashMap<>();
+  
+  public List<MediaData> getSubmissionFilesList() {
+	return new ArrayList<MediaData>(submissionFiles.values());
+  }
 
   //Settings
   private String questionLayout;
