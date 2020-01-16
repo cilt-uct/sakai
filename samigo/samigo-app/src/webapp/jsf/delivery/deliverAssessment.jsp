@@ -431,6 +431,17 @@ document.links[newindex].onclick();
            <%@ include file="/jsf/delivery/item/deliverMatrixChoicesSurvey.jsp" %>
            </f:subview>
            </h:panelGroup>
+
+           <div role="alert" class="sak-banner-error" style="display: none" id="autosave-timeexpired-warning">
+             <h:outputText value="#{deliveryMessages.time_expired2} " />
+           </div>
+           <div role="alert" class="sak-banner-error" style="display: none" id="autosave-timeleft-warning">
+             <h:outputFormat value="#{deliveryMessages.time_left}"><f:param value="#{delivery.minutesLeft}"/><f:param value="#{delivery.secondsLeft}"/></h:outputFormat>
+           </div>
+           <div role="alert" class="sak-banner-error" style="display: none" id="autosave-failed-warning">
+             <p><h:outputText value="#{deliveryMessages.autosaveFailed} " /></p>
+             <p><h:outputText value="#{deliveryMessages.autosaveFailedDetail} " /></p>
+           </div>
           
          </div>
         </h:column>

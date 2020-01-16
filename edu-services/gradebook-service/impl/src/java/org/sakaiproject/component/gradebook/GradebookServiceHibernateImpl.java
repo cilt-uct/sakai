@@ -444,6 +444,13 @@ public class GradebookServiceHibernateImpl extends BaseHibernateManager implemen
 
 		gradebook.setCategory_type(gradebookInformation.getCategoryType());
 		gradebook.setGrade_type(gradebookInformation.getGradeType());
+		gradebook.setAssignmentStatsDisplayed(gradebookInformation.isAssignmentStatsDisplayed());
+		gradebook.setCourseGradeStatsDisplayed(gradebookInformation.isCourseGradeStatsDisplayed());
+		gradebook.setAssignmentsDisplayed(gradebookInformation.isDisplayReleasedGradeItemsToStudents());
+		gradebook.setCourseGradeDisplayed(gradebookInformation.isCourseGradeDisplayed());
+		gradebook.setCourseLetterGradeDisplayed(gradebookInformation.isCourseLetterGradeDisplayed());
+		gradebook.setCoursePointsDisplayed(gradebookInformation.isCoursePointsDisplayed());
+		gradebook.setCourseAverageDisplayed(gradebookInformation.isCourseAverageDisplayed());
 
 		updateGradebook(gradebook);
 
@@ -1424,7 +1431,7 @@ public class GradebookServiceHibernateImpl extends BaseHibernateManager implemen
 			}
 		} else if (getAuthz().isUserAbleToViewOwnGrades(gradebookUid)) {
 			// if user is just a student, we need to filter out unreleased items
-			final List allAssigns = getAssignments(gradebook.getId(), null, true);
+			final List allAssigns = getAssignments(gradebook.getId(), sortBy, true);
 			if (allAssigns != null) {
 				for (final Iterator aIter = allAssigns.iterator(); aIter.hasNext();) {
 					final GradebookAssignment assign = (GradebookAssignment) aIter.next();

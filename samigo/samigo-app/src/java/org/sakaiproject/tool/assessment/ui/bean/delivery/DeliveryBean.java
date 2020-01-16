@@ -99,6 +99,7 @@ import org.sakaiproject.tool.assessment.util.ExtendedTimeDeliveryService;
 import org.sakaiproject.tool.assessment.util.MimeTypesLocator;
 import org.sakaiproject.tool.cover.SessionManager;
 import org.sakaiproject.tool.cover.ToolManager;
+import org.sakaiproject.util.FormattedText;
 import org.sakaiproject.util.ResourceLoader;
 
 /**
@@ -1175,25 +1176,24 @@ public class DeliveryBean
   
   public java.util.Date getRetractDate()
   {
-    return retractDate;
+    return isAcceptLateSubmission() ? retractDate : null;
   }
 
   public String getDayRetractDateString()
   {
-    String dateString = "";
-    if (retractDate == null) {
-      return dateString;
+    if (retractDate == null || !isAcceptLateSubmission()) {
+      return "";
     }
 
     try {
       TimeUtil tu = new TimeUtil();
-      dateString = tu.getDisplayDateTime(dayDisplayFormat, retractDate, true);
+      return tu.getDisplayDateTime(dayDisplayFormat, retractDate, true);
     }
     catch (Exception ex) {
       // we will leave it as an empty string
-      log.warn("Unable to format date.", ex);
+      log.warn("Unable to format date: {}", retractDate, ex);
     }
-    return dateString;
+    return "";
   }
   
   public void setRetractDate(java.util.Date retractDate)
@@ -1883,10 +1883,6 @@ public class DeliveryBean
 	  return saveAndExit(true);
   }
   
-  public String saveNoCheck() {
-	  return saveAndExit(false);
-  }
-  
   public String saveAndExit(boolean needToCheck)
   {
 	  if (needToCheck) {  
@@ -2421,7 +2417,7 @@ public class DeliveryBean
 		  agentEid= "N/A";
 	  }
 	  eventLogData.setUserEid(agentEid);
-	  eventLogData.setTitle(publishedAssessment.getTitle());
+	  eventLogData.setTitle(FormattedText.convertFormattedTextToPlaintext(publishedAssessment.getTitle()));
 	  String site_id= AgentFacade.getCurrentSiteId();
 	  if(site_id == null) {
 		  //take assessment via url

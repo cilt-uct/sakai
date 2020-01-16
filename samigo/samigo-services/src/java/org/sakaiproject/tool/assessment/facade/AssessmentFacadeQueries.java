@@ -386,9 +386,8 @@ public class AssessmentFacadeQueries extends HibernateDaoSupport implements Asse
 		log.debug("removeAssesment: no. of pub Assessment = {}", count.size());
 		Iterator iter = count.iterator();
 		int i = ((Long) iter.next()).intValue();
+		AssessmentData assessment = (AssessmentData) getHibernateTemplate().load(AssessmentData.class, assessmentId);
 		if (i < 1) {
-			AssessmentData assessment = (AssessmentData) getHibernateTemplate().load(AssessmentData.class, assessmentId);
-
 			AssessmentService s = new AssessmentService();
 			List resourceIdList = s.getAssessmentResourceIdList(assessment);
 			if (log.isDebugEnabled()) log.debug("*** we have no. of resource in assessment=" + resourceIdList.size());
@@ -397,15 +396,21 @@ public class AssessmentFacadeQueries extends HibernateDaoSupport implements Asse
 
 		RubricsService rubricsService = (RubricsService) SpringBeanLocator.getInstance().getBean("org.sakaiproject.rubrics.logic.RubricsService");
 		rubricsService.deleteRubricAssociationsByItemIdPrefix(assessmentId + ".", RubricsConstants.RBCS_TOOL_SAMIGO);
-	
-		final String softDeleteQuery = "update AssessmentData set status = :status WHERE assessmentBaseId = :id";
 
-		getHibernateTemplate().execute(session -> {
-            Query q = session.createQuery(softDeleteQuery);
-            q.setInteger("status", AssessmentIfc.DEAD_STATUS);
-            q.setLong("id", assessmentId);
-            return q.executeUpdate();
-        });
+		assessment.setLastModifiedBy(AgentFacade.getAgentString());
+		assessment.setLastModifiedDate(new Date());
+		assessment.setStatus(AssessmentIfc.DEAD_STATUS);
+		int retryCount = PersistenceService.getInstance().getPersistenceHelper().getRetryCount();
+		while (retryCount > 0) {
+			try {
+				getHibernateTemplate().update(assessment);
+				retryCount = 0;
+			} catch (Exception e) {
+				log.warn("problem updating asssessment: " + e.getMessage());
+				retryCount = PersistenceService.getInstance().getPersistenceHelper()
+						.retryDeadlock(e, retryCount);
+			}
+		}
 	}
 
 	/* this assessment comes with a default section */
@@ -1222,8 +1227,11 @@ public class AssessmentFacadeQueries extends HibernateDaoSupport implements Asse
 	}
 
 	public boolean assessmentTitleIsUnique(final Long assessmentBaseId, String title, Boolean isTemplate) {
+		return assessmentTitleIsUnique(assessmentBaseId, title, isTemplate, AgentFacade.getCurrentSiteId());
+	}
+
+	public boolean assessmentTitleIsUnique(final Long assessmentBaseId, String title, Boolean isTemplate, final String siteId) {
 		title = title.trim();
-		final String currentSiteId = AgentFacade.getCurrentSiteId();
 		final String agentString = AgentFacade.getAgentString();
 		List<AssessmentBaseData> list;
 		boolean isUnique = true;
@@ -1252,7 +1260,7 @@ public class AssessmentFacadeQueries extends HibernateDaoSupport implements Asse
                 q.setString("title", titlef);
                 q.setLong("id", assessmentBaseId);
                 q.setString("fid", "EDIT_ASSESSMENT");
-                q.setString("site", currentSiteId);
+                q.setString("site", siteId);
                 q.setInteger("status", 1);
                 return q.list();
             };
@@ -1611,7 +1619,7 @@ public class AssessmentFacadeQueries extends HibernateDaoSupport implements Asse
 		}
 		for (AssessmentData assessmentData : newList) {
 		    getHibernateTemplate().saveOrUpdate(assessmentData); // write
-        }
+		}
 		
 		// authorization
 		for (AssessmentData a : newList) {
@@ -1659,9 +1667,27 @@ public class AssessmentFacadeQueries extends HibernateDaoSupport implements Asse
 			}
 		}
 		for (AssessmentData data : newList) {
-		    getHibernateTemplate().saveOrUpdate(data);
-		    String oldRef = assessmentMap.get(data);
-		    if (oldRef != null && data.getAssessmentBaseId() != null)
+			// now make sure we have a unique name for the assessment
+			String title = data.getTitle();
+			boolean notUnique = !assessmentTitleIsUnique(data.getAssessmentBaseId() , title, false, toContext);
+			if (notUnique) {
+				synchronized (title) {
+					log.debug("Assessment "+ title + " is not unique.");
+					int count = 0; // alternate exit condition
+					while (notUnique) {
+						title = AssessmentService.renameDuplicate(title);
+						log.debug("renameDuplicate(title): " + title);
+						data.setTitle(title);
+						notUnique = !assessmentTitleIsUnique(data.getAssessmentBaseId() , title, false);
+						if (count++ > 99) {
+							break;// exit condition in case bug is introduced
+						}
+					}
+				}
+			}
+			getHibernateTemplate().saveOrUpdate(data);
+			String oldRef = assessmentMap.get(data);
+			if (oldRef != null && data.getAssessmentBaseId() != null)
 			transversalMap.put(oldRef, CoreAssessmentEntityProvider.ENTITY_PREFIX + "/" + data.getAssessmentBaseId());
 		}
 
@@ -2358,4 +2384,36 @@ public class AssessmentFacadeQueries extends HibernateDaoSupport implements Asse
 		}
 		return sortedGroups;
 	}
+
+    public List<AssessmentData> getDeletedAssessments(final String siteAgentId) {
+        final HibernateCallback<List<AssessmentData>> hcb = session -> session.createQuery(
+            "select new AssessmentData(a.assessmentBaseId, a.title, a.lastModifiedDate) " +
+                "from AssessmentData a, AuthorizationData z " +
+                "where a.assessmentBaseId=z.qualifierId and z.functionId=:functionId " +
+                "and z.agentIdString=:siteId and a.status=:inactiveStatus ")
+                .setString("functionId", "EDIT_ASSESSMENT")
+                .setString("siteId", siteAgentId)
+                .setInteger("inactiveStatus", AssessmentIfc.DEAD_STATUS)
+                .list();
+        return getHibernateTemplate().execute(hcb);
+    }
+
+    public void restoreAssessment(Long assessmentId) {
+    	AssessmentData assessment = (AssessmentData) getHibernateTemplate().load(AssessmentData.class, assessmentId);
+    	assessment.setLastModifiedBy(AgentFacade.getAgentString());
+    	assessment.setLastModifiedDate(new Date());
+    	assessment.setStatus(AssessmentIfc.ACTIVE_STATUS);
+    	int retryCount = PersistenceService.getInstance().getPersistenceHelper().getRetryCount();
+    	while (retryCount > 0) {
+    		try {
+    			getHibernateTemplate().update(assessment);
+    			retryCount = 0;
+    		} catch (Exception e) {
+    			log.warn("problem updating asssessment: " + e.getMessage());
+    			retryCount = PersistenceService.getInstance().getPersistenceHelper()
+    					.retryDeadlock(e, retryCount);
+    		}
+    	}
+    }
+
 }

@@ -208,7 +208,7 @@
     <pluginRepository>
       <id>central</id>
       <name>Maven Plugin Repository</name>
-      <url>http://repo1.maven.org/maven2</url>
+      <url>https://repo1.maven.org/maven2</url>
       <layout>default</layout>
       <snapshots>
         <enabled>false</enabled>
@@ -220,7 +220,7 @@
     <pluginRepository>
         <id>opencast</id>
         <name>Opencast Repo</name>
-        <url>http://nexus.opencast.org/nexus/content/groups/public</url>
+        <url>https://nexus.opencast.org/nexus/content/groups/public</url>
         <snapshots>
             <enabled>false</enabled>
         </snapshots>
@@ -234,7 +234,7 @@
       <id>central</id>
       <name>Maven Repository Switchboard</name>
       <layout>default</layout>
-      <url>http://repo1.maven.org/maven2</url>
+      <url>https://repo1.maven.org/maven2</url>
       <snapshots>
         <enabled>false</enabled>
       </snapshots>
@@ -254,6 +254,22 @@
       </snapshots>
     </repository>
     <repository>
+      <id>repository.spring.release</id>
+      <name>Spring GA Repository</name>
+      <url>https://repo.spring.io/release</url>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+    <repository>
+      <id>repository.spring.libs.release</id>
+      <name>Spring Lib Repository</name>
+      <url>https://repo.spring.io/libs-release</url>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+    <repository>
       <id>sakai-maven2-snapshots</id>
       <name>Sakai Maven Repo</name>
       <layout>default</layout>
@@ -270,7 +286,7 @@
     <repository>
         <id>opencast</id>
         <name>Opencast Repo</name>
-        <url>http://nexus.opencast.org/nexus/content/groups/public</url>
+        <url>https://nexus.opencast.org/nexus/content/groups/public</url>
         <snapshots>
             <enabled>false</enabled>
         </snapshots>
@@ -511,10 +527,27 @@
 		<scope>provided</scope>
 	  </dependency>
       <dependency>
+        <groupId>com.fasterxml.jackson.module</groupId>
+        <artifactId>jackson-module-parameter-names</artifactId>
+        <version>${sakai.jackson.version}</version>
+        <scope>provided</scope>
+      </dependency>
+      <dependency>
+        <groupId>com.fasterxml.jackson.datatype</groupId>
+        <artifactId>jackson-datatype-jdk8</artifactId>
+        <version>${sakai.jackson.version}</version>
+        <scope>provided</scope>
+      </dependency>
+      <dependency>
         <groupId>com.fasterxml.jackson.datatype</groupId>
         <artifactId>jackson-datatype-jsr310</artifactId>
         <version>${sakai.jackson.version}</version>
         <scope>provided</scope>
+      </dependency>
+      <dependency>
+        <groupId>com.fasterxml.jackson.module</groupId>
+        <artifactId>jackson-modules-java8</artifactId>
+        <version>${sakai.jackson.version}</version>
       </dependency>
       <dependency>
         <groupId>com.fasterxml.jackson.module</groupId>

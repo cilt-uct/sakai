@@ -1059,6 +1059,8 @@ public class PublishedAssessmentFacadeQueries extends HibernateDaoSupport implem
 							true);
 		}
 		else {
+			assessment.setLastModifiedBy(AgentFacade.getAgentString());
+			assessment.setLastModifiedDate(new Date());
 			assessment.setStatus(PublishedAssessmentIfc.DEAD_STATUS);
 			try {
 				saveOrUpdate(assessment);
@@ -2748,4 +2750,36 @@ public class PublishedAssessmentFacadeQueries extends HibernateDaoSupport implem
 				.list();
 		return getHibernateTemplate().execute(hcb);
 	}
+
+
+    public List<PublishedAssessmentData> getPublishedDeletedAssessments(final String siteAgentId) {
+        final HibernateCallback<List<PublishedAssessmentData>> hcb = session -> session.createQuery(
+            "select new PublishedAssessmentData(p.publishedAssessmentId, p.title, p.lastModifiedDate) " +
+                "from PublishedAssessmentData p, AuthorizationData z " +
+                "where p.publishedAssessmentId=z.qualifierId and z.functionId=:functionId " +
+                "and z.agentIdString=:siteId and p.status=:inactiveStatus ")
+                .setString("functionId", "OWN_PUBLISHED_ASSESSMENT")
+                .setString("siteId", siteAgentId)
+                .setInteger("inactiveStatus", AssessmentIfc.DEAD_STATUS)
+                .list();
+        return getHibernateTemplate().execute(hcb);
+    }
+
+    public void restorePublishedAssessment(Long publishedAssessmentId) {
+    	PublishedAssessmentData assessment = (PublishedAssessmentData) getHibernateTemplate().load(PublishedAssessmentData.class, publishedAssessmentId);
+    	assessment.setLastModifiedBy(AgentFacade.getAgentString());
+    	assessment.setLastModifiedDate(new Date());
+    	assessment.setStatus(AssessmentIfc.ACTIVE_STATUS);
+    	int retryCount = PersistenceService.getInstance().getPersistenceHelper().getRetryCount();
+    	while (retryCount > 0) {
+    		try {
+    			getHibernateTemplate().update(assessment);
+    			retryCount = 0;
+    		} catch (Exception e) {
+    			log.warn("problem updating asssessment: " + e.getMessage());
+    			retryCount = PersistenceService.getInstance().getPersistenceHelper()
+    					.retryDeadlock(e, retryCount);
+    		}
+    	}
+    }
 }

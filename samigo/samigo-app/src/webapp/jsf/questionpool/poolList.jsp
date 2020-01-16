@@ -114,6 +114,16 @@
             </h:commandLink>
         </span>
     </li>
+    <h:panelGroup rendered="#{authorization.adminAssessment}">
+        <li role="menuitem">
+            <span>
+                <h:commandLink id="restoreAssessments" accesskey="#{generalMessages.a_restore_assessments}" title="#{generalMessages.t_restore_assessments}" action="restoreAssessments" immediate="true">
+                    <h:outputText value="#{generalMessages.restore_assessments}" />
+                    <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.author.RestoreAssessmentsListener" />
+                </h:commandLink>
+            </span>
+        </li>
+    </h:panelGroup>
 </ul>
 
 <h1>
@@ -163,7 +173,7 @@
 
 <p class="act">
  
-<h:commandButton rendered="#{questionpool.importToAuthoring == 'false' && authorization.deleteOwnQuestionPool}" type="submit" immediate="true" id="Submit" value="#{questionPoolMessages.delete}" action="#{questionpool.startRemovePool}" styleClass="active" >
+<h:commandButton rendered="#{questionpool.importToAuthoring == 'false' && authorization.deleteOwnQuestionPool}" type="submit" immediate="true" id="Submit" value="#{questionPoolMessages.delete}" action="#{questionpool.startRemovePool}" styleClass="hidden" >
   </h:commandButton>
 
   <h:commandButton rendered="#{questionpool.importToAuthoring == 'true'}"  type="submit" immediate="true" id="cancel" value="#{commonMessages.cancel_action}" action="#{questionpool.cancelImport}"  >

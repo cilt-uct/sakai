@@ -215,6 +215,10 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
                                                     + a.getId()
                                                     + "&panel=Main&sakai_action=doView_assignment");
                         } else if (allowSubmitAssignment) {
+                            String sakaiAction = "doView_submission";
+                            if(a.getHonorPledge()) {
+                                sakaiAction = "doView_assignment_honorPledge";
+                            }
                             assignData
                                     .put("assignmentUrl",
                                             serverConfigurationService
@@ -223,7 +227,7 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
                                                     + fromTool.getId()
                                                     + "?assignmentReference="
                                                     + AssignmentReferenceReckoner.reckoner().assignment(a).reckon().getReference()
-                                                    + "&panel=Main&sakai_action=doView_submission");
+                                                    + "&panel=Main&sakai_action=" + sakaiAction);
                         } else {
                             // user can read the assignment, but not submit, so
                             // render the appropriate url
@@ -857,8 +861,8 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
 
             // If grade scale is "points" we also capture the maximum points allowed.
             if (a.getTypeOfGrade() == Assignment.GradeType.SCORE_GRADE_TYPE) {
-                // TODO fix max grade display
-				//	this.gradeScaleMaxPoints = a.getMaxGradePoint();
+                Integer scaleFactor = a.getScaleFactor() != null ? a.getScaleFactor() : assignmentService.getScaleFactor();
+                this.gradeScaleMaxPoints = assignmentService.getMaxPointGradeDisplay(scaleFactor, a.getMaxGradePoint());
             }
 
             // Use the number of submissions allowed as an indicator that re-submission is permitted.

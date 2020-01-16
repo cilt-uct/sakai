@@ -4746,7 +4746,7 @@ public class DiscussionForumTool
 
 		LRS_Statement statement = forumManager.getStatementForUserPosted(dMsg.getTitle(), SAKAI_VERB.responded).orElse(null);
 		Message persistedMessage = forumManager.saveMessage(dMsg, new ForumsMessageEventParams(ForumsMessageEventParams.MessageEvent.REVISE, statement));
-		
+
 		messageManager.markMessageReadForUser(dfTopic.getId(), persistedMessage.getId(), true);
 
 		List messageList = selectedTopic.getMessages();
@@ -5376,7 +5376,7 @@ public class DiscussionForumTool
               .getTopicByIdWithMessages(selectedTopic.getTopic().getId()));
 	  LRS_Statement statement = forumManager.getStatementForUserPosted(currMessage.getTitle(), SAKAI_VERB.responded).orElse(null);
 	  Message persistedMessage = forumManager.saveMessage(currMessage, new ForumsMessageEventParams(ForumsMessageEventParams.MessageEvent.REVISE, statement), true);
-	  
+
 	  if (displayDeniedMsg) // only displayed if from Deny & Comment path
 	  {
 		  setSuccessMessage(getResourceBundleString("cdfm_denied_alert"));
@@ -6146,20 +6146,24 @@ public class DiscussionForumTool
         
     String eventRef = "";
     String evaluatedItemId = "";
+    String evaluatedItemTitle = "";
     if(selectedMessage != null){
-    	eventRef = getEventReference(selectedMessage.getMessage());
-    	evaluatedItemId = studentUid+"."+selectedMessage.getMessage().getUuid();
+        eventRef = getEventReference(selectedMessage.getMessage());
+        evaluatedItemId = studentUid+"."+selectedMessage.getMessage().getUuid();
+        evaluatedItemTitle = selectedMessage.getMessage().getTitle();
     }else if(selectedTopic != null){
-    	eventRef = getEventReference(selectedTopic.getTopic());
-    	evaluatedItemId = studentUid+"."+selectedTopic.getTopic().getUuid();
+        eventRef = getEventReference(selectedTopic.getTopic());
+        evaluatedItemId = studentUid+"."+selectedTopic.getTopic().getUuid();
+        evaluatedItemTitle = selectedTopic.getTopic().getTitle();
     }else if(selectedForum != null){
-    	eventRef = getEventReference(selectedForum.getForum());
-    	evaluatedItemId = studentUid+"."+selectedForum.getForum().getUuid();
+        eventRef = getEventReference(selectedForum.getForum());
+        evaluatedItemId = studentUid+"."+selectedForum.getForum().getUuid();
+        evaluatedItemTitle = selectedForum.getForum().getTitle();
     }
     if(rubricsService.hasAssociatedRubric(RubricsConstants.RBCS_TOOL_FORUMS, getRubricAssociationId())){
     	rubricsService.saveRubricEvaluation(RubricsConstants.RBCS_TOOL_FORUMS, getRubricAssociationId(), evaluatedItemId, studentUid, getUserId(), getRubricConfigurationParameters());
     }
-    LRS_Statement statement = forumManager.getStatementForGrade(studentUid, selectedTopic.getTopic().getTitle(), gradeAsDouble).orElse(null);
+    LRS_Statement statement = forumManager.getStatementForGrade(studentUid, evaluatedItemTitle, gradeAsDouble).orElse(null);
     Event event = eventTrackingService.newEvent(DiscussionForumService.EVENT_FORUMS_GRADE, eventRef, null, true, NotificationService.NOTI_OPTIONAL, statement);
     eventTrackingService.post(event);
 
@@ -6987,7 +6991,7 @@ public class DiscussionForumTool
         setupMembershipItemPermission(membershipItem, permBean);
 
         // save DBMembershiptItem here to get an id so we can add to the set
-        permissionLevelManager.saveDBMembershipItem(membershipItem);          
+        membershipItem = permissionLevelManager.saveDBMembershipItem(membershipItem);
 
         membershipItemSet.add(membershipItem);
       }
@@ -8206,7 +8210,7 @@ public class DiscussionForumTool
 				log.debug("About to getMembershipItemCopy()");
 				DBMembershipItem newItem = getMembershipItemCopy(oldItem);
 				if (newItem != null) {
-					permissionLevelManager.saveDBMembershipItem(newItem);
+					newItem = permissionLevelManager.saveDBMembershipItem(newItem);
 					newTopic.addMembershipItem(newItem);
 				}
 		}
@@ -8859,7 +8863,7 @@ public class DiscussionForumTool
 			if (log.isDebugEnabled()) log.debug("processMoveThread messageId = " + mes.getId());
 			if (log.isDebugEnabled()) log.debug("processMoveThread message title = " + mes.getTitle());
 			mes.setTopic(desttopic);
-			messageManager.saveMessage(mes);
+			mes = messageManager.saveOrUpdateMessage(mes);
 
 			// mfr_move_history_t stores only records that are used to display reminder links. Not all moves are recorded in this
 			// table.
@@ -8879,7 +8883,7 @@ public class DiscussionForumTool
 				if (log.isDebugEnabled()) log.debug("processMoveThread messageId = " + childMsg.getId());
 				if (log.isDebugEnabled()) log.debug("processMoveThread message title = " + childMsg.getTitle());
 				childMsg.setTopic(desttopic);
-				messageManager.saveMessage(childMsg);
+				childMsg = messageManager.saveOrUpdateMessage(childMsg);
 				messageManager.saveMessageMoveHistory(childMsg.getId(), desttopicId, sourceTopicId, checkReminder);
 				eventmsg = "Moving message " + childMsg.getId() + " from topic " + sourceTopicId + " to topic " + desttopicId;
 				eventTrackingService.post(eventTrackingService.newEvent(DiscussionForumService.EVENT_FORUMS_MOVE_THREAD, eventmsg, true));
