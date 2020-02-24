@@ -378,7 +378,7 @@ public class ChartServiceImpl implements ChartService {
 		// item labels
 		if(itemLabelsVisible) {
 			plot.getRangeAxis().setUpperMargin(0.2);
-			barrenderer.setItemLabelGenerator(new StandardCategoryItemLabelGenerator() {
+			barrenderer.setBaseItemLabelGenerator(new StandardCategoryItemLabelGenerator() {
 				private static final long	serialVersionUID	= 1L;
 
 				@Override
@@ -391,8 +391,8 @@ public class ChartServiceImpl implements ChartService {
 					return "";
 				}			
 			});
-			barrenderer.setItemLabelFont(new Font("SansSerif", Font.PLAIN, 8));
-			barrenderer.setItemLabelsVisible(true);
+			barrenderer.setBaseItemLabelFont(new Font("SansSerif", Font.PLAIN, 8));
+			barrenderer.setBaseItemLabelsVisible(true);
 		}
 
 		BufferedImage img = chart.createBufferedImage(width, height);
@@ -444,7 +444,7 @@ public class ChartServiceImpl implements ChartService {
 		// item labels
 		if(itemLabelsVisible) {
 			plot.getRangeAxis().setUpperMargin(0.2);
-			renderer.setItemLabelGenerator(new StandardCategoryItemLabelGenerator() {
+			renderer.setBaseItemLabelGenerator(new StandardCategoryItemLabelGenerator() {
 				private static final long	serialVersionUID	= 1L;
 
 				@Override
@@ -456,8 +456,8 @@ public class ChartServiceImpl implements ChartService {
 					return "";
 				}			
 			});
-			renderer.setItemLabelFont(new Font("SansSerif", Font.PLAIN, 8));
-			renderer.setItemLabelsVisible(true);
+			renderer.setBaseItemLabelFont(new Font("SansSerif", Font.PLAIN, 8));
+			renderer.setBaseItemLabelsVisible(true);
 		}
 
 		BufferedImage img = chart.createBufferedImage(width, height);
@@ -618,8 +618,8 @@ public class ChartServiceImpl implements ChartService {
         if(renderer instanceof XYLineAndShapeRenderer) {	
 	        XYLineAndShapeRenderer r = (XYLineAndShapeRenderer) renderer;		
 	        r.setDrawSeriesLineAsPath(true);
-	        r.setShapesVisible(true);
-	        r.setShapesFilled(true);
+	        r.setBaseShapesVisible(true);
+	        r.setBaseShapesFilled(true);
         }else if(renderer instanceof XYBarRenderer) {
         	//XYBarRenderer r = (XYBarRenderer) renderer;
         	ClusteredXYBarRenderer r = new ClusteredXYBarRenderer();
@@ -635,7 +635,7 @@ public class ChartServiceImpl implements ChartService {
 		// item labels
 		if(itemLabelsVisible) {
 			plot.getRangeAxis().setUpperMargin(0.2);
-			renderer.setItemLabelGenerator(new XYItemLabelGenerator() {
+			renderer.setBaseItemLabelGenerator(new XYItemLabelGenerator() {
 				private static final long	serialVersionUID	= 1L;
 
 				public String generateLabel(XYDataset dataset, int series, int item) {
@@ -647,8 +647,8 @@ public class ChartServiceImpl implements ChartService {
 
 						
 			});
-			renderer.setItemLabelFont(new Font("SansSerif", Font.PLAIN, 8));
-			renderer.setItemLabelsVisible(true);
+			renderer.setBaseItemLabelFont(new Font("SansSerif", Font.PLAIN, 8));
+			renderer.setBaseItemLabelsVisible(true);
 		}
 
 		BufferedImage img = chart.createBufferedImage(width, height);
