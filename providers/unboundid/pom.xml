@@ -17,6 +17,7 @@
   <inceptionYear>2005</inceptionYear>
   <packaging>jar</packaging>
   <properties>
+    <sakai.unboundid.version>5.0.0</sakai.unboundid.version>
     <deploy.target />
   </properties>
   <dependencies>
@@ -39,7 +40,7 @@
     <dependency>
       <groupId>com.unboundid</groupId>
       <artifactId>unboundid-ldapsdk</artifactId>
-      <version>4.0.14</version>
+      <version>${sakai.unboundid.version}</version>
     </dependency>
     <dependency>
       <groupId>org.jmock</groupId>
