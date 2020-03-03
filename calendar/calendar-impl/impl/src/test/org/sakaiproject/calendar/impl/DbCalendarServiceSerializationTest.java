@@ -27,17 +27,21 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 
 import junit.framework.TestCase;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
 import org.sakaiproject.calendar.impl.DbCalendarService.DbStorage;
 import org.sakaiproject.db.api.SqlReader;
 import org.sakaiproject.db.api.SqlService;
@@ -55,10 +59,9 @@ import org.sakaiproject.time.api.TimeService;
  * @author ieb
  *
  */
+@Slf4j
 public class DbCalendarServiceSerializationTest extends TestCase
 {
-
-	private static final Logger log = LoggerFactory.getLogger(DbCalendarServiceSerializationTest.class);
 	private SqlService sqlService;
 	private Entity container;
 	private EntityManager entityManager;
@@ -229,6 +232,12 @@ public class DbCalendarServiceSerializationTest extends TestCase
 				return false;
 			}
 
+			public boolean dbWriteBatch(Connection connection, String sql, List<Object[]> fieldsList)
+			{
+				// TODO Auto-generated method stub
+				return false;
+			}
+
 			public boolean dbWriteBinary(String sql, Object[] fields, byte[] var, int offset, int len)
 			{
 				// TODO Auto-generated method stub
@@ -329,6 +338,11 @@ public class DbCalendarServiceSerializationTest extends TestCase
 				return null;
 			}
 
+			@Override
+			public TimeZone getLocalTimeZone(String userId) {
+				return null;
+			}
+
 			public Time newTime()
 			{
 				// TODO Auto-generated method stub
@@ -423,7 +437,59 @@ public class DbCalendarServiceSerializationTest extends TestCase
 				// TODO Auto-generated method stub
 				return -1;
 			}
-			
+
+			@Override
+			public String dateFormat(Date date, Locale locale, int df) {
+				return null;
+			}
+
+			@Override
+			public String dateTimeFormat(Date date, Locale locale, int df) {
+				return null;
+			}
+
+			@Override
+			public String shortLocalizedTimestamp(Instant instant, TimeZone timezone, Locale locale) {
+				return null;
+			}
+
+			@Override
+			public String shortLocalizedTimestamp(Instant instant, Locale locale) {
+				return null;
+			}
+
+			@Override
+			public String shortLocalizedDate(LocalDate date, Locale locale) {
+				return null;
+			}
+
+			@Override
+			public String shortPreciseLocalizedTimestamp(Instant instant, TimeZone timezone, Locale locale) {
+				return null;
+			}
+
+			@Override
+			public String shortPreciseLocalizedTimestamp(Instant instant, Locale locale) {
+				return null;
+			}
+
+			@Override
+			public String timeFormat(Date date, Locale locale, int format) {
+				// TODO Auto-generated method stub
+				return null;
+			}
+
+			@Override
+			public String dayOfWeekFormat(Date date, Locale locale, int format) {
+				// TODO Auto-generated method stub
+				return null;
+			}
+
+			@Override
+			public Date parseISODateInUserTimezone(String dateString) {
+				// TODO Auto-generated method stub
+				return null;
+			}
 		};
 		services = new HashMap<String,Object>();
 		services.put("sqlservice", sqlService);

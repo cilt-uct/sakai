@@ -1,7 +1,19 @@
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.lessonbuildertool.cc;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /***********
  * This code is based on a reference implementation done for the IMS Consortium.
@@ -44,71 +56,62 @@ import org.slf4j.LoggerFactory;
  *
  **********************************************************************************/
 
-import org.jdom.Element;
-import org.jdom.Namespace;
-import org.jdom.output.XMLOutputter;
-import org.jdom.filter.ElementFilter;
+import java.io.File;
+import java.io.InputStream;
+import java.io.FileInputStream;
+import java.io.PrintWriter;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.HashMap;
-import java.util.Properties;
 import java.util.Iterator;
-import java.io.File;
-import java.io.InputStream;
-import java.io.FileInputStream;
-import java.io.PrintWriter;
-import java.io.FileOutputStream;
-import java.io.CharArrayWriter;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.net.URLEncoder;
-import org.w3c.dom.Document;
-import org.jdom.output.DOMOutputter;
-
-import org.sakaiproject.util.Validator;
-import org.sakaiproject.tool.api.ToolManager;
-import org.sakaiproject.content.cover.ContentHostingService;
-import org.sakaiproject.content.cover.ContentTypeImageService;
-import org.sakaiproject.lessonbuildertool.SimplePage;
-import org.sakaiproject.lessonbuildertool.SimplePageItem;
-import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean;
-import org.sakaiproject.lessonbuildertool.service.GroupPermissionsService;
-import org.sakaiproject.lessonbuildertool.model.SimplePageToolDao;
-import org.sakaiproject.content.api.ContentCollectionEdit;
-import org.sakaiproject.content.api.ContentCollection;
-import org.sakaiproject.content.api.ContentResourceEdit;
-import org.sakaiproject.content.api.ContentResource;
-import org.sakaiproject.entity.api.ResourceProperties;
-import org.sakaiproject.entity.api.ResourcePropertiesEdit;
-import org.sakaiproject.exception.IdUsedException;
-import org.sakaiproject.event.api.NotificationService;
-import org.sakaiproject.lessonbuildertool.cc.QtiImport;
-import org.sakaiproject.lessonbuildertool.service.LessonEntity;
-import org.sakaiproject.lessonbuildertool.service.QuizEntity;
-import org.sakaiproject.lessonbuildertool.service.ForumInterface;
-import org.sakaiproject.lessonbuildertool.service.BltiInterface;
-import org.sakaiproject.lessonbuildertool.service.AssignmentInterface;
-import org.sakaiproject.component.cover.ComponentManager;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import org.w3c.dom.Document;
-import org.sakaiproject.tool.assessment.services.qti.QTIService;
-import org.sakaiproject.tool.assessment.qti.constants.QTIVersion;
+
+import lombok.extern.slf4j.Slf4j;
+
+import org.jdom.Element;
+import org.jdom.Namespace;
+import org.jdom.filter.ElementFilter;
+import org.jdom.output.DOMOutputter;
+import org.jdom.output.XMLOutputter;
+
+import org.jsoup.Jsoup;
+
+import org.sakaiproject.content.api.ContentCollection;
+import org.sakaiproject.content.api.ContentCollectionEdit;
+import org.sakaiproject.content.api.ContentResourceEdit;
+import org.sakaiproject.component.cover.ServerConfigurationService;
+import org.sakaiproject.content.cover.ContentHostingService;
+import org.sakaiproject.content.cover.ContentTypeImageService;
+import org.sakaiproject.entity.api.ResourceProperties;
+import org.sakaiproject.event.api.NotificationService;
+import org.sakaiproject.exception.IdUsedException;
+import org.sakaiproject.lessonbuildertool.SimplePage;
+import org.sakaiproject.lessonbuildertool.SimplePageItem;
+import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean;
+import org.sakaiproject.lessonbuildertool.model.SimplePageToolDao;
+import org.sakaiproject.lessonbuildertool.service.AssignmentInterface;
+import org.sakaiproject.lessonbuildertool.service.BltiInterface;
+import org.sakaiproject.lessonbuildertool.service.ForumInterface;
+import org.sakaiproject.lessonbuildertool.service.GroupPermissionsService;
+import org.sakaiproject.lessonbuildertool.service.LessonEntity;
+import org.sakaiproject.lessonbuildertool.service.QuizEntity;
+import org.sakaiproject.util.FormattedText;
+import org.sakaiproject.util.Validator;
 
 /* PJN NOTE:
  * This class is an example of what an implementer might want to do as regards overloading DefaultHandler.
  * In this case, messages are written to the screen. If a method in default handler is not overridden, then it does
  * nothing.
  */
-
+@Slf4j
 public class PrintHandler extends DefaultHandler implements AssessmentHandler, DiscussionHandler, AuthorizationHandler,
                                        MetadataHandler, LearningApplicationResourceHandler, QuestionBankHandler,
                                        WebContentHandler, WebLinkHandler{
-  private static final Logger log = LoggerFactory.getLogger(PrintHandler.class);
   private static final String HREF="href";
   private static final String TYPE="type";
   private static final String FILE="file";
@@ -122,6 +125,7 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
   private static final String DESCRIPTION="description";
   private static final String GENERAL="general";
   private static final String STRING="string";
+  private static final String LANGSTRING="langstring";
   private static final String ATTACHMENT="attachment";
   private static final String ATTACHMENTS="attachments";
   private static final String INTENDEDUSE="intendeduse";
@@ -149,9 +153,6 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
   private static final String CART_LTI_LINK="cartridge_basiclti_link";
   private static final String BLTI="basiclti";
   private static final String UNKNOWN="unknown";
-
-
-  private static final boolean all = false;
   private static final int MAX_ATTEMPTS = 100;
 
   private List<SimplePage> pages = new ArrayList<SimplePage>();
@@ -179,6 +180,8 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
 
     // this is the CC file name for all files added
   private Set<String> filesAdded = new HashSet<String>();
+    // This keeps track of what files are added to what (possibly truncated) name, this is pre-populated
+  private Map<String,String> fileNames = new HashMap<String,String>();
     // this is the CC file name (of the XML file) -> Sakaiid for non-file items
   private Map<String,String> itemsAdded = new HashMap<String,String>();
   private Map<String,String> assignsAdded = new HashMap<String,String>();
@@ -202,35 +205,47 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
       this.simplePageBean = bean;
       this.simplePageToolDao = dao;
       this.siteId = bean.getCurrentSiteId();
-      this.quiztool = q;
-      this.topictool = l;
-      this.bltitool = b;
-      this.assigntool = a;
+      if (q != null) {
+    	  this.quiztool = q;
+    	  this.quiztool.setSimplePageBean(bean);
+      }
+      if (l != null) {
+    	  this.topictool = l;
+    	  this.topictool.setSimplePageBean(bean);
+      }
+      if (b != null) {
+    	  this.bltitool = b;
+    	  this.bltitool.setSimplePageBean(bean);
+      }
+      if (a != null) {
+    	  this.assigntool = a;
+    	  this.assigntool.setSimplePageBean(bean);
+      }
       this.importtop = itop;
   }
 
   public void setAssessmentDetails(String the_ident, String the_title) {
-      if (all)
-	  System.err.println("assessment ident: "+the_ident +" title: "+the_title);
+      if (log.isDebugEnabled())
+	  log.debug("assessment ident: "+the_ident +" title: "+the_title);
   }
 
   public void endCCFolder() {
-      if (all)
-	  System.err.println("cc folder ends");
+      if (log.isDebugEnabled())
+	  log.debug("cc folder ends");
       int top = pages.size()-1;
       sequences.remove(top);
       pages.remove(top);
   }
 
   public void endCCItem() {
-      if (all)
-	  System.err.println("cc item ends");
+      if (log.isDebugEnabled())
+	  log.debug("cc item ends");
   }
 
   public void startCCFolder(Element folder) {
       String title = this.title;
       if (folder != null)
-	  title = folder.getChildText(TITLE, ns.cc_ns());
+	  title = folder.getChildText(TITLE, ns.getNs());
 
       // add top level pages to left margin
       SimplePage page = null;
@@ -265,9 +280,9 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
   }
 
   public void startCCItem(String the_id, String the_title) {
-      if (all) {
-	  System.err.println("cc item "+the_id+" begins");
-	  System.err.println("title: "+the_title);
+      if (log.isDebugEnabled()) {
+	  log.debug("cc item "+the_id+" begins");
+	  log.debug("title: "+the_title);
       }
   }
 
@@ -341,12 +356,17 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
       return collection;
   }
 
+  //Get filename from a resource element
+  //Return the href attribute, otherwise return the href value of a file child
   private String getFileName(Element resource) {
-      Element file = resource.getChild(FILE, ns.cc_ns());
-      if (file != null)
-	  return file.getAttributeValue(HREF);
-      else
-	  return null;
+	  //The problem here is there might be multiple <file> elements, so should trust the href on the resource first
+	  String href = resource.getAttributeValue(HREF);
+	  if (href == null) {
+		  Element file = resource.getChild(FILE, ns.getNs());
+		  //This will return null if there is no HREF on the file
+		  return file.getAttributeValue(HREF);
+	  }
+	  return href;
   }
 
   public String getGroupForRole(String role) {
@@ -356,18 +376,94 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
 	  return g;
 	  //	  return GroupPermissionsService.makeGroup(siteId, role);
       } catch (Exception e) {
-	  System.err.println("Unable to create group " + role);
+	  log.debug("Unable to create group " + role);
 	  return null;
       }
   }
 
+  //Fix external references in an htmlString to point to the correct location
+  public String fixupInlineReferences(String htmlString) {
+	  // and fix relative URLs to absolute, since this is going to be inserted inline
+	  // in a page that's not in resources.
+	  // These fixups are inserted as identified by the lessons exporter
+	  if (htmlString.startsWith("<!--fixups:")) {
+		  int fixend = htmlString.indexOf("-->");
+		  String fixString = htmlString.substring(11, fixend);
+		  htmlString = htmlString.substring(fixend + 3);
+		  String[] fixups = fixString.split(",");
+		  // iterate backwards since once we fix something, offsets
+		  // further in the string are bad
+		  for (int i = (fixups.length-1); i >= 0; i--) {
+			  String fixup = fixups[i];
+			  // these are offsets of a URL. The URL is for a file in attachments, so we need
+			  // to map it to a full URL. The file should be attachments/item-xx.html in the
+			  // package. relFixup will have added ../ to it to get to the base.
+			  try {
+				  int offset = Integer.parseInt(fixup);
+				  htmlString = htmlString.substring(0, offset) + baseUrl + htmlString.substring(offset+3);
+			  } catch (Exception e) {
+				  log.info("exception " + e);
+			  }
+		  }
+	  //Otherwise try jsoup to do the fixups
+	  } else {
+		  /*
+			Now we need to go through the string looking for other references that weren't identified by the fixups
+			Using full class names here because of conflict in names
+			I think the ideal here would be that this only updates resources that are in the manifest, but really any
+			relative resources are going to be incorrect pulled out of a package and need an update.
+		   */
+		  org.jsoup.nodes.Document doc = Jsoup.parseBodyFragment(htmlString);
+		  org.jsoup.select.Elements hrefs = doc.select("[href]");
+		  org.jsoup.select.Elements srcs = doc.select("[src]");
+
+		  log.debug("BaseURL is: {}", baseUrl);
+
+		  // Have to look for both href and src tags
+		  for (org.jsoup.nodes.Element element : srcs) {
+			  String src = element.attr("src");
+			  if (src != null && !src.startsWith("http")) {
+				  for (Map.Entry<String,String> entry : fileNames.entrySet()) {
+					  if (entry.getKey() != null && entry.getValue() != null && entry.getValue().contains(src)) {
+						  // Found key, set it and stop looking
+						  log.debug(String.format("Updating tag %s: <%s> to <%s>", element.tagName(), src, baseUrl+src));
+						  element.attr("src",baseUrl+entry.getValue());
+						  break;
+					  }
+				  }
+			  }
+		  }
+
+		  for (org.jsoup.nodes.Element element : hrefs) {
+			  String href = element.attr("href");
+			  if(href != null && !href.startsWith("http")) {
+				  for (Map.Entry<String,String> entry : fileNames.entrySet()) {
+					  if (entry.getKey() != null && entry.getValue() != null && entry.getValue().contains(href)) {
+						  // Found key, set it and stop looking
+						  log.debug(String.format("Updating a: <%s> to <%s> (%s)", href, baseUrl+href, element.text()));
+						  element.attr("href",baseUrl+entry.getValue());
+						  break;
+					  }
+				  }
+			  }
+		  }
+		  htmlString = doc.body().html();
+	  }
+	  
+	  return htmlString;
+  }
+
   public void setCCItemXml(Element the_xml, Element resource, AbstractParser parser, CartridgeLoader loader, boolean nopage) {
-      if (all)
-	  System.err.println("\nadd item to page " + pages.get(pages.size()-1).getTitle() +
-			 " xml: "+the_xml + 
-			 " title " + (the_xml==null?"Question Pool" : the_xml.getChildText(CC_ITEM_TITLE, ns.cc_ns())) +
-			 " type " + resource.getAttributeValue(TYPE) +
-			 " href " + resource.getAttributeValue(HREF));
+      if (log.isDebugEnabled()) {
+    	  String pageTitle = "";
+    	  if (pages.size() >= 1 )
+    		  pageTitle = pages.get(pages.size()-1).getTitle();
+		  log.debug("\nadd item to page " + pageTitle +
+				 " xml: "+the_xml + 
+				 " title " + (the_xml==null?"Question Pool" : the_xml.getChildText(CC_ITEM_TITLE, ns.getNs())) +
+				 " type " + resource.getAttributeValue(TYPE) +
+				 " href " + resource.getAttributeValue(HREF));
+      }
 
       String type = ns.normType(resource.getAttributeValue(TYPE));
       boolean isBank = type.equals(QUESTION_BANK);
@@ -404,8 +500,12 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
 		  // if we recognize the type, use the variant. By definition the variant is preferred, so we'll use
 		  // it if we recognize it.
 		  if (!UNKNOWN.equals(variantType)) {
+			  log.debug("Using variant {} of type {} for resource {}",variantResource,variantType,resource);
 		      type = variantType;
 		      resource = variantResource;
+		  }
+		  else {
+			  log.debug("NOT using variant {} of type {} for resource {}",variantResource,variantType,resource);
 		  }
 		  // next step for loop. want to check next one even if the source was unusable
 		  variant = variantResource.getChild(VARIANT, ns.cpx_ns());			      
@@ -418,25 +518,28 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
       // version 1 and higher are different formats, hence a slightly weird test
       Iterator mdroles = resource.getDescendants(new ElementFilter("intendedEndUserRole", ns.lom_ns()));
       if (mdroles != null) {
-	  while (mdroles.hasNext()) {
-	      Element role = (Element)mdroles.next();
-	      Iterator values = role.getDescendants(new ElementFilter("value", ns.lom_ns()));
-	      if (values != null) {
-		  while (values.hasNext()) {
-		      Element value = (Element)values.next();
-		      String roleName = value.getTextTrim();
-		      if (!"Learner".equals(roleName)) {
-		  // roles currently only implemented for visible objects. We may want to fix that.
-		  if (!hide && !isBank)
-		      usesRole = true;
-	      }
-		      if ("Mentor".equals(roleName))
-		  roles.add(getGroupForRole("Mentor"));
-		      if ("Instructor".equals(roleName))
-		  roles.add(getGroupForRole("Instructor"));
-	      }
-	  }
-      }	  
+		  while (mdroles.hasNext()) {
+			  Element role = (Element)mdroles.next();
+			  Iterator values = role.getDescendants(new ElementFilter("value", ns.lom_ns()));
+			  if (values != null) {
+				  while (values.hasNext()) {
+					  Element value = (Element)values.next();
+					  String roleName = value.getTextTrim();
+					  if (!"Learner".equals(roleName)) {
+						  // roles currently only implemented for visible objects. We may want to fix that.
+						  if (!hide && !isBank) {
+							  usesRole = true;
+						  }
+					  }
+					  if ("Mentor".equals(roleName)) {
+						  roles.add(getGroupForRole("Mentor"));
+					  }
+					  if ("Instructor".equals(roleName)) {
+						  roles.add(getGroupForRole("Instructor"));
+					  }
+				  }
+			  }	  
+		  }
       }
       if (nopage)
 	  hide = true;
@@ -453,7 +556,7 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
       if (the_xml == null)
 	  title = "Question Pool";
       else
-	  title = the_xml.getChildText(CC_ITEM_TITLE, ns.cc_ns());
+	  title = the_xml.getChildText(CC_ITEM_TITLE, ns.getNs());
 
       // metadata is used for special Sakai data
       boolean inline = false;
@@ -488,13 +591,15 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
 	      }
 	      String name = nameElt.getText();
 	      String value = valueElt.getText();
-	      if ("inline.lessonbuilder.sakaiproject.org".equals(name) &&
-		  "true".equals(value))
+	      if (("inline.lessonbuilder.sakaiproject.org".equals(name) &&
+		  "true".equals(value)))
 		  inline = true;
 	      else if ("mmDisplayType.lessonbuilder.sakaiproject.org".equals(name))
 		  mmDisplayType = value;
 	  }
       }
+      
+      boolean forceInline = ServerConfigurationService.getBoolean("lessonbuilder.cc.import.forceinline", false); 
 
       try {
 	  if ((type.equals(CC_WEBCONTENT) || (type.equals(UNKNOWN))) && !hide) {
@@ -511,7 +616,6 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
 	      String extension = Validator.getFileExtension(sakaiId);
 	      String mime = ContentTypeImageService.getContentType(extension);
 	      String intendedUse = resource.getAttributeValue(INTENDEDUSE);
-
 	      SimplePageItem item = simplePageToolDao.makeItem(page.getPageId(), seq, SimplePageItem.RESOURCE, sakaiId, title);
 	      item.setHtml(mime);
 	      item.setSameWindow(true);
@@ -519,7 +623,8 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
 	      title = the_xml.getChildText(CC_ITEM_TITLE, ns.cc_ns());
 
 	      boolean nofile = false;
-	      if (inline) {
+	      //Only text type files can be inlined
+	      if ((inline || forceInline) && mime != null && mime.startsWith("text/")) {
 		  StringBuilder html = new StringBuilder();
 		  String htmlString = null;
 
@@ -543,38 +648,9 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
 			  }
 		      }
 
-		      htmlString = html.toString();
-
-		      // remove stuff the exporter added
-		      int off = htmlString.indexOf("<body>");
-		      if (off > 0)
-			  htmlString = htmlString.substring(off + 7);
-		      off = htmlString.lastIndexOf("</body>");
-		      if (off > 0)
-			  htmlString = htmlString.substring(0, off);
-
-		      // and fix relative URLs to absolute, since this is going to be inserted inline
-		      // in a page that's not in resources.
-		      if (htmlString.startsWith("<!--fixups:")) {
-			  int fixend = htmlString.indexOf("-->");
-			  String fixString = htmlString.substring(11, fixend);
-			  htmlString = htmlString.substring(fixend + 3);
-			  String[] fixups = fixString.split(",");
-			  // iterate backwards since once we fix something, offsets
-			  // further in the string are bad
-			  for (int i = (fixups.length-1); i >= 0; i--) {
-			      String fixup = fixups[i];
-			      // these are offsets of a URL. The URL is for a file in attachments, so we need
-			      // to map it to a full URL. The file should be attachments/item-xx.html in the
-			      // package. relFixup will have added ../ to it to get to the base.
-			      try {
-				  int offset = Integer.parseInt(fixup);
-				  htmlString = htmlString.substring(0, offset) + baseUrl + htmlString.substring(offset+3);
-			      } catch (Exception e) {
-				  log.info("exception " + e);
-			      }
-			  }
-		      }
+		      htmlString = FormattedText.getHtmlBody(html.toString());
+		      
+		      htmlString = fixupInlineReferences(htmlString);
 		      
 		  }
 
@@ -601,7 +677,8 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
 		  else if (intendedUse.equals("syllabus"))
 		      item.setDescription(simplePageBean.getMessageLocator().getMessage("simplepage.import_cc_syllabus"));
 		  else if (assigntool != null && intendedUse.equals("assignment")) {
-		      String fileName = getFileName(resource);
+			  String fileName = getFileName(resource);
+
 		      if (itemsAdded.get(fileName) == null) {
 			  // itemsAdded.put(fileName, SimplePageItem.DUMMY); // don't add the same test more than once
 			  AssignmentInterface a = (AssignmentInterface) assigntool;
@@ -617,7 +694,7 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
 	      }
 	      simplePageBean.saveItem(item);
 	      if (roles.size() > 0) {  // has to be written already or we can't set groups
-		  // file hasn't been written yet to contenthosting. setitemgroups requires it to be there
+	    	  // file hasn't been written yet to contenthosting. setitemgroups requires it to be there
 		  addFile(href);
 		  simplePageBean.setItemGroups(item, roles.toArray(new String[0]));
 	      }
@@ -762,7 +839,7 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
 	      if (nopage)
 		  title = simplePageBean.getMessageLocator().getMessage("simplepage.cc-defaultforum");
 
-	      // log.info("about to call forum import base " + base);
+	      log.debug("about to call forum import base " + base);
 	      // title is for the cartridge. That will be used as the forum
 	      // if already added, don't do it again
 	      String sakaiId = itemsAdded.get(filename);
@@ -774,13 +851,13 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
 	      }
 
 	      if (!hide) {
-		  // log.info("about to add formum item");
+		  log.debug("about to add formum item");
 		  SimplePageItem item = simplePageToolDao.makeItem(page.getPageId(), seq, SimplePageItem.FORUM, sakaiId, title);
 		  simplePageBean.saveItem(item);
 		  if (roles.size() > 0)
 		      simplePageBean.setItemGroups(item, roles.toArray(new String[0]));
 		  sequences.set(top, seq+1);
-		  // log.info("finished with forum item");
+		  log.debug("finished with forum item");
 	      }
 	    }
 	  } else if (type.equals(ASSESSMENT) || type.equals(QUESTION_BANK)) {
@@ -801,7 +878,7 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
 		if (fileName != null) {
 
 		  itemsAdded.put(fileName, SimplePageItem.DUMMY); // don't add the same test more than once
-
+		  
 		  instream = utils.getFile(fileName);
 	      
 		  // I'm going to assume that URLs in the CC files are legal, but if
@@ -826,7 +903,7 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
 		      if (imp.getUsesCurriculum())
 			  usesCurriculum = true;
 		  } catch (Exception e) {
-		      e.printStackTrace();
+		      log.error(e.getMessage(), e);
 		  }
 
 		  outwriter.close();
@@ -839,7 +916,7 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
 		      builderFactory.setFeature("http://xml.org/sax/features/external-general-entities", false);
 		      builderFactory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
 		      DocumentBuilder documentBuilder = builderFactory.newDocumentBuilder();
-		      Document document = documentBuilder.parse(inputStream);
+		      org.w3c.dom.Document document = documentBuilder.parse(inputStream);
 
 		      QuizEntity q = (QuizEntity)quiztool;
 
@@ -912,7 +989,7 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
 
 		if (!hide) {
 		    if ( sakaiId != null) {
-			// log.info("Adding LTI content item "+sakaiId);
+			log.debug("Adding LTI content item "+sakaiId);
 			SimplePageItem item = simplePageToolDao.makeItem(page.getPageId(), seq, SimplePageItem.BLTI, sakaiId, title);
 			item.setHeight(""); // default depends upon format, so it's supplied at runtime
 			simplePageBean.saveItem(item);
@@ -996,29 +1073,27 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
 
 	  } else if (((type.equals(CC_WEBCONTENT) || (type.equals(UNKNOWN))) && hide) || type.equals(LAR)) {
 	      // handled elsewhere
-	  } 
-	  if (type.equals(UNKNOWN))
+	  }
+	  if (type.equals(UNKNOWN)) {
 	      badTypes.add(resource.getAttributeValue(TYPE));
+	      log.debug("unknown type: " + resource.getAttributeValue(TYPE));
+	  }
       } catch (Exception e) {
-	  e.printStackTrace();
-	  System.err.println(">>>Exception " + e);
+    	  log.debug("Exception ", e);
       }
 
   }
 
   public void addAttachment(String attachment_path) {
-      if (all)
-	  System.err.println("adding an attachment: "+attachment_path);
+	  log.debug("adding an attachment: "+attachment_path);
   }
 
   public void endDiscussion() {
-      if (all)
-	  System.err.println("end discussion");
+	  log.debug("end discussion");
   }
 
   public void startManifest() {
-      if (all)
-	  System.err.println("start manifest");
+	  log.debug("start manifest");
   }
 
   public void checkCurriculum(Element the_xml) {
@@ -1032,14 +1107,13 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
 
   public void setManifestXml(Element the_xml) {
       manifestXml = the_xml;
-      if (all)
-	  System.err.println("manifest xml: "+the_xml);
+
+	  log.debug("manifest xml: "+the_xml);
 
   }
 
   public void endManifest() {
-      if (all)
-	  System.err.println("end manifest");
+	  log.debug("end manifest");
       if (usesRole)
 	  simplePageBean.setErrKey("simplepage.cc-uses-role", null);
       // the pattern match is restricted enough that we can actually do it
@@ -1062,33 +1136,56 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
   }
 
   public void startDiscussion(String topic_name, String text_type, String text, boolean isProtected) {
-      if (all){
-	  System.err.println("start a discussion: "+topic_name);
-	  System.err.println("text type: "+text_type);
-	  System.err.println("text: "+text); 
-	  System.err.println("protected: "+isProtected);
+      if (log.isDebugEnabled()){
+	  log.debug("start a discussion: "+topic_name);
+	  log.debug("text type: "+text_type);
+	  log.debug("text: "+text); 
+	  log.debug("protected: "+isProtected);
       }
   }
 
   public void endWebLink() {
-      if (all)
-	  System.err.println("end weblink");
+      if (log.isDebugEnabled())
+	  log.debug("end weblink");
   }
 
   public void startWebLink(String the_title, String the_url, String the_target, String the_window_features, boolean isProtected) {
-      if (all) {
-	  System.err.println("start weblink: "+the_title);
-	  System.err.println("link to: "+the_url);
-	  System.err.println("target window: "+the_target);
-	  System.err.println("window features: "+the_window_features);
-	  System.err.println("protected: "+isProtected);
+      if (log.isDebugEnabled()) {
+	  log.debug("start weblink: "+the_title);
+	  log.debug("link to: "+the_url);
+	  log.debug("target window: "+the_target);
+	  log.debug("window features: "+the_window_features);
+	  log.debug("protected: "+isProtected);
       }
   }
  
   public void setWebLinkXml(Element the_link) {
-      if (all)
-	  System.err.println("weblink xml: "+the_link);
+      if (log.isDebugEnabled())
+	  log.debug("weblink xml: "+the_link);
   }
+
+  public void preProcessFile(String the_file_id) {
+	  String original_file_id = the_file_id;
+	  //Restrict file length to 250
+	  if ((baseName + original_file_id).length() > 250) {
+		 the_file_id = original_file_id.substring(0,250-baseName.length()); 
+		 log.debug("Length restricted, new file name" + baseName + the_file_id);
+	  }
+	  fileNames.put(original_file_id,the_file_id);
+  }
+
+  public void addFile(Element elem) {
+	  //These are processed as standard text
+	  String href = elem.getAttributeValue(HREF);
+	  String sakaiId = baseName + elem.getAttributeValue(HREF);
+	  String extension = Validator.getFileExtension(sakaiId);
+	  String mime = ContentTypeImageService.getContentType(extension);
+	  if (mime != null && mime.startsWith("text/"))
+		  return;
+	  addFile(href);
+  }
+
+
 
   public void addFile(String the_file_id) {
 
@@ -1105,7 +1202,20 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
 	      name = name.substring(slash+1);
 	  String extension = Validator.getFileExtension(name);
 	  String type = ContentTypeImageService.getContentType(extension);
+	  
+	  //Now the new truncated name from the map
+	  if (fileNames.containsKey(the_file_id)) {
+		  the_file_id = fileNames.get(the_file_id);
+		  log.debug("Found " + the_file_id + " in pre-load map");
+	  }
+	  else {
+		  log.info("Could not find " + the_file_id + " in preload map, File may not work.");
+	  }
 
+	  log.debug("Preparing to add file" + baseName + the_file_id);
+	  log.debug("Length of baseName is:" + baseName.length());
+	  log.debug("Length of the_file_id is:" + the_file_id.length());
+	  
 	  ContentResourceEdit edit = ContentHostingService.addResource(baseName + the_file_id);
 
 	  edit.setContentType(type);
@@ -1138,147 +1248,149 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
   }
 
   public void endWebContent() {
-      if (all)
-	  System.err.println("ending webcontent");
+      if (log.isDebugEnabled())
+	  log.debug("ending webcontent");
   }
 
   public void startWebContent(String entry_point, boolean isProtected) {
-      if (all) {
-	  System.err.println("start web content");
-	  System.err.println("protected: "+isProtected);
+      if (log.isDebugEnabled()) {
+	  log.debug("start web content");
+	  log.debug("protected: "+isProtected);
 	  if (entry_point!=null) {
-	      System.err.println("entry point is: "+entry_point);
+	      log.debug("entry point is: "+entry_point);
 	  }
       }
   }
 
   public void endLearningApplicationResource() {
-      if (all)
-	  System.err.println("end learning application resource");
+      if (log.isDebugEnabled())
+	  log.debug("end learning application resource");
   }
 
   public void startLearningApplicationResource(String entry_point, boolean isProtected) {
-      if (all) {
-	  System.err.println("start learning application resource");
-	  System.err.println("protected: "+isProtected);
+      if (log.isDebugEnabled()) {
+	  log.debug("start learning application resource");
+	  log.debug("protected: "+isProtected);
 	  if (entry_point!=null) {
-	      System.err.println("entry point is: "+entry_point);
+	      log.debug("entry point is: "+entry_point);
 	  }
       }
   }
 
   public void endAssessment() {
-      if (all)
-	  System.err.println("end assessment");    
+      if (log.isDebugEnabled())
+	  log.debug("end assessment");    
   }
 
   public void setAssessmentXml(Element xml) {
-      if (all)
-	  System.err.println("assessment xml: "+xml);
+      if (log.isDebugEnabled())
+	  log.debug("assessment xml: "+xml);
   }
 
   public void startAssessment(String the_file_name, boolean isProtected) {
-      if (all) {
-	  System.err.println("start assessment contained in: "+the_file_name);
-	  System.err.println("protected: "+isProtected);
+      if (log.isDebugEnabled()) {
+	  log.debug("start assessment contained in: "+the_file_name);
+	  log.debug("protected: "+isProtected);
       }
   }
 
   public void endQuestionBank() {
-      if (all)
-	  System.err.println("end question bank");
+      if (log.isDebugEnabled())
+	  log.debug("end question bank");
   }
 
   public void setQuestionBankXml(Element the_xml) {
-      if (all)
-	  System.err.println("question bank xml: "+the_xml);
+      if (log.isDebugEnabled())
+	  log.debug("question bank xml: "+the_xml);
   }
 
   public void startQuestionBank(String the_file_name, boolean isProtected) {
-      if (all) {
-	  System.err.println("start question bank in: "+the_file_name);
-	  System.err.println("protected: "+isProtected);
+      if (log.isDebugEnabled()) {
+	  log.debug("start question bank in: "+the_file_name);
+	  log.debug("protected: "+isProtected);
       }
   }
 
   public void setAuthorizationServiceXml(Element the_node) {
-      if (all)
-	  System.err.println(the_node);
+      if (log.isDebugEnabled())
+	  log.debug(the_node.toString());
   }
 
   public void setAuthorizationService(String cartridgeId, String webservice_url) {
-      if (all)
-	  System.err.println("adding auth service for "+cartridgeId+" @ "+webservice_url);
+      if (log.isDebugEnabled())
+	  log.debug("adding auth service for "+cartridgeId+" @ "+webservice_url);
   }
 
   public void endAuthorization() {
-      if (all)
-	  System.err.println("end of authorizations");
+      if (log.isDebugEnabled())
+	  log.debug("end of authorizations");
   }
 
   public void startAuthorization(boolean isCartridgeScope, boolean isResourceScope, boolean isImportScope) {
-      if (all) {
-	  System.err.println("start of authorizations");
-	  System.err.println("protect all: "+isCartridgeScope);
-	  System.err.println("protect resources: "+isResourceScope);
-	  System.err.println("protect import: "+isImportScope);
+      if (log.isDebugEnabled()) {
+	  log.debug("start of authorizations");
+	  log.debug("protect all: "+isCartridgeScope);
+	  log.debug("protect resources: "+isResourceScope);
+	  log.debug("protect import: "+isImportScope);
       }
   }
 
   public void endManifestMetadata() {
-      if (all)
-	  System.err.println("end of manifest metadata");
+      if (log.isDebugEnabled())
+	  log.debug("end of manifest metadata");
   }
 
   public void startManifestMetadata(String schema, String schema_version) {
-      if (all) {
-	  System.err.println("start manifest metadata");
-	  System.err.println("schema: "+schema);
-	  System.err.println("schema_version: "+schema_version);
+      if (log.isDebugEnabled()) {
+	  log.debug("start manifest metadata");
+	  log.debug("schema: "+schema);
+	  log.debug("schema_version: "+schema_version);
       }
   }
  
   public void setPresentationXml(Element the_xml) {
-      if (all)
-	  System.err.println("QTI presentation xml: "+the_xml);
+      if (log.isDebugEnabled())
+	  log.debug("QTI presentation xml: "+the_xml);
   }
 
   public void setQTICommentXml(Element the_xml) {
-      if (all)
-	  System.err.println("QTI comment xml: "+the_xml);
+      if (log.isDebugEnabled())
+	  log.debug("QTI comment xml: "+the_xml);
   }
 
   public void setSection(String ident, String title) {
-      if (all) {
-	  System.err.println("set section ident: "+ident);
-	  System.err.println("set section title: "+title);
+      if (log.isDebugEnabled()) {
+	  log.debug("set section ident: "+ident);
+	  log.debug("set section title: "+title);
       }
   }
 
   public void setSectionXml(Element the_xml) {
-      if (all)
-	  System.err.println("set Section Xml: "+the_xml);
+      if (log.isDebugEnabled())
+	  log.debug("set Section Xml: "+the_xml);
   }
 
   public void endQTIMetadata() {
-      if (all)
-	  System.err.println("end of QTI metadata");
+      if (log.isDebugEnabled())
+	  log.debug("end of QTI metadata");
   }
 
   public void setManifestMetadataXml(Element the_md) {
-      if (all)
-	  System.err.println("manifest md xml: "+the_md);    
+      if (log.isDebugEnabled())
+	  log.debug("manifest md xml: "+the_md);    
       // NOTE: need to handle languages
       if (the_md != null) {
-      Element general = the_md.getChild(GENERAL, ns.lomimscc_ns());
+      Element general = the_md.getChild(GENERAL, ns.getLom());
       if (general != null) {
-	  Element tnode = general.getChild(TITLE, ns.lomimscc_ns());
+	  Element tnode = general.getChild(TITLE, ns.getLom());
 	  if (tnode != null) {
-	      title = tnode.getChildTextTrim(STRING, ns.lomimscc_ns());
+    	  title = tnode.getChildTextTrim(LANGSTRING, ns.getLom());
+	      if (title == null || title.equals(""))
+	    	  title = tnode.getChildTextTrim(STRING, ns.getLom());
 	  }
-	  Element tdescription=general.getChild(DESCRIPTION, ns.lomimscc_ns());
+	  Element tdescription=general.getChild(DESCRIPTION, ns.getLom());
 	  if (tdescription != null) {
-	      description = tdescription.getChildTextTrim(STRING, ns.lomimscc_ns());
+	      description = tdescription.getChildTextTrim(STRING, ns.getLom());
 	  }
 
       }
@@ -1294,6 +1406,10 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
       int relPart = baseUrl.indexOf("/access/");
       if (relPart >= 0)
 	  baseUrl = baseUrl.substring(relPart);
+      //Start a folder to hold the entire sites content rather than create new top level pages
+      boolean singlePage = ServerConfigurationService.getBoolean("lessonbuilder.cc.import.singlepage", false);
+      if (singlePage == true)
+    	  startCCFolder(null);
 
   }
 
@@ -1316,99 +1432,97 @@ public class PrintHandler extends DefaultHandler implements AssessmentHandler, D
 	  }
       }
 
-      if (all)
-	  System.err.println("resource md xml: "+the_md); 
+      if (log.isDebugEnabled())
+	  log.debug("resource md xml: "+the_md); 
   }
 
   public void addQTIMetadataField(String label, String entry) {
-      if (all) {
-	  System.err.println("QTI md label: "+label);
-	  System.err.println("QTI md entry: "+entry);
+      if (log.isDebugEnabled()) {
+	  log.debug("QTI md label: "+label);
+	  log.debug("QTI md entry: "+entry);
       }
 }
 
   public void setQTIComment(String the_comment) {
-      if (all)
-	  System.err.println("QTI comment: "+the_comment);
+      if (log.isDebugEnabled())
+	  log.debug("QTI comment: "+the_comment);
   }
 
   public void endDependency() {
-      if (all)
-	  System.err.println("end dependency");
+      if (log.isDebugEnabled())
+	  log.debug("end dependency");
   }
 
   public void startDependency(String source, String target) {
-      if (all)
-	  System.err.println("start dependency- resource : "+source+" is dependent upon: "+target);
+      if (log.isDebugEnabled())
+	  log.debug("start dependency- resource : "+source+" is dependent upon: "+target);
   }
 
   public void startResource(String id, boolean isProtected) {
 
       roles = null;
-      if (all)
-	  System.err.println("start resource: "+id+ " protected: "+isProtected);
+      if (log.isDebugEnabled())
+	  log.debug("start resource: "+id+ " protected: "+isProtected);
   }
 
   public void setResourceXml(Element the_xml) {
-      if (all)
-	  System.err.println("resource xml: "+the_xml);
+      if (log.isDebugEnabled())
+	  log.debug("resource xml: "+the_xml);
   }
 
   public void endResource() {
-      if (all)
-	  System.err.println("end resource"); 
+      if (log.isDebugEnabled())
+	  log.debug("end resource"); 
   }
 
   public void addAssessmentItem(QTIItem the_item) {
-      if (all)
-	  System.err.println("add QTI assessment item: "+the_item.toString());
+      if (log.isDebugEnabled())
+	  log.debug("add QTI assessment item: "+the_item.toString());
     
   }
 
   public void addQTIMetadataXml(Element the_md) {
-      if (all)
-	  System.err.println("add QTI metadata xml: "+the_md);
+      if (log.isDebugEnabled())
+	  log.debug("add QTI metadata xml: "+the_md);
     
   }
 
   public void startQTIMetadata() {
-      if (all)
-	  System.err.println("start QTI metadata");
+      if (log.isDebugEnabled())
+	  log.debug("start QTI metadata");
   }
 
   public void setDiscussionXml(Element the_element) {
-      if (all)
-	  System.err.println("set discussion xml: "+the_element); 
+      if (log.isDebugEnabled())
+	  log.debug("set discussion xml: "+the_element); 
   }
 
   public void addQuestionBankItem(QTIItem the_item) {
-      if (all)
-	  System.err.println("add QTI QB item: "+the_item.toString()); 
+      if (log.isDebugEnabled())
+	  log.debug("add QTI QB item: "+the_item.toString()); 
   }
 
   public void setQuestionBankDetails(String the_ident) {
-      if (all)
-	  System.err.println("set qti qb details: "+the_ident);  
+      if (log.isDebugEnabled())
+	  log.debug("set qti qb details: "+the_ident);  
   }
 
-    // xxx/abc/../ccc
-    // xxx/ccc
-    // xxx/../ccc
-    // ccc
+  // xxx/abc/../ccc
+  // xxx/ccc
+  // xxx/../ccc
+  // ccc
 
-    public String removeDotDot(String s) {
-	while (true) {
-	    int i = s.indexOf("/../");
-	    if (i < 1)
-		return s;
-	    int j = s.lastIndexOf("/", i-1);
-	    if (j < 0)
-		j = 0;
-	    else
-		j = j + 1;
-	    s = s.substring(0, j) + s.substring(i+4);
-	}
-    }
-
+  public String removeDotDot(String s) {
+      while (true) {
+	  int i = s.indexOf("/../");
+	  if (i < 1)
+            return s;
+	  int j = s.lastIndexOf("/", i-1);
+	  if (j < 0)
+            j = 0;
+	  else
+            j = j + 1;
+	  s = s.substring(0, j) + s.substring(i+4);
+      }
+  }
 }
-

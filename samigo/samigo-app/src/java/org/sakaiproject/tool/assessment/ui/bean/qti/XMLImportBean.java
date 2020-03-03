@@ -19,7 +19,6 @@
  *
  **********************************************************************************/
 
-
 package org.sakaiproject.tool.assessment.ui.bean.qti;
 
 import java.io.File;
@@ -29,16 +28,16 @@ import java.text.MessageFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
-import javax.faces.event.ValueChangeEvent;
 import javax.faces.application.FacesMessage;
-import javax.faces.context.ExternalContext;
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.ManagedProperty;
+import javax.faces.bean.SessionScoped;
 import javax.faces.context.FacesContext;
-import javax.servlet.ServletContext;
-import javax.servlet.http.HttpServletRequest;
+import javax.faces.event.ValueChangeEvent;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.service.gradebook.shared.GradebookExternalAssessmentService;
 import org.sakaiproject.spring.SpringBeanLocator;
@@ -51,38 +50,45 @@ import org.sakaiproject.tool.assessment.facade.QuestionPoolFacade;
 import org.sakaiproject.tool.assessment.integration.context.IntegrationContextFactory;
 import org.sakaiproject.tool.assessment.integration.helper.ifc.GradebookServiceHelper;
 import org.sakaiproject.tool.assessment.qti.constants.QTIVersion;
-import org.sakaiproject.tool.assessment.ui.listener.util.TimeUtil;
 import org.sakaiproject.tool.assessment.qti.util.XmlUtil;
 import org.sakaiproject.tool.assessment.services.assessment.AssessmentService;
 import org.sakaiproject.tool.assessment.services.qti.QTIService;
 import org.sakaiproject.tool.assessment.ui.bean.author.AssessmentBean;
 import org.sakaiproject.tool.assessment.ui.bean.author.AuthorBean;
 import org.sakaiproject.tool.assessment.ui.bean.author.ItemAuthorBean;
+import org.sakaiproject.tool.assessment.ui.bean.authz.AuthorizationBean;
 import org.sakaiproject.tool.assessment.ui.bean.questionpool.QuestionPoolBean;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
-import org.sakaiproject.util.FormattedText;
+import org.sakaiproject.tool.assessment.ui.listener.util.TimeUtil;
 import org.sakaiproject.util.ResourceLoader;
+import org.sakaiproject.util.api.FormattedText;
 import org.w3c.dom.Document;
 
- 
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * <p>Bean for QTI Import Data</p>
  */
-
-public class XMLImportBean implements Serializable
-{
-	
+@Slf4j
+@ManagedBean(name="xmlImport")
+@SessionScoped
+public class XMLImportBean implements Serializable {
 	  /** Use serialVersionUID for interoperability. */
 	  private final static long serialVersionUID = 418920360211039758L;
-	  private static Logger log = LoggerFactory.getLogger(XMLImportBean.class);
 	  
   private int qtiVersion;
   private String uploadFileName;
   private String importType;
   private String pathToData;
+  @ManagedProperty(value="#{author}")
   private AuthorBean authorBean;
+  @ManagedProperty(value="#{assessmentBean}")
   private AssessmentBean assessmentBean;
+  @ManagedProperty(value="#{itemauthor}")
   private ItemAuthorBean itemAuthorBean;
+  @ManagedProperty(value="#{authorization}")
+  private AuthorizationBean authorizationBean;
+  @ManagedProperty(value="#{questionpool}")
   private QuestionPoolBean questionPoolBean;
   private boolean isCP;
   private String importType2;
@@ -110,18 +116,9 @@ public class XMLImportBean implements Serializable
 	  String uploadFile = (String) e.getNewValue();
 
 	  if (uploadFile!= null && uploadFile.startsWith("SizeTooBig:")) {
-		  FacesContext context = FacesContext.getCurrentInstance();
-		  ExternalContext external = context.getExternalContext();
-		  String paramValue = ((Long)((ServletContext)external.getContext()).getAttribute("FILEUPLOAD_SIZE_MAX")).toString();
-		  Long sizeMax = null;
-		  float sizeMax_float = 0f;
-		  if (paramValue != null) {
-			  sizeMax = Long.parseLong(paramValue);
-			  sizeMax_float = sizeMax.floatValue()/1024;
-		  } 
-		  int sizeMax_int = Math.round(sizeMax_float);
+		  Long sizeMax = Long.valueOf(ServerConfigurationService.getString("samigo.sizeMax", "40960"));
 		  ResourceLoader rb =new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AuthorImportExport");
-		  String sizeTooBigMessage = MessageFormat.format(rb.getString("import_size_too_big"), uploadFile.substring(11), sizeMax_int);
+		  String sizeTooBigMessage = MessageFormat.format(rb.getString("import_size_too_big"), uploadFile.substring(11), Math.round(sizeMax.floatValue()/1024));
 	      FacesMessage message = new FacesMessage(sizeTooBigMessage);
 	      FacesContext.getCurrentInstance().addMessage(null, message);
 	      // remove unsuccessful file
@@ -288,7 +285,7 @@ public class XMLImportBean implements Serializable
 
     AssessmentService assessmentService = new AssessmentService();
     // Create an assessment based on the uploaded file
-    ArrayList failedMatchingQuestions = new ArrayList();
+    List failedMatchingQuestions = new ArrayList();
     AssessmentFacade assessment = createImportedAssessment(fileName, qtiVersion, isRespondus, failedMatchingQuestions);
     if (failedMatchingQuestions.size() > 0)
     {
@@ -345,23 +342,29 @@ public class XMLImportBean implements Serializable
 
     // update core AssessmentList: get the managed bean, author and set the list
     
-    ArrayList list = assessmentService.getBasicInfoOfAllActiveAssessments(
+    List list = assessmentService.getBasicInfoOfAllActiveAssessments(
                      AssessmentFacadeQueries.TITLE,true);
 	TimeUtil tu = new TimeUtil();
-	String display_dateFormat= ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.GeneralMessages","output_data_picker_w_sec");
-	SimpleDateFormat displayFormat = new SimpleDateFormat(display_dateFormat, new ResourceLoader().getLocale());
     Iterator iter = list.iterator();
 	while (iter.hasNext()) {
 		AssessmentFacade assessmentFacade= (AssessmentFacade) iter.next();
-		assessmentFacade.setTitle(FormattedText.convertFormattedTextToPlaintext(assessmentFacade.getTitle()));
+		assessmentFacade.setTitle(ComponentManager.get(FormattedText.class).convertFormattedTextToPlaintext(assessmentFacade.getTitle()));
 		try {
-			String lastModifiedDateDisplay = tu.getDisplayDateTime(displayFormat, assessmentFacade.getLastModifiedDate());
+			String lastModifiedDateDisplay = tu.getDateTimeWithTimezoneConversion(assessmentFacade.getLastModifiedDate());
 			assessmentFacade.setLastModifiedDateForDisplay(lastModifiedDateDisplay);  
 		} catch (Exception ex) {
 			log.warn("Unable to format date: " + ex.getMessage());
 		}
 	}
+    List allAssessments = new ArrayList<>();
+    if (authorizationBean.getEditAnyAssessment() || authorizationBean.getEditOwnAssessment()) {
+        allAssessments.addAll(list);
+    }
+    if (authorizationBean.getGradeAnyAssessment() || authorizationBean.getGradeOwnAssessment()) {
+        allAssessments.addAll(authorBean.getPublishedAssessments());
+    }
     authorBean.setAssessments(list);
+    authorBean.setAllAssessments(allAssessments);
   }
   
   private String getImportedFilename(String filename) {
@@ -398,7 +401,7 @@ public class XMLImportBean implements Serializable
    * @return
    */
   
-  private AssessmentFacade createImportedAssessment(String fullFileName, int qti, boolean isRespondus, ArrayList failedMatchingQuestions) throws Exception
+  private AssessmentFacade createImportedAssessment(String fullFileName, int qti, boolean isRespondus, List failedMatchingQuestions) throws Exception
   {
     //trim = true so that xml processing instruction at top line, even if not.
     Document document = null;
@@ -446,6 +449,16 @@ public class XMLImportBean implements Serializable
     this.itemAuthorBean = itemAuthorBean;
   }
 
+  public AuthorizationBean getAuthorizationBean()
+  {
+    return authorizationBean;
+  }
+
+  public void setAuthorizationBean(AuthorizationBean authorizationBean)
+  {
+    this.authorizationBean = authorizationBean;
+  }
+
   /**
    * Value change on upload
    * @param e the event
@@ -484,14 +497,14 @@ public class XMLImportBean implements Serializable
 
     // remove uploaded file
     try{
-      //System.out.println("****filename="+fileName);
+      log.debug("****filename="+fileName);
       File upload = new File(fileName);
       boolean success = upload.delete();
       if (!success)
 	log.error ("Failed to delete file " + fileName);
     }
     catch(Exception e){
-	e.printStackTrace();
+	log.error(e.getMessage(), e);
     }
   }
   

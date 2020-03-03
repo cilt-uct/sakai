@@ -31,14 +31,15 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Map.Entry;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
+
 import org.sakaiproject.accountvalidator.logic.ValidationLogic;
 import org.sakaiproject.accountvalidator.model.ValidationAccount;
 import org.sakaiproject.authz.api.AuthzGroup;
@@ -59,60 +60,17 @@ import org.sakaiproject.user.api.UserLockedException;
 import org.sakaiproject.user.api.UserNotDefinedException;
 import org.sakaiproject.user.api.UserPermissionException;
 
+@Slf4j
 public class CheckValidations implements Job {
 
-
-	private static Logger log = LoggerFactory.getLogger(CheckValidations.class);
-
-
-	private ValidationLogic validationLogic;
-	public void setValidationLogic(ValidationLogic vl) {
-		validationLogic = vl;
-	}
-
-	
-	private UserDirectoryService userDirectoryService;
-	public void setUserDirectoryService(UserDirectoryService uds) {
-		userDirectoryService = uds;
-	}
-	
-	
-
-	private AuthzGroupService authzGroupService;	
-	public void setAuthzGroupService(AuthzGroupService authzGroupService) {
-		this.authzGroupService = authzGroupService;
-	}
-	
-	
-	private EmailTemplateService emailTemplateService;
-	public void setEmailTemplateService(EmailTemplateService emailTemplateService) {
-		this.emailTemplateService = emailTemplateService;
-	}
-
-	
-	private ServerConfigurationService serverConfigurationService;	
-	public void setServerConfigurationService(
-			ServerConfigurationService serverConfigurationService) {
-		this.serverConfigurationService = serverConfigurationService;
-	}
-
-	
-	public SiteService siteService;
-	public void setSiteService(SiteService siteService) {
-		this.siteService = siteService;
-	}
-	
-	private SessionManager sessionManager;
-	public void setSessionManager(SessionManager sessionManager) {
-		this.sessionManager = sessionManager;
-	}
-
-	
-	private PreferencesService preferencesService;	
-	public void setPreferencesService(PreferencesService preferencesService) {
-		this.preferencesService = preferencesService;
-	}
-
+	@Setter private ValidationLogic validationLogic;
+	@Setter private UserDirectoryService userDirectoryService;
+	@Setter private AuthzGroupService authzGroupService;	
+	@Setter private EmailTemplateService emailTemplateService;
+	@Setter private ServerConfigurationService serverConfigurationService;	
+	@Setter public SiteService siteService;
+	@Setter private SessionManager sessionManager;
+	@Setter private PreferencesService preferencesService;	
 
 	private int maxDays = 90;
 	
@@ -187,7 +145,7 @@ public class CheckValidations implements Job {
 					account.setStatus(ValidationAccount.STATUS_EXPIRED);
 					//set the received date so that it will create a new token the next time the user requests a reset
 					cal = new GregorianCalendar();
-					account.setvalidationReceived(cal.getTime());
+					account.setValidationReceived(cal.getTime());
 					validationLogic.save(account);
 				} 
 				else if (validationLogic.isTokenExpired(account))
@@ -263,13 +221,9 @@ public class CheckValidations implements Job {
 				
 				
 			} catch (UserNotDefinedException e) {
-				e.printStackTrace();
-				
+				log.error(e.getMessage(), e);
 			}
-			
-			
 		}
-		
 	}
 
 	private void removeCleaUpUser(String id) {
@@ -292,23 +246,16 @@ public class CheckValidations implements Job {
 			ValidationAccount va = validationLogic.getVaLidationAcountByUserId(id);
 			validationLogic.deleteValidationAccount(va);
 		} catch (UserNotDefinedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 		} catch (UserPermissionException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 		} catch (UserLockedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 		} catch (GroupNotDefinedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 		} catch (AuthzPermissionException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 		}
-		
-		
 	}
 
 	private Map<String, List<String>> buildAddedMap(List<String> oldAccounts) {
@@ -329,11 +276,8 @@ public class CheckValidations implements Job {
 					ret.put(createdBy, l);
 				}
 			} catch (UserNotDefinedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				log.error(e.getMessage(), e);
 			}
-			
-			
 		}
 		
 		return ret;

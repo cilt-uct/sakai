@@ -17,6 +17,8 @@
 
 package org.sakaiproject.tool.assessment.facade;
 
+import java.util.List;
+
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.Query;
 import org.hibernate.Session;
@@ -26,10 +28,8 @@ import org.sakaiproject.tool.assessment.data.dao.assessment.ExtendedTime;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentBaseIfc;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.PublishedAssessmentIfc;
 import org.springframework.dao.DataAccessException;
-import org.springframework.orm.hibernate3.HibernateCallback;
-import org.springframework.orm.hibernate3.support.HibernateDaoSupport;
-
-import java.util.List;
+import org.springframework.orm.hibernate4.HibernateCallback;
+import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
 
 /**
  * @author Leonardo Canessa [lcanessa1 (at) udayton (dot) edu]
@@ -40,7 +40,7 @@ public class ExtendedTimeQueries extends HibernateDaoSupport implements Extended
     /**
      * init
      */
-    public  void                init                    () {
+    public void init () {
         log.info("init()");
     }
 
@@ -48,7 +48,7 @@ public class ExtendedTimeQueries extends HibernateDaoSupport implements Extended
      * {@inheritDoc}
      */
     @SuppressWarnings("unchecked")
-    public  List<ExtendedTime>  getEntriesForAss        (AssessmentBaseIfc ass) {
+    public List<ExtendedTime> getEntriesForAss(AssessmentBaseIfc ass) {
         log.debug("getEntriesForAss " + ass.getAssessmentBaseId());
 
         try {
@@ -68,7 +68,7 @@ public class ExtendedTimeQueries extends HibernateDaoSupport implements Extended
      * {@inheritDoc}
      */
     @SuppressWarnings("unchecked")
-    public  List<ExtendedTime>  getEntriesForPub        (PublishedAssessmentIfc pub) {
+    public List<ExtendedTime> getEntriesForPub(PublishedAssessmentIfc pub) {
         log.debug("getEntriesForPub " + pub.getPublishedAssessmentId());
 
         try {
@@ -88,7 +88,7 @@ public class ExtendedTimeQueries extends HibernateDaoSupport implements Extended
     /**
      * {@inheritDoc}
      */
-    public  ExtendedTime        getEntryForPubAndUser   (PublishedAssessmentIfc pub, String userId) {
+    public ExtendedTime getEntryForPubAndUser(PublishedAssessmentIfc pub, String userId) {
         log.debug("getEntryForPubAndUser, pub: '" + pub.getPublishedAssessmentId() + "' User: " + userId);
 
         return getPubAndX(QUERY_GET_ENTRY_FOR_PUB_N_USER, pub, USER_ID, userId);
@@ -97,7 +97,7 @@ public class ExtendedTimeQueries extends HibernateDaoSupport implements Extended
     /**
      * {@inheritDoc}
      */
-    public  ExtendedTime        getEntryForPubAndGroup  (PublishedAssessmentIfc pub, String groupId) {
+    public ExtendedTime getEntryForPubAndGroup (PublishedAssessmentIfc pub, String groupId) {
         log.debug("getEntryForPubAndGroup, pub: '" + pub.getPublishedAssessmentId() + "' group: " + groupId);
 
         return getPubAndX(QUERY_GET_ENTRY_FOR_PUB_N_GROUP, pub, GROUP, groupId);
@@ -106,7 +106,7 @@ public class ExtendedTimeQueries extends HibernateDaoSupport implements Extended
     /**
      * {@inheritDoc}
      */
-    public  boolean             updateEntry             (ExtendedTime e) {
+    public boolean updateEntry(ExtendedTime e) {
         log.debug("updating entry assessment: '" + e.getAssessmentId() + "' pubId: '" + e.getPubAssessmentId() + "' user: '" + e.getUser() + "' group: " + e.getGroup());
 
         try {
@@ -121,18 +121,18 @@ public class ExtendedTimeQueries extends HibernateDaoSupport implements Extended
     /**
      * {@inheritDoc}
      */
-    public  void                updateEntries           (List<ExtendedTime> entries) {
+    public void updateEntries(List<ExtendedTime> entries) {
         entries.forEach(this::updateEntry);
     }
 
     /**
      * {@inheritDoc}
      */
-    public  boolean             deleteEntry             (final ExtendedTime e) {
+    public boolean deleteEntry(final ExtendedTime e) {
         log.debug("Removing ExtendedTime entry id: " + e.getId());
 
        try {
-           getHibernateTemplate().delete(e);
+           getHibernateTemplate().delete(getHibernateTemplate().merge(e));
            return true;
        } catch (DataAccessException de) {
            log.error("Failed to delete extendedTime entry, id: " + e.getId() + ".", de);
@@ -141,7 +141,7 @@ public class ExtendedTimeQueries extends HibernateDaoSupport implements Extended
     }
 
     @SuppressWarnings("unchecked")
-    private ExtendedTime        getPubAndX              (final String query, final PublishedAssessmentIfc pub, final String secondParam, final String secondParamValue) {
+    private ExtendedTime getPubAndX(final String query, final PublishedAssessmentIfc pub, final String secondParam, final String secondParamValue) {
         try{
             HibernateCallback hcb = (Session s) -> {
                 Query q = s.getNamedQuery(query);

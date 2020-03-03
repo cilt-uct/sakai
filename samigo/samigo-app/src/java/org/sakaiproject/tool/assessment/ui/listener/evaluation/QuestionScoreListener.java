@@ -21,28 +21,37 @@
 
 package org.sakaiproject.tool.assessment.ui.listener.evaluation;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
+import javax.faces.context.FacesContext;
 import javax.faces.event.AbortProcessingException;
 import javax.faces.event.ActionEvent;
 import javax.faces.event.ActionListener;
 import javax.faces.event.ValueChangeEvent;
 import javax.faces.event.ValueChangeListener;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.math.NumberUtils;
+import org.sakaiproject.component.cover.ComponentManager;
+import org.sakaiproject.component.cover.ServerConfigurationService;
+import org.sakaiproject.rubrics.logic.RubricsConstants;
+import org.sakaiproject.rubrics.logic.RubricsService;
+import org.sakaiproject.spring.SpringBeanLocator;
 import org.sakaiproject.tool.assessment.data.dao.assessment.AssessmentAccessControl;
 import org.sakaiproject.tool.assessment.data.dao.assessment.EvaluationModel;
 import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedAnswer;
-import org.sakaiproject.tool.assessment.data.dao.grading.ItemGradingAttachment;
+import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedItemData;
 import org.sakaiproject.tool.assessment.data.dao.grading.ItemGradingData;
 import org.sakaiproject.tool.assessment.data.dao.grading.MediaData;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AnswerIfc;
@@ -54,22 +63,19 @@ import org.sakaiproject.tool.assessment.facade.AgentFacade;
 import org.sakaiproject.tool.assessment.services.GradingService;
 import org.sakaiproject.tool.assessment.services.PublishedItemService;
 import org.sakaiproject.tool.assessment.services.assessment.PublishedAssessmentService;
+import org.sakaiproject.tool.assessment.ui.bean.author.AssessmentBean;
+import org.sakaiproject.tool.assessment.ui.bean.authz.AuthorizationBean;
 import org.sakaiproject.tool.assessment.ui.bean.evaluation.AgentResults;
 import org.sakaiproject.tool.assessment.ui.bean.evaluation.HistogramScoresBean;
 import org.sakaiproject.tool.assessment.ui.bean.evaluation.PartData;
 import org.sakaiproject.tool.assessment.ui.bean.evaluation.QuestionScoresBean;
 import org.sakaiproject.tool.assessment.ui.bean.evaluation.SubmissionStatusBean;
 import org.sakaiproject.tool.assessment.ui.bean.evaluation.TotalScoresBean;
-import org.sakaiproject.tool.assessment.ui.bean.authz.AuthorizationBean;
-import org.sakaiproject.tool.assessment.ui.bean.author.AssessmentBean;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 import org.sakaiproject.tool.assessment.util.BeanSort;
-import org.sakaiproject.util.FormattedText;
 import org.sakaiproject.util.ResourceLoader;
-import org.apache.commons.lang.math.NumberUtils;
-import org.sakaiproject.component.cover.ServerConfigurationService;
-
-// end testing
+import org.sakaiproject.util.api.FormattedText;
+import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 
 /**
  * <p>
@@ -90,17 +96,18 @@ import org.sakaiproject.component.cover.ServerConfigurationService;
  *          daisyf@stanford.edu $
  */
 
-public class QuestionScoreListener implements ActionListener,
+@Slf4j
+ public class QuestionScoreListener implements ActionListener,
 		ValueChangeListener {
-	private static Logger log = LoggerFactory.getLogger(QuestionScoreListener.class);
 
 	// private static EvaluationListenerUtil util;
 	private static BeanSort bs;
 
-	private static final String noAnswer = (String) ContextUtil
-			.getLocalizedString(
-					"org.sakaiproject.tool.assessment.bundle.EvaluationMessages",
-					"no_answer");
+	private static final String MSG_BUNDLE = "org.sakaiproject.tool.assessment.bundle.EvaluationMessages";
+	private static final String noAnswer = ContextUtil.getLocalizedString(MSG_BUNDLE, "no_answer");
+	private static final String noneOfTheAbove = ContextUtil.getLocalizedString(MSG_BUNDLE, "none_above");
+
+	private RubricsService rubricsService = (RubricsService) SpringBeanLocator.getInstance().getBean("org.sakaiproject.rubrics.logic.RubricsService");
 
 	/**
 	 * Standard process action method.
@@ -116,9 +123,7 @@ public class QuestionScoreListener implements ActionListener,
 				.lookupBean("questionScores");
 
 		// Reset the search field
-		String defaultSearchString = ContextUtil.getLocalizedString(
-				"org.sakaiproject.tool.assessment.bundle.EvaluationMessages",
-				"search_default_student_search_string");
+		String defaultSearchString = ContextUtil.getLocalizedString(MSG_BUNDLE, "search_default_student_search_string");
 		bean.setSearchString(defaultSearchString);
 
 		// we probably want to change the poster to be consistent
@@ -144,6 +149,9 @@ public class QuestionScoreListener implements ActionListener,
 	 */
 	public void processValueChange(ValueChangeEvent event) {
 		log.debug("QuestionScore CHANGE LISTENER.");
+		ResetQuestionScoreListener reset = new ResetQuestionScoreListener();
+		reset.processAction(null);
+
 		QuestionScoresBean bean = (QuestionScoresBean) ContextUtil.lookupBean("questionScores");
 		TotalScoresBean totalBean = (TotalScoresBean) ContextUtil.lookupBean("totalScores");
 		HistogramScoresBean histogramBean = (HistogramScoresBean) ContextUtil.lookupBean("histogramScores");
@@ -180,6 +188,9 @@ public class QuestionScoreListener implements ActionListener,
 		if (!questionScores(publishedId, bean, toggleSubmissionSelection)) {
 			throw new RuntimeException("failed to call questionScores.");
 		}
+
+		FacesContext.getCurrentInstance().getApplication().getNavigationHandler().handleNavigation(FacesContext.getCurrentInstance(), null, "questionScores");
+
 	}
 
 	/**
@@ -211,16 +222,38 @@ public class QuestionScoreListener implements ActionListener,
 				questionBean.setPublishedAssessment(publishedAssessment);
 			}
 			// build a hashMap (publishedItemId, publishedItem)
-			HashMap publishedItemHash = pubService
+			Map publishedItemHash = pubService
 					.preparePublishedItemHash(publishedAssessment);
 			log.debug("questionScores(): publishedItemHash.size = "
 					+ publishedItemHash.size());
 			// build a hashMap (publishedItemTextId, publishedItemText)
-			HashMap publishedItemTextHash = pubService
-					.preparePublishedItemTextHash(publishedAssessment);
+			Map<Long, ItemTextIfc> publishedItemTextHash = pubService.preparePublishedItemTextHash(publishedAssessment);
 			log.debug("questionScores(): publishedItemTextHash.size = "
 					+ publishedItemTextHash.size());
-			HashMap publishedAnswerHash = pubService
+			GradingService delegate = new GradingService();
+			HashMap<Long, TreeMap<Long, ItemTextIfc>>  allItemsHash = new HashMap<>();
+			for (Long thisKey : publishedItemTextHash.keySet()) {
+				ItemTextIfc thisItemTextIfc = (ItemTextIfc) publishedItemTextHash.get(thisKey);
+				for (AnswerIfc thisAnswerIfc : thisItemTextIfc.getAnswerSet()) {
+					log.debug("{}", thisAnswerIfc.getId());
+				}
+				if (delegate.isDistractor(thisItemTextIfc)) {
+					log.debug("item is a distractor");
+				}
+
+				TreeMap<Long, ItemTextIfc> thisItemOptions = allItemsHash.get(thisItemTextIfc.getItem().getItemId());
+				if (thisItemOptions == null) {
+					thisItemOptions = new TreeMap<>();
+					thisItemOptions.put(thisItemTextIfc.getSequence(), thisItemTextIfc);
+					allItemsHash.put(thisItemTextIfc.getItem().getItemId(), thisItemOptions);
+				} else {
+					thisItemOptions.put(thisItemTextIfc.getSequence(), thisItemTextIfc);
+					allItemsHash.put(thisItemTextIfc.getItem().getItemId(), thisItemOptions);
+				}
+				log.debug("item = {}:{}-{}", thisItemTextIfc.getSequence(), thisItemTextIfc.getText(), thisItemTextIfc.getItem().getItemId());
+
+			}
+			Map publishedAnswerHash = pubService
 					.preparePublishedAnswerHash(publishedAssessment);
 			// re-attach session and load all lazy loaded parent/child stuff
 
@@ -235,9 +268,7 @@ public class QuestionScoreListener implements ActionListener,
 //			}
 			log.debug("questionScores(): publishedAnswerHash.size = "
 					+ publishedAnswerHash.size());
-			HashMap agentResultsByItemGradingIdMap = new HashMap();
-
-			GradingService delegate = new GradingService();
+			Map<Long, AgentResults> agentResultsByItemGradingIdMap = new HashMap<>();
 
 			TotalScoresBean totalBean = (TotalScoresBean) ContextUtil
 					.lookupBean("totalScores");
@@ -289,22 +320,20 @@ public class QuestionScoreListener implements ActionListener,
 			bean.setPublishedId(publishedId);
 			Date dueDate = null;
 
-			HashMap map = getItemScores(Long.valueOf(publishedId), Long
+			Map map = getItemScores(Long.valueOf(publishedId), Long
 					.valueOf(itemId), which, isValueChange);
 			log.debug("questionScores(): map .size = " + map.size());
 			ResourceLoader rb = null;
-			ArrayList allscores = new ArrayList();
+			List allscores = new ArrayList();
 			Iterator keyiter = map.keySet().iterator();
 			while (keyiter.hasNext()) {
-				allscores.addAll((ArrayList) map.get(keyiter.next()));
+				allscores.addAll((List) map.get(keyiter.next()));
 			}
 
 			log.debug("questionScores(): allscores.size = " + allscores.size());
 
-			// /
-
 			// now we need filter by sections selected
-			ArrayList scores = new ArrayList(); // filtered list
+			List scores = new ArrayList(); // filtered list
 			Map useridMap = totalBean.getUserIdMap(TotalScoresBean.CALLED_FROM_QUESTION_SCORE_LISTENER);
 			bean.setUserIdMap(useridMap);
 			log.debug("questionScores(): useridMap.size = " + useridMap.size());
@@ -340,7 +369,7 @@ public class QuestionScoreListener implements ActionListener,
 			log.debug("questionScores(): scores.size = " + scores.size());
 
 			Iterator iter = scores.iterator();
-			ArrayList agents = new ArrayList();
+			List agents = new ArrayList();
 
 			log.debug("questionScores(): calling populateSections ");
 
@@ -351,7 +380,7 @@ public class QuestionScoreListener implements ActionListener,
 				log.debug("questionScores(): this section has no students");
 				bean.setAgents(agents);
 				bean.setAllAgents(agents);
-				bean.setTotalPeople(Integer.toString(bean.getAgents().size()));
+				bean.setTotalPeople(Integer.toString(agents.size()));
 				bean.setAnonymous(totalBean.getAnonymous());
 				//return true;
 			}
@@ -359,7 +388,7 @@ public class QuestionScoreListener implements ActionListener,
 			// List them by item and assessmentgradingid, so we can
 			// group answers by item and save them for update use.
 
-			HashMap scoresByItem = new HashMap();
+			Map scoresByItem = new HashMap();
 			while (iter.hasNext()) {
 				ItemGradingData idata = (ItemGradingData) iter.next();
 				ItemTextIfc pubItemText = (ItemTextIfc) publishedItemTextHash
@@ -367,7 +396,7 @@ public class QuestionScoreListener implements ActionListener,
 				AnswerIfc pubAnswer = (AnswerIfc) publishedAnswerHash.get(idata
 						.getPublishedAnswerId());
 
-				ArrayList temp = (ArrayList) scoresByItem.get(idata
+				List temp = (ArrayList) scoresByItem.get(idata
 						.getAssessmentGradingId()
 						+ ":" + idata.getPublishedItemId());
 				if (temp == null)
@@ -375,7 +404,7 @@ public class QuestionScoreListener implements ActionListener,
 
 				// Very small numbers, so bubblesort is fast
 				Iterator iter2 = temp.iterator();
-				ArrayList newList = new ArrayList();
+				List newList = new ArrayList();
 				boolean added = false;
 				while (iter2.hasNext()) {
 					ItemGradingData tmpData = (ItemGradingData) iter2.next();
@@ -413,7 +442,6 @@ public class QuestionScoreListener implements ActionListener,
 								EvaluationModel.ANONYMOUS_GRADING) ? "true"
 										: "false");
 			} catch (RuntimeException e) {
-				// log.info("No evaluation model.");
 				bean.setAnonymous("false");
 			}
 			
@@ -423,7 +451,6 @@ public class QuestionScoreListener implements ActionListener,
 						.getAssessmentAccessControl().getLateHandling()
 						.toString());
 			} catch (Exception e) {
-				// log.info("No access control model.");
 				bean
 				.setLateHandling(AssessmentAccessControl.NOT_ACCEPT_LATE_SUBMISSION
 						.toString());
@@ -434,7 +461,6 @@ public class QuestionScoreListener implements ActionListener,
 				dueDate = publishedAssessment.getAssessmentAccessControl()
 				.getDueDate();
 			} catch (RuntimeException e) {
-				// log.info("No due date.");
 				bean.setDueDate(new Date().toString());
 			}
 			try {
@@ -494,7 +520,7 @@ public class QuestionScoreListener implements ActionListener,
 				log.debug("item==null ");
 			}
 
-			ArrayList deliveryItems = new ArrayList(); // so we can use the var
+			List deliveryItems = new ArrayList(); // so we can use the var
 			if (item != null)
 				deliveryItems.add(item);
 			bean.setDeliveryItem(deliveryItems);
@@ -529,31 +555,48 @@ public class QuestionScoreListener implements ActionListener,
 				AgentResults results = new AgentResults();
 				// Get all the answers for this question to put in one grading
 				// row
-				ArrayList answerList = (ArrayList) iter.next();
+				List answerList = (List) iter.next();
 				results.setItemGradingArrayList(answerList);
 				// The list is sorted by item id so that it will come back from the student in a 
 				// predictable order. This is also required by the getCalcQResult method.
-				Collections.sort(answerList, new Comparator<ItemGradingData>() {
-					public int compare(ItemGradingData i1, ItemGradingData i2) {
+				if (TypeIfc.CALCULATED_QUESTION.equals(Long.parseLong(bean.getTypeId()))) { // CALCULATED_QUESTION
+					// list is sorted by answer id for calculated question
+					Collections.sort(answerList, new Comparator<ItemGradingData>() {
+						public int compare(ItemGradingData i1, ItemGradingData i2) {
 						if (i1 == i2) {
 							return 0;
-						}
-						else if (i1 == null || i1.getPublishedItemId() == null) {
+						} else if (i1 == null || i1.getPublishedAnswerId() == null) {
 							return -1;
-						}
-						else if (i2 == null || i2.getPublishedItemId() == null) {
+						} else if (i2 == null || i2.getPublishedAnswerId() == null) {
 							return 1;
+						} else {
+							return NumberUtils.compare(i1.getPublishedAnswerId(),i2.getPublishedAnswerId());
 						}
-						else {
+					   }
+					});
+
+				} else { // Non calculated question
+					// The list is sorted by item id so that it will come back from the student in a 
+					// predictable order. This is also required by the getCalcQResult method. 
+					Collections.sort(answerList, new Comparator<ItemGradingData>() {
+						public int compare(ItemGradingData i1, ItemGradingData i2) {
+						if (i1 == i2) {
+							return 0;
+						} else if (i1 == null || i1.getPublishedItemId() == null) {
+							return -1;
+						} else if (i2 == null || i2.getPublishedItemId() == null) {
+							return 1;
+						} else {
 							return NumberUtils.compare(i1.getPublishedItemId(),i2.getPublishedItemId());
 						}
-					}
-				});
+					   }
+					});
+				}
 				Iterator iter2 = answerList.iterator();
-				ArrayList itemGradingAttachmentList = new ArrayList();
-				HashMap<Long, Set<String>> fibmap = new HashMap<Long, Set<String>>();
+				List itemGradingAttachmentList = new ArrayList();
+				Map<Long, Set<String>> fibmap = new HashMap<Long, Set<String>>();
 				int i = 1;
-				HashMap<Integer, String> answersMap = new HashMap<Integer, String>();
+				Map<Integer, String> answersMap = new HashMap<Integer, String>();
 				while (iter2.hasNext()) {
 					ItemGradingData gdata = (ItemGradingData) iter2.next();
 					results.setItemGrading(gdata);
@@ -609,7 +652,7 @@ public class QuestionScoreListener implements ActionListener,
 
 					if ("4".equals(bean.getTypeId())) {
 						if (rb == null) { 	 
-			        		rb = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.EvaluationMessages");
+			        		rb = new ResourceLoader(MSG_BUNDLE);
 			        	}
 						if ("true".equals(answerText)) {
 							answerText = rb.getString("true_msg");
@@ -660,7 +703,7 @@ public class QuestionScoreListener implements ActionListener,
 
 					// audio recording
 					if (bean.getTypeId().equals("7")) {
-						ArrayList mediaList = delegate.getMediaArray2(gdata
+						List<MediaData> mediaList = delegate.getMediaArray2(gdata
 								.getItemGradingId().toString());
 						setDurationIsOver(item, mediaList);
 						gdata.setMediaArray(mediaList);
@@ -695,6 +738,7 @@ public class QuestionScoreListener implements ActionListener,
 						answerTextLength = 35;
 					}
 
+					log.debug("answerText=" + answerText);
 					// Fix for SAK-6932: Strip out all HTML tags except image tags
  					if (answerText.length() > answerTextLength) {
 						String noHTMLAnswerText;
@@ -720,10 +764,12 @@ public class QuestionScoreListener implements ActionListener,
 					 */
 
 					//SAM-755-"checkmark" indicates right, add "X" to indicate wrong
+					String correct = ContextUtil.getLocalizedString(MSG_BUNDLE, "alt_correct");
+					String incorrect = ContextUtil.getLocalizedString(MSG_BUNDLE, "alt_incorrect");
+					String checkmarkGif = String.format("<span title=\"%s\" class=\"icon-sakai--check feedBackCheck\"></span>", correct);
+					String crossmarkGif = String.format("<span title=\"%s\" class=\"icon-sakai--delete feedBackCross\"></span>", incorrect);
 					if (gdataAnswer != null) {
-						String checkmarkGif = "<img src='/samigo-app/images/delivery/checkmark.gif'>";
-						String crossmarkGif = "<img src='/samigo-app/images/crossmark.gif'>";
-						answerText = FormattedText.escapeHtml(answerText, true);
+						answerText = ComponentManager.get(FormattedText.class).escapeHtml(answerText, true);
 						if (bean.getTypeId().equals("8") || bean.getTypeId().equals("11")) {
 							if (gdata.getIsCorrect() == null) {
 								boolean result = false;
@@ -766,24 +812,74 @@ public class QuestionScoreListener implements ActionListener,
 						}
 						else if(!bean.getTypeId().equals("3")){
 							if((gdataAnswer.getIsCorrect() != null && gdataAnswer.getIsCorrect()) || 
-									(gdataAnswer.getPartialCredit() != null && gdataAnswer.getPartialCredit() > 0)){
+								(gdataAnswer.getPartialCredit() != null && gdataAnswer.getPartialCredit() > 0)){
 								answerText = checkmarkGif + answerText;
 							}else if(gdataAnswer.getIsCorrect() != null && !gdataAnswer.getIsCorrect()){
 								answerText = crossmarkGif + answerText;
 							}
 						}
+					} else if (bean.getTypeId().equals("9")) {
+						log.debug("scoring a type 9 - matching");
+						boolean itemHasCorrectAnswers = hasCorrectAnswers(gdataPubItemText.getAnswerSet());
+						ItemGradingData thisItemGradingData = null;
+						for (Object thisItem : allscores) {
+							thisItemGradingData = (ItemGradingData) thisItem;
+							log.debug("thisItemGradingData.getItemGradingId().intValue()={}", thisItemGradingData.getItemGradingId().intValue());
+							log.debug("gdata.getItemGradingId().intValue()={}", gdata.getItemGradingId().intValue());
+							log.debug("thisItemGradingData.getAnswerText()={}", thisItemGradingData.getAnswerText());
+							if (thisItemGradingData.getItemGradingId().equals(gdata.getItemGradingId())) {
+								break;
+							}
+						}
+						if (thisItemGradingData != null) {
+							log.debug("thisItemGradingData was found");
+						}
+						if (answerText.contains(noAnswer) && fullAnswerText.contains(noAnswer)) {
+							log.debug("check point A");
+							if (thisItemGradingData.getPublishedAnswerId() == null) {
+								log.debug("null anwser id:thisItemGradingData.getAnswerText()={}", thisItemGradingData.getAnswerText());
+								if (answerList.size() == 1) {
+									TreeMap<Long, ItemTextIfc> thisItemOptions = allItemsHash.get(item.getItemId());
+									StringBuilder optionsBuffer = new StringBuilder();
+									for (Long thisItemKey : thisItemOptions.keySet()) {
+										ItemTextIfc thisItemOptionText = (ItemTextIfc) thisItemOptions.get(thisItemKey);
+										optionsBuffer.append(crossmarkGif).append(" ").append(thisItemOptionText.getSequence().toString()).append(":No Response <br/>");
+									}
+									answerText = optionsBuffer.toString();
+								} else {
+									answerText = crossmarkGif + gdataPubItemText.getSequence() + ":" + "No Response";
+								}
+							} else if (itemHasCorrectAnswers && thisItemGradingData.getPublishedAnswerId() < 0) {
+								answerText = crossmarkGif + gdataPubItemText.getSequence() + ":" + noneOfTheAbove;
+							} else {
+								answerText = checkmarkGif + gdataPubItemText.getSequence() + ":" + noneOfTheAbove;
+							}
+							log.debug("answerText={}", answerText);
+							String thisAgentId = gdata.getAgentId();
+							boolean agentFound = false;
+							for (Object thisAgent : bean.getAgents()) {
+								AgentResults thisAgentResult = (AgentResults) thisAgent;
+								if (thisAgentResult.getIdString().compareTo(thisAgentId) == 0) {
+									agentFound = true;
+									break;
+								}
+							}
+						}
 					}
 
+					log.debug("check point B answerText={}", answerText);
 					// -- Got the answer text --
 					if (!answerList.get(0).equals(gdata)) { // We already have
 						// an agentResults
 						// for this one
+						log.debug("check point C1");
 						results.setAnswer(results.getAnswer() + "<br/>"
 								+ answerText);
 						if (gdata.getAutoScore() != null) {
-							results.setTotalAutoScore(Double.toString((Double.valueOf(
-								results.getExactTotalAutoScore())).doubleValue()
-								+ gdata.getAutoScore().doubleValue()));
+							BigDecimal dataAutoScore = new BigDecimal(gdata.getAutoScore());
+							BigDecimal exactTotalAutoScore = new BigDecimal(results.getExactTotalAutoScore());
+							exactTotalAutoScore = exactTotalAutoScore.add(dataAutoScore);
+							results.setTotalAutoScore(String.valueOf(exactTotalAutoScore.doubleValue()));
 						}
 						else {
 							results.setTotalAutoScore(Double.toString((Double.valueOf(
@@ -794,6 +890,7 @@ public class QuestionScoreListener implements ActionListener,
 							results.setAnswerKey(results.getAnswerKey()+ " <br/>" + answerKey);
 						}
 					} else {
+						log.debug("check point C2");
 						results.setItemGradingId(gdata.getItemGradingId());
 						results.setAssessmentGradingId(gdata
 								.getAssessmentGradingId());
@@ -805,7 +902,7 @@ public class QuestionScoreListener implements ActionListener,
 						} else {
 							results.setTotalAutoScore(Double.toString(0));
 						}
-						results.setComments(FormattedText.convertFormattedTextToPlaintext(gdata.getComments()));
+						results.setComments(ComponentManager.get(FormattedText.class).convertFormattedTextToPlaintext(gdata.getComments()));
 						results.setAnswer(answerText);
 						if (bean.getTypeId().equals("15")){ // CALCULATED_QUESTION Answer Key
 							results.setAnswerKey(answerKey);
@@ -815,7 +912,6 @@ public class QuestionScoreListener implements ActionListener,
 						results.setSubmittedDate(gdata.getSubmittedDate());
 
 						AgentFacade agent = new AgentFacade(gdata.getAgentId());
-						// log.info("Rachel: agentid = " + gdata.getAgentId());
 						results.setLastName(agent.getLastName());
 						results.setFirstName(agent.getFirstName());
 						results.setEmail(agent.getEmail());
@@ -848,8 +944,8 @@ public class QuestionScoreListener implements ActionListener,
 				}
 			}
 
-			// log.info("Sort type is " + bean.getSortType() + ".");
 			bs = new BeanSort(agents, bean.getSortType());
+			log.debug("check point D");
 			if ((bean.getSortType()).equals("assessmentGradingId")
 					|| (bean.getSortType()).equals("totalAutoScore")
 					|| (bean.getSortType()).equals("totalOverrideScore")
@@ -861,27 +957,62 @@ public class QuestionScoreListener implements ActionListener,
 
 			if (bean.isSortAscending()) {
 				log.debug("sortAscending");
-				agents = (ArrayList) bs.sort();
+				agents = (List) bs.sort();
 			} else {
 				log.debug("!sortAscending");
-				agents = (ArrayList) bs.sortDesc();
+				agents = (List) bs.sortDesc();
 			}
 
-			// log.info("Listing agents.");
+			if (bean.getTypeId().equals("9")) {
+				agents = sortMatching(agents);
+			}
+
 			bean.setAgents(agents);
 			bean.setAllAgents(agents);
-			bean
-					.setTotalPeople(Integer.valueOf(bean.getAgents().size())
-							.toString());
+			bean.setTotalPeople(Integer.valueOf(agents.size()).toString());
 			bean.setAgentResultsByItemGradingId(agentResultsByItemGradingIdMap);
+
+			bean.setRubricStateDetails("");
+			bean.setHasAssociatedRubric(rubricsService.hasAssociatedRubric(RubricsConstants.RBCS_TOOL_SAMIGO, RubricsConstants.RBCS_PUBLISHED_ASSESSMENT_ENTITY_PREFIX + bean.getPublishedId() + "." + bean.getItemId()));
 		}
 
 		catch (RuntimeException e) {
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 			return false;
 		}
 
 		return true;
+	}
+
+	private List sortMatching(List<AgentResults> agentResults){
+
+		List<AgentResults> returnValues = new ArrayList<>();
+		for (AgentResults thisAgentResult : agentResults) {
+			String thisItemOptions[] = thisAgentResult.getAnswer().split("<br/>");
+			for (int s = 0; s < thisItemOptions.length; s++) {
+				int endOfCheckmark = thisItemOptions[s].indexOf(">");
+				int colonAt = thisItemOptions[s].indexOf(":");
+				if(endOfCheckmark==-1||colonAt==-1) {
+					continue;
+				}
+				String thisSequence = thisItemOptions[s].substring(endOfCheckmark, colonAt);
+				StringBuilder editItemBuffer = new StringBuilder();
+				editItemBuffer.append(thisSequence).append("|").append(thisItemOptions[s]);
+				thisItemOptions[s] = editItemBuffer.toString();
+			}
+			Arrays.sort(thisItemOptions);
+			StringBuilder optionBuffer = new StringBuilder();
+			for (String thisItemOption : thisItemOptions) {
+				int dlmIndex = thisItemOption.indexOf('|');
+				if (dlmIndex != -1) {
+					optionBuffer.append(thisItemOption.substring(dlmIndex + 1)).append("<br/>");
+				}
+			}
+			log.debug("sortedOptions{}", optionBuffer);
+			thisAgentResult.setAnswer(optionBuffer.toString());
+			returnValues.add(thisAgentResult);
+		}
+		return returnValues;
 	}
 
 	/**
@@ -892,17 +1023,17 @@ public class QuestionScoreListener implements ActionListener,
 	 * publishedItemId, Array itemGradings)) itemScoresMap will be refreshed
 	 * when the next QuestionScore link is click
 	 */
-	private HashMap getItemScores(Long publishedId, Long itemId, String which,
+	private Map getItemScores(Long publishedId, Long itemId, String which,
 			boolean isValueChange) {
 		log.debug("getItemScores");
 		GradingService delegate = new GradingService();
 		QuestionScoresBean questionScoresBean = (QuestionScoresBean) ContextUtil
 				.lookupBean("questionScores");
-		HashMap itemScoresMap = questionScoresBean.getItemScoresMap();
+		Map itemScoresMap = questionScoresBean.getItemScoresMap();
 		log.debug("getItemScores: itemScoresMap ==null ?" + itemScoresMap);
 		log.debug("getItemScores: isValueChange ?" + isValueChange);
 
-		if (itemScoresMap == null || isValueChange || questionScoresBean.getIsAnyItemGradingAttachmentListModified()) {
+		if (itemScoresMap == null || isValueChange || questionScoresBean.isAnyItemGradingAttachmentListModified()) {
 			log
 					.debug("getItemScores: itemScoresMap == null or isValueChange == true ");
 			log.debug("getItemScores: isValueChange = " + isValueChange);
@@ -910,12 +1041,12 @@ public class QuestionScoreListener implements ActionListener,
 			questionScoresBean.setItemScoresMap(itemScoresMap);
 			// reset this anyway (because the itemScoresMap will be refreshed as well as the 
 			// attachment list)
-			questionScoresBean.setIsAnyItemGradingAttachmentListModified(false); 
+			questionScoresBean.setAnyItemGradingAttachmentListModified(false);
 		}
 		log
 				.debug("getItemScores: itemScoresMap.size() "
 						+ itemScoresMap.size());
-		HashMap map = (HashMap) itemScoresMap.get(itemId);
+		Map map = (Map) itemScoresMap.get(itemId);
 		if (map == null) {
 			log.debug("getItemScores: map == null ");
 			map = delegate.getItemScores(publishedId, itemId, which, true);
@@ -925,11 +1056,11 @@ public class QuestionScoreListener implements ActionListener,
 		return map;
 	}
 
-	private void setDurationIsOver(ItemDataIfc item, ArrayList mediaList) {
+	private void setDurationIsOver(ItemDataIfc item, List<MediaData> mediaList) {
 		try {
 			int maxDurationAllowed = item.getDuration().intValue();
 			for (int i = 0; i < mediaList.size(); i++) {
-				MediaData m = (MediaData) mediaList.get(i);
+				MediaData m = mediaList.get(i);
 				double duration = (Double.valueOf(m.getDuration())).doubleValue();
 				if (duration > maxDurationAllowed) {
 					m.setDurationIsOver(true);
@@ -943,10 +1074,19 @@ public class QuestionScoreListener implements ActionListener,
 		}
 	}
 
+	private boolean hasCorrectAnswers(Set<AnswerIfc> answerSet){
+		for (AnswerIfc thisAnswer : answerSet) {
+			if (((PublishedAnswer) thisAnswer).getIsCorrect()) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	private void populateSections(PublishedAssessmentIfc publishedAssessment,
 			QuestionScoresBean bean, TotalScoresBean totalBean,
-			ArrayList scores, PublishedAssessmentService pubService) {
-		ArrayList sections = new ArrayList();
+			List scores, PublishedAssessmentService pubService) {
+		List sections = new ArrayList();
 		log
 				.debug("questionScores(): populate sctions publishedAssessment.getSectionArraySorted size = "
 						+ publishedAssessment.getSectionArraySorted().size());
@@ -954,7 +1094,7 @@ public class QuestionScoreListener implements ActionListener,
 		int i = 1;
 		while (iter.hasNext()) {
 			SectionDataIfc section = (SectionDataIfc) iter.next();
-			ArrayList items = new ArrayList();
+			List items = new ArrayList();
 			PartData part = new PartData();
 			boolean isRandomDrawPart = pubService.isRandomDrawPart(
 					publishedAssessment.getPublishedAssessmentId(), section
@@ -969,13 +1109,13 @@ public class QuestionScoreListener implements ActionListener,
 			        part.setNumberQuestionsDraw(numberToBeDrawn);
 				}
 				PublishedAssessmentService publishedAssessmentService = new PublishedAssessmentService();
-				HashSet itemSet = publishedAssessmentService.getPublishedItemSet(publishedAssessment
+				Set itemSet = publishedAssessmentService.getPublishedItemSet(publishedAssessment
 					.getPublishedAssessmentId(), section.getSectionId());
 				section.setItemSet(itemSet);
 			}
 			else {
 				GradingService gradingService = new GradingService();
-				HashSet itemSet = gradingService.getItemSet(publishedAssessment
+				Set<PublishedItemData> itemSet = gradingService.getItemSet(publishedAssessment
 					.getPublishedAssessmentId(), section.getSectionId());
 				section.setItemSet(itemSet);
 			}

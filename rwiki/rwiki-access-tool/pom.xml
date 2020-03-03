@@ -4,17 +4,12 @@
   <parent>
     <artifactId>master</artifactId>
     <groupId>org.sakaiproject</groupId>
-    <version>12-SNAPSHOT</version>
+    <version>21-SNAPSHOT</version>
     <relativePath>../../master/pom.xml</relativePath>
   </parent>
   <name>wiki</name>
   <groupId>org.sakaiproject</groupId>
   <artifactId>wiki</artifactId>
-  <organization>
-    <name>University of Michigan</name>
-    <url>http://sakaiproject.org/</url>
-  </organization>
-  <inceptionYear>2003</inceptionYear>
   <packaging>war</packaging>
   <dependencies>
     <dependency>
@@ -23,7 +18,7 @@
     </dependency>
     <dependency>
       <groupId>javax.servlet</groupId>
-      <artifactId>servlet-api</artifactId>
+      <artifactId>javax.servlet-api</artifactId>
     </dependency>
     <dependency>
       <groupId>org.sakaiproject.kernel</groupId>

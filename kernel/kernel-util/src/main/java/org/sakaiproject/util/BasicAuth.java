@@ -29,13 +29,16 @@ import java.util.regex.Pattern;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.codec.binary.Base64;
+
+import org.sakaiproject.component.cover.ServerConfigurationService;
+import org.sakaiproject.event.cover.UsageSessionService;
 import org.sakaiproject.user.api.Authentication;
 import org.sakaiproject.user.api.AuthenticationException;
 import org.sakaiproject.user.api.Evidence;
 import org.sakaiproject.user.cover.AuthenticationManager;
-import org.apache.commons.codec.binary.Base64;
-import org.sakaiproject.component.cover.ServerConfigurationService;
-import org.sakaiproject.event.cover.UsageSessionService;
 
 
 /**
@@ -75,7 +78,7 @@ import org.sakaiproject.event.cover.UsageSessionService;
  * This string is available in BasicAuthFilter.BASIC_AUTH_LOGIN_REQUEST
  * 
  */
-
+@Slf4j
 public class BasicAuth {
 
 	/**
@@ -210,26 +213,29 @@ public class BasicAuth {
 		
 			String auth;
 			auth = req.getHeader("Authorization");
-			
+
+			if (auth == null) {
+				// No basic auth header, so nothing to do
+				return false;
+			}
+
 			Evidence e = null;
 			try {
-				if (auth != null) {
-					auth = auth.trim();
-					if (auth.startsWith("Basic ")) {
-						auth = auth.substring(6).trim();
-						auth = new String(Base64.decodeBase64(auth.getBytes("UTF-8")));
-						int colon = auth.indexOf(":");
-						if (colon != -1) {
-							String eid = auth.substring(0, colon);
-							String pw = auth.substring(colon + 1);
-							if (eid.length() > 0 && pw.length() > 0) {
-								e = new IdPwEvidence(eid, pw);
-							}
+				auth = auth.trim();
+				if (auth.startsWith("Basic ")) {
+					auth = auth.substring(6).trim();
+					auth = new String(Base64.decodeBase64(auth.getBytes("UTF-8")));
+					int colon = auth.indexOf(":");
+					if (colon != -1) {
+						String eid = auth.substring(0, colon);
+						String pw = auth.substring(colon + 1);
+						if (eid.length() > 0 && pw.length() > 0) {
+							e = new IdPwEvidence(eid, pw, req.getRemoteAddr());
 						}
 					}
 				}
 			} catch (Exception ex) {
-				ex.printStackTrace();
+				log.error(ex.getMessage(), ex);
 			}
 
 			// authenticate
@@ -247,7 +253,7 @@ public class BasicAuth {
 					return false;
 				}
 			} catch (AuthenticationException ex) {
-				// ex.printStackTrace();
+				log.error(ex.getMessage(), ex);
 				return false;
 			}
 		}

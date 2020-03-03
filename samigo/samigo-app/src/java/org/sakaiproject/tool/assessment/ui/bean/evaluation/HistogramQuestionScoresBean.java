@@ -19,8 +19,6 @@
  *
  **********************************************************************************/
 
-
-
 package org.sakaiproject.tool.assessment.ui.bean.evaluation;
 
 import java.io.Serializable;
@@ -30,32 +28,17 @@ import java.util.Collection;
 import java.util.Set;
 import java.util.TreeSet;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.SessionScoped;
 
+import lombok.extern.slf4j.Slf4j;
 import org.sakaiproject.tool.assessment.ui.bean.util.Validator;
 
-/**
- * <p>
- * Title: sakaiproject.org
- * </p>
- *
- * <p>
- * Description: AAM - form class for edit/access.jsp
- * </p>
- *
- * <p>
- * Copyright: Copyright (c) 2003
- * </p>
- *
- * Used to be org.navigoproject.ui.web.form.evaluation.HistogramQuestionScoresForm.java
- *
- * @author Huong Nguyen
- * @version 1.0
- */
-public class HistogramQuestionScoresBean
-  implements Serializable
-{
+/* For evaluation: Histogram Question Scores backing bean. */
+@Slf4j
+@ManagedBean(name="histogramquestionscores")
+@SessionScoped
+public class HistogramQuestionScoresBean implements Serializable {
   private String assessmentName;
   private String title;
 
@@ -103,8 +86,6 @@ public class HistogramQuestionScoresBean
 
   private boolean randomType;   // this part is a random draw part
 
-  private static Logger log = LoggerFactory.getLogger(HistogramQuestionScoresBean.class);
-  
   private Long subQuestionSequence;
   private boolean showIndividualAnswersInDetailedStatistics;
   

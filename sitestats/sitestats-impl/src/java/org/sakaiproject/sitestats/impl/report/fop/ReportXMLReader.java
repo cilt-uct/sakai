@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.sakaiproject.component.cover.ComponentManager;
+import org.sakaiproject.event.api.EventTrackingService;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.sitestats.api.EventStat;
@@ -40,7 +41,7 @@ import org.sakaiproject.sitestats.api.event.ToolInfo;
 import org.sakaiproject.sitestats.api.report.Report;
 import org.sakaiproject.sitestats.api.report.ReportManager;
 import org.sakaiproject.sitestats.api.report.ReportParams;
-import org.sakaiproject.time.api.TimeService;
+import org.sakaiproject.time.api.UserTimeService;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserNotDefinedException;
@@ -57,7 +58,7 @@ public class ReportXMLReader extends AbstractObjectReader {
 	private SimpleDateFormat		dateYearFrmt  = new SimpleDateFormat("yyyy");
 	
 	/** Sakai services */
-	private TimeService				M_ts		= (TimeService) ComponentManager.get(TimeService.class.getName());
+	private UserTimeService			M_uts		= (UserTimeService) ComponentManager.get(UserTimeService.class.getName());
 	private SiteService				M_ss		= (SiteService) ComponentManager.get(SiteService.class.getName());
 	private UserDirectoryService	M_uds		= (UserDirectoryService) ComponentManager.get(UserDirectoryService.class.getName());
 	private StatsManager			M_sm		= (StatsManager) ComponentManager.get(StatsManager.class.getName());
@@ -258,7 +259,7 @@ public class ReportXMLReader extends AbstractObjectReader {
         //handler.element("chart", "sitestats://" + M_ers.getToolIcon(toolId));
 	}
 	
-	private void generateReportTable(List<Stat> data, ReportParams params) throws SAXException {
+	private void generateReportTable(List<? extends Stat> data, ReportParams params) throws SAXException {
         if (data == null || params == null) {
             throw new NullPointerException("Parameter 'data', 'params' must not be null");
         }
@@ -281,7 +282,7 @@ public class ReportXMLReader extends AbstractObjectReader {
         boolean showTotalUnique = M_rm.isReportColumnAvailable(params, StatsManager.T_UNIQUEVISITS);
         boolean showDuration = M_rm.isReportColumnAvailable(params, StatsManager.T_DURATION);
 
-        Iterator<Stat> i = data.iterator();
+        Iterator<? extends Stat> i = data.iterator();
         while(i.hasNext()){
         	Stat cs = i.next();
             handler.startElement("datarow");
@@ -307,7 +308,7 @@ public class ReportXMLReader extends AbstractObjectReader {
 	    			if(("-").equals(id)) {
 	    				userId = "-";
 	    				userName = msgs.getString("user_anonymous");
-	    			}else if(("?").equals(id)) {
+	    			}else if(EventTrackingService.UNKNOWN_USER.equals(id)) {
 	    				userId = "-";
 	    				userName = msgs.getString("user_anonymous_access");
 	    			}else{
@@ -360,7 +361,9 @@ public class ReportXMLReader extends AbstractObjectReader {
             if(showDate) {
             	java.util.Date date = cs.getDate();
             	if(M_rm.isReportColumnAvailable(params, StatsManager.T_DATE)) {
-            		handler.element("date", date == null? "" :M_ts.newTime(date.getTime()).toStringLocalDate());
+            		// under the hood this is an sql.Date and has no time component
+            		java.sql.Date sqlDate = (java.sql.Date) date;
+            		handler.element("date", date == null ? "" : M_uts.shortLocalizedDate(sqlDate.toLocalDate(), msgs.getLocale()));
             	}else if(M_rm.isReportColumnAvailable(params, StatsManager.T_DATEMONTH)) {
             		handler.element("date", date == null? "" :dateMonthFrmt.format(date));
             	}else if(M_rm.isReportColumnAvailable(params, StatsManager.T_DATEYEAR)) {
@@ -368,8 +371,9 @@ public class ReportXMLReader extends AbstractObjectReader {
             	}
             }
             if(showLastDate) {
-            	java.util.Date date = cs.getDate();
-	            handler.element("lastdate", date == null? "" :M_ts.newTime(date.getTime()).toStringLocalDate());
+            	// under the hood this is an sql.Date and has no time component
+            	java.sql.Date sqlDate = (java.sql.Date) cs.getDate();
+            	handler.element("lastdate", sqlDate == null? "" : M_uts.shortLocalizedDate(sqlDate.toLocalDate(), msgs.getLocale()));
             }
             if(showTotal) {
 	            handler.element("total", String.valueOf(cs.getCount()));

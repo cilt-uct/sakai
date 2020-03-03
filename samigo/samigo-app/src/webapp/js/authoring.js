@@ -64,6 +64,16 @@ inputhidden.setAttribute("value", selectId);
 switchPartialCredit(fieldname,prevCorrectBtn); 
 }
 
+function updateHiddenMultipleChoice() {
+  var checkboxes = jQuery("input[id*=':mccheckboxes:']:checked");
+  var selectedCheckboxes = "";
+  for (var i=0; i <= checkboxes.size()-1; i++) {
+    selectedCheckboxes += $(checkboxes[i]).val() + ",";
+  }
+  selectedCheckboxes = selectedCheckboxes.substring(0, selectedCheckboxes.length-1);
+  jQuery('#itemForm\\:selectedCheckboxesAnswers').val(selectedCheckboxes);
+}
+
 function switchPartialCredit(newCorrect,oldCorrect){
    var pInput = document.getElementById('itemForm:mcchoices:0:partialCredit');
    if(typeof(pInput) == 'undefined' || pInput == null){
@@ -140,16 +150,7 @@ function disablePartialCreditField(){
 }
 
 function clickAddChoiceLink(){
-
-var newindex = 0;
-for (i=0; i<document.links.length; i++) {
-  if ( document.links[i].id.indexOf("hiddenAddChoicelink") >=0){
-    newindex = i;
-    break;
-  }
-}
-
-document.links[newindex].onclick();
+  $('#itemForm\\:hiddenAddChoicelink')[0].click();
 }
 
 function clickAddEmiAnswerOptionsLink(){
@@ -250,7 +251,7 @@ $( document ).ready( function() {
             // minField may not be on the page if disabled
             if (minField) {
                 var minValue = parseFloat(minField.val());
-                if (minValue < 0 || minValue >= pointValue) {
+                if (minValue < 0 || minValue > pointValue) {
                     validationWarningSetDefault(minField, "");
                 }
             }
@@ -261,8 +262,8 @@ $( document ).ready( function() {
     $( "#itemForm\\:minPoints\\:answerminptr" ).change( function() {
         var pointValue = parseFloat( $( "#itemForm\\:answerptr" ).val() );
         var minValue = parseFloat( $( this ).val() );
-        // minValue should not be equal to or greater than pointValue
-        if (minValue < 0 || minValue >= pointValue) {
+        // minValue should not be greater than pointValue
+        if (minValue < 0 || minValue > pointValue) {
             validationWarningSetDefault($( this ), "0")
         } else {
             // minValue is valid disable negative points
@@ -318,6 +319,28 @@ $( document ).ready( function() {
 
     });
 
+    // Fix the input value and display for the correct answer in Multiple Choice when entering with partial credit enabled.
+    $('[id$="mcradiobtn"]').click( function(e) {
+
+        // Transform the previous full credit label into an empty text field
+        $('[id$="partialCredit"]').removeAttr('disabled');
+        $('[id$="partialCredit"]').attr('type', 'text');
+        $('#correctAnswerPC').remove();
+
+        // For the choice that was marked as correct, replace the editable point value field with a static value/label of 100%
+        pcBox = $('#'+this.id.replace(/:/g, '\\:').replace('mcradiobtn', 'partialCredit'));
+        pcBox.after('<span id="correctAnswerPC">100%</span>');
+        pcBox.attr('disabled', true);
+        pcBox.attr('type', 'hidden');
+        pcBox.val("0");
+    });
+
+    // Apply the above when the form loads.
+    $('[id$="mcradiobtn"]').each(function() {
+        if( $("input", this).attr("checked") ) {
+            $("input", this).click();
+        }
+    });
 });
 
 function validationWarningSetDefault(element, value) {
@@ -331,15 +354,28 @@ function validationWarningSetDefault(element, value) {
  * for the match part of the MatchItemBean.  Odd syntax for id required to find the
  * jsf pulldown menu, standard #<pulldown> would not retrieve the component.
  * @param pulldown
+ * @param feedbackContainerID the ID of the feedback container to conditionally show/hide based on the pulldown selection
+ * @param noFeedbackMsgID the ID of the container which contains the feedback not available message
  */
-function applyMenuListener(pulldown) {
-	var $pulldownHolder = $("[id='itemForm:" + pulldown + "']");	
+function applyMenuListener(pulldown, feedbackContainerID, noFeedbackMsgID) {
+	var $pulldownHolder = $("[id='itemForm:" + pulldown + "']");
 	$pulldownHolder.change( function() {
+		var applyNoFeedbackChanges = (feedbackContainerID !== undefined && feedbackContainerID !== null) && (noFeedbackMsgID !== undefined && noFeedbackMsgID !== null);
+		var $feedbackContainer = applyNoFeedbackChanges ? $("[id='itemForm:" + feedbackContainerID + "']") : null;
+		var $noFeedbackMsgID = applyNoFeedbackChanges ? $("[id='itemForm:" + noFeedbackMsgID + "']") : null;
 		var $editor = $(this).parent("div").find("div.toggle_link_container").parent("td:last");
 		if (this.value === "*new*") {
 			$editor.show();
+			if (applyNoFeedbackChanges) {
+				$feedbackContainer.show();
+				$noFeedbackMsgID.hide();
+			}
 		} else {
-			$editor.hide();			
+			$editor.hide();
+			if (applyNoFeedbackChanges) {
+				$feedbackContainer.hide();
+				$noFeedbackMsgID.show();
+			}
 		}
 	});
 	
@@ -351,12 +387,12 @@ function applyMenuListener(pulldown) {
 //improve feedback UI, get rid of page reload bugid:5574 -Qu 10/31/2013
 
 // If we select "No Feedback will be displayed to the student"
-// it will disable and uncheck feedback as well as blank out text, otherwise,
+// it will disable and uncheck feedback as well as blank out text, otherwise,	
 // if a different radio button is selected, we reenable feedback checkboxes & text.
 function disableAllFeedbackCheck(feedbackType)
 {
-	var noFeedback = 3;
-	
+    var noFeedback = 3;
+
     if (feedbackType == noFeedback){
      	$("#assessmentSettingsAction\\:feedbackComponentOption input").prop("disabled", true);
 		$(".respChoice input").prop({disabled:true, checked:false});
@@ -373,17 +409,23 @@ function disableAllFeedbackCheck(feedbackType)
     disableFeedbackDateCheck(feedbackType);
 }
 
+// Display the date selectors when the feedback is shown by date.
 function disableFeedbackDateCheck(feedbackType) {
 	var dateFeedback = 2;
 
     if (feedbackType == dateFeedback) {
-    	$("input#assessmentSettingsAction\\:feedbackDate.hasDatepicker").prop("disabled", false);
-    	$("td.feedbackColumn1 > img.ui-datepicker-trigger").prop("hidden", false);
+        $("#feedbackByDatePanel").show();
+        $("input#assessmentSettingsAction\\:feedbackDate.hasDatepicker").prop("disabled", false);
+        $("input#assessmentSettingsAction\\:feedbackEndDate.hasDatepicker").prop("disabled", false);
+        $("td.feedbackColumn1 > img.ui-datepicker-trigger").prop("hidden", false);
         $("td.feedbackColumn2").prop("hidden", false);
     } else {
-    	$("input#assessmentSettingsAction\\:feedbackDate.hasDatepicker").prop("disabled", true);
+        $("#feedbackByDatePanel").hide();
+        $("input#assessmentSettingsAction\\:feedbackDate.hasDatepicker").prop("disabled", true);
         $("input#assessmentSettingsAction\\:feedbackDate.hasDatepicker").val( "" );
-    	$("td.feedbackColumn1 > img.ui-datepicker-trigger").prop("hidden", true);
+        $("input#assessmentSettingsAction\\:feedbackEndDate.hasDatepicker").prop("disabled", true);
+        $("input#assessmentSettingsAction\\:feedbackEndDate.hasDatepicker").val( "" );
+        $("td.feedbackColumn1 > img.ui-datepicker-trigger").prop("hidden", true);
         $("td.feedbackColumn2").prop("hidden", true);
     }
 }
@@ -436,11 +478,15 @@ $(window).load( function() {
 
 function checkNoFeedbackOnLoad(){
 	var noFeedback = 3;
+	var feedbackByDate = 2;
 	var feedbackType = $("input[name=assessmentSettingsAction\\:feedbackDelivery]:checked").val();
 
 	if(feedbackType == noFeedback) {
 		$("#assessmentSettingsAction\\:feedbackComponentOption input").prop("disabled", true);
 		$(".respChoice input").prop('disabled', true);
+	}
+	if(feedbackType == feedbackByDate) {
+		$("#feedbackByDatePanel").show();
 	}
 	disableFeedbackDateCheck(feedbackType);
 }
@@ -586,39 +632,6 @@ function checkUncheckTimeBox(){
   }
 }
 
-function checkUncheckAllReleaseGroups(){
-  var checkboxState = document.getElementById("assessmentSettingsAction:checkUncheckAllReleaseGroups").checked;
-  var inputList= document.getElementsByTagName("INPUT");
-  for (i = 0; i <inputList.length; i++) 
-  {
-    if(inputList[i].type=='checkbox')
-    {
-      if(inputList[i].name.indexOf("groupsForSite")>=0)
-        inputList[i].checked=checkboxState;
-    }
-  }
-}
-
-function lockdownQuestionLayout(value) {
-  if (value == 1) {
-    $('#assessmentSettingsAction\\:assessmentFormat input[value=1]').prop('checked', 'checked');
-    $('#assessmentSettingsAction\\:assessmentFormat input').prop('disabled', 'disabled');
-  } 
-  else {
-    $('#assessmentSettingsAction\\:assessmentFormat input').prop('disabled', '');
-  }
-}
-
-function lockdownMarkForReview(value) {
-  if (value == 1) {
-    $('#assessmentSettingsAction\\:markForReview1').prop('checked', '');
-    $('#assessmentSettingsAction\\:markForReview1').prop('disabled', 'disabled');
-  } 
-  else {
-    $('#assessmentSettingsAction\\:markForReview1').prop('disabled', '');
-  }
-}
-
 function initTimedCheckBox(){
 		var timedHours = document.getElementById("assessmentSettingsAction\:timedHours");
 		var timedHoursVal = timedHours.options[timedHours.selectedIndex].value;
@@ -753,6 +766,25 @@ function resetSelectMenus(){
 function clickInsertLink(field){
   var insertlinkid = field.id.replace("changeQType", "hiddenlink");
   var hiddenSelector = "#" + insertlinkid.replace( /(:|\.|\[|\]|,)/g, "\\$1" );
-  $(hiddenSelector).click();
+  $(hiddenSelector)[0].click()
 }
 
+// Show MathJax warning messages if applicable
+if (typeof MathJax != 'undefined') {
+  $(document).ready(function() {
+    $(".mathjax-warning").show();
+  });
+}
+
+function toggleCategories(checkbox) {
+    // Toggle categories selector. If categories are disabled it won't exist
+    // so check first.
+    var categoryDiv = $('#assessmentSettingsAction\\:toGradebookCategory');
+    if (categoryDiv.length) {
+        if ($(checkbox).prop("checked")) {
+            categoryDiv.fadeIn();
+        } else {
+            categoryDiv.fadeOut();
+        }
+    }
+}

@@ -87,7 +87,7 @@ public interface SiteService extends EntityProducer
 	/** Name for the event of creating a site from a sakai archive (KNL-1210) */
 	static final String SECURE_IMPORT_ARCHIVE = "site.import.archive";
 	
-	/** Name for the event of adding a user's My Workspace site. */
+	/** Name for the event of adding a user's Home site. */
 	static final String SECURE_ADD_USER_SITE = "site.add.usersite";
 
 	/** Name for the event of removing a site. */
@@ -226,24 +226,35 @@ public interface SiteService extends EntityProducer
 	 */
 	public class SelectionType
 	{
+		public enum PublishedFilter {ALL, PUBLISHED_ONLY, UNPUBLISHED_ONLY}
+
 		private final String m_id;
 
 		private final boolean m_ignoreSpecial;
 
 		private final boolean m_ignoreUser;
 
-		private final boolean m_ignoreUnpublished;
+		private final PublishedFilter m_publishedFilter;
 		
 		//always true, we always ignore unpublished sites
 		private final boolean m_ignoreSoftlyDeleted;
 
-		private SelectionType(String id, boolean ignoreSpecial, boolean ignoreUser, boolean ignoreUnpublished, boolean ignoreSoftlyDeleted)
+		public SelectionType(String id, boolean ignoreSpecial, boolean ignoreUser, boolean ignoreUnpublished, boolean ignoreSoftlyDeleted)
 		{
 			m_id = id;
 			m_ignoreSpecial = ignoreSpecial;
 			m_ignoreUser = ignoreUser;
-			m_ignoreUnpublished = ignoreUnpublished;
+			m_publishedFilter = ignoreUnpublished ? PublishedFilter.PUBLISHED_ONLY : PublishedFilter.ALL;
 			m_ignoreSoftlyDeleted =  ignoreSoftlyDeleted;
+		}
+
+		public SelectionType(String id, boolean ignoreSpecial, boolean ignoreUser, PublishedFilter publishedFilter, boolean ignoreSoftlyDeleted)
+		{
+			m_id = id;
+			m_ignoreSpecial = ignoreSpecial;
+			m_ignoreUser = ignoreUser;
+			m_publishedFilter = publishedFilter;
+			m_ignoreSoftlyDeleted = ignoreSoftlyDeleted;
 		}
 
 		public String toString()
@@ -263,7 +274,12 @@ public interface SiteService extends EntityProducer
 
 		public boolean isIgnoreUnpublished()
 		{
-			return m_ignoreUnpublished;
+			return m_publishedFilter == PublishedFilter.PUBLISHED_ONLY;
+		}
+
+		public PublishedFilter getPublishedFilter()
+		{
+			return m_publishedFilter;
 		}
 		
 		public boolean isIgnoreSoftlyDeleted()
@@ -617,6 +633,23 @@ public interface SiteService extends EntityProducer
 	void removeSite(Site site) throws PermissionException, IdUnusedException;
 
 	/**
+	 * Remove this site's information.
+	 * 
+	 * <p>If site.soft.deletion=true, the site will be softly deleted and user access will be removed.
+	 * If hardDelete is true, all tools that implement HardDelete interface will have content removed.</p>
+	 * 
+	 * @param site
+	 *        The site id.
+	 * @param hardDelete
+	 *        Whether content should be purged from database.
+	 * @exception PermissionException
+	 *            if the current user does not have permission to remove this site.
+	 * @exception IdUnusedException 
+	 * 			  if site does not exist
+	 */
+	void removeSite(Site site, boolean hardDelete) throws PermissionException, IdUnusedException;
+
+	/**
 	 * Access the internal reference which can be used to access the site from within the system.
 	 * 
 	 * @param id
@@ -948,6 +981,23 @@ public interface SiteService extends EntityProducer
 	 * @return A List<Site> of those sites the current user can access.
 	 */
 	List<Site> getUserSites(boolean requireDescription, boolean includeUnpublishedSites);
+	
+	/**
+	 * Access a list of sites that the current user can visit, sorted by title, optionally requiring descriptions.
+	 *
+	 * This is a convenience and performance wrapper for getSites, because there are many places that need
+	 * the complete list of sites for the current user, and getSites is unnecessarily verbose in that case.
+	 * Because the semantics of this call are specific, it can also be optimized by the implementation.
+	 *
+	 * The sites returned follow the same semantics as those from
+	 * {@link #getSites(SelectionType, Object, String, Map, SortType, PagingPosition) getSites}.
+	 *
+	 * @param requireDescription when true, full descriptions will be included; when false, full descriptions may be omitted.
+	 * @param includeUnpublishedSites when true, unpublished sites will be included; when false, unpublished sites will be omitted.
+	 * @param excludedSites list with siteIDs to be excluded from being loaded. If no exclusions are required, set to NULL or empty list.
+	 * @return A List<Site> of those sites the current user can access.
+	 */
+	List<Site> getUserSites(boolean requireDescription, boolean includeUnpublishedSites, List excludedSites);
 
 	/**
 	 * Access a list of sites that the specified user can visit, sorted by title, optionally requiring descriptions.
@@ -980,6 +1030,24 @@ public interface SiteService extends EntityProducer
 	 * @return A List<Site> of those sites the current user can access.
 	 */
 	List<Site> getUserSites(boolean requireDescription, String userID, boolean includeUnpublishedSites);
+	
+	/**
+	 * Access a list of sites that the specified user can visit, sorted by title, optionally requiring descriptions.
+	 *
+	 * This is a convenience and performance wrapper for getSites.
+	 * 
+	 * Unpublished sites are not included; use getSites(String, boolean) to control if unpublished sites are included or not.
+	 *
+	 * The sites returned follow the same semantics as those from
+	 * {@link #getSites(SelectionType, Object, String, Map, SortType, PagingPosition, boolean, String) getSites}.
+	 *
+	 * @param requireDescription when true, full descriptions will be included; when false, full descriptions may be omitted.
+	 * @param userID the returned sites will be those which can be accessed by the user with this internal ID. Uses the current user if null.
+	 * @param includeUnpublishedSites when true, unpublished sites will be included; when false, unpublished sites will be omitted.
+	 * @param excludedSites list with siteIDs to be excluded from being loaded. If no exclusions are required, set to NULL or empty list.
+	 * @return A List<Site> of those sites the current user can access.
+	 */
+	List<Site> getUserSites(boolean requireDescription, String userID, boolean includeUnpublishedSites, List excludedSites);
 
 	/**
 	 * Access a list of Site objects that meet specified criteria.
@@ -1098,6 +1166,33 @@ public interface SiteService extends EntityProducer
 	 * @return a List of the Site IDs for the sites matching the criteria.
 	 */
 	List<String> getSiteIds(SelectionType type, Object ofType, String criteria, Map<String, String> propertyCriteria, SortType sort, PagingPosition page);
+
+	/**
+	 * Get the Site IDs for all sites matching criteria.
+	 * This is useful when you only need the listing of site ids (for other operations) and do not need the actual Site objects.
+	 *
+	 *
+	 * All parameters are the same as {@link #getSites(org.sakaiproject.site.api.SiteService.SelectionType, Object, String, Map, org.sakaiproject.site.api.SiteService.SortType, PagingPosition)}
+	 *
+	 * @param type
+	 *        The SelectionType specifying what sort of selection is intended.
+	 * @param ofType
+	 *        Site type criteria: null for any type; a String to match a single type; A String[], List or Set to match any type in the collection.
+	 * @param criteria
+	 *        Additional selection criteria: sites returned will match this string somewhere in their id, title, description, or skin.
+	 * @param propertyCriteria
+	 *        Additional selection criteria: sites returned will have a property named to match each key in the map, whose values match (somewhere in their value) the value in the map (may be null or empty).
+	 * @param propertyRestrictions
+	 *        Similar to propertyCriteria: returned siteIds will be filtered to exclude any site whose site properties match these key-value pairs
+	 * @param sort
+	 *        A SortType indicating the desired sort. For no sort, set to SortType.NONE.
+	 * @param page
+	 *        The PagePosition subset of items to return.
+	 * @param userId
+	 *        Returned sites will be those which can be accessed by this user
+	 * @return a List of the Site IDs for the sites matching the criteria.
+	 */
+	List<String> getSiteIds(SelectionType type, Object ofType, String criteria, Map<String, String> propertyCriteria, Map<String, String> propertyRestrictions, SortType sort, PagingPosition page, String userId);
 
 	/**
 	 * Get all sites that have been softly deleted
@@ -1257,4 +1352,54 @@ public interface SiteService extends EntityProducer
 	 * @return the site or section title
 	 */
 	public String getUserSpecificSiteTitle( Site site, String userID );
-} 
+
+	/**
+	 * Similar to getUserSpecificSiteTitle(Site site, String userId), but consumes the specified siteProviders (for performance savings)
+	 *
+	 * @see getUserSpecificSiteTitle(Site site, String userId)
+	 * @param siteProviders the site providers corresponding to the specified site; if null, they will be looked up
+	 */
+	public String getUserSpecificSiteTitle(Site site, String userID, List<String> siteProviders);
+
+	/**
+	 * Unpublishes the specified sites without touching authz groups and bypasses any SiteAdvisors / other observing services.
+	 * NB:  use this only when making very minimal changes in performance critical tasks.
+	 * Only side effect is events posted to EventTrackingService.
+	 * @param siteIds site IDs for sites to be unpublished;
+	 * siteIds cannot be null
+	 */
+	public void silentlyUnpublish(List<String> siteIds);
+
+	/**
+	 * Saves a site property for the sites with the specified IDs using the specified name-value pair in a single transaction.
+	 * NB: inserts only; doesn't do any duplicate checking. Vulnerable to unique constraint violations
+	 * Use this only when making very minimal changes in performance critical tasks.
+	 * @param propertyName the site property name
+	 * @param propertyValue the site property value
+	 * @param siteIds site Ids on which to insert the specified property name-value pair
+	 */
+	public void saveSitePropertyOnSites(String propertyName, String propertyValue, String... siteIds);
+
+	/**
+	 * Defines the maximum character length of a site title.
+	 */
+	public static final int SITE_TITLE_MAX_LENGTH = 99;
+
+	/**
+	 * Defines the possible results which can be returned from the {@link validateSiteTitle()} method.
+	 */
+	public enum SiteTitleValidationStatus {
+		OK,
+		TOO_LONG,
+		EMPTY,
+		STRIPPED_TO_EMPTY
+	}
+
+	/**
+	 * Given the original and stripped site titles, determine that validation status of the stripped string.
+	 * @param orig the original, unaltered text as input by the user
+	 * @param stripped the HTML stripped text, produced by passing the original text through FormattedText.stripHtmlFromText(text, true, true).
+	 * @return {@link SiteTitleValidationStatus}
+	 */
+	public SiteTitleValidationStatus validateSiteTitle(String orig, String stripped);
+}

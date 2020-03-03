@@ -65,30 +65,17 @@
 </script>
 <div class ="portletBody">
 	#if($menu)#toolbar($menu)#end
-	#if ($!site)
-		<h3>
-			$tlang.getString("ediacc.chaacc") <span class="highlight">$validator.escapeHtml($site.Title)</span>
-		</h3>
-	#else
-		#if ($!isProjectSite)
-			<h3>
-				$tlang.getString("ediacc.project.setsitacc")
-			</h3>
-		#elseif ($!isCourseSite)
-			<h3>
-				$tlang.getString("ediacc.course.setsitacc")
-			</h3>
+
+    ##  header for manage access page
+	<div class="page-header">
+		#if (!$!site)
+			<h1>$tlang.getString("ediacc.other.setsitacc")</h1>
 		#else
-			<h3>
-				$tlang.getString("ediacc.other.setsitacc")
-			</h3>
+			<h1>$tlang.getString("java.siteaccess")</h1>
 		#end
-		<p class="step">
-			$tlang.getString("ediacc.setacc")
-		</p>
-	#end
+    </div>
 	#if ($alertMessage)
-		<div class="alertMessage">$tlang.getString("ediacc.alert") $alertMessage</div>
+		<div class="sak-banner-error">$tlang.getString("ediacc.alert") $alertMessage</div>
 		<div class="clear"></div>
 	#end
 	<form name="editParticipantForm" action="#toolForm("SiteAction")" method="post">
@@ -242,7 +229,7 @@
 				</label>
 			</div>
 			<div id="joinerrole" #if ($joinable) style="display: block;" #else  style="display: none;" #end>
-				<div class="messageWarning indnt3" style="width:60%">$tlang.getString("ediacc.yousitcan.warn")</div>
+				<div class="sak-banner-warn indnt3" style="width:60%">$tlang.getString("ediacc.yousitcan.warn")</div>
 				<p class="checkbox indnt3">
 					<label for="joinerRole">
 							<span class="reqStar" id="joinreqStar">*</span>
@@ -264,14 +251,14 @@
 					</select>
 				</p>
 				
-				## bjones86 - SAK-24423 - joinable site settings title
+				## SAK-24423 - joinable site settings title
 				#if( $joinGroupEnabled || $joinExcludeFromPublicListEnabled || $joinLimitAccountTypesEnabled ||
 						$joinGroupEnabledLocalDisabledGlobal || $joinExcludeEnabledLocalDisabledGlobal ||
 						$joinLimitEnabledLocalDisabledGlobal )
 					<p class="indnt3">$tlang.getString( "ediacc.additionJoinAccessOptions" )</p>
 				#end
 				
-				## bjones86 - SAK-24423 - joinable site settings - joiner group
+				## SAK-24423 - joinable site settings - joiner group
 				#if( $joinGroupEnabled || $joinGroupEnabledLocalDisabledGlobal )
 					<p class="checkbox indnt6">
 						<label for="selectJoinerGroup" #if( !$joinGroupEnabled || $joinGroupEnabledLocalDisabledGlobal ) class="instruction" #end>
@@ -284,12 +271,12 @@
 							#end
 						</select>
 						#if( $joinGroupEnabledLocalDisabledGlobal )
-							<p class="indnt7 messageInformation">$tlang.getString( "ediacc.groupEnabledLocalDiabledGlobal" )</p>
+							<p class="indnt7 sak-banner-info">$tlang.getString( "ediacc.groupEnabledLocalDiabledGlobal" )</p>
 						#end
 					</p>
 				#end
 				
-				## bjones86 - SAK-24423 - joinable site settings - exclude from public list
+				## SAK-24423 - joinable site settings - exclude from public list
 				#if( $joinExcludeFromPublicListEnabled || $joinExcludeEnabledLocalDisabledGlobal )
 					<p class="checkbox indnt4">
 						<input name="chkJoinExcludeFromPublicList" id="chkJoinExcludeFromPublicList" type="checkbox"
@@ -300,11 +287,11 @@
 						</label>
 					</p>
 					#if( $joinExcludeEnabledLocalDisabledGlobal )
-						<p class="indnt7 messageInformation">$tlang.getString( "ediacc.excludeEnabledLocalDisabledGlobal" )</p>
+						<p class="indnt7 sak-banner-info">$tlang.getString( "ediacc.excludeEnabledLocalDisabledGlobal" )</p>
 					#end
 				#end
 				
-				## bjones86 - SAK-24423 - joinable site settings - limit by account types
+				## SAK-24423 - joinable site settings - limit by account types
 				#if( $joinLimitAccountTypesEnabled || $joinLimitEnabledLocalDisabledGlobal )
 					<p id="joinLimitByAccountType" class="checkbox indnt4">
 						<input name="chkJoinLimitByAccountType" id="chkJoinLimitByAccountType" type="checkbox" 
@@ -316,12 +303,12 @@
 							$tlang.getString( "ediacc.joinLimitByAccountType" )
 						</label>
 					</p>
-					<p id="joinLimitInfoDiv" class="messageInformation indnt6" style="display:none">
+					<p id="joinLimitInfoDiv" class="sak-banner-info indnt6" style="display:none">
 						$tlang.getString("ediacc.selectAtLeastOneAccountType")
 					</p>
 					
 					#if( $joinLimitEnabledLocalDisabledGlobal )
-						<p class="indnt7 messageInformation">$tlang.getString( "ediacc.limitEnabledLocalDisabledGlobal" )</p>
+						<p class="indnt7 sak-banner-info">$tlang.getString( "ediacc.limitEnabledLocalDisabledGlobal" )</p>
 					#end
 					
 					<div class="indnt6" id="joinerAccountTypes" #if( $joinLimitByAccountType ) style="display:block" #else  style="display:none" #end>
@@ -486,7 +473,7 @@
 					</td>
 				</tr>
 				</table>
-				<span class="alertMessage" id="showToolsWarning" style="display:none">$tlang.getString("shopping.showTools.warning")</span>
+				<span class="sak-banner-warn" id="showToolsWarning" style="display:none">$tlang.getString("shopping.showTools.warning")</span>
 			</div>
 			</fieldset>
 			</div>
@@ -502,7 +489,7 @@
 			#if($!site)
 				<input type="submit" accesskey="s" id="updateButton" onclick="SPNR.disableControlsAndSpin( this, null );" 
 					class="active" name="eventSubmit_doUpdate_site_access" value="$tlang.getString("ediacc.upd")" />
-				<input type="submit" accesskey="x"  name="eventSubmit_doCancel" value="$tlang.getString("ediacc.bac")" onclick="SPNR.disableControlsAndSpin( this, null );" />
+				<input type="submit" accesskey="x"  name="eventSubmit_doCancel" value="$tlang.getString("ediacc.can")" onclick="SPNR.disableControlsAndSpin( this, null );" />
 			#else
 				<input type="submit" accesskey="s" id="continueButton" class="active" name="eventSubmit_doUpdate_site_access" value="$tlang.getString("ediacc.con")" onclick="SPNR.disableControlsAndSpin( this, null );" />
 				<input type="submit" accesskey="b" name="eventSubmit_doBack" value="$tlang.getString("ediacc.bac")" /onclick="SPNR.disableControlsAndSpin( this, null );" >

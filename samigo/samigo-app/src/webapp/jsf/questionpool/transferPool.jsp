@@ -14,7 +14,7 @@
             </title>
 
             <!-- stylesheet and script widgets -->
-            <script language="javascript" type="text/JavaScript">
+            <script language="javascript">
                 <%@ include file="/js/samigotree.js" %>
                 function initPage()
                 {
@@ -22,7 +22,7 @@
                 }
               window.onload = initPage;
             </script>
-            <script src="/library/js/spinner.js" type="text/javascript"></script>
+            <script src="/library/js/spinner.js"></script>
         </head>
     <body onload="disableCheckboxes();<%= request.getAttribute("html.body.onload") %>">
 
@@ -38,7 +38,7 @@
                     <h:inputHidden id="disabledCheckboxes" value="" />
 
                     <br/>
-                    <div class="tier4">
+                    <div class="tier2">
                         <h:selectBooleanCheckbox id="checkAllCheckbox" onclick="checkAllCheckboxes(this);updateButtonStatusOnCheck(document.getElementById('transferPool:transferpoolSubmit'), document.getElementById('transferPool')); " value="#{questionpool.checkAll}" />
                         <h:outputText value="#{questionPoolMessages.transfer_pool_select_all}" />
                     </div>

@@ -21,20 +21,23 @@
 
 package org.sakaiproject.component.common.edu.person;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.Date;
+
+import lombok.Getter;
+import lombok.Setter;
+
 import org.sakaiproject.api.common.edu.person.InetOrgPerson;
 import org.sakaiproject.api.common.edu.person.OrganizationalPerson;
 import org.sakaiproject.api.common.edu.person.Person;
 import org.sakaiproject.api.common.edu.person.SakaiPerson;
-import java.util.Date;
 
 /**
  * @author <a href="mailto:lance@indiana.edu">Lance Speelmon </a>
  */
 public class SakaiPersonImpl extends EduPersonImpl implements Person, OrganizationalPerson, InetOrgPerson, SakaiPerson
 {
-	private static final Logger LOG = LoggerFactory.getLogger(SakaiPersonImpl.class);
+        @Getter @Setter
+        private String phoneticPronunciation;
 
 	/**
 	 * Empty constuctor for hibernate
@@ -306,6 +309,4 @@ public class SakaiPersonImpl extends EduPersonImpl implements Person, Organizati
 	public void setBusinessBiography(String businessBiography) {
 		this.businessBiography = businessBiography;
 	}
-
-	
 }

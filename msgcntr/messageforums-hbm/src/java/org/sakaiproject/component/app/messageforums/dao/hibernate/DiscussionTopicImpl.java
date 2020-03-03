@@ -22,18 +22,17 @@ package org.sakaiproject.component.app.messageforums.dao.hibernate;
  
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
 import org.sakaiproject.api.app.messageforums.ActorPermissions;
 import org.sakaiproject.api.app.messageforums.DateRestrictions;
 import org.sakaiproject.api.app.messageforums.DiscussionTopic;
 import org.sakaiproject.api.app.messageforums.Label;
 import org.sakaiproject.api.app.messageforums.UniqueArrayList;
 
+@Slf4j
 public class DiscussionTopicImpl extends OpenTopicImpl implements DiscussionTopic {
 
-    private static final Logger LOG = LoggerFactory.getLogger(DiscussionTopicImpl.class);
-    
     private Boolean confidentialResponses;
     private Boolean mustRespondBeforeReading;
     private Integer hourBeforeResponsesVisible;
@@ -42,7 +41,8 @@ public class DiscussionTopicImpl extends OpenTopicImpl implements DiscussionTopi
     private List labels = new UniqueArrayList();
     private String gradebook;
     private String gradebookAssignment;
-    
+    private Boolean restrictPermissionsForGroups;
+
     public ActorPermissions getActorPermissions() {
         return actorPermissions;
     }
@@ -112,8 +112,8 @@ public class DiscussionTopicImpl extends OpenTopicImpl implements DiscussionTopi
     ////////////////////////////////////////////////////////////////////////
     
     public void addLabel(Label label) {
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("addLabel(label " + label + ")");
+        if (log.isDebugEnabled()) {
+            log.debug("addLabel(label " + label + ")");
         }
         
         if (label == null) {
@@ -125,8 +125,8 @@ public class DiscussionTopicImpl extends OpenTopicImpl implements DiscussionTopi
     }
 
     public void removeLabel(Label label) {
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("removeLabel(label " + label + ")");
+        if (log.isDebugEnabled()) {
+            log.debug("removeLabel(label " + label + ")");
         }
         
         if (label == null) {
@@ -136,4 +136,12 @@ public class DiscussionTopicImpl extends OpenTopicImpl implements DiscussionTopi
         label.setDiscussionTopic(null);
         labels.remove(label);
     }
+
+	public Boolean getRestrictPermissionsForGroups(){
+		return restrictPermissionsForGroups;
+	}
+
+	public void setRestrictPermissionsForGroups(Boolean restrictPermissionsForGroups) {
+		this.restrictPermissionsForGroups = restrictPermissionsForGroups;
+	}
 }

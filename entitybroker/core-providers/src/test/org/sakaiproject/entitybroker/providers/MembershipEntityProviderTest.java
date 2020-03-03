@@ -22,8 +22,10 @@ package org.sakaiproject.entitybroker.providers;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.sakaiproject.authz.api.Member;
+import org.sakaiproject.authz.api.Role;
 import org.sakaiproject.entity.api.ResourceProperties;
 import org.sakaiproject.entitybroker.DeveloperHelperService;
 import org.sakaiproject.entitybroker.EntityReference;
@@ -40,6 +42,10 @@ import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
+import org.sakaiproject.user.api.User;
+import org.sakaiproject.user.api.UserDirectoryService;
+import org.sakaiproject.user.api.UserNotDefinedException;
+import org.sakaiproject.userauditservice.api.UserAuditRegistration;
 import org.sakaiproject.util.BaseResourceProperties;
 import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.api.privacy.PrivacyManager;
@@ -64,16 +70,25 @@ public class MembershipEntityProviderTest {
     private SecurityService securityService;
     @Mock
     private PrivacyManager privacyManager;
+    private UserDirectoryService userDirectoryService;
+    private UserAuditRegistration userAuditRegistrationService;
 
     @Before
-    public void setUp() {
+    public void setUp() throws UserNotDefinedException {
         MockitoAnnotations.initMocks(this);
         provider = new MembershipEntityProvider();
         provider.setSiteService(siteService);
         provider.setDeveloperHelperService(developerHelperService);
         provider.setUserEntityProvider(userEntityProvider);
     	provider.setSecurityService(securityService);
-	provider.setPrivacyManager(privacyManager);
+        userDirectoryService = Mockito.mock(UserDirectoryService.class);
+        userAuditRegistrationService = Mockito.mock(UserAuditRegistration.class);
+        provider.setUserDirectoryService(userDirectoryService);
+        provider.setUserAuditRegistration(userAuditRegistrationService);
+        provider.setPrivacyManager(privacyManager);
+
+        User user = mock(User.class);
+        when(userDirectoryService.getUser("user-foo")).thenReturn(user);
     }
 
     @Test
@@ -402,11 +417,89 @@ public class MembershipEntityProviderTest {
         assertEquals("user-foo::group:group.with.dots", results.get(0).getEntityId());
     }
 
+
+    @Test
+    public void getEntityDifferentUserNoRoster() {
+        Search search = new Search();
+        search.addRestriction(new Restriction(CollectionResolvable.SEARCH_USER_REFERENCE, "otherUserId"));
+
+        User user = mock(User.class);
+        when(user.getId()).thenReturn("otherUserId");
+
+        when(developerHelperService.getCurrentUserId()).thenReturn("currentUserId");
+
+        when(userEntityProvider.findAndCheckUserId("otherUserId", null)).thenReturn("otherUserId");
+
+        Site site = mock(Site.class);
+        when(site.getId()).thenReturn("siteId");
+        when(siteService.getUserSites(false, "otherUserId")).thenReturn(Collections.singletonList(site));
+        when(siteService.allowViewRoster("siteId")).thenReturn(false);
+
+        List<EntityData> entities = provider.getEntities(null, search);
+        assertEquals(0, entities.size());
+    }
+
+    @Test
+    public void getEntityDifferentUserWithRoster() {
+        Search search = new Search();
+        search.addRestriction(new Restriction(CollectionResolvable.SEARCH_USER_REFERENCE, "otherUserId"));
+
+        User user = mock(User.class);
+        when(user.getId()).thenReturn("otherUserId");
+
+        Member member = mock(Member.class);
+        when(member.getUserId()).thenReturn("otherUserId");
+        when(member.getUserEid()).thenReturn("otherUserEid");
+
+        when(developerHelperService.getCurrentUserId()).thenReturn("currentUserId");
+
+        when(userEntityProvider.findAndCheckUserId("otherUserId", null)).thenReturn("otherUserId");
+
+        Site site = mock(Site.class);
+        when(site.getId()).thenReturn("siteId");
+        when(site.getReference()).thenReturn("/site/siteId");
+        when(site.getType()).thenReturn("test");
+        when(site.getMember("otherUserId")).thenReturn(member);
+        when(siteService.getUserSites(false, "otherUserId")).thenReturn(Collections.singletonList(site));
+        when(siteService.allowViewRoster("siteId")).thenReturn(true);
+
+        List<EntityData> entities = provider.getEntities(null, search);
+        assertEquals(1, entities.size());
+        assertEquals("otherUserId::site:siteId", entities.get(0).getEntityId());
+    }
+
+    @Test
+    public void getEntitySameUserNoRoster() {
+        User user = mock(User.class);
+        when(user.getId()).thenReturn("currentUserId");
+
+        Member member = mock(Member.class);
+        when(member.getUserId()).thenReturn("currentUserId");
+        when(member.getUserEid()).thenReturn("currentUserEid");
+
+        when(developerHelperService.getCurrentUserId()).thenReturn("currentUserId");
+
+        when(userEntityProvider.findAndCheckUserId("currentUserId", null)).thenReturn("currentUserId");
+
+        Site site = mock(Site.class);
+        when(site.getId()).thenReturn("siteId");
+        when(site.getReference()).thenReturn("/site/siteId");
+        when(site.getType()).thenReturn("test");
+        when(site.getMember("currentUserId")).thenReturn(member);
+        when(siteService.getUserSites(false, "currentUserId")).thenReturn(Collections.singletonList(site));
+        // Check even when you don't have permission to view roster you still can see your own membership
+        when(siteService.allowViewRoster("siteId")).thenReturn(false);
+
+        List<EntityData> entities = provider.getEntities(null, null);
+        assertEquals(1, entities.size());
+        assertEquals("currentUserId::site:siteId", entities.get(0).getEntityId());
+    }
+
     // we don't have a createEntityPreservesDotsInSiteIdQueryParams() test b/c passing a
     // org.sakaiproject.mock.domain.Member to createEntity() doesn't actually work.
 
     @Test
-    public void createEntityPreservesDotsInSiteIdsInEntityMembers() throws IdUnusedException, PermissionException {
+    public void createEntityPreservesDotsInSiteIdsInEntityMembers() throws IdUnusedException, PermissionException, UserNotDefinedException {
         EntityMember member = new EntityMember();
         member.setUserId("user-foo");
         member.setMemberRole("role-foo");
@@ -420,6 +513,11 @@ public class MembershipEntityProviderTest {
         when(siteService.getSite("site.with.dots")).thenReturn(site);
         when(userEntityProvider.findAndCheckUserId("user-foo", "user-foo")).thenReturn("user-foo");
         when(developerHelperService.getCurrentUserReference()).thenReturn("/user/me");
+
+        EntityUser user = new EntityUser();
+        user.setId("user-foo");
+        user.setEid("user-foo@school.edu");
+        when(userDirectoryService.getCurrentUser()).thenReturn(user);
 
         String entityId = provider.createEntity(null, member, new HashMap<String, Object>());
 
@@ -467,11 +565,16 @@ public class MembershipEntityProviderTest {
         Member member = mock(Member.class);
         when(member.getUserId()).thenReturn("user-foo");
         when(member.getUserEid()).thenReturn("user-foo");
+        Role role = mock(Role.class);
+        when(role.getId()).thenReturn("role-foo");
+        when(site.getUserRole("user-foo")).thenReturn(role);
+
         Set<Member> members = new HashSet<Member>();
         members.add(member);
         when(site.getMembers()).thenReturn(members);
 
         when(siteService.getSite("site.with.dots")).thenReturn(site);
+        when(userDirectoryService.getCurrentUser()).thenReturn(user);
 
         provider.deleteEntity(ref, new HashMap<String, Object>());
 
@@ -544,6 +647,14 @@ public class MembershipEntityProviderTest {
         entityView.setMethod(EntityView.Method.POST);
         entityView.setViewKey(EntityView.VIEW_NEW);
 
+        EntityUser entityUser = mock(EntityUser.class);
+        when(entityUser.getEid()).thenReturn("user-foo");
+        when(userEntityProvider.getCurrentUser(entityView)).thenReturn(entityUser);
+
+        Site site = mock(Site.class);
+        when(site.getJoinerRole()).thenReturn("role-foo");
+        when(siteService.getSite("site.with.dots")).thenReturn(site);
+
         assertTrue(provider.unjoinCurrentUserFromSite(entityView, new HashMap<String, Object>()));
         verify(siteService).unjoin("site.with.dots");
     }
@@ -553,6 +664,14 @@ public class MembershipEntityProviderTest {
         EntityView entityView = new EntityView("/membership/unjoin/site.with.dots.json");
         entityView.setMethod(EntityView.Method.POST);
         entityView.setViewKey(EntityView.VIEW_NEW);
+
+        EntityUser entityUser = mock(EntityUser.class);
+        when(entityUser.getEid()).thenReturn("user-foo");
+        when(userEntityProvider.getCurrentUser(entityView)).thenReturn(entityUser);
+
+        Site site = mock(Site.class);
+        when(site.getJoinerRole()).thenReturn("role-foo");
+        when(siteService.getSite("site.with.dots")).thenReturn(site);
 
         assertTrue(provider.unjoinCurrentUserFromSite(entityView, new HashMap<String, Object>()));
         verify(siteService).unjoin("site.with.dots");
@@ -565,6 +684,14 @@ public class MembershipEntityProviderTest {
         entityView.setViewKey(EntityView.VIEW_NEW);
         Map<String,Object> params = new HashMap<String,Object>();
         params.put("siteId", "site.with.dots");
+
+        EntityUser entityUser = mock(EntityUser.class);
+        when(entityUser.getEid()).thenReturn("user-foo");
+        when(userEntityProvider.getCurrentUser(entityView)).thenReturn(entityUser);
+
+        Site site = mock(Site.class);
+        when(site.getJoinerRole()).thenReturn("role-foo");
+        when(siteService.getSite("site.with.dots")).thenReturn(site);
 
         assertTrue(provider.unjoinCurrentUserFromSite(entityView, params));
         verify(siteService).unjoin("site.with.dots");

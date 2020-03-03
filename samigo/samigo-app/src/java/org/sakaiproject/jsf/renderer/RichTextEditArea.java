@@ -32,19 +32,13 @@ import javax.faces.context.FacesContext;
 import javax.faces.context.ResponseWriter;
 import javax.faces.render.Renderer;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.component.cover.ServerConfigurationService;
-import org.sakaiproject.tool.assessment.services.assessment.AssessmentService;
 import org.sakaiproject.tool.assessment.util.TextFormat;
-import org.sakaiproject.tool.cover.ToolManager; 
-import org.sakaiproject.util.EditorConfiguration;
-import org.sakaiproject.util.FormattedText;
 import org.sakaiproject.util.ResourceLoader;
-import org.sakaiproject.util.Web;
+import org.sakaiproject.util.api.FormattedText;
 
-
+import lombok.extern.slf4j.Slf4j;
 
 /**
  *
@@ -55,9 +49,9 @@ import org.sakaiproject.util.Web;
  * @author Joshua Ryan joshua.ryan@asu.edu (added FCKEditor)
  * @version $Id$
  */
+@Slf4j
 public class RichTextEditArea extends Renderer
 {
-  private static Logger log = LoggerFactory.getLogger(RichTextEditArea.class);	
 
   String editor = ServerConfigurationService.getString("wysiwyg.editor");
   
@@ -226,7 +220,7 @@ public class RichTextEditArea extends Renderer
     	writer.write("<div class=\"toggle_link_container\"><a class=\"toggle_link\" id=\"" +clientId+ "_toggle\" href=\"javascript:show_editor('" +  clientId + "', '" + samigoFrameId + "');\">" + show_editor + "</a></div>\n");
     }
     else {
-        	value = FormattedText.escapeHtmlFormattedTextarea((String) value);
+        	value = ComponentManager.get(FormattedText.class).escapeHtmlFormattedTextarea((String) value);
     }
     
     writer.write("<textarea name=\"" + clientId + "_textinput\" id=\"" + clientId + "_textinput\" " + getIdentityAttribute(identity) + " rows=\""+ textBoxRows + "\" cols=\""+ textBoxCols + "\" class=\"simple_text_area\">");
@@ -267,13 +261,13 @@ public class RichTextEditArea extends Renderer
     
     // if use hid the FCK editor, we treat it as text editor
 	if ("firsttime".equals(current_status)) {
-		finalValue = TextFormat.convertPlaintextToFormattedTextNoHighUnicode(log, newValue);
+		finalValue = TextFormat.convertPlaintextToFormattedTextNoHighUnicode(newValue);
 	}
 	else {
 		StringBuilder alertMsg = new StringBuilder();
 		try
 		{
-			finalValue = FormattedText.processFormattedText(newValue, alertMsg);
+			finalValue = ComponentManager.get(FormattedText.class).processFormattedText(newValue, alertMsg);
 			if (alertMsg.length() > 0)
 			{
 				log.debug(alertMsg.toString());

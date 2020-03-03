@@ -24,11 +24,11 @@
 
 package org.sakaiproject.lessonbuildertool.tool.producers;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean;
-import org.sakaiproject.lessonbuildertool.tool.view.GeneralViewParameters;
+import java.util.Optional;
 
+import lombok.extern.slf4j.Slf4j;
+
+import uk.org.ponder.localeutil.LocaleGetter;
 import uk.org.ponder.rsf.components.UIContainer;
 import uk.org.ponder.rsf.components.UIOutput;
 import uk.org.ponder.rsf.components.decorators.UIFreeAttributeDecorator;
@@ -36,7 +36,10 @@ import uk.org.ponder.rsf.view.ComponentChecker;
 import uk.org.ponder.rsf.view.ViewComponentProducer;
 import uk.org.ponder.rsf.viewstate.ViewParameters;
 import uk.org.ponder.rsf.viewstate.ViewParamsReporter;
-import uk.org.ponder.localeutil.LocaleGetter;                                                                                          
+
+import org.sakaiproject.component.cover.ServerConfigurationService;
+import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean;
+import org.sakaiproject.lessonbuildertool.tool.view.GeneralViewParameters;
 
 /**
  * Places an iframe in a new window. Used to display assignments.
@@ -44,9 +47,8 @@ import uk.org.ponder.localeutil.LocaleGetter;
  * @author Eric Jeney <jeney@rutgers.edu>
  * 
  */
+@Slf4j
 public class IFrameWindowProducer implements ViewComponentProducer, ViewParamsReporter {
-
-	private static final Logger log = LoggerFactory.getLogger(IFrameWindowProducer.class);
 	private SimplePageBean simplePageBean;
 	public LocaleGetter localeGetter;                                                                                             
 
@@ -81,6 +83,9 @@ public class IFrameWindowProducer implements ViewComponentProducer, ViewParamsRe
 			iframe.decorate(new UIFreeAttributeDecorator("src", ((GeneralViewParameters) params).getSource()));
 			iframe.decorate(new UIFreeAttributeDecorator("name", ((GeneralViewParameters) params).getId()));
 			iframe.decorate(new UIFreeAttributeDecorator("id", ((GeneralViewParameters) params).getId()));
+			iframe.decorate(new UIFreeAttributeDecorator("allow", String.join(";",
+					Optional.ofNullable(ServerConfigurationService.getStrings("browser.feature.allow"))
+							.orElseGet(() -> new String[]{}))));
 		}
 	}
 

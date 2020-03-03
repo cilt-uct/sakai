@@ -2,7 +2,7 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
 <%@ taglib uri="http://www.sakaiproject.org/samigo" prefix="samigo" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <!DOCTYPE html
      PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -33,14 +33,13 @@
     <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
       <head><%= request.getAttribute("html.head") %>
       <title><h:outputText value="#{authorMessages.item_display_author}"/></title>
-      <samigo:script path="/js/authoring.js"/>
+      <script src="/samigo-app/js/authoring.js"></script>
       </head>
 <body onload="<%= request.getAttribute("html.body.onload") %>">
 
 <div class="portletBody container-fluid">
 <!-- content... -->
 <!-- FORM -->
-
 
 <!-- HEADING -->
 <%@ include file="/jsf/author/item/itemHeadings.jsp" %>
@@ -86,20 +85,20 @@
         <h:outputLabel value="#{authorMessages.answer_point_value_display}" styleClass="col-md-2 form-control-label"/>
         <div class="col-md-5 samigo-inline-radio">
             <h:selectOneRadio value="#{itemauthor.currentItem.itemScoreDisplayFlag}" >
-                <f:selectItem itemValue="true" itemLabel="#{authorMessages.yes}" />
-                <f:selectItem itemValue="false" itemLabel="#{authorMessages.no}" />
+                <f:selectItem itemValue="false" itemLabel="#{authorMessages.yes}" />
+                <f:selectItem itemValue="true" itemLabel="#{authorMessages.no}" />
             </h:selectOneRadio>
         </div>
     </div>    
-    
-  <!-- 2 TEXT -->
+
+    <!-- 2 TEXT -->
     <div class="form-group row">
         <h:outputLabel value="#{authorMessages.q_text}" styleClass="col-md-4 col-lg-2 form-control-label"/>
         <!-- WYSIWYG -->
         <div class="col-md-8">
             <h:panelGrid>
             <samigo:wysiwyg rows="140" value="#{itemauthor.currentItem.itemText}" hasToggle="yes" mode="author">
-                <f:validateLength minimum="1" maximum="60000"/>
+                <f:validateLength maximum="60000"/>
             </samigo:wysiwyg>
             </h:panelGrid>
         </div>
@@ -189,8 +188,8 @@
             </div>
         </div> 
     </h:panelGroup>
- 
 
+    <%@ include file="/jsf/author/item/tags.jsp" %>
 
 <p class="act">
 

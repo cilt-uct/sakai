@@ -25,22 +25,12 @@ package org.sakaiproject.lessonbuildertool.tool.producers;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
-import org.sakaiproject.util.FormattedText;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.sakaiproject.lessonbuildertool.SimplePage;
-import org.sakaiproject.lessonbuildertool.SimplePageItem;
-import org.sakaiproject.lessonbuildertool.model.SimplePageToolDao;
-import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean;
-import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean.Status;
-import org.sakaiproject.lessonbuildertool.tool.view.GeneralViewParameters;
+import lombok.extern.slf4j.Slf4j;
 
-import org.sakaiproject.tool.cover.SessionManager;
-import org.sakaiproject.tool.api.ToolSession;
-
+import uk.org.ponder.localeutil.LocaleGetter;
 import uk.org.ponder.messageutil.MessageLocator;
-import uk.org.ponder.localeutil.LocaleGetter;                                                                                          
 import uk.org.ponder.rsf.components.UIBranchContainer;
 import uk.org.ponder.rsf.components.UICommand;
 import uk.org.ponder.rsf.components.UIInternalLink;
@@ -51,7 +41,6 @@ import uk.org.ponder.rsf.components.UIOutput;
 import uk.org.ponder.rsf.components.UILink;
 import uk.org.ponder.rsf.components.UIComponent;
 import uk.org.ponder.rsf.components.decorators.UIFreeAttributeDecorator;
-
 import uk.org.ponder.rsf.flow.jsfnav.NavigationCase;
 import uk.org.ponder.rsf.flow.jsfnav.NavigationCaseReporter;
 import uk.org.ponder.rsf.view.ComponentChecker;
@@ -60,14 +49,24 @@ import uk.org.ponder.rsf.viewstate.SimpleViewParameters;
 import uk.org.ponder.rsf.viewstate.ViewParameters;
 import uk.org.ponder.rsf.viewstate.ViewParamsReporter;
 
+import org.sakaiproject.lessonbuildertool.SimplePage;
+import org.sakaiproject.lessonbuildertool.SimplePageItem;
+import org.sakaiproject.lessonbuildertool.model.SimplePageToolDao;
+import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean;
+import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean.Status;
+import org.sakaiproject.lessonbuildertool.tool.view.GeneralViewParameters;
+import org.sakaiproject.tool.api.ToolSession;
+import org.sakaiproject.tool.cover.SessionManager;
+import org.sakaiproject.util.FormattedText;
+
 /**
  * Uses the Fluid reorderer to reorder elements on the page.
  * 
  * @author Eric Jeney <jeney@rutgers.edu>
  * 
  */
+@Slf4j
 public class ReorderProducer implements ViewComponentProducer, NavigationCaseReporter, ViewParamsReporter {
-	private static final Logger log = LoggerFactory.getLogger(ReorderProducer.class);
 	private SimplePageBean simplePageBean;
 	private SimplePageToolDao simplePageToolDao;
 	private ShowPageProducer showPageProducer;
@@ -140,6 +139,7 @@ public class ReorderProducer implements ViewComponentProducer, NavigationCaseRep
 				items.remove(0);
 			}
 
+			List<Long> moreItemIds = new ArrayList<>();
 			if (secondPage != null) {
 			    List<SimplePageItem> moreItems = simplePageToolDao.findItemsOnPage(secondPageId);
 
@@ -148,6 +148,7 @@ public class ReorderProducer implements ViewComponentProducer, NavigationCaseRep
 				while(moreItems.size() > 0 && moreItems.get(0).getSequence() <= 0) {
 				    moreItems.remove(0);
 				}
+				moreItemIds = moreItems.stream().collect(Collectors.mapping(SimplePageItem::getId, Collectors.toList()));
 				items.addAll(moreItems);
 			    }
 			} else
@@ -162,12 +163,13 @@ public class ReorderProducer implements ViewComponentProducer, NavigationCaseRep
 			for (SimplePageItem i : items) {
 
 				if (i == null) {
-				    // marker between used and not used
-				    UIContainer row = UIBranchContainer.make(tofill, "item:");
-				    UIOutput.make(row, "seq", "---").decorate(new UIFreeAttributeDecorator("class", "marker"));
-				    UIOutput.make(row, "text-snippet", messageLocator.getMessage(secondPageId == null ? "simplepage.reorder-belowdelete" : "simplepage.reorder-aboveuse"));
-				    second = true;
 				    continue;
+				}
+
+				if (moreItemIds.contains(i.getId())) {
+					second = true;
+				} else {
+					second = false;
 				}
 
 				String subtype = null;
@@ -183,10 +185,25 @@ public class ReorderProducer implements ViewComponentProducer, NavigationCaseRep
 					                   String.valueOf(i.getSequence()));
 
 				if (i.getType() == 5) {
-				    String text = FormattedText.convertFormattedTextToPlaintext(i.getHtml());
-				    if (text.length() > 100)
-					text = text.substring(0,100);
-				    UIOutput.make(row, "text-snippet", text);
+				    if (i.getAttribute("isFolder")!=null && i.getAttribute("isFolder").equals("true")){
+					    UIOutput.make(row, "text-snippet", messageLocator.getMessage("simplepage.resources-snippet"));
+				    }
+				    else {
+					    String text = FormattedText.convertFormattedTextToPlaintext(i.getHtml());
+					    if (text.length() > 100)
+						    text = text.substring(0, 100);
+					    UIOutput.make(row, "text-snippet", text);
+				    }
+				} else if (SimplePageItem.ANNOUNCEMENTS == i.getType()) {
+					UIOutput.make(row, "text-snippet", messageLocator.getMessage("simplepage.announcements-snippet"));
+				} else if (SimplePageItem.FORUM_SUMMARY == i.getType()) {
+					UIOutput.make(row, "text-snippet", messageLocator.getMessage("simplepage.forum-header-title"));
+				} else if (SimplePageItem.TWITTER == i.getType()) {
+					UIOutput.make(row, "text-snippet", messageLocator.getMessage("simplepage.twitter-snippet"));
+				} else if (SimplePageItem.RESOURCE_FOLDER == i.getType()) {
+					UIOutput.make(row, "text-snippet", messageLocator.getMessage("simplepage.resources-snippet"));
+				} else if (SimplePageItem.CALENDAR == i.getType()) {
+					UIOutput.make(row, "text-snippet", messageLocator.getMessage("simplepage.calendar-snippet"));
 				} else if ("1".equals(subtype)) {
 				    // embed code, nothing useful to show
 				    UIOutput.make(row, "text-snippet", messageLocator.getMessage("simplepage.embedded-video"));

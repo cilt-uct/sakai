@@ -1,22 +1,39 @@
+/**
+ * Copyright (c) 2003-2016 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.site.impl.test;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import lombok.extern.slf4j.Slf4j;
+
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
+import org.springframework.test.annotation.DirtiesContext;
+
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.site.api.SiteService.SelectionType;
 import org.sakaiproject.test.SakaiKernelTestBase;
 import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.tool.api.SessionManager;
-import org.springframework.test.annotation.DirtiesContext;
-
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
 /**
  * Just a simple search to test the SQL is correct.
@@ -25,9 +42,8 @@ import java.util.UUID;
  *
  */
 @DirtiesContext
+@Slf4j
 public class SiteSearchTest extends SakaiKernelTestBase {
-	private static Logger log = LoggerFactory.getLogger(SiteSearchTest.class);
-	
 	@BeforeClass
 	public static void beforeClass() {
 		try {
@@ -63,8 +79,10 @@ public class SiteSearchTest extends SakaiKernelTestBase {
 		session.setUserId("admin");
 
 		// Use a random UUID for type so database state can't break the test.
-		String type = UUID.randomUUID().toString();
-		Site site = siteService.addSite(UUID.randomUUID().toString(), type);
+		String siteId = UUID.randomUUID().toString();
+		String type = "random-site-type-" + UUID.randomUUID().toString().substring(0, 8);
+
+		Site site = siteService.addSite(siteId, type);
 		site.setJoinable(true);
 		site.setJoinerRole("access");
 		site.setPublished(true);
@@ -72,23 +90,35 @@ public class SiteSearchTest extends SakaiKernelTestBase {
 		site.getPropertiesEdit().addProperty("key", "value");
 		siteService.save(site);
 
-		Map stringMap = Collections.singletonMap("key", "value");
+		Map<String, String> criteriaMap = Collections.singletonMap("key", "value");
+		Map<String, String> restrictionMap = Collections.singletonMap("xxxxx", "yyyyy");
 
 		// Need to switch user so we're not a member of the site.
 		session.setUserEid("someuser");
 		session.setUserId("someuser");
 		List<Site> sites;
 		// First test search for any with properties.
-		sites = siteService.getSites(SelectionType.ANY, type, null, stringMap, SiteService.SortType.TITLE_ASC, null);
+		sites = siteService.getSites(SelectionType.ANY, type, null, criteriaMap, SiteService.SortType.TITLE_ASC, null);
 		Assert.assertEquals(1, sites.size());
 		// Then test that it's joinable with properties
-		sites = siteService.getSites(SelectionType.JOINABLE, type, null, stringMap, SiteService.SortType.TITLE_ASC, null);
+		sites = siteService.getSites(SelectionType.JOINABLE, type, null, criteriaMap, SiteService.SortType.TITLE_ASC, null);
 		Assert.assertEquals(1, sites.size());
 		// Then test that it's joinable and with criteria
 		sites = siteService.getSites(SelectionType.JOINABLE, type, "Site", null, SiteService.SortType.TITLE_ASC, null);
 		Assert.assertEquals(1, sites.size());
 		// Then test that it's joinable and with criteria and properties
-		sites = siteService.getSites(SelectionType.JOINABLE, type, "Site", stringMap, SiteService.SortType.TITLE_ASC, null);
+		sites = siteService.getSites(SelectionType.JOINABLE, type, "Site", criteriaMap, SiteService.SortType.TITLE_ASC, null);
 		Assert.assertEquals(1, sites.size());
+
+		// Then test propertyCriteria and null propertyRestrictions
+		List<String> siteIds = siteService.getSiteIds(SelectionType.JOINABLE, type, "Site", criteriaMap, null, SiteService.SortType.TITLE_ASC, null, "someuser");
+		Assert.assertEquals(1, siteIds.size());
+		// Then test propertyCriteria and identical propertyRestrictions (expect them to cancel each other out)
+		siteIds = siteService.getSiteIds(SelectionType.JOINABLE, type, "Site", criteriaMap, criteriaMap, SiteService.SortType.TITLE_ASC, null, "someuser");
+		Assert.assertEquals(0, siteIds.size());
+		// Then test propertyCriteria and propertyRestrictions 
+		siteIds = siteService.getSiteIds(SelectionType.JOINABLE, type, "Site", criteriaMap, restrictionMap, SiteService.SortType.TITLE_ASC, null, "someuser");
+		Assert.assertEquals(1, siteIds.size());
+
 	}
 }

@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2007-2014 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 /*
 * Licensed to The Apereo Foundation under one or more contributor license
 * agreements. See the NOTICE file distributed with this work for
@@ -19,6 +34,7 @@
 
 package org.sakaiproject.signup.model;
 
+import java.time.Instant;
 
 /**
  * <p>
@@ -26,7 +42,7 @@ package org.sakaiproject.signup.model;
  * the DB storage by Hibernate
  * </p>
  */
-public class SignupAttendee implements Comparable{
+public class SignupAttendee implements Comparable<SignupAttendee>{
 
 	/* sakai user id */
 	private String attendeeUserId;
@@ -43,12 +59,14 @@ public class SignupAttendee implements Comparable{
 	
 	private boolean attended;
 
+	private Instant inscriptionTime;
 	
 	/**
 	 * Constructor
 	 * 
 	 */
 	public SignupAttendee() {
+		this.inscriptionTime = Instant.now();
 	}
 
 	/**
@@ -62,6 +80,7 @@ public class SignupAttendee implements Comparable{
 	public SignupAttendee(String attendeeUserId, String signupSiteId) {
 		this.attendeeUserId = attendeeUserId;
 		this.signupSiteId = signupSiteId;
+		this.inscriptionTime = Instant.now();
 	}
 
 	/**
@@ -184,28 +203,27 @@ public class SignupAttendee implements Comparable{
 		this.displayName = displayName;
 	}
 	
+	public Instant getInscriptionTime() {
+		return inscriptionTime;
+	}
+
+	public void setInscriptionTime(Instant inscriptionTime) {
+		this.inscriptionTime = inscriptionTime;
+	}
+	
 	/**
 	 * for sorting purpose. It's according to string alphabetic order. Last name
 	 * comes first
 	 */
-	public int compareTo(Object o) {
-		if (o == null)
+	@Override
+	public int compareTo(SignupAttendee signupAttendeeToCompare) {
+		if (signupAttendeeToCompare == null)
 			return -1;
-		if (!(o instanceof SignupAttendee))
-			throw new ClassCastException("Not type of SignupAttendee");
-
-		SignupAttendee other = (SignupAttendee) o;
 
 		if (displayName == null)
 			return -1;
 
-		int value = displayName.compareTo(other.getDisplayName());
-		if (value != 0)
-			return value;
-
-
-		return 0;
-
+		return displayName.compareTo(signupAttendeeToCompare.getDisplayName());
 	}
 
 }

@@ -23,16 +23,13 @@ package uk.ac.cam.caret.sakai.rwiki.tool;
 import javax.servlet.http.HttpServletRequest;
 import org.sakaiproject.component.cover.ServerConfigurationService;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 import uk.ac.cam.caret.sakai.rwiki.tool.api.CommandService;
 import uk.ac.cam.caret.sakai.rwiki.tool.api.HttpCommand;
 
 public class RequestHelper
 {
-	private static Logger log = LoggerFactory.getLogger(RequestHelper.class);
-
 	public static final String PANEL = "panel";
 
 	public static final String ACTION = "action";
@@ -68,22 +65,10 @@ public class RequestHelper
 				request.getContextPath().length()
 						+ request.getServletPath().length());
 		
-		// SAK-13408 - Tomcat and WAS have different URL structures; Attempting to add a 
-		// link or image would lead to site unavailable errors in websphere if the tomcat
-		// URL structure is used.
-		if("websphere".equals(ServerConfigurationService.getString("servlet.container"))) {
-			String[] parts = requestPath.split("/");
-
-			if ((parts.length >= 4) && (parts[3].equals(HELPER_PATH)))
-			{
-				action = HELPER_PATH;
-			}
-
-		}
-		else if (requestPath != null
-				&& requestPath.startsWith("/" + HELPER_PATH + "/"))
+		if (requestPath != null && requestPath.startsWith("/" + HELPER_PATH + "/"))
+		{
 			action = HELPER_PATH;
-		
+		}
 		if (action == null)
 		{
 			action = defaultAction;

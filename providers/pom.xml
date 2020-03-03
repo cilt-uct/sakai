@@ -4,7 +4,7 @@
     <parent>
       <groupId>org.sakaiproject</groupId>
       <artifactId>master</artifactId>
-      <version>12-SNAPSHOT</version>
+      <version>21-SNAPSHOT</version>
       <relativePath>../master/pom.xml</relativePath>
     </parent>
   <name>Sakai Providers Project</name>
@@ -17,11 +17,12 @@
     <module>component</module>
     <module>federating</module>
     <module>imsent</module>
-    <module>jldap</module>
     <module>jldap-mock</module>
+    <module>userdetail</module>
     <module>kerberos</module>
     <module>openldap</module>
     <module>sample</module>
+    <module>unboundid</module>
   </modules>
 
 
@@ -39,7 +40,12 @@
       </dependency>
       <dependency>
         <groupId>org.sakaiproject</groupId>
-        <artifactId>sakai-jldap-provider</artifactId>
+        <artifactId>sakai-unboundid-provider</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.sakaiproject</groupId>
+        <artifactId>sakai-userdetail-provider</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>

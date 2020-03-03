@@ -47,16 +47,14 @@ import javax.xml.transform.stream.StreamSource;
 import org.apache.avalon.framework.configuration.Configuration;
 import org.apache.avalon.framework.configuration.DefaultConfigurationBuilder;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.fop.apps.FOUserAgent;
 import org.apache.fop.apps.Fop;
 import org.apache.fop.apps.FopFactory;
+import org.apache.fop.apps.MimeConstants;
 import org.apache.fop.fonts.substitute.FontQualifier;
 import org.apache.fop.fonts.substitute.FontSubstitution;
 import org.apache.fop.fonts.substitute.FontSubstitutions;
-import org.apache.fop.apps.MimeConstants;
 import org.sakaiproject.authz.cover.SecurityService;
 import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.site.api.Site;
@@ -68,22 +66,23 @@ import org.sakaiproject.tool.cover.SessionManager;
 import org.sakaiproject.util.BasicAuth;
 import org.sakaiproject.util.RequestFilter;
 import org.sakaiproject.util.ResourceLoader;
-
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * this is the servlet to return the status of site copy thread based on the SessionState variable 
  * @author zqian
  *
  */
+@Slf4j
 public class SiteInfoToolServlet extends HttpServlet
 {
 	private static final long serialVersionUID = 1L;
-	
+
     private transient BasicAuth basicAuth;
-    protected static final Logger log = LoggerFactory.getLogger(SiteInfoToolServlet.class);
-    
+
     // create transformerFactory object needed by generatePDF
     private TransformerFactory transformerFactory = null;
 
@@ -98,6 +97,7 @@ public class SiteInfoToolServlet extends HttpServlet
 	protected static final String PARTICIPANT_SECTIONS_NODE_NAME = "SECTIONS";
 	protected static final String PARTICIPANT_SECTION_NODE_NAME = "SECTION";
 	protected static final String PARTICIPANT_ID_NODE_NAME = "ID";
+	protected static final String PARTICIPANT_CREDITS_NODE_NAME = "CREDITS";
 	protected static final String PARTICIPANT_CREDIT_NODE_NAME = "CREDIT";
 	protected static final String PARTICIPANT_ROLE_NODE_NAME = "ROLE";
 	protected static final String PARTICIPANT_STATUS_NODE_NAME = "STATUS";
@@ -109,6 +109,7 @@ public class SiteInfoToolServlet extends HttpServlet
 
 	/**
 	 * Initialize this servlet.
+	 * @throws javax.servlet.ServletException
 	 */
 	public void init() throws ServletException
 	{
@@ -124,11 +125,11 @@ public class SiteInfoToolServlet extends HttpServlet
     		}
     		catch (ParserConfigurationException e)
     		{
-    			log.warn(this + " cannot get DocumentBuilder " + e.getMessage());
+    			log.warn("{} cannot get DocumentBuilder {}", this, e.getMessage());
     		}
 
         } catch (Exception e) {
-            log.warn(this + "init " + e.getMessage());
+            log.warn("{}init {}", this, e.getMessage());
         }
 	}
 	
@@ -183,7 +184,7 @@ public class SiteInfoToolServlet extends HttpServlet
 		if (userId == null)
 		{
 			// fail the request, user not logged in yet.
-			log.warn(this + " HttpAccess for printing participant of site id =" + siteId + " without user loggin. ");
+			log.warn("{} HttpAccess for printing participant of site id ={} without user loggin. ", this, siteId);
 		}
 		else
 		{
@@ -195,14 +196,14 @@ public class SiteInfoToolServlet extends HttpServlet
 			}
 			else
 			{
-				log.warn(this + " HttpAccess for printing participant of site id =" + siteId + " with user id = " + userId + ": user does not have permission to view roster. " );
+				log.warn("{} HttpAccess for printing participant of site id ={} with user id = {}: user does not have permission to view roster. ", this, siteId, userId);
 			}
 		}
 	}
 	
 	/**
 	 * generate PDF file containing all site participant
-	 * @param data
+	 * @param siteId
 	 */
 	public void print_participant(String siteId)
 	{
@@ -227,21 +228,6 @@ public class SiteInfoToolServlet extends HttpServlet
 			res.setBufferSize(outByteStream.size());
 		}
 
-		/*
-		// output xml for debugging purpose
-		try
-		{
-			TransformerFactory transformerFactory = TransformerFactory.newInstance();
-	        Transformer transformer = transformerFactory.newTransformer();
-	        DOMSource source = new DOMSource(document);
-	        StreamResult result =  new StreamResult(System.out);
-	        transformer.transform(source, result);
-		}
-		catch (Exception e)
-		{
-			
-		}*/
-        
 		OutputStream out = null;
 		try
 		{
@@ -287,7 +273,7 @@ public class SiteInfoToolServlet extends HttpServlet
 		// Create Root Element
 		Element root = doc.createElement(PARTICIPANTS_NODE_NAME);
 
-		String siteTitle = "";
+		String siteTitle;
 		
 		if (siteId != null)
 		{
@@ -297,11 +283,11 @@ public class SiteInfoToolServlet extends HttpServlet
 				siteTitle = site.getTitle();
 	    		
 				// site title
-				writeStringNodeToDom(doc, root, SITE_TITLE_NODE_NAME, rb.getFormattedMessage("participant_pdf_title", new String[] {siteTitle}));
+				writeStringNodeToDom(doc, root, SITE_TITLE_NODE_NAME, rb.getFormattedMessage("participant_pdf_title", new Object[] {siteTitle}));
 			}
 			catch (Exception e)
 			{
-				log.warn(this + ":generateParticipantXMLDocument: Cannot find site with id =" + siteId);
+				log.warn("{}:generateParticipantXMLDocument: Cannot find site with id ={}", this, siteId);
 			}
 		}
 
@@ -312,20 +298,17 @@ public class SiteInfoToolServlet extends HttpServlet
 		if (participants != null)
 		{
 		
-			// Go through all the time ranges (days)
-			for (Iterator<Participant> iParticipants = participants.iterator(); iParticipants.hasNext();)
+			// Go through all the participants
+			for (Participant participant : participants)
 			{
-				Participant participant = iParticipants.next();
 				// Create Participant Element
 				Element participantNode = doc.createElement(PARTICIPANT_NODE_NAME);
 				
 				// participant name
-				String participantName= participant.getName();
-				if (participant.getDisplayId() != null)
-				{
-					participantName +="( " +  participant.getDisplayId() + " )";
-				}
-				writeStringNodeToDom(doc, participantNode, PARTICIPANT_NAME_NODE_NAME, StringUtils.trimToEmpty(participantName));
+				writeStringNodeToDom(doc, participantNode, PARTICIPANT_NAME_NODE_NAME, StringUtils.trimToEmpty(participant.getName()));
+
+				// display id
+				writeStringNodeToDom(doc, participantNode, PARTICIPANT_ID_NODE_NAME, StringUtils.trimToEmpty(participant.getDisplayId()));
 
 				// sections
 				Element sectionsNode = doc.createElement(PARTICIPANT_SECTIONS_NODE_NAME);
@@ -335,12 +318,15 @@ public class SiteInfoToolServlet extends HttpServlet
 					writeStringNodeToDom(doc, sectionsNode, PARTICIPANT_SECTION_NODE_NAME, StringUtils.trimToEmpty(section));
 				}
 				participantNode.appendChild(sectionsNode);
-
-				// registration id
-				writeStringNodeToDom(doc, participantNode, PARTICIPANT_ID_NODE_NAME, StringUtils.trimToEmpty(participant.getRegId()));
 				
-				// credit
-				writeStringNodeToDom(doc, participantNode, PARTICIPANT_CREDIT_NODE_NAME, StringUtils.trimToEmpty(participant.getCredits()));
+				// credits
+				String[] credits = StringUtils.trimToEmpty(participant.getCredits()).replaceAll("<br />", "").split(",");
+				Element creditsNode = doc.createElement(PARTICIPANT_CREDITS_NODE_NAME);
+				for (String credit : credits)
+				{
+					writeStringNodeToDom(doc, creditsNode, PARTICIPANT_CREDIT_NODE_NAME, credit.trim());
+				}
+				participantNode.appendChild(creditsNode);
 
 				// role id
 				writeStringNodeToDom(doc, participantNode, PARTICIPANT_ROLE_NODE_NAME, StringUtils.trimToEmpty(participant.getRole()));
@@ -356,6 +342,11 @@ public class SiteInfoToolServlet extends HttpServlet
 	
 	/**
 	 * Utility routine to write a string node to the DOM.
+	 * @param doc
+	 * @param parent
+	 * @param nodeName
+	 * @param nodeValue
+	 * @return
 	 */
 	protected Element writeStringNodeToDom(Document doc, Element parent, String nodeName, String nodeValue)
 	{
@@ -374,8 +365,7 @@ public class SiteInfoToolServlet extends HttpServlet
 	 * 
 	 * @param doc
 	 *        DOM structure
-	 * @param xslFileName
-	 *        XSL file to use to translate the DOM document to FOP
+	 * @param streamOut
 	 */
 	@SuppressWarnings("unchecked")
 	protected void generatePDF(Document doc, OutputStream streamOut)
@@ -423,8 +413,8 @@ public class SiteInfoToolServlet extends HttpServlet
 			InputStream in = getClass().getClassLoader().getResourceAsStream(xslFileName);
 			Transformer transformer = transformerFactory.newTransformer(new StreamSource(in));
 			transformer.setParameter("titleName", rb.getString("sitegen.siteinfolist.title.name"));
-			transformer.setParameter("titleSection", rb.getString("sitegen.siteinfolist.title.section"));
 			transformer.setParameter("titleId", rb.getString("sitegen.siteinfolist.title.id"));
+			transformer.setParameter("titleSection", rb.getString("sitegen.siteinfolist.title.section"));
 			transformer.setParameter("titleCredit", rb.getString("sitegen.siteinfolist.title.credit"));
 			transformer.setParameter("titleRole", rb.getString("sitegen.siteinfolist.title.role"));
 			transformer.setParameter("titleStatus", rb.getString("sitegen.siteinfolist.title.status"));
@@ -434,14 +424,11 @@ public class SiteInfoToolServlet extends HttpServlet
 		}
 		catch (Exception e)
 		{
-			e.printStackTrace();
-			log.warn(this+".generatePDF(): " + e);
-			return;
+			log.warn("{}.generatePDF(): {}", this, e.toString());
 		}
 		finally
 		{
 			IOUtils.closeQuietly(configInputStream);
 		}
 	}
-	
 }

@@ -35,39 +35,36 @@ import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.Stack;
 import java.util.TreeSet;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.sakaiproject.antivirus.api.VirusFoundException;
+import lombok.extern.slf4j.Slf4j;
+
 import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.authz.cover.SecurityService;
-import org.sakaiproject.cheftool.Context;
 import org.sakaiproject.component.cover.ComponentManager;
-import org.sakaiproject.conditions.api.ConditionService;
 import org.sakaiproject.component.cover.ServerConfigurationService;
+import org.sakaiproject.conditions.api.ConditionService;
 import org.sakaiproject.content.api.ContentCollection;
 import org.sakaiproject.content.api.ContentCollectionEdit;
 import org.sakaiproject.content.api.ContentEntity;
+import org.sakaiproject.content.api.ContentHostingHandlerResolver;
 import org.sakaiproject.content.api.ContentResource;
 import org.sakaiproject.content.api.ContentResourceEdit;
 import org.sakaiproject.content.api.ContentResourceFilter;
 import org.sakaiproject.content.api.ExpandableResourceType;
 import org.sakaiproject.content.api.GroupAwareEdit;
 import org.sakaiproject.content.api.GroupAwareEntity;
+import org.sakaiproject.content.api.GroupAwareEntity.AccessMode;
 import org.sakaiproject.content.api.ResourceToolAction;
 import org.sakaiproject.content.api.ResourceToolActionPipe;
 import org.sakaiproject.content.api.ResourceType;
 import org.sakaiproject.content.api.ResourceTypeRegistry;
-import org.sakaiproject.content.api.ContentHostingHandlerResolver;
-import org.sakaiproject.content.cover.ContentHostingService;
 import org.sakaiproject.content.api.ServiceLevelAction;
-import org.sakaiproject.content.api.GroupAwareEntity.AccessMode;
+import org.sakaiproject.content.copyright.api.CopyrightManager;
+import org.sakaiproject.content.cover.ContentHostingService;
 import org.sakaiproject.content.cover.ContentTypeImageService;
 import org.sakaiproject.content.metadata.logic.MetadataService;
 import org.sakaiproject.content.metadata.model.MetadataType;
@@ -80,20 +77,23 @@ import org.sakaiproject.entity.api.ResourceProperties;
 import org.sakaiproject.entity.api.ResourcePropertiesEdit;
 import org.sakaiproject.entity.cover.EntityManager;
 import org.sakaiproject.event.cover.NotificationService;
-import org.sakaiproject.exception.*;
+import org.sakaiproject.exception.IdUnusedException;
+import org.sakaiproject.exception.InconsistentException;
+import org.sakaiproject.exception.PermissionException;
+import org.sakaiproject.exception.SakaiException;
+import org.sakaiproject.exception.TypeException;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.cover.SiteService;
 import org.sakaiproject.thread_local.cover.ThreadLocalManager;
 import org.sakaiproject.time.api.Time;
 import org.sakaiproject.time.cover.TimeService;
-import org.sakaiproject.tool.cover.ToolManager;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.cover.UserDirectoryService;
-import org.sakaiproject.util.FormattedText;
 import org.sakaiproject.util.ParameterParser;
 import org.sakaiproject.util.ResourceLoader;
 import org.sakaiproject.util.Validator;
+import org.sakaiproject.util.api.FormattedText;
 
 /**
  * ListItem
@@ -107,6 +107,7 @@ import org.sakaiproject.util.Validator;
  * </ul>
  *
  */
+@Slf4j
 public class ListItem
 {
     /** Resource bundle using current language locale */
@@ -114,8 +115,6 @@ public class ListItem
 
 	/** Resource bundle using current language locale */
     private static ResourceLoader trb = new ResourceLoader("types");
-
-    private static final Logger logger = LoggerFactory.getLogger(ListItem.class);
     
     protected static final Comparator<ContentEntity> DEFAULT_COMPARATOR = ContentHostingService.newContentHostingComparator(ResourceProperties.PROP_DISPLAY_NAME, true);
 
@@ -144,6 +143,7 @@ public class ListItem
 	 * Services
 	 */
 	private static final MetadataService metadataService = (MetadataService) ComponentManager.get(MetadataService.class.getCanonicalName());
+	private static SecurityService securityService  = ComponentManager.get(SecurityService.class);
 	private static final org.sakaiproject.tool.api.ToolManager toolManager = (org.sakaiproject.tool.api.ToolManager) ComponentManager.get(org.sakaiproject.tool.api.ToolManager.class.getCanonicalName());
 
 	/** 
@@ -371,6 +371,7 @@ public class ListItem
 	protected String expandLabel;
 	protected String accessUrl;
 	protected String iconLocation;
+	protected String iconClass;
 	protected String mimetype;
 	protected String resourceType;
 	protected ResourceType resourceTypeDef = null;
@@ -618,9 +619,11 @@ public class ListItem
 		{
 			this.hoverText = typeDef.getLocalizedHoverText(entity);
 			this.iconLocation = typeDef.getIconLocation(entity);
+			this.iconClass = typeDef.getIconClass(entity);
 			if(typeDef.isExpandable())
 			{
 				this.expandIconLocation = ((ExpandableResourceType) typeDef).getIconLocation(this.entity, this.isExpanded);
+				this.iconClass = ((ExpandableResourceType) typeDef).getIconClass(this.entity, this.isExpanded);
 				this.expandLabel = ((ExpandableResourceType) typeDef).getLocalizedHoverText(this.entity, this.isExpanded);
 			}
 			String[] args = { typeDef.getLabel() };
@@ -729,6 +732,10 @@ public class ListItem
 			else if(this.iconLocation == null)
 			{
 				this.iconLocation = ContentTypeImageService.getContentTypeImage(this.mimetype);
+			}
+			if(this.iconClass == null && this.mimetype != null)
+			{ 
+				this.iconClass = ContentTypeImageService.getContentTypeImageClass(this.mimetype);
 			}
 			if (SecurityService.isSuperUser())
 			{
@@ -953,7 +960,7 @@ public class ListItem
 		    }
 		    catch (IdUnusedException e)
 		    {
-		        logger.warn("IdUnusedException context == " + context);
+		        log.warn("IdUnusedException context == " + context);
 		    }
 		}
 		return site;
@@ -1016,6 +1023,7 @@ public class ListItem
 		{
 			this.hoverText = resourceTypeDef.getLocalizedHoverText(null);
 			this.iconLocation = resourceTypeDef.getIconLocation(this.entity);
+			this.iconClass = resourceTypeDef.getIconClass(this.entity);
 			String[] args = { resourceTypeDef.getLabel() };
 			this.otherActionsLabel = trb.getFormattedMessage("action.other", args);
 			// NOTE: Don't do this at home kids, this is hackery of the worst order!
@@ -1058,6 +1066,10 @@ public class ListItem
 			else if(this.iconLocation == null)
 			{
 				this.iconLocation = ContentTypeImageService.getContentTypeImage(this.mimetype);
+			}
+			if(this.iconClass == null && this.mimetype != null)
+			{ 
+				this.iconClass = ContentTypeImageService.getContentTypeImageClass(this.mimetype);
 			}
 			String size = "";
 			if(pipe.getContent() != null)
@@ -1205,17 +1217,17 @@ public class ListItem
         catch (IdUnusedException e)
         {
             // TODO Auto-generated catch block
-            logger.warn("IdUnusedException " + e);
+            log.warn("IdUnusedException " + e);
         }
         catch (TypeException e)
         {
             // TODO Auto-generated catch block
-            logger.warn("TypeException " + e);
+            log.warn("TypeException " + e);
         }
         catch (PermissionException e)
         {
             // TODO Auto-generated catch block
-            logger.warn("PermissionException " + e);
+            log.warn("PermissionException " + e);
         }
 
 		this.containingCollectionId = contentService.getContainingCollectionId(entityId);
@@ -1596,34 +1608,6 @@ public class ListItem
 		this.notificationId = notificationId;
 	}
 
-	protected void captureCopyright(ParameterParser params, String index) 
-	{
-		// rights
-		String copyright = params.getString("copyright" + index);
-		if(copyright == null || copyright.trim().length() == 0)
-		{
-			// do nothing -- there must be no copyright dialog
-		}
-		else
-		{
-			this.copyrightInfo = copyright;
-			
-			String newcopyright = params.getString("newcopyright" + index);
-			
-			if(newcopyright == null || newcopyright.trim().length() == 0)
-			{
-				this.copyrightStatus = null;
-			}
-			else
-			{
-				this.copyrightStatus = newcopyright;
-			}
-			
-			boolean copyrightAlert = params.getBoolean("copyrightAlert" + index);
-			this.copyrightAlert = copyrightAlert;
-		}
-	}
-
 	protected void captureDescription(ParameterParser params, String index) 
 	{
 		// description
@@ -1631,11 +1615,11 @@ public class ListItem
 		if(description != null)
 		{
 			StringBuilder errorMessages = new StringBuilder();
-			description = FormattedText.processFormattedText(description, errorMessages);
+			description = ComponentManager.get(FormattedText.class).processFormattedText(description, errorMessages);
 			// what to do with errorMessages
 			if(errorMessages.length() > 0)
 			{
-				logger.warn("ListItem.captureDescription() containingCollectionId: " + this.containingCollectionId + " id: " + this.id + " error in FormattedText.processFormattedText(): " + errorMessages.toString());
+				log.warn("ListItem.captureDescription() containingCollectionId: " + this.containingCollectionId + " id: " + this.id + " error in FormattedText.processFormattedText(): " + errorMessages.toString());
 			}
 			this.setDescription(description);
 		}
@@ -1653,7 +1637,9 @@ public class ListItem
 		captureCHHMountpoint(params, index);
 		captureDisplayName(params, index);
 		captureDescription(params, index);
-		captureCopyright(params, index);
+
+		(new CopyrightDelegate()).captureCopyright(params, this);
+
 		captureAccess(params, index);
 		captureAvailability(params, index);
 		if (isAdmin) {
@@ -1678,7 +1664,7 @@ public class ListItem
 	}
 
 	protected void captureHtmlInline(ParameterParser params, String index) {
-		logger.debug("got allow inline of " + params.getBoolean("allowHtmlInline" + index));
+		log.debug("got allow inline of " + params.getBoolean("allowHtmlInline" + index));
 		this.allowHtmlInline = params.getBoolean("allowHtmlInline" + index);
 	}
 
@@ -1837,7 +1823,7 @@ public class ListItem
 			if(this.parent == null)
 			{
 				label = trb.getString("access.site.noparent");
-				logger.warn("ListItem.getLongAccessLabel(): Unable to display label because isSiteOnly == true and parent == null and constructor == " + this.constructor);  
+				log.warn("ListItem.getLongAccessLabel(): Unable to display label because isSiteOnly == true and parent == null and constructor == " + this.constructor);  
 			}
 			else
 			{
@@ -1873,7 +1859,7 @@ public class ListItem
 	    	{
 	    		if(this.id == null)
 	    		{
-					logger.warn("ListItem.checkParent(): parent == null, containingCollectionId == null, id == null and constructor == " + this.constructor, new Throwable());  
+					log.warn("ListItem.checkParent(): parent == null, containingCollectionId == null, id == null and constructor == " + this.constructor, new Throwable());  
 	    			return;
 	    		}
 	    		this.containingCollectionId = ContentHostingService.getContainingCollectionId(this.id);
@@ -1885,17 +1871,17 @@ public class ListItem
 	        catch (IdUnusedException e)
 	        {
 	            // TODO Auto-generated catch block
-	            logger.warn("IdUnusedException ", e);
+	            log.warn("IdUnusedException ", e);
 	        }
 	        catch (TypeException e)
 	        {
 	            // TODO Auto-generated catch block
-	            logger.warn("TypeException ", e);
+	            log.warn("TypeException ", e);
 	        }
 	        catch (PermissionException e)
 	        {
 	            // TODO Auto-generated catch block
-	            logger.warn("PermissionException ", e);
+	            log.warn("PermissionException ", e);
 	        }
 	    }
     }
@@ -1958,15 +1944,15 @@ public class ListItem
 			} 
 			catch (IdUnusedException e) 
 			{
-				logger.warn("IdUnusedException " + e);
+				log.warn("IdUnusedException " + e);
 			} 
 			catch (TypeException e) 
 			{
-				logger.warn("TypeException " + e);
+				log.warn("TypeException " + e);
 			} 
 			catch (PermissionException e) 
 			{
-				logger.warn("PermissionException " + e);
+				log.warn("PermissionException " + e);
 			}
 			
 		}
@@ -2149,7 +2135,7 @@ public class ListItem
 
         if (roleIds.size() == 0)
         {
-            logger.warn("ListItem: Constructing a roles access label with no roles defined");
+            log.warn("ListItem: Constructing a roles access label with no roles defined");
             return "";
         }
 
@@ -2344,6 +2330,14 @@ public class ListItem
 	public String getIconLocation()
 	{
 		return this.iconLocation;
+	}
+	
+	/**
+	 * @return the iconClass
+	 */
+	public String getIconClass()
+	{
+		return this.iconClass;
 	}
 
 	/**
@@ -2648,28 +2642,12 @@ public class ListItem
      */
     public boolean isPossible(Group group)
     {
-    	boolean isPossible = false;
+    	if (group == null || group.getContainingSite() == null) return false;
     	
-    	Collection<Group> groupsToCheck = this.possibleGroups;
-    	if(AccessMode.GROUPED == this.inheritedAccessMode)
-    	{
-    		groupsToCheck = this.inheritedGroups;
-    	}
-    	
-    	for(Group gr : groupsToCheck)
-    	{
-    		if(gr == null)
-    		{
-    			// ignore
-    		}
-    		else if(gr.getId().equals(group.getId()))
-    		{
-    			isPossible = true;
-    			break;
-    		}
-    	}
-    	
-    	return isPossible;
+    	String userId = UserDirectoryService.getCurrentUser().getId();
+    	if (securityService.unlock(userId,ContentHostingService.AUTH_RESOURCE_ALL_GROUPS, group.getContainingSite().getReference())) return true;
+    			
+    	return securityService.unlock(userId,SiteService.SITE_VISIT,group.getReference());
     }
     
 	/**
@@ -2965,6 +2943,7 @@ public class ListItem
     	if(this.resourceTypeDef != null && this.resourceTypeDef instanceof ExpandableResourceType)
     	{
  			this.expandIconLocation = ((ExpandableResourceType) resourceTypeDef).getIconLocation(this.entity, this.isExpanded);
+ 			this.iconClass = ((ExpandableResourceType) resourceTypeDef).getIconClass(this.entity, this.isExpanded);
 			this.expandLabel = ((ExpandableResourceType) resourceTypeDef).getLocalizedHoverText(this.entity, this.isExpanded);
 		}
     }
@@ -3024,6 +3003,14 @@ public class ListItem
 	public void setIconLocation(String iconLocation)
 	{
 		this.iconLocation = iconLocation;
+	}
+	
+	/**
+	 * @param iconClass the iconClass to set
+	 */
+	public void setIconClass(String iconClass)
+	{
+		this.iconClass = iconClass;
 	}
 
 	/**
@@ -3332,7 +3319,7 @@ public class ListItem
 
 	public void updateContentCollectionEdit(ContentCollectionEdit edit) 
 	{
-		logger.debug("updateContentCollectionEdit()");
+		log.debug("updateContentCollectionEdit()");
 		ResourcePropertiesEdit props = edit.getPropertiesEdit();
 		setDisplayNameOnEntity(props);
 		setDescriptionOnEntity(props);
@@ -3373,7 +3360,7 @@ public class ListItem
 	
 	private void setHtmlInlineOnEntity(ResourcePropertiesEdit props, ContentCollectionEdit topFolder) 
 	{
-		logger.debug("setHtmlInlineOnEntity() with allowHtmlInline: " + allowHtmlInline);
+		log.debug("setHtmlInlineOnEntity() with allowHtmlInline: " + allowHtmlInline);
 		if(SecurityService.isSuperUser())
 		{
 			if(allowHtmlInline != null)
@@ -3393,7 +3380,7 @@ public class ListItem
 	
 	private void setHtmlInlineOnEntity(ResourcePropertiesEdit props, ContentResourceEdit topFolder) 
 	{
-		logger.debug("setHtmlInlineOnEntity() with allowHtmlInline: " + allowHtmlInline);
+		log.debug("setHtmlInlineOnEntity() with allowHtmlInline: " + allowHtmlInline);
 		if(SecurityService.isSuperUser())
 		{
 			if(allowHtmlInline != null)
@@ -3437,7 +3424,7 @@ public class ListItem
 				ContentHostingService.commitResource(res, NotificationService.NOTI_NONE);
 			}
 		} catch (SakaiException se) {
-			logger.warn(String.format("Failed to set property '%s' on '%s' ", property, contentId), se);
+			log.warn(String.format("Failed to set property '%s' on '%s' ", property, contentId), se);
 		}
 	}
 	
@@ -3464,36 +3451,6 @@ public class ListItem
 		}
 	}
 
-
-	protected void setCopyrightOnEntity(ResourcePropertiesEdit props) 
-	{
-		if(copyrightInfo == null || copyrightInfo.trim().length() == 0)
-		{
-			props.removeProperty(ResourceProperties.PROP_COPYRIGHT_CHOICE);
-		}
-		else
-		{
-			props.addProperty (ResourceProperties.PROP_COPYRIGHT_CHOICE, copyrightInfo);
-		}
-		if(copyrightStatus == null || copyrightStatus.trim().length() == 0)
-		{
-			props.removeProperty(ResourceProperties.PROP_COPYRIGHT);
-		}
-		else
-		{
-			props.addProperty (ResourceProperties.PROP_COPYRIGHT, copyrightStatus);
-		}
-		if (copyrightAlert)
-		{
-			props.addProperty (ResourceProperties.PROP_COPYRIGHT_ALERT, Boolean.TRUE.toString());
-		}
-		else
-		{
-			props.removeProperty (ResourceProperties.PROP_COPYRIGHT_ALERT);
-		}
-		
-	}
-
 	protected void setAccessOnEntity(GroupAwareEdit edit) 
 	{
 		try 
@@ -3513,11 +3470,11 @@ public class ListItem
 		} 
 		catch (InconsistentException e) 
 		{
-			logger.warn("InconsistentException " + e);
+			log.warn("InconsistentException " + e);
 		} 
 		catch (PermissionException e) 
 		{
-			logger.warn("PermissionException " + e);
+			log.warn("PermissionException " + e);
 		}
 	}
 
@@ -3572,7 +3529,9 @@ public class ListItem
 		setDisplayNameOnEntity(props);
 		setDescriptionOnEntity(props);
 		setConditionalReleaseOnEntity(props);
-		setCopyrightOnEntity(props);
+
+		(new CopyrightDelegate()).setCopyrightOnEntity(props, this);
+
 		setHtmlFilterOnEntity(props);
 		setAccessOnEntity(edit);
 		setAvailabilityOnEntity(props, edit);
@@ -3625,6 +3584,19 @@ public class ListItem
 	public void setCopyrightStatus(String copyrightStatus) 
 	{
 		this.copyrightStatus = copyrightStatus;
+	}
+
+	public boolean isCopyrightApplicable()
+	{
+		if (resourceType == null)
+		{
+			// return here to avoid possible false positive because if resourceType is null here,
+			// the call to getResourceTypeDef() will set it to type UPLOAD, which would return true
+			return false;
+		}
+
+		ResourceType rtype = getResourceTypeDef();
+		return rtype != null && rtype.hasRightsDialog();
 	}
 
 	public boolean isUserSite() 
@@ -3834,6 +3806,23 @@ public class ListItem
 		
 	    return alerts;
     }
+
+	/*
+	 * Provides server side copyright check (on top of name and date checks provided above)
+	 */
+	public List<String> checkRequiredProperties(CopyrightManager copyrightManager)
+	{
+		List<String> alerts = checkRequiredProperties();
+
+		// If require choice is set (sakai.properties), the item is copyright applicable (not folder, dropbox, etc.), and the selection is 'Please select...', give appropriate error message
+		boolean requireChoice = ServerConfigurationService.getBoolean(ResourcesAction.SAK_PROP_COPYRIGHT_REQ_CHOICE, ResourcesAction.SAK_PROP_COPYRIGHT_REQ_CHOICE_DEFAULT);
+		if (requireChoice && isCopyrightApplicable() && rb.getString(ResourcesAction.MSG_KEY_COPYRIGHT_REQ_CHOICE).equals(copyrightManager.getCopyrightString(copyrightInfo)))
+		{
+			alerts.add(rb.getString(ResourcesAction.MSG_KEY_COPYRIGHT_REQ_CHOICE_ERROR));
+		}
+
+		return alerts;
+	}
 
 	/**
      * @return the expandable
@@ -4158,7 +4147,7 @@ public class ListItem
 					}
 				} else {
 					// Warn about other types.
-					logger.warn("Unable to save metadata with key: "+ entry.getKey()+ " value: "+ entry.getValue());
+					log.warn("Unable to save metadata with key: "+ entry.getKey()+ " value: "+ entry.getValue());
 				}
 			}
 		}
@@ -4340,11 +4329,11 @@ public class ListItem
 		}
 		catch (EntityPropertyNotDefinedException e)
 		{
-			logger.info("EntityPropertyNotDefinedException for size of " + entity.getId());
+			log.info("EntityPropertyNotDefinedException for size of " + entity.getId());
 		}
 		catch(EntityPropertyTypeException e)
 		{
-			logger.info("EntityPropertyTypeException not long of " + entity.getId());
+			log.info("EntityPropertyTypeException not long of " + entity.getId());
 		}
 		return sizzle;
 	}
@@ -4397,7 +4386,7 @@ public class ListItem
 		}
 		catch (EntityPropertyNotDefinedException e)
 		{
-			logger.warn("EntityPropertyNotDefinedException for size of " + entity.getId());
+			log.warn("EntityPropertyNotDefinedException for size of " + entity.getId());
 		}
 		catch (EntityPropertyTypeException e)
 		{

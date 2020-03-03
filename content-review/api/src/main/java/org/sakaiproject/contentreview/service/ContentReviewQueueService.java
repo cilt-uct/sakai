@@ -48,7 +48,9 @@ public interface ContentReviewQueueService {
 	 * @throws QueueException
 	 * @throws ReportException
 	 * @throws Exception
+	 * @deprecated Use getQueuedItem method to get ContentReviewItem object
 	 */
+	@Deprecated
 	int getReviewScore(Integer providerId, String contentId)
 			throws QueueException, ReportException, Exception;
 
@@ -58,7 +60,9 @@ public interface ContentReviewQueueService {
 	 * @param contentId the id of the content item
 	 * @return a {@code java.lang.Long}
 	 * @throws QueueException
+	 * @deprecated Use getQueuedItem method to get ContentReviewItem object
 	 */
+	@Deprecated
 	Long getReviewStatus(Integer providerId, String contentId) throws QueueException;
 
 	/**
@@ -67,7 +71,9 @@ public interface ContentReviewQueueService {
 	 * @param contentId the id of the content item
 	 * @return a {@code java.util.Date}
 	 * @throws QueueException
+	 * @deprecated Use getQueuedItem method to get ContentReviewItem object
 	 */
+	@Deprecated
 	Date getDateQueued(Integer providerId, String contentId) throws QueueException;
 
 	/**
@@ -77,7 +83,9 @@ public interface ContentReviewQueueService {
 	 * @return the {@code java.util.Date}
 	 * @throws QueueException
 	 * @throws SubmissionException
+	 * @deprecated Use getQueuedItem method to get ContentReviewItem object
 	 */
+	@Deprecated
 	Date getDateSubmitted(Integer providerId, String contentId) throws QueueException, SubmissionException;
 
 	/**
@@ -96,6 +104,14 @@ public interface ContentReviewQueueService {
 	 * @return {@code Optional<ContentReviewItem>}
 	 */
 	Optional<ContentReviewItem> getQueuedItem(Integer providerId, String contentId);
+	
+	/**
+	 * Get an item that has been queued via external ID.
+	 * @param providerId the id of content review implementation
+	 * @param externalId the external id of the content item
+	 * @return {@code Optional<ContentReviewItem>}
+	 */
+	Optional<ContentReviewItem> getQueuedItemByExternalId(Integer providerId, String externalId);
 
 	/**
 	 * Get items queued but have not yet been submitted to the content review service
@@ -138,6 +154,13 @@ public interface ContentReviewQueueService {
 	 * @return {@code List<ContentReviewItem>}
 	 */
 	List<ContentReviewItem> getAllContentReviewItemsGroupedBySiteAndTask(Integer providerId);
+	
+	/**
+	 * Gets all items grouped by site, order by most recent items descending
+	 * @param providerId the id of content review implementation
+	 * @return {@code List<String>} list containing siteIds ordered by most recently used sites
+	 */
+	List<String> getContentReviewItemsGroupedBySite(Integer providerId);
 
 	/* Its not ideal to directly expose the direct DAO methods here, 
 	 * but this was needed in order to not have to change the
@@ -157,4 +180,5 @@ public interface ContentReviewQueueService {
 	 */
 	@Deprecated
 	void delete(ContentReviewItem item);
+
 }

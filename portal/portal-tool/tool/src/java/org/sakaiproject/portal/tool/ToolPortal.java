@@ -31,8 +31,8 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.StringUtils;
+
 import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.exception.PermissionException;
@@ -55,20 +55,17 @@ import org.sakaiproject.tool.cover.ActiveToolManager;
 import org.sakaiproject.tool.cover.SessionManager;
 import org.sakaiproject.util.StringUtil;
 import org.sakaiproject.util.Web;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * @author ieb
  * @since Sakai 2.4
  * @version $Rev$
  */
-
+@Slf4j
 public class ToolPortal extends HttpServlet
 {
-	/** Our log (commons). */
-	private static Logger M_log = LoggerFactory.getLogger(ToolPortal.class);
-
     // SAK-22384
-    private static final String MATHJAX_ENABLED = "mathJaxEnabled";
     private static final String MATHJAX_SRC_PATH_SAKAI_PROP = "portal.mathjax.src.path";
     private static final String MATHJAX_ENABLED_SAKAI_PROP = "portal.mathjax.enabled";
     private static final boolean ENABLED_SAKAI_PROP_DEFAULT = true;
@@ -98,7 +95,7 @@ public class ToolPortal extends HttpServlet
 	{
 		super.init(config);
 
-		M_log.info("init()");
+		log.info("init()");
 	}
 
 	/**
@@ -107,7 +104,7 @@ public class ToolPortal extends HttpServlet
 	@Override
 	public void destroy()
 	{
-		M_log.info("destroy()");
+		log.info("destroy()");
 
 		super.destroy();
 	}
@@ -283,9 +280,10 @@ public class ToolPortal extends HttpServlet
 	protected void setupForward(HttpServletRequest req, HttpServletResponse res,
 			Placement p, String skin) throws ToolException
 	{
+		boolean isInlineReq = ToolUtils.isInlineRequest(req);
 		// setup html information that the tool might need (skin, body on load,
 		// js includes, etc).
-		String headCss = CSSUtils.getCssHead(skin, ToolUtils.isInlineRequest(req));
+		String headCss = CSSUtils.getCssHead(skin, isInlineReq);
 		String headJs = "<script type=\"text/javascript\" src=\"/library/js/headscripts.js\"></script>\n";
         
         Site site=null;
@@ -307,21 +305,12 @@ public class ToolPortal extends HttpServlet
 
                 if (site != null)
                 {                           
-                    String strMathJaxEnabled = site.getProperties().getProperty(MATHJAX_ENABLED);
-                    if (strMathJaxEnabled != null)
-                    {                              
-                        String [] strMathJaxTools = strMathJaxEnabled.split(",");
-                        List<String> mathJaxTools = Arrays.asList(strMathJaxTools);
-                        if (mathJaxTools != null)
-                        {
-                            String toolId = toolConfig.getTool().getId();
-                            if (toolId != null && mathJaxTools.contains(toolId))
-                            {
-                                // this call to MathJax.Hub.Config seems to be needed for MathJax to work in IE
-                                headJs += "<script type=\"text/x-mathjax-config\">\nMathJax.Hub.Config({\ntex2jax: { inlineMath: [['\\\\(','\\\\)']] }\n});\n</script>\n";
-                                headJs += "<script src=\"" + MATHJAX_SRC_PATH + "\"  language=\"JavaScript\" type=\"text/javascript\"></script>\n";
-                            }
-                        }                          
+                    boolean mathJaxAllowedForSite = Boolean.parseBoolean(site.getProperties().getProperty(Site.PROP_SITE_MATHJAX_ALLOWED));
+                    if (mathJaxAllowedForSite)
+                    {
+                        // this call to MathJax.Hub.Config seems to be needed for MathJax to work in IE
+                        headJs += "<script type=\"text/x-mathjax-config\">\nMathJax.Hub.Config({\nmessageStyle: \"none\",\ntex2jax: { inlineMath: [['\\\\(','\\\\)']] }\n});\n</script>\n";
+                        headJs += "<script src=\"" + MATHJAX_SRC_PATH + "\" type=\"text/javascript\"></script>\n";
                     }
                 }
             }
@@ -338,8 +327,8 @@ public class ToolPortal extends HttpServlet
 
 		req.setAttribute("sakai.html.head", head);
 		req.setAttribute("sakai.html.head.css", headCss);
-		req.setAttribute("sakai.html.head.css.base", CSSUtils.getCssToolBaseLink(CSSUtils.getSkinFromSite(site),ToolUtils.isInlineRequest(req)));
-		req.setAttribute("sakai.html.head.css.skin", CSSUtils.getCssToolSkinLink(CSSUtils.getSkinFromSite(site)));
+		req.setAttribute("sakai.html.head.css.base", CSSUtils.getCssToolBaseLink(CSSUtils.getSkinFromSite(site), isInlineReq));
+		req.setAttribute("sakai.html.head.css.skin", CSSUtils.getCssToolSkinLink(CSSUtils.getSkinFromSite(site), isInlineReq));
 		req.setAttribute("sakai.html.head.js", headJs);
 		req.setAttribute("sakai.html.body.onload", bodyonload.toString());
 	}

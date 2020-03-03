@@ -1,0 +1,33 @@
+<!-- start: chef_assignments_student_view_group_error.vm -->
+<div class="portletBody">
+	#if ($alertMessage)<div class="sak-banner-error"><strong>$tlang.getString("gen.alert")</strong> $formattedText.escapeHtml($alertMessage)</div>#end
+	<table class="itemSummary"  summary="$tlang.getString("gen.theassinf")">
+		<tr>
+			<th>$tlang.getString("gen.title")</th>
+			<td>
+				#if ($!assignment.getIsGroup())<i class="fa fa-users" aria-hidden="true" title="$tlang.getString('gen.groupassignment')"></i>#end
+				$formattedText.escapeHtml($assignment.getTitle())
+				#set ($deleted = $assignment.getProperties().getProperty($assignment.getProperties().getNamePropAssignmentDeleted()))
+				#if ($!deleted.equalsIgnoreCase("true"))<span class="highlight">(Assignment has been deleted)</span>#end
+			</td>
+		</tr>
+		<tr>
+			<th>$tlang.getString("gen.due.header")</th>
+			<td>$!service.getUsersLocalDateTimeString($!assignment.DueDate)</td>
+		</tr>
+		<tr>
+			<th><span style="color: #B11;">$tlang.getString("group.error.title")</span></th>
+			<td>$tlang.getString("group.error.message")</td>
+		</tr>
+	</table>
+
+	<form action="#toolForm("AssignmentAction")" method="post" >
+		<div class="act">
+			<input type="submit" accesskey="x" name="eventSubmit_doCancel_view_grade" value="$tlang.getString("gen.backtolist")" accesskey="x" class="active TB_hideControl"
+				onclick="SPNR.disableControlsAndSpin( this, null );" />
+		</div>
+		<input type="hidden" name="sakai_csrf_token" value="$sakai_csrf_token" />
+	</form>
+
+</div>
+<!-- end: chef_assignments_student_view_group_error.vm -->

@@ -19,9 +19,12 @@
 
 package org.sakaiproject.signup.tool.jsf.organizer;
 
+import java.text.DateFormat;
 import java.text.MessageFormat;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import javax.faces.component.UIData;
 import javax.faces.component.UIInput;
@@ -29,9 +32,7 @@ import javax.faces.event.ActionEvent;
 import javax.faces.model.SelectItem;
 import javax.faces.model.SelectItemGroup;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.signup.logic.SignupUser;
 import org.sakaiproject.signup.logic.SignupUserActionException;
@@ -57,6 +58,8 @@ import org.sakaiproject.signup.tool.util.Utilities;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.user.api.UserNotDefinedException;
 
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * <p>
  * This JSF UIBean class will handle information exchanges between Organizer's
@@ -67,6 +70,7 @@ import org.sakaiproject.user.api.UserNotDefinedException;
  * 
  * </P>
  */
+@Slf4j
 public class OrganizerSignupMBean extends SignupUIBaseBean {
 
 	private UIData timeslotWrapperTable;
@@ -95,8 +99,6 @@ public class OrganizerSignupMBean extends SignupUIBaseBean {
 	private String selectedEditTimeslotId;
 
 	private UIInput selectedTimeslotId;
-
-	private Logger logger = LoggerFactory.getLogger(OrganizerSignupMBean.class);
 
 	private boolean addNewAttendee;
 
@@ -204,7 +206,7 @@ public class OrganizerSignupMBean extends SignupUIBaseBean {
 		} catch (SignupUserActionException ue) {
 			Utilities.addErrorMessage(ue.getMessage());
 		} catch (Exception e) {
-			logger.error(Utilities.rb.getString("error.occurred_try_again") + " - " + e.getMessage());
+			log.error(Utilities.rb.getString("error.occurred_try_again") + " - " + e.getMessage());
 			Utilities.addErrorMessage(Utilities.rb.getString("error.occurred_try_again"));
 		}
 
@@ -273,17 +275,18 @@ public class OrganizerSignupMBean extends SignupUIBaseBean {
 	 * @return
 	 */
 	private AttendeeWrapper findAttendee(String timeslotId, String userId) {
-		if (getTimeslotWrappers() == null || getTimeslotWrappers().isEmpty())
+		List<TimeslotWrapper> timeslotWrappers = getTimeslotWrappers();
+		if (timeslotWrappers == null || timeslotWrappers.isEmpty()) {
 			return null;
+		}
 
-		String timeslotPeriod = null;
-		for (TimeslotWrapper wrapper : getTimeslotWrappers()) {
+		Locale userLocale = Utilities.rb.getLocale();
+
+		for (TimeslotWrapper wrapper : timeslotWrappers) {
 			if (wrapper.getTimeSlot().getId().toString().equals(timeslotId)) {
-				timeslotPeriod = getSakaiFacade().getTimeService().newTime(
-						wrapper.getTimeSlot().getStartTime().getTime()).toStringLocalTime()
+				String timeslotPeriod = getSakaiFacade().getTimeService().timeFormat(wrapper.getTimeSlot().getStartTime(), userLocale, DateFormat.SHORT)
 						+ " - "
-						+ getSakaiFacade().getTimeService().newTime(wrapper.getTimeSlot().getEndTime().getTime())
-								.toStringLocalTime();
+						+ getSakaiFacade().getTimeService().timeFormat(wrapper.getTimeSlot().getEndTime(), userLocale, DateFormat.SHORT);
 				List<AttendeeWrapper> attWrp = wrapper.getAttendeeWrappers();
 				for (AttendeeWrapper att : attWrp) {
 					if (att.getSignupAttendee().getAttendeeUserId().equals(userId)) {
@@ -317,12 +320,12 @@ public class OrganizerSignupMBean extends SignupUIBaseBean {
 					signupMeetingService.sendEmailToParticipantsByOrganizerAction(cancelRestoreTimeslot
 							.getSignupEventTrackingInfo());
 				} catch (Exception e) {
-					logger.error(Utilities.rb.getString("email.exception") + " - " + e.getMessage(), e);
+					log.error(Utilities.rb.getString("email.exception") + " - " + e.getMessage(), e);
 					Utilities.addErrorMessage(Utilities.rb.getString("email.exception"));
 				}
 			}
 		} catch (Exception e) {
-			logger.error(Utilities.rb.getString("error.occurred_try_again") + " - " + e.getMessage());
+			log.error(Utilities.rb.getString("error.occurred_try_again") + " - " + e.getMessage());
 			Utilities.addErrorMessage(Utilities.rb.getString("error.occurred_try_again"));
 		}
 
@@ -346,7 +349,7 @@ public class OrganizerSignupMBean extends SignupUIBaseBean {
 				try {
 					signupEventTrackingInfo = replaceAttendee();
 				} catch (UserNotDefinedException e) {
-					logger.warn(Utilities.rb.getString("exception.no.such.user")
+					log.warn(Utilities.rb.getString("exception.no.such.user")
 							+ (String) replacedAttendeeEidOrEmail.getValue() + " -- " + e.getMessage());
 					Utilities.addErrorMessage(Utilities.rb.getString("exception.no.such.user")
 							+ (String) replacedAttendeeEidOrEmail.getValue());
@@ -362,7 +365,7 @@ public class OrganizerSignupMBean extends SignupUIBaseBean {
 				try {
 					signupMeetingService.sendEmailToParticipantsByOrganizerAction(signupEventTrackingInfo);
 				} catch (Exception e) {
-					logger.error(Utilities.rb.getString("email.exception") + " - " + e.getMessage(), e);
+					log.error(Utilities.rb.getString("email.exception") + " - " + e.getMessage(), e);
 					Utilities.addErrorMessage(Utilities.rb.getString("email.exception"));
 				}
 			}
@@ -371,7 +374,7 @@ public class OrganizerSignupMBean extends SignupUIBaseBean {
 			Utilities.addErrorMessage(ue.getMessage());
 
 		} catch (Exception e) {
-			logger.error(Utilities.rb.getString("error.occurred_try_again") + " - " + e.getMessage());
+			log.error(Utilities.rb.getString("error.occurred_try_again") + " - " + e.getMessage());
 			Utilities.addErrorMessage(Utilities.rb.getString("error.occurred_try_again"));
 		}
 
@@ -472,8 +475,7 @@ public class OrganizerSignupMBean extends SignupUIBaseBean {
 				}
 			}
 		} catch (IdUnusedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 		}
 		
 		this.allSignupUsers = sakaiFacade.getAllPossibleAttendees(meeting);
@@ -523,7 +525,7 @@ public class OrganizerSignupMBean extends SignupUIBaseBean {
 
 		List<SelectItem> list = new ArrayList<SelectItem>();
 		for (TimeslotWrapper wrapper : timeslotWrapperList) {
-			list.add(new SelectItem(wrapper.getTimeSlot().getId().toString(), wrapper.getLabel()));
+			list.add(new SelectItem(wrapper.getTimeSlot().getId().toString(), wrapper.getLabel(sakaiFacade)));
 		}
 
 		/*
@@ -542,7 +544,7 @@ public class OrganizerSignupMBean extends SignupUIBaseBean {
 	private void createUISwapListForEachTimeSlot(List<TimeslotWrapper> timeslotWrapperList) {
 		List<SelectItem> tsAttendeeGroups = new ArrayList<SelectItem>();
 		for (TimeslotWrapper wrapper : timeslotWrapperList) {
-			String grpLabel = wrapper.getLabel();
+			String grpLabel = wrapper.getLabel(sakaiFacade);
 			List<SelectItem> attendeeOnTS = new ArrayList<SelectItem>();
 			
 			//clean the list of attendees
@@ -662,7 +664,7 @@ public class OrganizerSignupMBean extends SignupUIBaseBean {
 					signupMeetingService.sendEmailToParticipantsByOrganizerAction(addAttendee
 							.getSignupEventTrackingInfo());
 				} catch (Exception e) {
-					logger.error(Utilities.rb.getString("email.exception") + " - " + e.getMessage(), e);
+					log.error(Utilities.rb.getString("email.exception") + " - " + e.getMessage(), e);
 					Utilities.addErrorMessage(Utilities.rb.getString("email.exception"));
 				}
 			}
@@ -670,7 +672,7 @@ public class OrganizerSignupMBean extends SignupUIBaseBean {
 			Utilities.addErrorMessage(ue.getMessage());
 
 		} catch (Exception e) {
-			logger.error(Utilities.rb.getString("error.occurred_try_again") + " - " + e.getMessage());
+			log.error(Utilities.rb.getString("error.occurred_try_again") + " - " + e.getMessage());
 			Utilities.addErrorMessage(Utilities.rb.getString("error.occurred_try_again"));
 		}
 
@@ -716,14 +718,14 @@ public class OrganizerSignupMBean extends SignupUIBaseBean {
 				try {
 					signupMeetingService.sendEmailToParticipantsByOrganizerAction(remove.getSignupEventTrackingInfo());
 				} catch (Exception e) {
-					logger.error(Utilities.rb.getString("email.exception") + " - " + e.getMessage(), e);
+					log.error(Utilities.rb.getString("email.exception") + " - " + e.getMessage(), e);
 					Utilities.addErrorMessage(Utilities.rb.getString("email.exception"));
 				}
 			}
 		} catch (SignupUserActionException ue) {
 			Utilities.addErrorMessage(ue.getMessage());
 		} catch (Exception e) {
-			logger.error(Utilities.rb.getString("error.occurred_try_again") + " - " + e.getMessage());
+			log.error(Utilities.rb.getString("error.occurred_try_again") + " - " + e.getMessage());
 			Utilities.addErrorMessage(Utilities.rb.getString("error.occurred_try_again"));
 		}
 
@@ -789,7 +791,7 @@ public class OrganizerSignupMBean extends SignupUIBaseBean {
 		} catch (SignupUserActionException ue) {
 			Utilities.addErrorMessage(ue.getMessage());
 		} catch (Exception e) {
-			logger.error(Utilities.rb.getString("error.occurred_try_again") + " - " + e.getMessage());
+			log.error(Utilities.rb.getString("error.occurred_try_again") + " - " + e.getMessage());
 			Utilities.addErrorMessage(Utilities.rb.getString("error.occurred_try_again"));
 		}
 
@@ -826,7 +828,7 @@ public class OrganizerSignupMBean extends SignupUIBaseBean {
 		} catch (SignupUserActionException ue) {
 			Utilities.addErrorMessage(ue.getMessage());
 		} catch (Exception e) {
-			logger.error(Utilities.rb.getString("error.occurred_try_again") + " - " + e.getMessage());
+			log.error(Utilities.rb.getString("error.occurred_try_again") + " - " + e.getMessage());
 			Utilities.addErrorMessage(Utilities.rb.getString("error.occurred_try_again"));
 		}
 
@@ -1238,7 +1240,11 @@ public class OrganizerSignupMBean extends SignupUIBaseBean {
 	 * @return a list of SignupSite objects.
 	 */
 	public List<SignupSite> getPublishedSignupSites() {
-		return getMeetingWrapper().getMeeting().getSignupSites();
+		SignupMeetingWrapper signupMeetingWrapper = getMeetingWrapper();
+		if (signupMeetingWrapper!=null){
+			return getMeetingWrapper().getMeeting().getSignupSites();
+		}
+		return null;
 	}
 
 	/* proxy method */
@@ -1353,7 +1359,7 @@ public class OrganizerSignupMBean extends SignupUIBaseBean {
 										try {
 											signupMeetingService.sendEmailToParticipantsByOrganizerAction(remove.getSignupEventTrackingInfo());
 											} catch (Exception e) {
-												logger.error(Utilities.rb.getString("email.exception") + " - " + e.getMessage(), e);
+												log.error(Utilities.rb.getString("email.exception") + " - " + e.getMessage(), e);
 												Utilities.addErrorMessage(Utilities.rb.getString("email.exception"));
 											}
 									}
@@ -1362,7 +1368,7 @@ public class OrganizerSignupMBean extends SignupUIBaseBean {
 						}catch (SignupUserActionException ue) {
 								Utilities.addErrorMessage(ue.getMessage());
 						} catch (Exception e) {
-							logger.error(Utilities.rb.getString("error.occurred_try_again") + " - " + e.getMessage());
+							log.error(Utilities.rb.getString("error.occurred_try_again") + " - " + e.getMessage());
 							Utilities.addErrorMessage(Utilities.rb.getString("error.occurred_try_again"));
 						} 
 				} else{
@@ -1400,17 +1406,17 @@ public class OrganizerSignupMBean extends SignupUIBaseBean {
 					try {
 						signupMeetingService.sendEmailToParticipantsByOrganizerAction(addAttendee.getSignupEventTrackingInfo());
 					} catch (Exception e) {
-						logger.error(Utilities.rb.getString("email.exception") + " - " + e.getMessage(), e);
+						log.error(Utilities.rb.getString("email.exception") + " - " + e.getMessage(), e);
 					}
 				}
 			} catch (SignupUserActionException ue) {
 				Utilities.addErrorMessage(ue.getMessage());
-				logger.error(ue.getMessage());
+				log.error(ue.getMessage());
 				errors = true;
 				break;
 	
 			} catch (Exception e) {
-				logger.error(Utilities.rb.getString("error.occurred_try_again") + " - " + e.getMessage(), e);
+				log.error(Utilities.rb.getString("error.occurred_try_again") + " - " + e.getMessage(), e);
 				errors = true;
 				break;
 			}
@@ -1447,5 +1453,9 @@ public class OrganizerSignupMBean extends SignupUIBaseBean {
 	 */
 	public String getCurrentUserEmailAddress() {
 		return sakaiFacade.getUser(sakaiFacade.getCurrentUserId()).getEmail();
+	}
+	
+	public String getDisplayTimeFromInstant(Instant instant) {
+		return signupMeetingService.getUsersLocalDateTimeString(instant);
 	}
 }

@@ -1,8 +1,4 @@
 /**********************************************************************************
- * $URL: https://source.sakaiproject.org/svn/sam/tags/sakai-10.4/samigo-services/src/java/org/sakaiproject/tool/assessment/integration/helper/integrated/GradebookServiceHelperImpl.java $
- * $Id: GradebookServiceHelperImpl.java 127473 2013-07-21 00:04:12Z nbotimer@unicon.net $
- ***********************************************************************************
- *
  * Copyright (c) 2004, 2005, 2006, 2007, 2008, 2009 The Sakai Foundation
  *
  * Licensed under the Educational Community License, Version 2.0 (the "License");
@@ -24,13 +20,11 @@ package org.sakaiproject.tool.assessment.integration.helper.integrated;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.lang.StringEscapeUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.text.StringEscapeUtils;
 import org.apache.commons.math3.util.Precision;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.service.gradebook.shared.GradebookExternalAssessmentService;
-import org.sakaiproject.service.gradebook.shared.GradebookService;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SitePage;
 import org.sakaiproject.site.api.ToolConfiguration;
@@ -62,9 +56,9 @@ import org.sakaiproject.tool.cover.ToolManager;
  * <p> </p>
  * @author Ed Smiley <esmiley@stanford.edu>
  */
+@Slf4j
 public class GradebookServiceHelperImpl implements GradebookServiceHelper
 {
-  private Logger log = LoggerFactory.getLogger(GradebookServiceHelperImpl.class);
 
   /**
    * Does a gradebook exist?
@@ -106,14 +100,9 @@ public class GradebookServiceHelperImpl implements GradebookServiceHelper
 				} catch (Exception ee) {
 					log.warn(siteId + " contains a page (" + page.getTitle() + ") without a valid tool registration");
 				}
-				if (toolId != null && toolId.equalsIgnoreCase("sakai.gradebook.tool")) {
-					return true;
-				} else if (toolId != null && toolId.equalsIgnoreCase("sakai.gradebook.gwt.rpc")) {
-					return true;
-				} else if (toolId != null && toolId.equalsIgnoreCase("sakai.gradebookng")) {
+				if (toolId != null && toolId.toLowerCase().contains("sakai.gradebook")) {
 					return true;
 				}
-
 			}
 		} catch (Exception e) {
 			log.warn(e.getMessage());
@@ -127,7 +116,6 @@ public class GradebookServiceHelperImpl implements GradebookServiceHelper
 			site = SiteService.getSite(id);
 		} catch (IdUnusedException e) {
 			log.error(e.getMessage());
-			e.printStackTrace();
 		}
 		return site;
 	}
@@ -154,34 +142,9 @@ public void removeExternalAssessment(String gradebookUId,
     String gradebookUId = GradebookFacade.getGradebookUId();
     return g.isAssignmentDefined(gradebookUId, assessmentTitle);
   }
-
-  /**
-   * Add a published assessment to gradebook.
-   * @param publishedAssessment the published assessment
-   * @param g  the Gradebook Service
-   * @return false: cannot add to gradebook
-   * @throws java.lang.Exception
-   */
-  public boolean addToGradebook(PublishedAssessmentData publishedAssessment, Long categoryId, 
-		  GradebookExternalAssessmentService g) throws
-    Exception
+  
+  public String getAppName()
   {
-    //log.info("total point(s) is/are =" +
-    //          publishedAssessment.getTotalScore().longValue());
-    //log.info("gradebookId =" + GradebookFacade.getGradebookUId());
-    boolean added = false;
-    //log.info("GradebookService instance=" + g);
-    String gradebookUId = GradebookFacade.getGradebookUId();
-    if (gradebookUId == null)
-    {
-      return false;
-    }
-
-    //log.info("inside addToGradebook, gradebook exists? " +
-    //          g.isGradebookDefined(gradebookUId));
-    if (g.isGradebookDefined(gradebookUId))
-    {
-
       // Tool name code added by Josh Holtzman
       Tool tool = ToolManager.getTool("sakai.samigo");
       String appName = null;
@@ -197,20 +160,42 @@ public void removeExternalAssessment(String gradebookUId,
       {
         appName = tool.getTitle();
       }
+      return appName;
+  }
 
-      String title = StringEscapeUtils.unescapeHtml(publishedAssessment.getTitle());
+  /**
+   * Add a published assessment to gradebook.
+   * @param publishedAssessment the published assessment
+   * @param g  the Gradebook Service
+   * @return false: cannot add to gradebook
+   * @throws java.lang.Exception
+   */
+  public boolean addToGradebook(PublishedAssessmentData publishedAssessment, Long categoryId, 
+		  GradebookExternalAssessmentService g) throws
+    Exception
+  {
+    boolean added = false;
+    String gradebookUId = GradebookFacade.getGradebookUId();
+    if (gradebookUId == null)
+    {
+      return false;
+    }
+
+    if (g.isGradebookDefined(gradebookUId))
+    {
+      String title = StringEscapeUtils.unescapeHtml4(publishedAssessment.getTitle());
       if(!g.isAssignmentDefined(gradebookUId, title))
       {
-        g.addExternalAssessment(gradebookUId,
-                              publishedAssessment.getPublishedAssessmentId().
-                              toString(), null,
-                              title,
-                              publishedAssessment.getTotalScore().doubleValue(),
-                              publishedAssessment.getAssessmentAccessControl().
-                              getDueDate(),
-                              appName,	// Use the app name from sakai
-                              false,
-                              categoryId); 
+          g.addExternalAssessment(gradebookUId,
+                  publishedAssessment.getPublishedAssessmentId().toString(),
+                  null,
+                  title,
+                  publishedAssessment.getTotalScore(),
+                  publishedAssessment.getAssessmentAccessControl().getDueDate(),
+                  getAppName(), // Use the app name from sakai
+                  null,
+                  false,
+                  categoryId);
         added = true;
       }
     }
@@ -236,12 +221,12 @@ public void removeExternalAssessment(String gradebookUId,
 
     log.debug("before g.isAssignmentDefined()");
 	g.updateExternalAssessment(gradebookUId,
-				publishedAssessment.getPublishedAssessmentId().
-				toString(), null,
-				publishedAssessment.getTitle(),
-				publishedAssessment.getTotalScore().doubleValue(),
-				publishedAssessment.getAssessmentAccessControl().
-				getDueDate());
+            publishedAssessment.getPublishedAssessmentId().toString(),
+            null,
+            null,
+            publishedAssessment.getTitle(),
+            publishedAssessment.getTotalScore(),
+            publishedAssessment.getAssessmentAccessControl().getDueDate());
     return true;
   }
 
@@ -256,7 +241,6 @@ public void removeExternalAssessment(String gradebookUId,
     Exception
   {
     boolean testErrorHandling=false;
-    //log.info("GradebookService instance=" + g);
     PublishedAssessmentService pubService = new PublishedAssessmentService();
     GradingService gradingService = new GradingService();
 

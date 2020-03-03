@@ -191,7 +191,7 @@ function doSaveEdit(clickedLink) {
 			$(li).find(".item_label_box").attr("style", "display: inline");
 			$(li).find(".item_control_box").show();
 			$(li).find(".item_control_box").attr("style", "display: inline");
-			$(li).addClass("sortable_item");
+			$(li).addClass("sortable_item reorder-element");
 			$(li).removeClass("editable_item");
 		}
   	});
@@ -204,7 +204,7 @@ function doCancelEdit(clickedLink) {
 	$(li).find(".item_label_box").attr("style", "display: inline");
 	$(li).find(".item_control_box").show();
 	$(li).find(".item_control_box").attr("style", "display: inline");
-	$(li).addClass("sortable_item");
+	$(li).addClass("sortable_item reorder-element");
 	$(li).removeClass("editable_item");
 	$(li).find(".new_title").val($(li).find(".item_label_box").text());
 }
@@ -240,14 +240,13 @@ function sortByTitle() {
         	}
         	return b[i]? -1:0;
     }).appendTo('ul.sortable');
-    fluidList.refresh();
 }
 				
 function addTool(draggable, manual) {
 	if (manual == true) {
 		// we got fired via the add link not a drag and drop..
 		//  so we need to manually add to the list
-		$('#sort1').append(draggable);
+		$('#reorder-list').append(draggable);
 	}
 	$(draggable).attr("style", "");
 	//force possitioning so IE displays this right

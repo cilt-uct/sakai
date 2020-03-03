@@ -1,9 +1,26 @@
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.lessonbuildertool.tool.producers;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 
 import org.sakaiproject.lessonbuildertool.SimplePage;
 import org.sakaiproject.lessonbuildertool.SimplePageItem;
@@ -17,6 +34,10 @@ import org.sakaiproject.lessonbuildertool.tool.view.CommentsGradingPaneViewParam
 import org.sakaiproject.user.cover.UserDirectoryService;
 import org.sakaiproject.tool.cover.ToolManager;
 import org.sakaiproject.tool.cover.SessionManager;
+import org.sakaiproject.authz.api.Member;
+import org.sakaiproject.authz.api.SecurityService;
+import org.sakaiproject.site.api.SiteService;
+import org.sakaiproject.user.api.User;
 
 import uk.org.ponder.messageutil.MessageLocator;
 import uk.org.ponder.localeutil.LocaleGetter;                                                                                          
@@ -24,6 +45,7 @@ import uk.org.ponder.rsf.builtin.UVBProducer;
 import uk.org.ponder.rsf.components.UIBranchContainer;
 import uk.org.ponder.rsf.components.UIContainer;
 import uk.org.ponder.rsf.components.UIForm;
+import uk.org.ponder.rsf.components.UICommand;
 import uk.org.ponder.rsf.components.UIInitBlock;
 import uk.org.ponder.rsf.components.UIInput;
 import uk.org.ponder.rsf.components.UIInternalLink;
@@ -42,7 +64,10 @@ public class CommentGradingPaneProducer implements ViewComponentProducer, ViewPa
 	private SimplePageBean simplePageBean;
 	private SimplePageToolDao simplePageToolDao;
 	private MessageLocator messageLocator;
-	public LocaleGetter localeGetter;                                                                                             
+        private SecurityService securityService;
+        private SiteService siteService;
+	public LocaleGetter localeGetter;
+         
 	
 	public String getViewID() {
 		return VIEW_ID;
@@ -56,6 +81,14 @@ public class CommentGradingPaneProducer implements ViewComponentProducer, ViewPa
 		this.simplePageToolDao = simplePageToolDao;
 	}
 	
+	public void setSecurityService(SecurityService a) {
+		this.securityService = a;
+	}
+
+	public void setSiteService(SiteService s) {
+		this.siteService = s;
+	}
+
 	public void setMessageLocator(MessageLocator messageLocator) {
 		this.messageLocator = messageLocator;
 	}
@@ -90,7 +123,7 @@ public class CommentGradingPaneProducer implements ViewComponentProducer, ViewPa
 
 		UIInternalLink.make(tofill, "back-link", messageLocator.getMessage("simplepage.go-back"), backParams);
 		
-		if(simplePageBean.getEditPrivs() != 0) {
+		if(simplePageBean.getEditPrivs() != 0 || !simplePageBean.itemOk(params.commentsItemId)) {
 			UIOutput.make(tofill, "permissionsError");
 			return;
 		}
@@ -130,13 +163,20 @@ public class CommentGradingPaneProducer implements ViewComponentProducer, ViewPa
 		ArrayList<String> userIds = new ArrayList<String>();
 		HashMap<String, SimpleUser> users = new HashMap<String, SimpleUser>();
 		
+		// initialize notsubmitted to all userids or groupids
+		Set<String> notSubmitted = new HashSet<String>();
+		String siteRef = simplePageBean.getCurrentSite().getReference();
+		List<User> studentUsers = securityService.unlockUsers("section.role.student", siteRef);
+		for (User u: studentUsers)
+		    notSubmitted.add(u.getId());
+		
 		for(SimplePageComment comment : comments) {
 			if(comment.getComment() == null || comment.getComment().equals("")) {
 				continue;
 			}
 			
 			if(!userIds.contains(comment.getAuthor())) {
-				userIds.add(comment.getAuthor());
+				notSubmitted.remove(comment.getAuthor());
 				try {
 					SimpleUser user = new SimpleUser();
 					user.displayName = UserDirectoryService.getUser(comment.getAuthor()).getDisplayName();
@@ -163,6 +203,24 @@ public class CommentGradingPaneProducer implements ViewComponentProducer, ViewPa
 			}
 		}
 		
+		if (notSubmitted.size() > 0) {
+		    List<String> missing = new ArrayList<String>();
+		    for (String userId: notSubmitted) {
+			try {
+			    missing.add(UserDirectoryService.getUser(userId).getDisplayName());
+			} catch (Exception e) {
+			    missing.add(userId);
+			}
+		    }
+		    Collections.sort(missing);
+		    UIOutput.make(tofill, "missing-head");
+		    UIOutput.make(tofill, "missing-div");
+		    for (String name: missing) {
+			UIBranchContainer branch = UIBranchContainer.make(tofill, "missing:");
+			UIOutput.make(branch, "missing-entry", name);
+		    }
+		}
+		    
 		ArrayList<SimpleUser> simpleUsers = new ArrayList<SimpleUser>(users.values());
 		Collections.sort(simpleUsers);
 		
@@ -182,6 +240,19 @@ public class CommentGradingPaneProducer implements ViewComponentProducer, ViewPa
 		UIOutput.make(tofill, "clickToSubmit", messageLocator.getMessage("simplepage.update-points")).
 			    decorate(new UIFreeAttributeDecorator("title", 
 								  messageLocator.getMessage("simplepage.update-points")));
+
+		if (notSubmitted.size() > 0) 
+		    UIOutput.make(tofill, "zeroMissing", messageLocator.getMessage("simplepage.zero-missing")).
+			    decorate(new UIFreeAttributeDecorator("title", 
+								  messageLocator.getMessage("simplepage.zero-missing")));
+		
+		Object sessionToken = SessionManager.getCurrentSession().getAttribute("sakai.csrf.token");
+
+		UIForm zeroForm = UIForm.make(tofill, "zero-form");
+		if (sessionToken != null)
+		    UIInput.make(zeroForm, "zero-csrf", "simplePageBean.csrfToken", sessionToken.toString());
+		UIInput.make(zeroForm, "zero-item", "#{simplePageBean.itemId}", Long.toString(params.commentsItemId));
+		UICommand.make(zeroForm, "zero", messageLocator.getMessage("simplepage.zero-missing"), "#{simplePageBean.missingCommentsSetZero}");
 
 		for(SimpleUser user : simpleUsers) {
 			UIBranchContainer branch = UIBranchContainer.make(tofill, "student-row:");
@@ -241,7 +312,6 @@ public class CommentGradingPaneProducer implements ViewComponentProducer, ViewPa
 		UIInput jsIdInput = UIInput.make(gradingForm, "gradingForm-jsId", "gradingBean.jsId");
 		UIInput pointsInput = UIInput.make(gradingForm, "gradingForm-points", "gradingBean.points");
 		UIInput typeInput = UIInput.make(gradingForm, "gradingForm-type", "gradingBean.type");
-		Object sessionToken = SessionManager.getCurrentSession().getAttribute("sakai.csrf.token");
 		UIInput csrfInput = UIInput.make(gradingForm, "csrf", "gradingBean.csrfToken", (sessionToken == null ? "" : sessionToken.toString()));
 
 		UIInitBlock.make(tofill, "gradingForm-init", "initGradingForm", new Object[] {idInput, pointsInput, jsIdInput, typeInput, csrfInput, "gradingBean.results"});

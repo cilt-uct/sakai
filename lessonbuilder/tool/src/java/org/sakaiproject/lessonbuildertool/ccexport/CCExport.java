@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2003-2016 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.lessonbuildertool.ccexport;
 
 /***********
@@ -17,65 +32,50 @@ package org.sakaiproject.lessonbuildertool.ccexport;
  * limitations under the License.
  */
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.OutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.PrintWriter;
 import java.io.PrintStream;
-import java.io.FileOutputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
-import java.util.regex.Pattern;
-import java.util.regex.Matcher;
 import java.net.URLDecoder;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.zip.ZipEntry;
+
 import javax.servlet.http.HttpServletResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import lombok.extern.slf4j.Slf4j;
+
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.text.StringEscapeUtils;
+
+import uk.org.ponder.messageutil.MessageLocator;
+
+import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.content.api.ContentCollection;
 import org.sakaiproject.content.api.ContentEntity;
 import org.sakaiproject.content.api.ContentHostingService;
 import org.sakaiproject.content.api.ContentResource;
 import org.sakaiproject.entity.api.ResourceProperties;
-import org.sakaiproject.component.cover.ServerConfigurationService;
+import org.sakaiproject.lessonbuildertool.SimplePageItem;
+import org.sakaiproject.lessonbuildertool.model.SimplePageToolDao;
+import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean;
+import org.sakaiproject.lessonbuildertool.tool.view.ExportCCViewParameters;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.cover.SiteService;
-
-import org.sakaiproject.lessonbuildertool.SimplePageItem;
-import org.sakaiproject.lessonbuildertool.ccexport.SamigoExport;
-import org.sakaiproject.lessonbuildertool.ccexport.AssignmentExport;
-import org.sakaiproject.lessonbuildertool.ccexport.ForumsExport;
-import org.sakaiproject.lessonbuildertool.ccexport.ZipPrintStream;
-import org.sakaiproject.lessonbuildertool.model.SimplePageToolDao;
-import org.sakaiproject.lessonbuildertool.tool.view.ExportCCViewParameters;
-import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean;
-
-import org.sakaiproject.tool.cover.SessionManager;
 import org.sakaiproject.tool.api.ToolSession;
-import org.sakaiproject.tool.api.Placement;
 import org.sakaiproject.tool.cover.SessionManager;
 import org.sakaiproject.tool.cover.ToolManager;
 
-import uk.org.ponder.messageutil.MessageLocator;
-import uk.org.ponder.rsf.viewstate.ViewParameters;
-
+@Slf4j
 public class CCExport {
-
-    private static Logger log = LoggerFactory.getLogger(CCExport.class);
-
     private File root;
     private String rootPath;
     long nextid = 1;
@@ -532,7 +532,6 @@ public class CCExport {
 	} catch (Exception e) {
 	    log.error("output sam " + e);
 	    setErrKey("simplepage.exportcc-fileerr", e.getMessage());
-	    e.printStackTrace();
 	    return false;
 	}
 
@@ -730,7 +729,7 @@ public class CCExport {
 	pagesDone.add(pageId);
 
 	outputIndent(out, indent); out.println("<item identifier=\"page_" + pageId + "\">");
-	outputIndent(out, indent + 2); out.println("<title>" + StringEscapeUtils.escapeXml(title) + "</title>");
+	outputIndent(out, indent + 2); out.println("<title>" + StringEscapeUtils.escapeXml11(title) + "</title>");
 
 	List<SimplePageItem> items = simplePageToolDao.findItemsOnPage(pageId.longValue());
 	for (SimplePageItem item : items) {
@@ -869,7 +868,7 @@ public class CCExport {
 		    else
 			ititle = messageLocator.getMessage("simplepage.importcc-texttitle");
 		}
-		outputIndent(out, indent + 4); out.println("<title>" + StringEscapeUtils.escapeXml(ititle) + "</title>");
+		outputIndent(out, indent + 4); out.println("<title>" + StringEscapeUtils.escapeXml11(ititle) + "</title>");
 		// output Sakai-specific information, if any
 		outputItemMetadata(out, indent, item);
 		outputIndent(out, indent + 2); out.println("</item>"); 
@@ -949,7 +948,7 @@ public class CCExport {
 		out.println("    <lomimscc:lom>");
 		out.println("      <lomimscc:general>");
 		out.println("        <lomimscc:title>");
-		out.println("          <lomimscc:string>" + StringEscapeUtils.escapeXml(title) + "</lomimscc:string>");
+		out.println("          <lomimscc:string>" + StringEscapeUtils.escapeXml11(title) + "</lomimscc:string>");
 		out.println("        </lomimscc:title>");
 //		out.println("        <lomimscc:description>");
 //		out.println("          <lomimscc:string language=\"en-US\">Sakai Export, including only files from site</lomimscc:string>");
@@ -980,7 +979,7 @@ public class CCExport {
 		out.println("    <lomimscc:lom>");
 		out.println("      <lomimscc:general>");
 		out.println("        <lomimscc:title>");
-		out.println("          <lomimscc:string language=\"en-US\">" + StringEscapeUtils.escapeXml(title) + "</lomimscc:string>");
+		out.println("          <lomimscc:string language=\"en-US\">" + StringEscapeUtils.escapeXml11(title) + "</lomimscc:string>");
 		out.println("        </lomimscc:title>");
 		out.println("      </lomimscc:general>");
 		out.println("    </lomimscc:lom>");
@@ -989,7 +988,7 @@ public class CCExport {
 
 	    default:
 	    out.print(
-		      "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<manifest identifier=\"sakai1\"\n  xmlns=\"http://www.imsglobal.org/xsd/imsccv1p2/imscp_v1p1\"\nxmlns:lom=\"http://ltsc.ieee.org/xsd/imsccv1p2/LOM/resource\"\nxmlns:lomimscc=\"http://ltsc.ieee.org/xsd/imsccv1p2/LOM/manifest\"\nxmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\nxsi:schemaLocation=\"                                                                                                                        \n  http://ltsc.ieee.org/xsd/imsccv1p2/LOM/resource http://www.imsglobal.org/profile/cc/ccv1p2/LOM/ccv1p2_lomresource_v1p0.xsd                  \n  http://www.imsglobal.org/xsd/imsccv1p2/imscp_v1p1 http://www.imsglobal.org/profile/cc/ccv1p2/ccv1p2_imscp_v1p2_v1p0.xsd                     \n  http://ltsc.ieee.org/xsd/imsccv1p2/LOM/manifest http://www.imsglobal.org/profile/cc/ccv1p2/LOM/ccv1p2_lommanifest_v1p0.xsd\">\n  <metadata>\n    <schema>IMS Common Cartridge</schema>\n    <schemaversion>1.2.0</schemaversion>\n    <lomimscc:lom>\n      <lomimscc:general>\n	<lomimscc:title>\n	  <lomimscc:string>" + StringEscapeUtils.escapeXml(title) + "</lomimscc:string>\n	</lomimscc:title>\n      </lomimscc:general>\n    </lomimscc:lom>\n  </metadata>\n ");
+		      "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<manifest identifier=\"sakai1\"\n  xmlns=\"http://www.imsglobal.org/xsd/imsccv1p2/imscp_v1p1\"\nxmlns:lom=\"http://ltsc.ieee.org/xsd/imsccv1p2/LOM/resource\"\nxmlns:lomimscc=\"http://ltsc.ieee.org/xsd/imsccv1p2/LOM/manifest\"\nxmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\nxsi:schemaLocation=\"                                                                                                                        \n  http://ltsc.ieee.org/xsd/imsccv1p2/LOM/resource http://www.imsglobal.org/profile/cc/ccv1p2/LOM/ccv1p2_lomresource_v1p0.xsd                  \n  http://www.imsglobal.org/xsd/imsccv1p2/imscp_v1p1 http://www.imsglobal.org/profile/cc/ccv1p2/ccv1p2_imscp_v1p2_v1p0.xsd                     \n  http://ltsc.ieee.org/xsd/imsccv1p2/LOM/manifest http://www.imsglobal.org/profile/cc/ccv1p2/LOM/ccv1p2_lommanifest_v1p0.xsd\">\n  <metadata>\n    <schema>IMS Common Cartridge</schema>\n    <schemaversion>1.2.0</schemaversion>\n    <lomimscc:lom>\n      <lomimscc:general>\n	<lomimscc:title>\n	  <lomimscc:string>" + StringEscapeUtils.escapeXml11(title) + "</lomimscc:string>\n	</lomimscc:title>\n      </lomimscc:general>\n    </lomimscc:lom>\n  </metadata>\n ");
 	    }
 
 	    out.println("  <organizations>");
@@ -1034,16 +1033,16 @@ public class CCExport {
 		String type = "webcontent";
 		if (((Resource)entry.getValue()).islink)
 		    type = linkid;
-		out.println("    <resource href=\"" + StringEscapeUtils.escapeXml(entry.getValue().location) + "\" identifier=\"" + entry.getValue().resourceId + "\" type=\"" + type + "\"" + use + ">");
-		out.println("      <file href=\"" + StringEscapeUtils.escapeXml(entry.getValue().location) + "\"/>");
+		out.println("    <resource href=\"" + StringEscapeUtils.escapeXml11(entry.getValue().location) + "\" identifier=\"" + entry.getValue().resourceId + "\" type=\"" + type + "\"" + use + ">");
+		out.println("      <file href=\"" + StringEscapeUtils.escapeXml11(entry.getValue().location) + "\"/>");
 		for (String d: entry.getValue().dependencies)
 		    out.println("      <dependency identifierref=\"" + d + "\"/>");
 		out.println("    </resource>");
 	    }
 
 	    for (Map.Entry<String, Resource> entry: samigoMap.entrySet()) {
-		out.println("    <resource href=\"" + StringEscapeUtils.escapeXml(entry.getValue().location) + "\" identifier=\"" + entry.getValue().resourceId + "\" type=\"" + qtiid + "\">");
-		out.println("      <file href=\"" + StringEscapeUtils.escapeXml(entry.getValue().location) + "\"/>");
+		out.println("    <resource href=\"" + StringEscapeUtils.escapeXml11(entry.getValue().location) + "\" identifier=\"" + entry.getValue().resourceId + "\" type=\"" + qtiid + "\">");
+		out.println("      <file href=\"" + StringEscapeUtils.escapeXml11(entry.getValue().location) + "\"/>");
 		for (String d: entry.getValue().dependencies)
 		    out.println("      <dependency identifierref=\"" + d + "\"/>");
 		out.println("    </resource>");
@@ -1051,8 +1050,8 @@ public class CCExport {
 
 	    // question bank
 	    for (Map.Entry<Long, Resource> entry: poolMap.entrySet()) {
-		out.println("    <resource href=\"" + StringEscapeUtils.escapeXml(entry.getValue().location) + "\" identifier=\"" + entry.getValue().resourceId + "\" type=\"" + bankid + "\">");
-		out.println("      <file href=\"" + StringEscapeUtils.escapeXml(entry.getValue().location) + "\"/>");
+		out.println("    <resource href=\"" + StringEscapeUtils.escapeXml11(entry.getValue().location) + "\" identifier=\"" + entry.getValue().resourceId + "\" type=\"" + bankid + "\">");
+		out.println("      <file href=\"" + StringEscapeUtils.escapeXml11(entry.getValue().location) + "\"/>");
 		for (String d: entry.getValue().dependencies)
 		    out.println("      <dependency identifierref=\"" + d + "\"/>");
 		out.println("    </resource>");
@@ -1060,8 +1059,8 @@ public class CCExport {
 
 	    for (Map.Entry<String, Resource> entry: assignmentMap.entrySet()) {
 		String variantId = null;
-		out.println("    <resource href=\"" + StringEscapeUtils.escapeXml(entry.getValue().location) + "\" identifier=\"" + entry.getValue().resourceId + "\" type=\"webcontent\"" + usestr + ">");
-		out.println("      <file href=\"" + StringEscapeUtils.escapeXml(entry.getValue().location) + "\"/>");
+		out.println("    <resource href=\"" + StringEscapeUtils.escapeXml11(entry.getValue().location) + "\" identifier=\"" + entry.getValue().resourceId + "\" type=\"webcontent\"" + usestr + ">");
+		out.println("      <file href=\"" + StringEscapeUtils.escapeXml11(entry.getValue().location) + "\"/>");
 		for (String d: entry.getValue().dependencies)
 		    out.println("      <dependency identifierref=\"" + d + "\"/>");
 		if (version >= V13) {
@@ -1075,8 +1074,8 @@ public class CCExport {
 		// output the preferred version for 1.3 and up
 		if (version >= V13) {
 		    String xmlHref = "cc-objects/" + entry.getValue().resourceId + ".xml";
-		    out.println("    <resource href=\"" + StringEscapeUtils.escapeXml(xmlHref) + "\" identifier=\"" + variantId + "\" type=\"assignment_xmlv1p0\">");
-		    out.println("      <file href=\"" + StringEscapeUtils.escapeXml(xmlHref) + "\"/>");
+		    out.println("    <resource href=\"" + StringEscapeUtils.escapeXml11(xmlHref) + "\" identifier=\"" + variantId + "\" type=\"assignment_xmlv1p0\">");
+		    out.println("      <file href=\"" + StringEscapeUtils.escapeXml11(xmlHref) + "\"/>");
 		    for (String d: entry.getValue().dependencies)
 		    out.println("      <dependency identifierref=\"" + d + "\"/>");
 		    out.println("    </resource>");
@@ -1084,16 +1083,16 @@ public class CCExport {
 	    }
 
 	    for (Map.Entry<String, Resource> entry: forumsMap.entrySet()) {
-		out.println("    <resource href=\"" + StringEscapeUtils.escapeXml(entry.getValue().location) + "\" identifier=\"" + entry.getValue().resourceId + "\" type=\"" + topicid + "\">");
-		out.println("      <file href=\"" + StringEscapeUtils.escapeXml(entry.getValue().location) + "\"/>");
+		out.println("    <resource href=\"" + StringEscapeUtils.escapeXml11(entry.getValue().location) + "\" identifier=\"" + entry.getValue().resourceId + "\" type=\"" + topicid + "\">");
+		out.println("      <file href=\"" + StringEscapeUtils.escapeXml11(entry.getValue().location) + "\"/>");
 		for (String d: entry.getValue().dependencies)
 		    out.println("      <dependency identifierref=\"" + d + "\"/>");
 		out.println("    </resource>");
 	    }
 
 	    for (Map.Entry entry : this.bltiMap.entrySet()) {
-		out.println("    <resource href=\"" + StringEscapeUtils.escapeXml(((Resource)entry.getValue()).location) + "\" identifier=\"" + ((Resource)entry.getValue()).resourceId + "\" type=\"imsbasiclti_xmlv1p0\">");
-		out.println("      <file href=\"" + StringEscapeUtils.escapeXml(((Resource)entry.getValue()).location) + "\"/>");
+		out.println("    <resource href=\"" + StringEscapeUtils.escapeXml11(((Resource)entry.getValue()).location) + "\" identifier=\"" + ((Resource)entry.getValue()).resourceId + "\" type=\"imsbasiclti_xmlv1p0\">");
+		out.println("      <file href=\"" + StringEscapeUtils.escapeXml11(((Resource)entry.getValue()).location) + "\"/>");
 		for (String d : ((Resource)entry.getValue()).dependencies)
 		    out.println("      <dependency identifierref=\"" + d + "\"/>");
 		out.println("    </resource>");
@@ -1133,8 +1132,8 @@ public class CCExport {
 		    out.println("<webLink xmlns=\"http://www.imsglobal.org/xsd/imsccv1p1/imswl_v1p1\"");
 		    out.println("      xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"");
 		    out.println("      xsi:schemaLocation=\"http://www.imsglobal.org/xsd/imsccv1p1/imswl_v1p1 http://www.imsglobal.org/profile/cc/ccv1p1/ccv1p1_imswl_v1p1.xsd\">");
-		    out.println("  <title>" + StringEscapeUtils.escapeXml(res.title) + "</title>");
-		    out.println("  <url href=\"" + StringEscapeUtils.escapeXml(res.url) + "\"/>");
+		    out.println("  <title>" + StringEscapeUtils.escapeXml11(res.title) + "</title>");
+		    out.println("  <url href=\"" + StringEscapeUtils.escapeXml11(res.url) + "\"/>");
 		    out.println("</webLink>");
 		    break;
 		case V13:
@@ -1142,8 +1141,8 @@ public class CCExport {
 		    out.println("<webLink xmlns=\"http://www.imsglobal.org/xsd/imsccv1p3/imswl_v1p3\"");
 		    out.println("      xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://www.imsglobal.org/xsd/imsccv1p3/imswl_v1p3 ");
 		    out.println("      http://www.imsglobal.org/profile/cc/ccv1p3/ccv1p3_imswl_v1p3.xsd\">");
-		    out.println("  <title>" + StringEscapeUtils.escapeXml(res.title) + "</title>");
-		    out.println("  <url href=\"" + StringEscapeUtils.escapeXml(res.url) + "\"/>");
+		    out.println("  <title>" + StringEscapeUtils.escapeXml11(res.title) + "</title>");
+		    out.println("  <url href=\"" + StringEscapeUtils.escapeXml11(res.url) + "\"/>");
 		    out.println("</webLink>");
 		    break;
 		default:
@@ -1151,8 +1150,8 @@ public class CCExport {
 		    out.println("<webLink xmlns=\"http://www.imsglobal.org/xsd/imsccv1p2/imswl_v1p2\"");
 		    out.println("      xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"");
 		    out.println("      xsi:schemaLocation=\"http://www.imsglobal.org/xsd/imsccv1p2/imswl_v1p2 http://www.imsglobal.org/profile/cc/ccv1p2/ccv1p2_imswl_v1p2.xsd\">");
-		    out.println("  <title>" + StringEscapeUtils.escapeXml(res.title) + "</title>");
-		    out.println("  <url href=\"" + StringEscapeUtils.escapeXml(res.url) + "\"/>");
+		    out.println("  <title>" + StringEscapeUtils.escapeXml11(res.title) + "</title>");
+		    out.println("  <url href=\"" + StringEscapeUtils.escapeXml11(res.url) + "\"/>");
 		    out.println("</webLink>");
 		}
 	    }
@@ -1318,7 +1317,7 @@ public class CCExport {
 		}
 	    }
 	}
-	return StringEscapeUtils.escapeXml(ret.toString());
+	return StringEscapeUtils.escapeXml11(ret.toString());
     }		
 
     // turns the links into relative links

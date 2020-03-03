@@ -20,7 +20,6 @@
  **********************************************************************************/
 package org.sakaiproject.api.app.messageforums;
 
-import java.util.Collection;
 import java.util.List;
 
 
@@ -98,10 +97,10 @@ public interface MessageForumsForumManager {
     /**
      * Save a discussion forum
      */
-    public void saveDiscussionForum(DiscussionForum forum);
-    public void saveDiscussionForum(DiscussionForum forum, boolean draft);
-    public void saveDiscussionForum(DiscussionForum forum, boolean draft, boolean logEvent);
-    public void saveDiscussionForum(DiscussionForum forum, boolean draft, boolean logEvent, String currentUser);
+    public DiscussionForum saveDiscussionForum(DiscussionForum forum);
+    public DiscussionForum saveDiscussionForum(DiscussionForum forum, boolean draft);
+    public DiscussionForum saveDiscussionForum(DiscussionForum forum, boolean draft, boolean logEvent);
+    public DiscussionForum saveDiscussionForum(DiscussionForum forum, boolean draft, boolean logEvent, String currentUser);
 
 
     /**
@@ -112,9 +111,9 @@ public interface MessageForumsForumManager {
     /**
      * Save a discussion forum topic
      */
-    public void saveDiscussionForumTopic(DiscussionTopic topic);
-    public void saveDiscussionForumTopic(DiscussionTopic topic, boolean parentForumDraftStatus);
-    public void saveDiscussionForumTopic(DiscussionTopic topic, boolean parentForumDraftStatus, String currentUser, boolean logEvent);
+    public DiscussionTopic saveDiscussionForumTopic(DiscussionTopic topic);
+    public DiscussionTopic saveDiscussionForumTopic(DiscussionTopic topic, boolean parentForumDraftStatus);
+    public DiscussionTopic saveDiscussionForumTopic(DiscussionTopic topic, boolean parentForumDraftStatus, String currentUser, boolean logEvent);
     /**
      * Create and save an empty private discussion forum topic
      */
@@ -131,8 +130,12 @@ public interface MessageForumsForumManager {
      * Delete a private forum topic
      */
     public void deletePrivateForumTopic(PrivateTopic topic);
-    
-    
+
+    /**
+     * Create an empty message
+     */
+    Message createMessage(final DiscussionTopic topic);
+
     /**
      * Create and save an empty open discussion forum topic
      */
@@ -274,4 +277,7 @@ public interface MessageForumsForumManager {
 	 * @return
 	 */
 	public boolean doesRoleHavePermissionInTopic(final Long topicId, final String roleName, final String permissionName);
+
+	public String getAllowedGroupForRestrictedForum(final Long forumId, final String permissionName);
+	public String getAllowedGroupForRestrictedTopic(final Long topicId, final String permissionName);
 }

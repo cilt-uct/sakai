@@ -4,16 +4,11 @@
     <parent>
         <artifactId>basiclti</artifactId>
         <groupId>org.sakaiproject.basiclti</groupId>
-        <version>12-SNAPSHOT</version>
+        <version>21-SNAPSHOT</version>
     </parent>
   <name>sakai-web-portlet-basiclti</name>
   <groupId>org.sakaiproject.basiclti</groupId>
   <artifactId>sakai-web-portlet-basiclti</artifactId>
-  <organization>
-    <name>The Sakai Foundation</name>
-    <url>http://sakaiproject.org/</url>
-  </organization>
-  <inceptionYear>2007</inceptionYear>
   <packaging>war</packaging>
   <dependencies>
   		<dependency>
@@ -42,12 +37,11 @@
         </dependency>
         <dependency>
             <groupId>javax.servlet</groupId>
-            <artifactId>servlet-api</artifactId>
+            <artifactId>javax.servlet-api</artifactId>
         </dependency>
     <dependency>
       <groupId>javax.portlet</groupId>
       <artifactId>portlet-api</artifactId>
-      <version>1.0</version>
     </dependency>
 <!-- velocity and dependencies (logkit, oro, collections) -->
     <dependency>

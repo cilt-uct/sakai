@@ -11,8 +11,8 @@
 				@import url("/sakai-signup-tool/css/signupStyle.css");
 		</style>
 <h:outputText value="#{Portal.latestJQuery}" escape="false"/>
-		<script TYPE="text/javascript" LANGUAGE="JavaScript" src="/sakai-signup-tool/js/signupScript.js"></script>
-		<script type="text/javascript">
+		<script src="/sakai-signup-tool/js/signupScript.js"></script>
+		<script>
 				var origClassNames=new Array();
 				var lastActiveId;
 				var previousBgColor; 
@@ -168,10 +168,12 @@
 		<sakai:view_content>
 			<h:outputText value="#{msgs.event_error_alerts} #{messageUIBean.errorMessage}" styleClass="alertMessage" escape="false" rendered="#{messageUIBean.error}"/> 
 			<h:form id="items">
-			 	<sakai:view_title value="#{msgs.signup_download}"/>
-				
+				<div class="page-header">
+					<sakai:view_title value="#{msgs.signup_download}"/>
+				</div>
+
 				<h:outputText value="&nbsp;" escape="false"/>
-				
+
 				<h:panelGrid columns="1">
 					<h:outputText value="#{msgs.events_organizer_download_instruction}"  rendered="#{DownloadEventBean.allowedToUpdate && DownloadEventBean.meetingsAvailable}" escape="false"/>
 					<h:outputText value="#{msgs.events_attendee_download_instruction}" rendered="#{!DownloadEventBean.allowedToUpdate && DownloadEventBean.meetingsAvailable}" escape="false"/>
@@ -180,7 +182,7 @@
 				
 				<div class="form-group row">
 					<!-- view range dropdown -->
-					<h:outputLabel value="#{msgs.events_dropdownbox_title} "  for="viewByRange" styleClass="form-control-label col-lg-1 col-md-1"/>
+					<h:outputLabel value="#{msgs.events_dropdownbox_title} "  for="viewByRange" styleClass="col-lg-1 col-md-1"/>
 					<div class="col-lg-3 col-md-3">
 						<h:selectOneMenu id="viewByRange" value="#{DownloadEventBean.viewDateRang}" valueChangeListener="#{DownloadEventBean.processSelectedRange}" onchange="if(validateIEDisabledItem(this)){submit()};">
 							<f:selectItems value="#{DownloadEventBean.viewDropDownList}"/>
@@ -188,7 +190,7 @@
 					</div>
 
 					<!-- filter by category dropdown -->
-					<h:outputLabel value="#{msgs.filter_by_category} " for="viewByCategory" styleClass="form-control-label col-lg-2 col-md-2"/>
+					<h:outputLabel value="#{msgs.filter_by_category} " for="viewByCategory" styleClass="col-lg-2 col-md-2"/>
 					<div  class="col-lg-2 col-md-2">
 						<h:selectOneMenu id="viewByCategory" value="#{DownloadEventBean.categoryFilter}" valueChangeListener="#{DownloadEventBean.processSelectedCategory}" onchange="if(validateIEDisabledItem(this)){submit()};">
 							<f:selectItems value="#{DownloadEventBean.allCategoriesForFilter}"/>
@@ -237,11 +239,15 @@
 							<h:selectBooleanCheckbox id="selectItem" value="#{wrapper.toDownload}" rendered="#{wrapper.recurEventsSize < 1}" styleClass="#{wrapper.recurId}"/>
 							<h:panelGroup rendered="#{wrapper.firstOneRecurMeeting && wrapper.recurEventsSize >1}" styleClass="toggleMeetings toggleDownload">
 								<h:outputText value="<span id='imageOpen_RM_#{wrapper.recurId}' style='display:none'>"  escape="false"/>
-		   	    					<h:graphicImage value="/images/minusSmall.gif"  alt="open" styleClass="openCloseImageIcon" title="#{msgs.event_tool_tips_collapse_recur_meeting}" style="border:none" onclick="showDetails('imageOpen_RM_#{wrapper.recurId}','imageClose_RM_#{wrapper.recurId}');showAllRelatedRecurMeetings('#{wrapper.recurId}','#{DownloadEventBean.iframeId}');" />
+								<h:outputLink value="javascript:showDetails('imageOpen_RM_#{wrapper.recurId}','imageClose_RM_#{wrapper.recurId}');showAllRelatedRecurMeetings('#{wrapper.recurId}','#{DownloadEventBean.iframeId}');">
+									<h:graphicImage value="/images/minusSmall.gif" alt="#{msgs.event_tool_tips_collapse_recur_meeting}" styleClass="openCloseImageIcon" title="#{msgs.event_tool_tips_collapse_recur_meeting}" style="border:none" />
+								</h:outputLink>
 		   	    				<h:outputText value="</span>" escape="false" />
 		   	    			
 		   	    				<h:outputText value="<span id='imageClose_RM_#{wrapper.recurId}'>"  escape="false"/>
-		   	    					<h:graphicImage value="/images/plusSmall.gif" alt="close" styleClass="openCloseImageIcon" title="#{msgs.event_tool_tips_expand_recur_meeting}"  style="border:none" onclick="showDetails('imageOpen_RM_#{wrapper.recurId}','imageClose_RM_#{wrapper.recurId}');showAllRelatedRecurMeetings('#{wrapper.recurId}','#{DownloadEventBean.iframeId}');"/>
+								<h:outputLink value="javascript:showDetails('imageOpen_RM_#{wrapper.recurId}','imageClose_RM_#{wrapper.recurId}');showAllRelatedRecurMeetings('#{wrapper.recurId}','#{DownloadEventBean.iframeId}');">
+									<h:graphicImage value="/images/plusSmall.gif" alt="#{msgs.event_tool_tips_expand_recur_meeting}" styleClass="openCloseImageIcon" title="#{msgs.event_tool_tips_expand_recur_meeting}"  style="border:none" />
+								</h:outputLink>
 		   	    				<h:outputText value="</span>" escape="false" />
 		   	    				
 		   	    				<h:outputText value="&nbsp;" escape="false"/>
@@ -297,7 +303,7 @@
 									<f:convertDateTime  pattern="EEE, " timeZone="#{UserTimeZone.userTimeZone}"/>
 								</h:outputText>
 								<h:outputText value="#{wrapper.meeting.startTime}">
-									<f:convertDateTime  dateStyle="short" pattern="#{UserLocale.dateFormat}" timeZone="#{UserTimeZone.userTimeZone}"/>
+									<f:convertDateTime dateStyle="short" pattern="#{UserLocale.dateFormat}" timeZone="#{UserTimeZone.userTimeZone}"/>
 								</h:outputText>
 							</h:panelGroup>
 						</t:column>
@@ -310,14 +316,14 @@
 							</f:facet>
 							<h:panelGroup style="white-space: nowrap;">
 								<h:outputText value="#{wrapper.meeting.startTime}">
-									<f:convertDateTime pattern="h:mm a" timeZone="#{UserTimeZone.userTimeZone}"/>
+									<f:convertDateTime pattern="#{UserLocale.localizedTimeFormat}" timeZone="#{UserTimeZone.userTimeZone}"/>
 								</h:outputText>
 								<h:outputText value="#{wrapper.meeting.startTime}" rendered="#{wrapper.meeting.meetingCrossDays}">
 											<f:convertDateTime pattern=", EEE" timeZone="#{UserTimeZone.userTimeZone}"/>
 								</h:outputText>
 								<h:outputText value="#{msgs.timeperiod_divider}" escape="false"/>
 								<h:outputText value="#{wrapper.meeting.endTime}">
-									<f:convertDateTime pattern="h:mm a" timeZone="#{UserTimeZone.userTimeZone}"/>
+									<f:convertDateTime pattern="#{UserLocale.localizedTimeFormat}" timeZone="#{UserTimeZone.userTimeZone}"/>
 								</h:outputText>
 								<h:outputText value="#{wrapper.meeting.endTime}" rendered="#{wrapper.meeting.meetingCrossDays}">
 											<f:convertDateTime pattern=", EEE" timeZone="#{UserTimeZone.userTimeZone}"/>
@@ -330,14 +336,14 @@
 							</f:facet>
 							<h:panelGroup style="white-space: nowrap;">
 								<h:outputText value="#{wrapper.startTime}">
-									<f:convertDateTime pattern="h:mm a" timeZone="#{UserTimeZone.userTimeZone}"/>
+									<f:convertDateTime pattern="#{UserLocale.localizedTimeFormat}" timeZone="#{UserTimeZone.userTimeZone}"/>
 								</h:outputText>
 								<h:outputText value="#{wrapper.startTime}" rendered="#{wrapper.myAppointmentCrossDays}">
 											<f:convertDateTime pattern=", EEE" timeZone="#{UserTimeZone.userTimeZone}"/>
 								</h:outputText>
 								<h:outputText value="#{msgs.timeperiod_divider}" escape="false"/>
 								<h:outputText value="#{wrapper.endTime}">
-									<f:convertDateTime pattern="h:mm a" timeZone="#{UserTimeZone.userTimeZone}"/>
+									<f:convertDateTime pattern="#{UserLocale.localizedTimeFormat}" timeZone="#{UserTimeZone.userTimeZone}"/>
 								</h:outputText>
 								<h:outputText value="#{wrapper.endTime}" rendered="#{wrapper.myAppointmentCrossDays}">
 											<f:convertDateTime pattern=", EEE" timeZone="#{UserTimeZone.userTimeZone}"/>
@@ -373,7 +379,7 @@
 				<h:panelGrid columns="1">
 					<h:outputText value="&nbsp;" escape="false"/>
 					<h:panelGroup>
-						<h:commandButton id="downloadEventsXls"  action="#{DownloadEventBean.startXlsDownload}" value="#{msgs.event_download_xls_button}"  rendered="#{DownloadEventBean.meetingsAvailable}"/>
+						<h:commandButton id="downloadEventsXls" styleClass="active"  action="#{DownloadEventBean.startXlsDownload}" value="#{msgs.event_download_xls_button}"  rendered="#{DownloadEventBean.meetingsAvailable}"/>
 						<h:commandButton id="downloadEventsCsv"  action="#{DownloadEventBean.startCsvDownload}" value="#{msgs.event_download_csv_button}"  rendered="#{DownloadEventBean.meetingsAvailable && DownloadEventBean.csvExportEnabled && DownloadEventBean.currentUserAllowedUpdateSite}"/>
 						<h:outputText value="&nbsp;&nbsp;&nbsp;" escape="false"/>
 						<h:commandButton id="goToMain" action="listMeetings" value="#{msgs.goback_button}"  />

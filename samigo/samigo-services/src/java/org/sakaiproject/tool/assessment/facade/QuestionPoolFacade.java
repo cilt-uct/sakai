@@ -26,11 +26,9 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.Set;
 
+import lombok.extern.slf4j.Slf4j;
 import org.osid.shared.Id;
 import org.osid.shared.SharedException;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import org.sakaiproject.tool.assessment.business.questionpool.QuestionPool;
 import org.sakaiproject.tool.assessment.business.questionpool.QuestionPoolException;
@@ -45,10 +43,10 @@ import org.sakaiproject.tool.assessment.services.PersistenceService;
 /**
  * @author Ed Smiley <esmiley@stanford.edu>
  */
+@Slf4j
 public class QuestionPoolFacade
     implements java.io.Serializable, QuestionPoolDataIfc, Cloneable
 {
-  private Logger log = LoggerFactory.getLogger(QuestionPoolFacade.class);
   private static final long serialVersionUID = 7526471155622776147L;
 
   public static final Long ACCESS_DENIED =  Long.valueOf(30);
@@ -95,7 +93,7 @@ public class QuestionPoolFacade
   private String organizationName;
   private Set questionPoolItems;
   private Collection items = new ArrayList();
-  private Integer subPoolSize;
+  private Long subPoolSize;
 
   /**
    * Creates a new QuestionPoolFacade object.
@@ -788,13 +786,13 @@ public class QuestionPoolFacade
     return  Integer.valueOf(items.size());
   }
 
-  public void setSubPoolSize(Integer subPoolSize)
+  public void setSubPoolSize(Long subPoolSize)
   {
     this.subPoolSize = subPoolSize;
     this.data.setSubPoolSize(subPoolSize);
   }
 
-  public Integer getSubPoolSize()
+  public Long getSubPoolSize()
   {
     try {
       this.data = (QuestionPoolDataIfc) questionPool.getData();

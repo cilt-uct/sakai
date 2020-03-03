@@ -30,9 +30,8 @@ import java.util.Set;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.sakaiproject.authz.api.AuthzGroup;
 import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.authz.api.AuthzPermissionException;
@@ -73,9 +72,8 @@ import org.sakaiproject.user.api.UserNotDefinedException;
  * @author Bryan Holladay (holladay@longsight.com)
  *
  */
+@Slf4j
 public class SakaiProxyImpl implements SakaiProxy {
-
-	private static final Logger log = LoggerFactory.getLogger(SakaiProxyImpl.class);
 	@Getter @Setter
 	private AuthzGroupService authzGroupService;
 
@@ -239,7 +237,7 @@ public class SakaiProxyImpl implements SakaiProxy {
 	 */
 	public List<User> searchUsers(String search) {
 		List<User> returnList = new ArrayList<User>();
-		returnList.addAll(userDirectoryService.searchExternalUsers(search, -1, -1));
+		returnList.addAll(userDirectoryService.searchExternalUsers(search, 1, Integer.MAX_VALUE));
 		returnList.addAll(userDirectoryService.searchUsers(search, 1, Integer.MAX_VALUE));
 		return returnList;
 	}
@@ -605,7 +603,17 @@ public class SakaiProxyImpl implements SakaiProxy {
 	public boolean getDisableShoppingTreeView(){
 		return serverConfigurationService.getBoolean(DelegatedAccessConstants.PROP_DISABLE_SHOPPING_TREE_VIEW, false);
 	}
-	
+
+	public boolean getToolsListUIEnabled() {
+		return serverConfigurationService.getBoolean(
+			DelegatedAccessConstants.PROP_TOOLSLIST_UI_ENABLED, DelegatedAccessConstants.PROP_TOOLSLIST_UI_ENABLED_DEFAULT);
+	}
+
+	public boolean getShoppingUIEnabled() {
+		return serverConfigurationService.getBoolean(
+			DelegatedAccessConstants.PROP_SHOPPING_UI_ENABLED, DelegatedAccessConstants.PROP_SHOPPING_UI_ENABLED_DEFAULT);
+	}
+
 	public boolean isUserInstructor(String userId, String siteId){
 		Site site = getSiteById(siteId);
 		return isUserInstructor(userId, site);

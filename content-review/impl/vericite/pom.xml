@@ -9,7 +9,7 @@
 	<parent>
 		<groupId>org.sakaiproject.contentreview</groupId>
 		<artifactId>content-review-impl</artifactId>
-		<version>12-SNAPSHOT</version>
+		<version>21-SNAPSHOT</version>
 	</parent>
 
         <properties>
@@ -19,13 +19,16 @@
         	<swagger-core-version>1.5.9</swagger-core-version>
 		<okhttp-version>2.7.5</okhttp-version>
 		<gson-version>2.6.2</gson-version>
-		<jodatime-version>2.9.3</jodatime-version>
 	</properties>
 
 	<dependencies>
 		<dependency>
 			<groupId>org.sakaiproject.contentreview</groupId>
 			<artifactId>content-review-api</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.sakaiproject.contentreview.service</groupId>
+			<artifactId>content-review-service-impl</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.sakaiproject.kernel</groupId>
@@ -56,6 +59,10 @@
                         <groupId>commons-io</groupId>
                         <artifactId>commons-io</artifactId>
                 </dependency>
+        <dependency>
+	        <groupId>javax.servlet</groupId>
+	        <artifactId>javax.servlet-api</artifactId>
+	    </dependency>
 		<!-- HTTP client: jersey-client -->
                 <dependency>
                         <groupId>com.sun.jersey</groupId>
@@ -96,7 +103,7 @@
 		<dependency>
 			<groupId>joda-time</groupId>
 			<artifactId>joda-time</artifactId>
-			<version>${jodatime-version}</version>
+			<version>${joda.time.version}</version>
 		</dependency>
 
 
@@ -130,5 +137,14 @@
                         <artifactId>migbase64</artifactId>
                         <version>2.2</version>
                 </dependency>
+                <dependency>
+                   <groupId>org.apache.commons</groupId>
+                   <artifactId>commons-lang3</artifactId>
+                </dependency>
+		<dependency>
+			<groupId>com.vericite</groupId>
+			<artifactId>vericite-lms-api</artifactId>
+			<version>1.4</version>
+		</dependency>
 	</dependencies>
 </project>

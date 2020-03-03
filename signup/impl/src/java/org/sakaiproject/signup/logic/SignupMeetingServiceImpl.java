@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2007-2016 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 /*
 * Licensed to The Apereo Foundation under one or more contributor license
 * agreements. See the NOTICE file distributed with this work for
@@ -19,6 +34,11 @@
 
 package org.sakaiproject.signup.logic;
 
+import java.text.MessageFormat;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -28,11 +48,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.StringTokenizer;
 
+import lombok.extern.slf4j.Slf4j;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.dao.OptimisticLockingFailureException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.sakaiproject.authz.api.SecurityAdvisor;
 import org.sakaiproject.calendar.api.Calendar;
 import org.sakaiproject.calendar.api.CalendarEventEdit;
@@ -54,7 +74,8 @@ import org.sakaiproject.site.api.Site;
 import org.sakaiproject.time.api.Time;
 import org.sakaiproject.time.api.TimeRange;
 import org.sakaiproject.time.api.TimeService;
-import org.springframework.dao.OptimisticLockingFailureException;
+import org.sakaiproject.time.api.UserTimeService;
+import org.sakaiproject.util.ResourceLoader;
 
 /**
  * <p>
@@ -66,9 +87,8 @@ import org.springframework.dao.OptimisticLockingFailureException;
  * 
  * </p>
  */
+@Slf4j
 public class SignupMeetingServiceImpl implements SignupMeetingService, Retry, MeetingTypes, SignupMessageTypes {
-
-	private static Logger log = LoggerFactory.getLogger(SignupMeetingServiceImpl.class);
 
 	@Getter @Setter
 	private SignupMeetingDao signupMeetingDao;
@@ -81,6 +101,11 @@ public class SignupMeetingServiceImpl implements SignupMeetingService, Retry, Me
 
 	@Getter @Setter
 	private SignupEmailFacade signupEmailFacade;
+	
+	@Setter
+	private UserTimeService userTimeService;
+	
+	protected static ResourceLoader rb = new ResourceLoader("emailMessage");
 
 	public void init() {
 		log.debug("init");
@@ -708,7 +733,8 @@ public class SignupMeetingServiceImpl implements SignupMeetingService, Retry, Me
 					/* new time frame */
 					String title_suffix = "";
 					if(hasMulptleBlock){
-						title_suffix = " (part " + sequence + ")";
+						String partSequence = MessageFormat.format(rb.getString("signup.event.part") ,new Object[] { sequence });
+						title_suffix = " (" + partSequence + ")";
 						sequence++;
 					}
 
@@ -776,8 +802,7 @@ public class SignupMeetingServiceImpl implements SignupMeetingService, Retry, Me
 		int num = 0;
 
         if(meeting.getSignupTimeSlots().size() > 0) {
-            // TODO: 'Attendees' needs internationalising
-            attendeeNamesMarkup += "<br /><br /><span style=\"font-weight: bold\"><b>Attendees:</b></span><br />";
+            attendeeNamesMarkup += "<br /><br /><span style=\"font-weight: bold\"><b>" + rb.getString("signup.event.attendees") + "</b></span><br />";
         }
 
         boolean displayAttendeeName = false;
@@ -796,14 +821,15 @@ public class SignupMeetingServiceImpl implements SignupMeetingService, Retry, Me
         }
         
         if(!displayAttendeeName || num < 1){
-        	 attendeeNamesMarkup += ("<span style=\"font-weight: italic\"><i> Currently, " +  num + " attendees have been signed up.</i></span><br />");
+        	String currentAttendees = MessageFormat.format(rb.getString("signup.event.currentattendees") ,new Object[] { num });
+        	attendeeNamesMarkup += ("<span style=\"font-weight: italic\"><i>" + currentAttendees + "</i></span><br />");
         }
          
 		String desc = meeting.getDescription() + attendeeNamesMarkup;
 		eventEdit.setDescription(PlainTextFormat.convertFormattedHtmlTextToPlaintext(desc));
 		eventEdit.setLocation(meeting.getLocation());
-        // TODO: 'attendees' needs internationalising
-		eventEdit.setDisplayName(meeting.getTitle() + title_suffix + " (" + num + " attendees)");			
+		String eventTitleAttendees = MessageFormat.format(rb.getString("signup.event.attendeestitle") ,new Object[] { num });
+		eventEdit.setDisplayName(meeting.getTitle() + title_suffix + " (" + eventTitleAttendees + ")");			
 		eventEdit.setRange(timeRange);
 	}
 	
@@ -1152,6 +1178,17 @@ public class SignupMeetingServiceImpl implements SignupMeetingService, Retry, Me
 	}
 	
 	
-
+	@Override
+	public String getUsersLocalDateTimeString(final Instant date) {
+		if (date == null) {
+			log.warn("Date was null, returning empty string");
+			return "";
+		}
+		final ZoneId zone = userTimeService.getLocalTimeZone().toZoneId();
+		final DateTimeFormatter df = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
+	                                            .withZone(zone)
+	                                            .withLocale(rb.getLocale());
+	    return df.format(date);
+	}
 
 }

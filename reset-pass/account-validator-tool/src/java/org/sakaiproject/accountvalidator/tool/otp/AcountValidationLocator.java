@@ -19,11 +19,11 @@
  */
 package org.sakaiproject.accountvalidator.tool.otp;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.ISODateTimeFormat;
+
 import org.sakaiproject.accountvalidator.logic.ValidationLogic;
 import org.sakaiproject.accountvalidator.model.ValidationAccount;
 import org.sakaiproject.authz.api.SecurityAdvisor;
@@ -37,6 +37,7 @@ import org.sakaiproject.event.api.UsageSessionService;
 import org.sakaiproject.user.api.*;
 import org.sakaiproject.user.api.UserDirectoryService.PasswordRating;
 import org.sakaiproject.util.ExternalTrustedEvidence;
+
 import uk.org.ponder.beanutil.BeanLocator;
 import uk.org.ponder.messageutil.MessageLocator;
 import uk.org.ponder.messageutil.TargettedMessage;
@@ -49,12 +50,12 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import org.apache.commons.lang3.StringUtils;
 
+@Slf4j
 public class AcountValidationLocator implements BeanLocator  {
-	private static Logger log = LoggerFactory.getLogger(AcountValidationLocator.class);
-	
+
 	public static final String NEW_PREFIX = "new";
-	public static final String UNKOWN_PREFIX = "unkown";
 	
 	private Map<String, Object> delivered = new HashMap<String, Object>();
 
@@ -125,22 +126,42 @@ public class AcountValidationLocator implements BeanLocator  {
 		if (togo == null){
 			if(name.startsWith(NEW_PREFIX)){
 				togo = new ValidationAccount();
-			} else if (name.startsWith(UNKOWN_PREFIX)) { 
-				togo = validationLogic.getVaLidationAcountBytoken(name);
 			}else {
 				//find the bean
-				try {
-				log.debug("Locating bean: " + name);
-				Long id = Long.valueOf(name);
-				togo = validationLogic.getVaLidationAcountById(id);
-				}
-				catch (NumberFormatException nfe) {
-					return null;
-				}
+				// always look up by token to prevent sequential guessing
+				ValidationAccount va = validationLogic.getVaLidationAcountBytoken(name);
+				updateWithUserDefaults(va);
+				togo = va;
+			}
+			if (togo != null)
+			{
+				delivered.put(name, togo);
 			}
 			delivered.put(name, togo);
-		}	
+		}
 		return togo;
+	}
+
+	/**
+	 * If the user object has defaults that aren't set on the Validation Account use them.
+	 * @param va The ValidationAccount.
+	 */
+	protected void updateWithUserDefaults(ValidationAccount va) {
+		if (va != null) {
+			try {
+				// If someone has set default values on the user object use those as fallbacks
+				// The getters never return null so check if they are empty.
+				User u = userDirectoryService.getUser(EntityReference.getIdFromRef(va.getUserId()));
+				if (StringUtils.isBlank(va.getFirstName())) {
+					va.setFirstName(u.getFirstName());
+				}
+				if (StringUtils.isBlank(va.getSurname())) {
+					va.setSurname(u.getLastName());
+				}
+			} catch (UserNotDefinedException e) {
+				// Ignore
+			}
+		}
 	}
 
 	public void saveAll() {
@@ -174,8 +195,7 @@ public class AcountValidationLocator implements BeanLocator  {
         	  }
           } else {
         	  tml.addMessage(new TargettedMessage("msg.noCode", new Object[]{}, TargettedMessage.SEVERITY_ERROR));
-				
-          } 
+          }
           return ret;
         }
 		return null;
@@ -192,46 +212,49 @@ public class AcountValidationLocator implements BeanLocator  {
 	          String key = (String) it.next();
 	          
 	          ValidationAccount item = (ValidationAccount) delivered.get(key);
+
+                  // token is the only piece of data we can trust; refresh the item accordingly
+                  String token = item.getValidationToken();
+                  ValidationAccount fromDb = validationLogic.getVaLidationAcountBytoken(token);
+                  String formEid = StringUtils.trimToEmpty(item.getEid());
+                  String formFirstName = StringUtils.trimToEmpty(item.getFirstName());
+                  String formSurname = StringUtils.trimToEmpty(item.getSurname());
+                  String formPw1 = StringUtils.trimToEmpty(item.getPassword());
+                  String formPw2 = StringUtils.trimToEmpty(item.getPassword2());
+                  boolean formTerms = item.getTerms();
+                  item = fromDb;
+
                   if (ValidationAccount.STATUS_CONFIRMED.equals(item.getStatus()) || ValidationAccount.STATUS_EXPIRED.equals(item.getStatus()))
                   {
                       return "error";
                   }
-	           log.debug("Validating Item: " + item.getId() + " for user: " + item.getUserId());
-	           String firstName = item.getFirstName();
-	           String surname = item.getSurname();
-                   if (firstName != null)
-                   {
-                     firstName = firstName.trim();
-                   }
-                   if (surname != null)
-                   {
-                     surname= surname.trim();
-                   }
+
+                  log.debug("Validating Item: " + item.getId() + " for user: " + item.getUserId());
 
                    int accountStatus = item.getAccountStatus();
                    //names are required in all cases except password resets
                    if (ValidationAccount.ACCOUNT_STATUS_NEW == accountStatus || ValidationAccount.ACCOUNT_STATUS_LEGACY_NOPASS == accountStatus || ValidationAccount.ACCOUNT_STATUS_REQUEST_ACCOUNT == accountStatus)
                    {
-                     if (firstName == null || firstName.isEmpty())
+                     if (formFirstName.isEmpty())
                      {
                        tml.addMessage(new TargettedMessage("firstname.required", new Object[]{}, TargettedMessage.SEVERITY_ERROR));
                        return "error";
                      }
-                     if (surname == null || surname.isEmpty())
+                     if (formSurname.isEmpty())
                      {
                        tml.addMessage(new TargettedMessage("lastname.required", new Object[]{}, TargettedMessage.SEVERITY_ERROR));
                        return "error";
                      }
                    }
 
-	           log.debug(firstName + " " + surname);
+	           log.debug(formFirstName + " " + formSurname);
 	           log.debug("this is an new item?: " + item.getAccountStatus());
 	           try {
 	        	String userId = EntityReference.getIdFromRef(item.getUserId());
 	        	//we need permission to edit this user
 	        	
 	        	//if this is an existing user did the password match?
-	        	if (ValidationAccount.ACCOUNT_STATUS_EXISITING== item.getAccountStatus() && !validateLogin(userId, item.getPassword())) 
+	        	if (ValidationAccount.ACCOUNT_STATUS_EXISITING == item.getAccountStatus() && !validateLogin(userId, formPw1))
 	        	{
 	        		tml.addMessage(new TargettedMessage("validate.invalidPassword", new Object[]{}, TargettedMessage.SEVERITY_ERROR));
 	        		return "error";
@@ -252,9 +275,10 @@ public class AcountValidationLocator implements BeanLocator  {
 				return "error!";
 			}
 			if(item.getAccountStatus().equals(ValidationAccount.ACCOUNT_STATUS_USERID_UPDATE)) {
-				boolean isSuccess = userDirectoryService.updateUserId(userId,item.getEid());
+				boolean isSuccess = userDirectoryService.updateUserId(userId,formEid);
+				item.setEid(formEid);
 				if(!isSuccess) {
-					tml.addMessage(new TargettedMessage("msg.errUpdate.userId" , new Object[]{item.getEid()}, TargettedMessage.SEVERITY_ERROR));
+					tml.addMessage(new TargettedMessage("msg.errUpdate.userId" , new Object[]{formEid}, TargettedMessage.SEVERITY_ERROR));
 				}
 			}
 				
@@ -262,8 +286,10 @@ public class AcountValidationLocator implements BeanLocator  {
 				if (isLegacyLinksEnabled() || ValidationAccount.ACCOUNT_STATUS_PASSWORD_RESET != accountStatus)
 				{
 					//We always can change names if legacy links is enabled. Otherwise in the new forms, we can't change names during password resets
-					u.setFirstName(firstName);
-					u.setLastName(surname);
+					u.setFirstName(formFirstName);
+					u.setLastName(formSurname);
+					item.setFirstName(formFirstName);
+					item.setSurname(formSurname);
 				}
 				ResourcePropertiesEdit rp = u.getPropertiesEdit();
 				DateTime dt = new DateTime();
@@ -273,16 +299,16 @@ public class AcountValidationLocator implements BeanLocator  {
 				
 				//if this is a new account set the password
 				if (ValidationAccount.ACCOUNT_STATUS_NEW == accountStatus || ValidationAccount.ACCOUNT_STATUS_LEGACY_NOPASS == accountStatus || ValidationAccount.ACCOUNT_STATUS_PASSWORD_RESET == accountStatus || ValidationAccount.ACCOUNT_STATUS_REQUEST_ACCOUNT == accountStatus) {
-					if (item.getPassword() == null || !item.getPassword().equals(item.getPassword2())) {
+					if (formPw1 == null || !formPw1.equals(formPw2)) {
 						//Abandon the edit
 						userDirectoryService.cancelEdit(u);
 						tml.addMessage(new TargettedMessage("validate.passNotMatch", new Object[]{}, TargettedMessage.SEVERITY_ERROR));
 						return "error!";
 					}
 
-					// bbailla2, bjones86 - SAK-22427
+					// SAK-22427
 					if (userDirectoryService.getPasswordPolicy() != null) {
-						PasswordRating rating = userDirectoryService.validatePassword(item.getPassword(), u);
+						PasswordRating rating = userDirectoryService.validatePassword(formPw1, u);
 						if (PasswordRating.FAILED.equals(rating))
 						{
 							userDirectoryService.cancelEdit(u);
@@ -291,8 +317,8 @@ public class AcountValidationLocator implements BeanLocator  {
 						}
 					}
 
-					u.setPassword(item.getPassword());
-					
+					u.setPassword(formPw1);
+
 					// Do they have to accept terms and conditions.
 					if (!"".equals(serverConfigurationService.getString("account-validator.terms"))) {
 						//terms and conditions are only relevant for new accounts (unless we're using the legacy links)
@@ -300,7 +326,7 @@ public class AcountValidationLocator implements BeanLocator  {
 						if (checkTerms)
 						{
 							// Check they accepted the terms.
-							if (item.getTerms().booleanValue()) {
+							if (formTerms) {
 								u.getPropertiesEdit().addProperty("TermsAccepted", "true");
 							} else {
 								userDirectoryService.cancelEdit(u);
@@ -314,7 +340,7 @@ public class AcountValidationLocator implements BeanLocator  {
 				userDirectoryService.commitEdit(u);
 				
 				//update the Validation object
-				item.setvalidationReceived(new Date());
+				item.setValidationReceived(new Date());
 				item.setStatus(ValidationAccount.STATUS_CONFIRMED);
 				log.debug("Saving now ...");
 				
@@ -324,8 +350,7 @@ public class AcountValidationLocator implements BeanLocator  {
 				validationLogic.save(item);
 
 				userReferences.add(userDirectoryService.userReference(item.getUserId()));
-				
-				
+
 				//log the user in
 				Evidence e = new ExternalTrustedEvidence(u.getEid());
 				try {
@@ -335,23 +360,16 @@ public class AcountValidationLocator implements BeanLocator  {
 					log.debug("user agent: " + httpServletRequest.getHeader("user-agent"));
 					usageSessionService.login(a , httpServletRequest);
 				} catch (AuthenticationException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
+					log.error(e1.getMessage(), e1);
 				}
-				
-				
 			} catch (UserNotDefinedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				log.error(e.getMessage(), e);
 			} catch (UserPermissionException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				log.error(e.getMessage(), e);
 			} catch (UserLockedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				log.error(e.getMessage(), e);
 			} catch (UserAlreadyDefinedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				log.error(e.getMessage(), e);
 			} finally {
 				securityService.popAdvisor();
 			}
@@ -367,12 +385,8 @@ public class AcountValidationLocator implements BeanLocator  {
 				emailTemplateService.sendRenderedMessages(TEMPLATE_KEY_ACKNOWLEDGE_PASSWORD_RESET, userReferences, replacementValues, supportEmail, supportEmail);
 			}
 		}
-		
-
-
 		return "success";
 	}
-
 
 	/**
 	 * Determines whether account validator sends users to the old validation form or the new ones
@@ -383,7 +397,6 @@ public class AcountValidationLocator implements BeanLocator  {
 		return serverConfigurationService.getBoolean("accountValidator.sendLegacyLinks", false);
 	}
 
-
 	private boolean validateLogin(String userId, String password) {
 		try {
 			User u = userDirectoryService.authenticate(userDirectoryService.getUserEid(userId), password);
@@ -391,13 +404,10 @@ public class AcountValidationLocator implements BeanLocator  {
 				return true;
 			}
 		} catch (UserNotDefinedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 		}
 		return false;
 	}
 	
 
-	
-	
 }

@@ -21,14 +21,30 @@
 
 package org.sakaiproject.authz.impl;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.Stack;
+import java.util.UUID;
+import java.util.Vector;
+import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
+
+import org.sakaiproject.authz.api.AuthzGroup.RealmLockMode;
+import org.sakaiproject.authz.impl.DbAuthzGroupService.DbStorage.RealmLock;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
 import org.sakaiproject.authz.api.*;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.entity.api.*;
 import org.sakaiproject.event.api.EventTrackingService;
-import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.javax.PagingPosition;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.time.api.Time;
@@ -38,10 +54,7 @@ import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserNotDefinedException;
 import org.sakaiproject.util.Resource;
 import org.sakaiproject.util.ResourceLoader;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
 
-import java.util.*;
 
 /**
  * <p>
@@ -51,11 +64,9 @@ import java.util.*;
  * To support the public view feature, an AuthzGroup named TEMPLATE_PUBVIEW must exist, with a role named ROLE_PUBVIEW - all the abilities in this role become the public view abilities for any resource.
  * </p>
  */
+@Slf4j
 public abstract class BaseAuthzGroupService implements AuthzGroupService
 {
-	/** Our logger. */
-	private static Logger M_log = LoggerFactory.getLogger(BaseAuthzGroupService.class);
-
 	/** Storage manager for this service. */
 	protected Storage m_storage = null;
 
@@ -65,8 +76,8 @@ public abstract class BaseAuthzGroupService implements AuthzGroupService
 	/** A provider of additional Abilities for a userId. */
 	protected GroupProvider m_provider = null;
 
-    /** A provider of additional roles for a userId. */
-    protected RoleProvider m_roleProvider = null;
+	/** A provider of additional roles for a userId. */
+	protected RoleProvider m_roleProvider = null;
 
  	private static final String DEFAULT_RESOURCECLASS = "org.sakaiproject.localization.util.AuthzImplProperties";
  	private static final String DEFAULT_RESOURCEBUNDLE = "org.sakaiproject.localization.bundle.authzimpl.authz-impl";
@@ -143,7 +154,7 @@ public abstract class BaseAuthzGroupService implements AuthzGroupService
 	 *        The lock id string.
 	 * @param resource
 	 *        The resource reference string, or null if no resource is involved.
-	 * @exception PermissionException
+	 * @exception AuthzPermissionException
 	 *            Thrown if the azGroup does not have access
 	 */
 	protected void unlock(String lock, String resource) throws AuthzPermissionException
@@ -303,13 +314,13 @@ public abstract class BaseAuthzGroupService implements AuthzGroupService
                 m_roleProvider = (RoleProvider) ComponentManager.get(RoleProvider.class.getName());
             }
 
-			M_log.info("init(): provider: " + ((m_provider == null) ? "none" : m_provider.getClass().getName()));
+			log.info("init(): provider: " + ((m_provider == null) ? "none" : m_provider.getClass().getName()));
 			
 			dummyUserPrefix = UUID.randomUUID().toString().substring(0, 8);
 		}
 		catch (Exception t)
 		{
-			M_log.warn("init(); ", t);
+			log.warn("init(); ", t);
 		}
 	}
 
@@ -321,12 +332,20 @@ public abstract class BaseAuthzGroupService implements AuthzGroupService
 		m_storage.close();
 		m_storage = null;
 
-		M_log.info("destroy()");
+		log.info("destroy()");
 	}
 
 	/**********************************************************************************************************************************************************************************************************************************************************
 	 * AuthzGroupService implementation
 	 *********************************************************************************************************************************************************************************************************************************************************/
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public Map<String, List<String>> getProviderIDsForRealms(List<String> realmIDs)
+	{
+		return m_storage.getProviderIDsForRealms(realmIDs);
+	}
 
 	/**
 	 * {@inheritDoc}
@@ -398,7 +417,7 @@ public abstract class BaseAuthzGroupService implements AuthzGroupService
 	/**
 	 * {@inheritDoc}
 	 */
-	public void joinGroup(String authzGroupId, String roleId) throws GroupNotDefinedException, AuthzPermissionException
+	public void joinGroup(String authzGroupId, String roleId) throws GroupNotDefinedException, AuthzPermissionException, AuthzRealmLockException
 	{
 		joinGroup(authzGroupId, roleId, 0);
 	}
@@ -406,7 +425,7 @@ public abstract class BaseAuthzGroupService implements AuthzGroupService
 	/**
 	 * {@inheritDoc}
 	 */
-	public void joinGroup(String authzGroupId, String roleId, int maxSize) throws GroupNotDefinedException, AuthzPermissionException, GroupFullException
+	public void joinGroup(String authzGroupId, String roleId, int maxSize) throws GroupNotDefinedException, AuthzPermissionException, GroupFullException, AuthzRealmLockException
 	{
 		String user = sessionManager().getCurrentSessionUserId();
 		if (user == null) {
@@ -451,7 +470,7 @@ public abstract class BaseAuthzGroupService implements AuthzGroupService
 	/**
 	 * {@inheritDoc}
 	 */
-	public void unjoinGroup(String authzGroupId) throws GroupNotDefinedException, AuthzPermissionException
+	public void unjoinGroup(String authzGroupId) throws GroupNotDefinedException, AuthzPermissionException, AuthzRealmLockException
 	{
 		String user = sessionManager().getCurrentSessionUserId();
 		if (user == null) {
@@ -606,17 +625,36 @@ public abstract class BaseAuthzGroupService implements AuthzGroupService
 				AuthzGroup newAzg = m_storage.put(azGroup.getId());
 				if (newAzg == null)
 				{
-					M_log.warn("saveUsingSecurity, storage.put for a new returns null");
+					log.warn("saveUsingSecurity, storage.put for a new returns null");
 				}
 			}
 			else
 			{
 				throw new GroupNotDefinedException(azGroup.getId());
 			}
+			// complete the save
+			completeSave(azGroup);
+		} else {
+			// complete the save
+			completeExistingGroupSave(azGroup, m_storage.get(azGroup.getId()));
+		}
+	}
+
+	private void completeExistingGroupSave(AuthzGroup updatedAuthzGroup, AuthzGroup existingAuthzGroup) {
+
+		Set<String> existingUsers = existingAuthzGroup.getUsers();
+		Set<String> updatedUsers = updatedAuthzGroup.getUsers();
+
+		Set<String> removedUsers
+			= existingUsers.stream().filter(eu -> !updatedUsers.contains(eu)).collect(Collectors.toSet());
+		try {
+			((SakaiSecurity) securityService()).notifyMembersRemovedFromRealm(removedUsers, existingAuthzGroup.getReference());
+		} catch (Exception e) {
+			log.warn("Failure while trying to notify SS about realm removal for AZG("
+						+ existingAuthzGroup.getId() + "): " + e, e);
 		}
 
-		// complete the save
-		completeSave(azGroup);
+		completeSave(updatedAuthzGroup);
 	}
 
 	/**
@@ -634,7 +672,7 @@ public abstract class BaseAuthzGroupService implements AuthzGroupService
 			try {
 				authzGroupAdvisor.update(azGroup);
 			} catch (Exception e) {
-				M_log.error("Advisor error during completeSave()", e);
+				log.error("Advisor error during completeSave()", e);
 			}
 		}
 		// complete the azGroup
@@ -657,13 +695,13 @@ public abstract class BaseAuthzGroupService implements AuthzGroupService
                         permissions.add(rf.function);
                         roles.add(rf.role);
                     }
-                    if (M_log.isDebugEnabled()) {
-                        M_log.debug("Changed permissions for roles (" + roles + ") in " + azGroup.getId() + ": " + permissions);
+                    if (log.isDebugEnabled()) {
+                        log.debug("Changed permissions for roles (" + roles + ") in " + azGroup.getId() + ": " + permissions);
                     }
                 }
                 ((SakaiSecurity) securityService()).notifyRealmChanged(azGroup.getId(), roles, permissions);
             } catch (Exception e) {
-                M_log.warn("Failure while trying to notify SS about realm changes for AZG(" + azGroup.getId() + "): " + e, e);
+                log.warn("Failure while trying to notify SS about realm changes for AZG(" + azGroup.getId() + "): " + e, e);
             }
         } // End KNL-1230
 		eventTrackingService().post(eventTrackingService().newEvent(event, azGroup.getReference(), true));
@@ -685,17 +723,23 @@ public abstract class BaseAuthzGroupService implements AuthzGroupService
 	 * 
 	 * @param azGroup
 	 */
-	protected void addMemberToGroup(AuthzGroup azGroup, String userId, String roleId, int maxSize) throws GroupFullException
+	protected void addMemberToGroup(AuthzGroup azGroup, String userId, String roleId, int maxSize) throws GroupFullException, AuthzRealmLockException
 	{
 		 // update the properties (sets last modified time and modified-by)
         addLiveUpdateProperties((BaseAuthzGroup) azGroup);
+
+		// check realm for locks (throw if locked)
+		RealmLockMode lockMode = azGroup.getRealmLock();
+		if (RealmLockMode.MODIFY.equals(lockMode) || RealmLockMode.ALL.equals(lockMode)) {
+			throw new AuthzRealmLockException("Attempting to add member to group but lock " + lockMode + " exists");
+		}
 
 		// allow any advisors to make last minute changes 
 		for (AuthzGroupAdvisor authzGroupAdvisor : authzGroupAdvisors) {
 			try {
 				authzGroupAdvisor.groupUpdate(azGroup, userId, roleId);
 			} catch (Exception e) {
-				M_log.error("Advisor error during addMemberToGroup()", e);
+				log.error("Advisor error during addMemberToGroup()", e);
 			}
 		}
 		
@@ -721,21 +765,27 @@ public abstract class BaseAuthzGroupService implements AuthzGroupService
 
 
 	/**
-	 * Add member to a group, once id and security checks have been cleared.
+	 * Remove member from a group, once id and security checks have been cleared.
 	 * 
 	 * @param azGroup
 	 */
-	protected void removeMemberFromGroup(AuthzGroup azGroup, String userId) 
+	protected void removeMemberFromGroup(AuthzGroup azGroup, String userId) throws AuthzRealmLockException
 	{
 		 // update the properties (sets last modified time and modified-by)
         addLiveUpdateProperties((BaseAuthzGroup) azGroup);
+
+		// check realm for locks (throw if locked)
+		RealmLockMode lockMode = azGroup.getRealmLock();
+		if (RealmLockMode.ALL.equals(lockMode) || RealmLockMode.MODIFY.equals(lockMode)) {
+			throw new AuthzRealmLockException("Attempting to remove member from group but lock " + lockMode + " exists");
+		}
 
 		// allow any advisors to make last minute changes 
 		for (AuthzGroupAdvisor authzGroupAdvisor : authzGroupAdvisors) {
 			try {
 				authzGroupAdvisor.groupUpdate(azGroup, userId, azGroup.getMember(userId).getRole().getId());
 			} catch (Exception e) {
-				M_log.error("Advisor error during removeMemberFromGroup()", e);
+				log.error("Advisor error during removeMemberFromGroup()", e);
 			}
 		}
 		// remove user from the azGroup
@@ -821,7 +871,7 @@ public abstract class BaseAuthzGroupService implements AuthzGroupService
 				}
 				catch (RoleAlreadyDefinedException e)
 				{
-					M_log.warn("addAuthzGroup: ", e);
+					log.warn("addAuthzGroup: ", e);
 				}
 			}
 			azGroup.addMember(userId, roleName, true, false);
@@ -873,24 +923,30 @@ public abstract class BaseAuthzGroupService implements AuthzGroupService
 	/**
 	 * {@inheritDoc}
 	 */
-	public void removeAuthzGroup(AuthzGroup azGroup) throws AuthzPermissionException
+	public void removeAuthzGroup(AuthzGroup azGroup) throws AuthzPermissionException, AuthzRealmLockException
 	{
 		// check security (throws if not permitted)
 		unlock(SECURE_REMOVE_AUTHZ_GROUP, azGroup.getReference());
 
-		// allow any advisors to make last minute changes 
+		// check realm for locks, can only remove if there are no matching locks present
+		RealmLockMode lockMode = azGroup.getRealmLock();
+		if (RealmLockMode.ALL.equals(lockMode) || RealmLockMode.DELETE.equals(lockMode)) {
+			throw new AuthzRealmLockException("Attempting to remove group but lock " + lockMode + " exists");
+		}
+
+		// allow any advisors to make last minute changes
 		for (AuthzGroupAdvisor authzGroupAdvisor : authzGroupAdvisors) {
 			try {
 				authzGroupAdvisor.remove(azGroup);
 			} catch (Exception e) {
-				M_log.error("Advisor error during removeAuthzGroup()", e);
+				log.error("Advisor error during removeAuthzGroup()", e);
 			}
 		}
         // KNL-1230 handle removal of authzgroups by processing caching changes
         try {
             ((SakaiSecurity) securityService()).notifyRealmRemoved(azGroup.getId());
         } catch (Exception e) {
-            M_log.warn("Failure while trying to notify SS about realm removal for AZG(" + azGroup.getId() + "): " + e, e);
+            log.warn("Failure while trying to notify SS about realm removal for AZG(" + azGroup.getId() + "): " + e, e);
         } // End KNL-1230
 		// complete the azGroup
 		m_storage.remove(azGroup);
@@ -908,7 +964,7 @@ public abstract class BaseAuthzGroupService implements AuthzGroupService
 	/**
 	 * {@inheritDoc}
 	 */
-	public void removeAuthzGroup(String azGroupId) throws AuthzPermissionException
+	public void removeAuthzGroup(String azGroupId) throws AuthzPermissionException, AuthzRealmLockException
 	{
 		if (azGroupId == null) return;
 
@@ -1104,7 +1160,7 @@ public abstract class BaseAuthzGroupService implements AuthzGroupService
 		}
 		catch (UserNotDefinedException e)
 		{
-			M_log.warn("refreshUser: cannot find eid for user: " + userId);
+			log.warn("refreshUser: cannot find eid for user: " + userId);
 		}
 	}
 
@@ -1366,6 +1422,14 @@ public abstract class BaseAuthzGroupService implements AuthzGroupService
 		void remove(AuthzGroup azGroup);
 
 		/**
+		 * Get all provider IDs for the realms given.
+		 *
+		 * @param realmIDs a List of the realms you want the provider IDs for.
+		 * @return a Map, where the key is the realm ID, and the value is a List of Strings of provider IDs for that realm
+		 */
+		public Map<String, List<String>> getProviderIDsForRealms(List<String> realmIDs);
+
+		/**
 		 * Access a list of AuthzGroups that meet specified criteria, naturally sorted.
 		 * 
 		 * @param criteria
@@ -1448,7 +1512,7 @@ public abstract class BaseAuthzGroupService implements AuthzGroupService
 		 *        The user id.
 		 * @param function
 		 *        The function to open.
-		 * @param azGroups
+		 * @param realms
 		 *        A collection of AuthzGroup ids to consult.
 		 * @return true if this user is allowed to perform the function in the named AuthzGroups, false if not.
 		 */
@@ -1518,8 +1582,6 @@ public abstract class BaseAuthzGroupService implements AuthzGroupService
 		 * 
 		 * @param userId
 		 *        The user id.
-		 * @param function
-		 *        The function to open.
 		 * @param azGroupId
 		 *        The AuthzGroup id to consult, if it exists.
 		 * @return the role name for this user in this AuthzGroup, if the user has active membership, or null if not.
@@ -1541,10 +1603,8 @@ public abstract class BaseAuthzGroupService implements AuthzGroupService
 		/**
 		 * Get the role name for each user in the userIds Collection in this AuthzGroup.
 		 * 
-		 * @param userId
-		 *        The user id.
-		 * @param function
-		 *        The function to open.
+		 * @param userIds
+		 *        The user ids.
 		 * @param azGroupId
 		 *        The AuthzGroup id to consult, if it exists.
 		 * @return A Map (userId -> role name) of role names for each user who have active membership; if the user does not, it will not be in the Map.
@@ -1579,6 +1639,16 @@ public abstract class BaseAuthzGroupService implements AuthzGroupService
          * @return a String Set of all maintain roles
          */
         public Set<String> getMaintainRoles();
+
+        /**
+         * Creates a new {@link RealmLock} with the supplied parameters
+         *
+         * @param realmKey  the realm key
+         * @param reference the reference of the entity holding the lock
+         * @param lockMode  the {@link AuthzGroup.RealmLockMode} mode
+         * @return {@link RealmLock}
+         */
+        RealmLock newRealmLock(Integer realmKey, String reference, RealmLockMode lockMode);
 	}
 
 	@Override

@@ -20,7 +20,6 @@
  **********************************************************************************/
 package org.sakaiproject.component.app.messageforums.dao.hibernate;
 
-import java.util.Comparator;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -28,25 +27,23 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
 import org.sakaiproject.api.app.messageforums.AnonymousManager;
 import org.sakaiproject.api.app.messageforums.Attachment;
 import org.sakaiproject.api.app.messageforums.BaseForum;
 import org.sakaiproject.api.app.messageforums.DBMembershipItem;
 import org.sakaiproject.api.app.messageforums.Message;
 import org.sakaiproject.api.app.messageforums.OpenForum;
-import org.sakaiproject.api.app.messageforums.PermissionLevel;
 import org.sakaiproject.api.app.messageforums.PrivateForum;
 import org.sakaiproject.api.app.messageforums.Topic;
 import org.sakaiproject.component.app.messageforums.dao.hibernate.util.comparator.AttachmentByCreatedDateDesc;
 import org.sakaiproject.component.app.messageforums.dao.hibernate.util.comparator.MessageByCreatedDateDesc;
 import org.sakaiproject.component.cover.ComponentManager;
 
+@Slf4j
 public abstract class TopicImpl extends MutableEntityImpl implements Topic {
 
-    private static final Logger LOG = LoggerFactory.getLogger(TopicImpl.class);
-    
     private String title;
     private String shortDescription;
     private String extendedDescription;
@@ -75,6 +72,8 @@ public abstract class TopicImpl extends MutableEntityImpl implements Topic {
     private Boolean postFirst;
     private Boolean postAnonymous = Boolean.FALSE;
     private Boolean revealIDsToRoles = Boolean.FALSE;
+    private Boolean allowEmailNotifications = Boolean.TRUE;
+    private Boolean includeContentsInEmails = Boolean.TRUE;
     
     /**
      * availabilityRestricted: this is the radio button the users turns on or off this feature with
@@ -264,8 +263,8 @@ public abstract class TopicImpl extends MutableEntityImpl implements Topic {
     ////////////////////////////////////////////////////////////////////////
     
     public void addMessage(Message message) {
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("addForum(message " + message + ")");
+        if (log.isDebugEnabled()) {
+            log.debug("addForum(message " + message + ")");
         }
         
         if (message == null) {
@@ -280,8 +279,8 @@ public abstract class TopicImpl extends MutableEntityImpl implements Topic {
     }
 
     public void removeMessage(Message message) {
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("removeForum(message " + message + ")");
+        if (log.isDebugEnabled()) {
+            log.debug("removeForum(message " + message + ")");
         }
         
         if (message == null) {
@@ -294,8 +293,8 @@ public abstract class TopicImpl extends MutableEntityImpl implements Topic {
     }
    
     public void addAttachment(Attachment attachment) {
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("addAttachment(Attachment " + attachment + ")");
+        if (log.isDebugEnabled()) {
+            log.debug("addAttachment(Attachment " + attachment + ")");
         }
         
         if (attachment == null) {
@@ -310,8 +309,8 @@ public abstract class TopicImpl extends MutableEntityImpl implements Topic {
     }
 
     public void removeAttachment(Attachment attachment) {
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("removeAttachment(Attachment " + attachment + ")");
+        if (log.isDebugEnabled()) {
+            log.debug("removeAttachment(Attachment " + attachment + ")");
         }
         
         if (attachment == null) {
@@ -323,8 +322,8 @@ public abstract class TopicImpl extends MutableEntityImpl implements Topic {
     }
     
     public void addMembershipItem(DBMembershipItem item) {
-      if (LOG.isDebugEnabled()) {
-          LOG.debug("addMembershipItem(item " + item + ")");
+      if (log.isDebugEnabled()) {
+          log.debug("addMembershipItem(item " + item + ")");
       }
       
       if (item == null) {
@@ -338,8 +337,8 @@ public abstract class TopicImpl extends MutableEntityImpl implements Topic {
   }
 
     public void removeMembershipItem(DBMembershipItem item) {
-      if (LOG.isDebugEnabled()) {
-          LOG.debug("removeMembershipItem(item " + item + ")");
+      if (log.isDebugEnabled()) {
+          log.debug("removeMembershipItem(item " + item + ")");
       }
       
       if (item == null) {
@@ -425,4 +424,19 @@ public abstract class TopicImpl extends MutableEntityImpl implements Topic {
 		this.revealIDsToRoles = revealIDsToRoles;
 	}
 
+	public Boolean getAllowEmailNotifications() {
+		return allowEmailNotifications;
+	}
+
+	public void setAllowEmailNotifications(Boolean allowEmailNotifications) {
+		this.allowEmailNotifications = allowEmailNotifications;
+	}
+
+	public Boolean getIncludeContentsInEmails() {
+		return includeContentsInEmails;
+	}
+
+	public void setIncludeContentsInEmails(Boolean includeContentsInEmails) {
+		this.includeContentsInEmails = includeContentsInEmails;
+	}
 }

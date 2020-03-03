@@ -28,16 +28,17 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.ManagedProperty;
+import javax.faces.bean.RequestScoped;
 import javax.faces.context.FacesContext;
 import javax.faces.event.ActionEvent;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.sakaiproject.api.app.messageforums.Area;
 import org.sakaiproject.api.app.messageforums.AreaManager;
 import org.sakaiproject.api.app.messageforums.DiscussionForum;
-import org.sakaiproject.api.app.messageforums.DiscussionTopic;
 import org.sakaiproject.api.app.messageforums.DiscussionForumService;
+import org.sakaiproject.api.app.messageforums.DiscussionTopic;
 import org.sakaiproject.api.app.messageforums.MessageForumsForumManager;
 import org.sakaiproject.api.app.messageforums.MessageForumsMessageManager;
 import org.sakaiproject.api.app.messageforums.MessageForumsTypeManager;
@@ -53,14 +54,19 @@ import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.entity.api.ResourceProperties;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.site.api.Site;
+import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.site.api.ToolConfiguration;
-import org.sakaiproject.site.cover.SiteService;
-import org.sakaiproject.tool.cover.SessionManager;
-import org.sakaiproject.tool.cover.ToolManager;
+import org.sakaiproject.tool.api.SessionManager;
+import org.sakaiproject.tool.api.ToolManager;
 import org.sakaiproject.tool.messageforums.PrivateMessagesTool;
 import org.sakaiproject.user.api.Preferences;
 import org.sakaiproject.user.api.PreferencesService;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+@ManagedBean(name="mfSynopticBean")
+@RequestScoped
 public class MessageForumSynopticBean {
 
 	/**
@@ -191,39 +197,64 @@ public class MessageForumSynopticBean {
 	private final String CONTEXTID="contextId";
 
 	/** Used to retrieve non-notification sites for MyWorkspace page */
-	private static final String TABS_EXCLUDED_PREFS = "sakai:portal:sitenav";
 	private final String TAB_EXCLUDED_SITES = "exclude";
 	
 	/** Preferences service (injected dependency) */
+	@ManagedProperty(value="#{Components[\"org.sakaiproject.user.api.PreferencesService\"]}")
 	protected PreferencesService preferencesService = null;
+	
+	/** Dependency Injected   */
+	@ManagedProperty(value="#{Components[\"org.sakaiproject.site.api.SiteService\"]}")
+	private SiteService siteService;
+	@ManagedProperty(value="#{Components[\"org.sakaiproject.tool.api.SessionManager\"]}")
+	private SessionManager sessionManager;
+	@ManagedProperty(value="#{Components[\"org.sakaiproject.tool.api.ToolManager\"]}")
+	private ToolManager toolManager;
+
+	
+	public void setToolManager(ToolManager toolManager) {
+		this.toolManager = toolManager;
+	}
+
+	public void setSessionManager(SessionManager sessionManager) {
+		this.sessionManager = sessionManager;
+	}
+
+	public void setSiteService(SiteService siteService) {
+		this.siteService = siteService;
+	}
 
 	/** =============== Main page bean values =============== */
 	/** Used to determine if there are sites to display on page */
 	private boolean sitesToView;
 	private boolean sitesToViewSet = false;
-	
-	/** to get accces to log file */
-	private static final Logger LOG = LoggerFactory.getLogger(MessageForumSynopticBean.class);
 
 	/** Needed if within a site so we only need stats for this site */
+	@ManagedProperty(value="#{Components[\"org.sakaiproject.api.app.messageforums.MessageForumsMessageManager\"]}")
 	private MessageForumsMessageManager messageManager;
 
 	/** Needed to grab unread counts for sites current user has group membership in */
+	@ManagedProperty(value="#{Components[\"org.sakaiproject.api.app.messageforums.MessageForumsForumManager\"]}")
 	private MessageForumsForumManager forumsManager;
 	
 	/** Needed to get topics if tool within a site */
+	@ManagedProperty(value="#{Components[\"org.sakaiproject.api.app.messageforums.ui.DiscussionForumManager\"]}")
 	private DiscussionForumManager forumManager;
 
 	/** Needed to grab unread message count if tool within site */
+	@ManagedProperty(value="#{Components[\"org.sakaiproject.api.app.messageforums.ui.PrivateMessageManager\"]}")
 	private PrivateMessageManager pvtMessageManager;
 
 	/** Needed to get forum message counts as well as Uuids for private messages and discussions */
+	@ManagedProperty(value="#{Components[\"org.sakaiproject.api.app.messageforums.MessageForumsTypeManager\"]}")
 	private MessageForumsTypeManager typeManager;
 
 	/** Needed to set up the counts for the private messages and forums */
+	@ManagedProperty(value="#{Components[\"org.sakaiproject.api.app.messageforums.AreaManager\"]}")
 	private AreaManager areaManager;
 	
 	/** Needed to determine if user has read permission of topic */
+	@ManagedProperty(value="#{Components[\"org.sakaiproject.api.app.messageforums.ui.UIPermissionsManager\"]}")
 	private UIPermissionsManager uiPermissionsManager;
 	
 	public void setMessageManager(MessageForumsMessageManager messageManager) {
@@ -270,12 +301,12 @@ public class MessageForumSynopticBean {
 			// get context id
 			final String siteId = getContext();
 
-			if (SiteService.getUserSiteId("admin").equals(siteId))
+			if (siteService.getUserSiteId("admin").equals(siteId))
 				return false;
 
-			myWorkspace = SiteService.isUserSite(siteId);
+			myWorkspace = siteService.isUserSite(siteId);
 
-			LOG.debug("Result of determining if My Workspace: " + myWorkspace);
+			log.debug("Result of determining if My Workspace: " + myWorkspace);
 		}
 		
 		return myWorkspace.booleanValue();
@@ -552,7 +583,7 @@ public class MessageForumSynopticBean {
 		Iterator countIter = counts.iterator(); 
 
 		Object [] aCount = (Object []) countIter.next();
-		int forumCount = ((Integer) aCount[3]).intValue();
+		int forumCount = ((Long) aCount[3]).intValue();
 		Long currentTopicId = (Long) aCount[1];
 		String currentContextId = (String) aCount[0];
 		String oldContextId;
@@ -568,7 +599,7 @@ public class MessageForumSynopticBean {
 				if (currentTopicId.longValue() != ((Long) anotherCount[1]) &&
 						currentUserMemberships.contains((String) anotherCount[2]) )
 				{
-					forumCount += ((Integer) anotherCount[3]).intValue();
+					forumCount += ((Long) anotherCount[3]).intValue();
 					
 					currentTopicId = (Long) anotherCount[1];
 				}
@@ -582,7 +613,7 @@ public class MessageForumSynopticBean {
 				results.add(finalCount);
 
 				// set up for new site
-				forumCount = ((Integer) anotherCount[3]).intValue();
+				forumCount = ((Long) anotherCount[3]).intValue();
 				currentTopicId = (Long) anotherCount[1];
 				oldContextId = currentContextId;
 				currentContextId = (String) anotherCount[0];
@@ -720,7 +751,7 @@ public class MessageForumSynopticBean {
 	
 		for (Object [] nonMIReadCount: nonMIReadCounts)
 		{
-			nonMIReadCountsMap.put((String) nonMIReadCount[0], (Integer) nonMIReadCount[1]); 
+			nonMIReadCountsMap.put((String) nonMIReadCount[0], ((Long) nonMIReadCount[1]).intValue());
 		}
 	
 		// Loop through all elements of nonMICounts and 
@@ -731,7 +762,7 @@ public class MessageForumSynopticBean {
 				if (nonMIReadCount != null)
 			{
 				// Need to subtract int values, not Integer
-				nonMIcount[1] = Integer.valueOf(((Integer) nonMIcount[1]).intValue() - nonMIReadCount.intValue());
+				nonMIcount[1] = ((Long) nonMIcount[1]).intValue() - nonMIReadCount;
 			}
 		}
 		
@@ -935,7 +966,7 @@ public class MessageForumSynopticBean {
 				catch (IdUnusedException e) {
 					// Wierdness has happened - pulled from SiteService but now can't
 					// find it. Logger and skip
-					LOG.error("IdUnusedException attempting to access site " + siteId);
+					log.error("IdUnusedException attempting to access site " + siteId);
 					continue;
 				}
 				
@@ -958,7 +989,7 @@ public class MessageForumSynopticBean {
 					dcms.setForums(isForumsPageInSite(getSite(siteId)));
 				}
 				catch (IdUnusedException e) {
-					LOG.error("IdUnusedException while trying to determine what tools are in site "
+					log.error("IdUnusedException while trying to determine what tools are in site "
 									+ siteId + "to set decorated synoptic messages & forums bean values.");
 				}
 
@@ -988,7 +1019,7 @@ public class MessageForumSynopticBean {
 			catch (IdUnusedException e) {
 				// Wierdness has happened - pulled from SiteService but now can't
 				// find it. Logger and skip
-				LOG.error("IdUnusedException attempting to access site " + siteId);
+				log.error("IdUnusedException attempting to access site " + siteId);
 				continue;
 			}
 
@@ -1090,7 +1121,7 @@ public class MessageForumSynopticBean {
 					dcms.setForums(isForumsPageInSite(getSite(siteId)));
 				}
 				catch (IdUnusedException e) {
-					LOG.error("IdUnusedException while trying to determine what tools are in site "
+					log.error("IdUnusedException while trying to determine what tools are in site "
 									+ siteId + "to set decorated synoptic messages & forums bean values.");
 				}
 
@@ -1277,7 +1308,7 @@ public class MessageForumSynopticBean {
 			return getSite(getContext()).getTitle();
 		} 
 		catch (IdUnusedException e) {
-			LOG.error("IdUnusedException when trying to access site "
+			log.error("IdUnusedException when trying to access site "
 					+ e.getMessage());
 		}
 
@@ -1295,7 +1326,7 @@ public class MessageForumSynopticBean {
 			return getSite(getContext()).getId();
 		} 
 		catch (IdUnusedException e) {
-			LOG.error("IdUnusedException when trying to access site "
+			log.error("IdUnusedException when trying to access site "
 					+ e.getMessage());
 		}
 
@@ -1341,8 +1372,7 @@ public class MessageForumSynopticBean {
 			if (pos != -1) {
 				final Object [] dfReadMessageCountForASite = (Object []) readMessages.get(pos);
 				
-				siteDFInfo[1] = Integer.valueOf(((Integer) dfMessageCountForASite[2]).intValue()
-												- ((Integer) dfReadMessageCountForASite[2]).intValue());
+				siteDFInfo[1] = ((Long) dfMessageCountForASite[2]).intValue() - ((Long) dfReadMessageCountForASite[2]).intValue();
 				
 				// done with it, remove from list
 				readMessages.remove(pos);
@@ -1350,7 +1380,7 @@ public class MessageForumSynopticBean {
 			} 
 			else {
 				// No messages read for this site so message count = unread message count
-				siteDFInfo[1] = (Integer) dfMessageCountForASite[2];
+				siteDFInfo[1] = ((Long) dfMessageCountForASite[2]).intValue();
 			}
 
 			unreadDFMessageCounts.add(siteDFInfo);
@@ -1372,7 +1402,7 @@ public class MessageForumSynopticBean {
 			mfToolExists = isMessageForumsPageInSite(thisSite);
 
 		} catch (IdUnusedException e) {
-			LOG.error("IdUnusedException while trying to check if site has MF tool.");
+			log.error("IdUnusedException while trying to check if site has MF tool.");
 		}
 
 		return mfToolExists;
@@ -1409,7 +1439,7 @@ public class MessageForumSynopticBean {
 			mfToolExists = isForumsPageInSite(thisSite);
 
 		} catch (IdUnusedException e) {
-			LOG.error("IdUnusedException while trying to check if site has MF tool.");
+			log.error("IdUnusedException while trying to check if site has MF tool.");
 		}
 
 		return mfToolExists;
@@ -1436,7 +1466,7 @@ public class MessageForumSynopticBean {
 			mfToolExists = isMessagesPageInSite(thisSite);
 
 		} catch (IdUnusedException e) {
-			LOG.error("IdUnusedException while trying to check if site has MF tool.");
+			log.error("IdUnusedException while trying to check if site has MF tool.");
 		}
 
 		return mfToolExists;
@@ -1521,7 +1551,7 @@ public class MessageForumSynopticBean {
 		}
 		catch (IdUnusedException e) {
 			// Weirdness since site ids used gotten from SiteService
-			LOG.error("IdUnusedException while trying to check if site has MF tool.");
+			log.error("IdUnusedException while trying to check if site has MF tool.");
 
 		}
 
@@ -1550,7 +1580,7 @@ public class MessageForumSynopticBean {
 											.getMessagesByTypeByContext(typeUuid, contextId);
 
 			if (privateMessages == null) {
-				LOG.error("No messages found while attempting to mark all as read "
+				log.error("No messages found while attempting to mark all as read "
 								+ "from synoptic Message Center tool.");
 			} 
 			else {
@@ -1568,7 +1598,7 @@ public class MessageForumSynopticBean {
 											PrivateMessageManager.SORT_DESC);
 
 			if (privateMessages == null) {
-				LOG.error("No messages found while attempting to mark all as read "
+				log.error("No messages found while attempting to mark all as read "
 								+ "from synoptic Message Center tool.");
 			} 
 			else {
@@ -1597,7 +1627,7 @@ public class MessageForumSynopticBean {
 		}
 	
 		if (sitesMap.get(siteId) == null) {
-			Site site = SiteService.getSite(siteId);
+			Site site = siteService.getSite(siteId);
 			sitesMap.put(site.getId(), site);
 			return site;
 		}
@@ -1614,7 +1644,7 @@ public class MessageForumSynopticBean {
 	 * 		String The site id (context) where tool currently located
 	 */
 	private String getContext() {
-		return ToolManager.getCurrentPlacement().getContext();
+		return toolManager.getCurrentPlacement().getContext();
 	}
 	
 	/**
@@ -1631,14 +1661,14 @@ public class MessageForumSynopticBean {
 				sitesMap = new HashMap();
 			}
 			
-			List mySites = SiteService.getSites(org.sakaiproject.site.api.SiteService.SelectionType.ACCESS,
+			List mySites = siteService.getSites(org.sakaiproject.site.api.SiteService.SelectionType.ACCESS,
 					null,null,null,org.sakaiproject.site.api.SiteService.SortType.TITLE_ASC,
 					null);
 
 			Iterator lsi = mySites.iterator();
 
 			if (!lsi.hasNext()) {
-				LOG.debug("User " + SessionManager.getCurrentSessionUserId() + " does not belong to any sites.");
+				log.debug("User " + sessionManager.getCurrentSessionUserId() + " does not belong to any sites.");
 
 				return mySites;
 			}
@@ -1756,7 +1786,7 @@ public class MessageForumSynopticBean {
 	    		}
 	    	}
 	    	catch (IdUnusedException e) {
-	    		LOG.error("IdUnusedException attempting to move to Private Messages for a site. Site id used is: " + contextId);
+	    		log.error("IdUnusedException attempting to move to Private Messages for a site. Site id used is: " + contextId);
 	    	}
 	    }
 
@@ -1768,9 +1798,9 @@ public class MessageForumSynopticBean {
 	 */
 	private List getExcludedSitesFromTabs() {
 		final Preferences prefs = preferencesService.getPreferences(
-								SessionManager.getCurrentSessionUserId());
+								sessionManager.getCurrentSessionUserId());
 
-		final ResourceProperties props = prefs.getProperties(TABS_EXCLUDED_PREFS);
+		final ResourceProperties props = prefs.getProperties(PreferencesService.SITENAV_PREFS_KEY);
 		final List l = props.getPropertyList(TAB_EXCLUDED_SITES);
 
 		return l;		
@@ -1787,8 +1817,8 @@ public class MessageForumSynopticBean {
 	 * @return The index position in siteList of the site with site id = value, or -1 if not found.
 	 */
 	protected int indexOf(String value, List siteList) {
-		if (LOG.isDebugEnabled()) {
-			LOG.debug("indexOf(String " + value + ", List " + siteList + ")");
+		if (log.isDebugEnabled()) {
+			log.debug("indexOf(String " + value + ", List " + siteList + ")");
 		}
 
 		for (int i = 0; i < siteList.size(); i++) {
@@ -1807,7 +1837,7 @@ public class MessageForumSynopticBean {
 	 * @return <code>true</code> if the current request is being made by a logged in user. 
 	 */
 	public boolean isLoggedIn() {
-		return SessionManager.getCurrentSessionUserId() != null;
+		return sessionManager.getCurrentSessionUserId() != null;
 	}
 
 }

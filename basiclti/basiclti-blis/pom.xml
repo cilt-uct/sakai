@@ -5,17 +5,12 @@
     <parent>
         <artifactId>basiclti</artifactId>
         <groupId>org.sakaiproject.basiclti</groupId>
-        <version>12-SNAPSHOT</version>
+        <version>21-SNAPSHOT</version>
     </parent>
 
     <name>BasicLIS Implementation (imsblis)</name>
     <groupId>org.sakaiproject.basiclti</groupId>
     <artifactId>imsblis</artifactId>
-    <organization>
-        <name>Sakai Project</name>
-        <url>http://sakaiproject.org/</url>
-    </organization>
-    <inceptionYear>2010</inceptionYear>
     <packaging>war</packaging>
 
     <dependencies>
@@ -30,10 +25,6 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>basiclti-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>basiclti-impl</artifactId>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
@@ -57,7 +48,7 @@
         </dependency>
         <dependency>
             <groupId>javax.servlet</groupId>
-            <artifactId>servlet-api</artifactId>
+            <artifactId>javax.servlet-api</artifactId>
         </dependency>
         <dependency>
             <groupId>javax.portlet</groupId>
@@ -78,8 +69,42 @@
         <dependency>
             <groupId>com.googlecode.json-simple</groupId>
             <artifactId>json-simple</artifactId>
-            <version>1.1</version>
+            <version>${json.simple.version}</version>
         </dependency>
+        <dependency>
+            <groupId>commons-lang</groupId>
+            <artifactId>commons-lang</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-math3</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>0.10.5</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>0.10.5</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>0.10.5</version>
+        </dependency>
+	<dependency>
+		<groupId>com.nimbusds</groupId>
+		<artifactId>nimbus-jose-jwt</artifactId>
+	</dependency>
+	<dependency>
+		<groupId>commons-io</groupId>
+		<artifactId>commons-io</artifactId>
+		<scope>provided</scope>
+	</dependency>
+
 
         <!-- for the entityprovider -->
         <dependency>
@@ -98,6 +123,17 @@
         <dependency>
                 <groupId>org.springframework</groupId>
                 <artifactId>spring-beans</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.hamcrest</groupId>
+            <artifactId>hamcrest-library</artifactId>
+            <version>1.3</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.sakaiproject.common</groupId>
+            <artifactId>sakai-privacy-api</artifactId>
         </dependency>
     </dependencies>
 

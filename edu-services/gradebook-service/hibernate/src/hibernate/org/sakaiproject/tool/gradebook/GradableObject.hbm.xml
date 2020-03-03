@@ -1,8 +1,9 @@
-<?xml version="1.0"?>
-<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD//EN"
-	"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
-<hibernate-mapping default-cascade="none" package="org.sakaiproject.tool.gradebook"
-	default-lazy="false">
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN" "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping default-cascade="none"
+				   package="org.sakaiproject.tool.gradebook"
+				   default-lazy="false">
+
 	<class name="org.sakaiproject.tool.gradebook.GradableObject" table="GB_GRADABLE_OBJECT_T"  discriminator-value="0">
 
 		<id name="id" column="ID" type="long">
@@ -27,7 +28,7 @@
 
 		<!-- In a table per class hierarchy a subclass cannot have NOT NULL constraints
 		     see https://docs.jboss.org/hibernate/orm/3.6/reference/en-US/html/inheritance.html#inheritance-tableperclass -->
-		<subclass name="org.sakaiproject.tool.gradebook.Assignment" extends="org.sakaiproject.tool.gradebook.GradableObject"  discriminator-value="1">
+		<subclass name="org.sakaiproject.tool.gradebook.GradebookAssignment" extends="org.sakaiproject.tool.gradebook.GradableObject" discriminator-value="1">
 			<property name="pointsPossible" column="POINTS_POSSIBLE" type="java.lang.Double" />
 			<property name="dueDate" column="DUE_DATE" type="timestamp" />
 			<property name="notCounted" column="NOT_COUNTED" type="java.lang.Boolean" />
@@ -43,6 +44,7 @@
 			<property name="ungraded" column="UNGRADED" type="java.lang.Boolean"/>
 			<property name="countNullsAsZeros" column="IS_NULL_ZERO" type="java.lang.Boolean"/>
 			<property name="hideInAllGradesTable" column="HIDE_IN_ALL_GRADES_TABLE" type="java.lang.Boolean"/>
+			<property name="externalData" column="EXTERNAL_DATA" type="text" />
     </subclass>
 
 		<subclass name="org.sakaiproject.tool.gradebook.CourseGrade" extends="org.sakaiproject.tool.gradebook.GradableObject" discriminator-value="2">

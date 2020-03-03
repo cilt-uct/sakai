@@ -3,7 +3,7 @@
   <parent>
     <groupId>org.sakaiproject</groupId>
     <artifactId>master</artifactId>
-    <version>12-SNAPSHOT</version>
+    <version>21-SNAPSHOT</version>
     <relativePath>../master/pom.xml</relativePath>
   </parent>
 
@@ -13,31 +13,19 @@
   <packaging>pom</packaging>
   <organization>
     <name>Sakai Project</name>
-    <url>http://sakaiproject.org/</url>
+    <url>https://www.sakailms.org/</url>
   </organization>
   <inceptionYear>2007</inceptionYear>
 
   <properties>
-    <sakai.simple-xml.version>2.6</sakai.simple-xml.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
   <modules>
     <module>api</module>
-    <module>deploy</module>
     <module>impl/logic</module>
-    <module>pack</module>
     <module>tool</module>
   </modules>
-
-
-  <distributionManagement>
-    <site>
-      <id>sakai-site</id>
-      <name>Sakai release Site</name>
-      <url>scpexe://source.sakaiproject.org/var/www/html/release/emailtemplateservice/${project.version}</url>
-    </site>
-  </distributionManagement>
 
   <dependencyManagement>
     <dependencies>
@@ -51,12 +39,6 @@
         <groupId>${project.groupId}</groupId>
         <artifactId>emailtemplateservice-impl</artifactId>
         <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.simpleframework</groupId>
-        <artifactId>simple-xml</artifactId>
-        <version>${sakai.simple-xml.version}</version>
-        <scope>provided</scope>
       </dependency>
     </dependencies>
   </dependencyManagement>

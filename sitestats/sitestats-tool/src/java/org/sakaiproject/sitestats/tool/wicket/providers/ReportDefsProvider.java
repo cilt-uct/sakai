@@ -28,12 +28,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.wicket.injection.Injector;
 import org.apache.wicket.markup.repeater.data.IDataProvider;
 import org.apache.wicket.model.IModel;
 import org.apache.wicket.model.ResourceModel;
+
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SitePage;
 import org.sakaiproject.site.api.ToolConfiguration;
@@ -44,7 +44,7 @@ import org.sakaiproject.sitestats.api.report.ReportManager;
 import org.sakaiproject.sitestats.tool.facade.Locator;
 import org.sakaiproject.sitestats.tool.wicket.models.ReportDefModel;
 
-
+@Slf4j
 public class ReportDefsProvider implements IDataProvider {
 	private static final long		serialVersionUID				= 1L;
 	public final static int			MODE_MYREPORTS					= 0;
@@ -56,9 +56,7 @@ public class ReportDefsProvider implements IDataProvider {
 	private boolean 				filterWithToolsInSite;
 	private boolean 				includeHidden;
 	private List<ReportDef>			data;
-	private static Logger log = LoggerFactory.getLogger(ReportDefsProvider.class);
 
-	
 	public ReportDefsProvider(String siteId, int mode, boolean filterWithToolsInSite, boolean includeHidden) {
 		Injector.get().inject(this);		
 		this.siteId = siteId;
@@ -145,7 +143,7 @@ public class ReportDefsProvider implements IDataProvider {
 		
 		if(ReportManager.WHAT_VISITS.equals(reportDef.getReportParams().getWhat())) {
 			// keep visit based reports if site visits are enabled
-			if(Locator.getFacade().getStatsManager().isEnableSiteVisits()) {
+			if(Locator.getFacade().getStatsManager().getEnableSiteVisits()) {
 				return true;
 			}
 		}else if(ReportManager.WHAT_RESOURCES.equals(reportDef.getReportParams().getWhat())) {
@@ -157,7 +155,7 @@ public class ReportDefsProvider implements IDataProvider {
 			}
 		}else if(ReportManager.WHAT_PRESENCES.equals(reportDef.getReportParams().getWhat())) {
 			// keep presence based reports if site presences are enabled
-			if(Locator.getFacade().getStatsManager().isEnableSitePresences()) {
+			if(Locator.getFacade().getStatsManager().getEnableSitePresences()) {
 				return true;
 			}
 		}else{

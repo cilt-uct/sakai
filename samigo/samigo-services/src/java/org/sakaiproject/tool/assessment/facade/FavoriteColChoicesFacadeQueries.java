@@ -1,79 +1,71 @@
+/**
+ * Copyright (c) 2005-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.tool.assessment.facade;
 
-import java.sql.SQLException;
 import java.util.Iterator;
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.hibernate.HibernateException;
+import lombok.extern.slf4j.Slf4j;
 import org.hibernate.Query;
-import org.hibernate.Session;
 import org.sakaiproject.tool.assessment.data.dao.assessment.FavoriteColChoices;
 import org.sakaiproject.tool.assessment.services.PersistenceService;
-import org.springframework.orm.hibernate3.HibernateCallback;
-import org.springframework.orm.hibernate3.support.HibernateDaoSupport;
+import org.springframework.orm.hibernate4.HibernateCallback;
+import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
 
+@Slf4j
+public class FavoriteColChoicesFacadeQueries extends HibernateDaoSupport implements FavoriteColChoicesFacadeQueriesAPI {
 
-public class FavoriteColChoicesFacadeQueries extends HibernateDaoSupport 
-					implements FavoriteColChoicesFacadeQueriesAPI {
-	private Logger log = LoggerFactory.getLogger(FavoriteColChoicesFacadeQueries.class);
-	 public FavoriteColChoicesFacadeQueries () {
-	  }
+    public FavoriteColChoicesFacadeQueries() {
+    }
 
+    public void saveOrUpdate(final FavoriteColChoices choices) {
 
-	  public void saveOrUpdate(final FavoriteColChoices choices) {
-		    
-		  List favoriteList = null;
-		  final String query = "from FavoriteColChoices as a " +
-		  "where a.favoriteName=? ";
-		  HibernateCallback hcb = new HibernateCallback() {
-				public Object doInHibernate(Session session)
-						throws HibernateException, SQLException {
-					Query q = session.createQuery(query);
-					q.setString(0, choices.getFavoriteName());
-					return q.list();
-				};
-			};
-			favoriteList = getHibernateTemplate().executeFind(hcb);
-			if(favoriteList != null){
-				Iterator iter = favoriteList.iterator();
-				if(iter.hasNext()){
-					FavoriteColChoices fChoice = (FavoriteColChoices)iter.next();
-					//remove the existing entry
-					getHibernateTemplate().delete(fChoice);
-				}
-			}
-				int retryCount = PersistenceService.getInstance().getPersistenceHelper().getRetryCount().intValue();
-				while (retryCount > 0){
-					try {
+        HibernateCallback<List<FavoriteColChoices>> hcb = session -> {
+            Query q = session.createQuery("from FavoriteColChoices as a where a.favoriteName = :name");
+            q.setString("name", choices.getFavoriteName());
+            return q.list();
+        };
+        List<FavoriteColChoices> favoriteList = getHibernateTemplate().execute(hcb);
+        if (favoriteList != null) {
+            Iterator iter = favoriteList.iterator();
+            if (iter.hasNext()) {
+                FavoriteColChoices fChoice = (FavoriteColChoices) iter.next();
+                //remove the existing entry
+                getHibernateTemplate().delete(fChoice);
+            }
+        }
+        int retryCount = PersistenceService.getInstance().getPersistenceHelper().getRetryCount().intValue();
+        while (retryCount > 0) {
+            try {
+                getHibernateTemplate().save(choices);
+                retryCount = 0;
+            } catch (Exception e) {
+                log.warn("problem saving favoriteColChoices: " + e.getMessage());
+                retryCount = PersistenceService.getInstance().getPersistenceHelper().retryDeadlock(e, retryCount);
+            }
+        }
+    }
 
-						getHibernateTemplate().save(choices);
-						retryCount = 0;
-					}
-					catch (Exception e) {
-						log.warn("problem saving favoriteColChoices: "+e.getMessage());
-						retryCount = PersistenceService.getInstance().getPersistenceHelper().retryDeadlock(e, retryCount);
-					}
-				}
-			
-		  }
-	
-	public List getFavoriteColChoicesByAgent(final String siteAgentId){
-		
-			final String query = "from FavoriteColChoices as a " +
-			"where a.ownerStringId=? ";
-			//"order by b.sequence";
-					
-		HibernateCallback hcb = new HibernateCallback() {
-			public Object doInHibernate(Session session)
-					throws HibernateException, SQLException {
-				Query q = session.createQuery(query);
-				q.setString(0, siteAgentId);
-				return q.list();
-			};
-		};
-		return getHibernateTemplate().executeFind(hcb);
-		
-	}
+    public List<FavoriteColChoices> getFavoriteColChoicesByAgent(final String siteAgentId) {
+
+        HibernateCallback<List<FavoriteColChoices>> hcb = session -> {
+            Query q = session.createQuery("from FavoriteColChoices as a where a.ownerStringId = :site");
+            q.setString("site", siteAgentId);
+            return q.list();
+        };
+        return getHibernateTemplate().execute(hcb);
+    }
 }

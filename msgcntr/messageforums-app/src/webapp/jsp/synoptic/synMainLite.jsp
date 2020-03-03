@@ -1,12 +1,7 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://myfaces.apache.org/tomahawk" prefix="t" %>
-
-
-
-
-
 
 <jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
    <jsp:setProperty name="msgs" property="baseName" value="org.sakaiproject.api.app.messagecenter.bundle.Messages"/>
@@ -14,9 +9,9 @@
 
 <f:view>
   <sakai:view id="synopticView">
-<script type="text/javascript">includeLatestJQuery("msgcntr");</script>
-<script type="text/javascript" src="/library/js/jquery/tablesorter/2.0.3/jquery.tablesorter-2.0.3.min.js"></script>
-<f:verbatim>
+<script>includeLatestJQuery("msgcntr");</script>
+<script>includeWebjarLibrary('jquery.tablesorter');</script>
+
  <%
   	String thisId = request.getParameter("panel");
   	if (thisId == null) 
@@ -24,7 +19,7 @@
     	thisId = "Main" + org.sakaiproject.tool.cover.ToolManager.getCurrentPlacement().getId();
  	}
 %>
-<script type="text/javascript">
+<script>
 
 //this function (setupTableParsers) setting has to be in the jsp page b/c of the msgs.syn_no_messages string.
 var SynMainLite = SynMainLite || {};
@@ -217,10 +212,8 @@ function mySetMainFrameHeightViewCell(id)
 	}
 }
 </script> 
- 
- 
- </f:verbatim>
-<sakai:script contextBase="/messageforums-tool" path="/js/synopticLite.js"/>
+
+<script src="/messageforums-tool/js/synopticLite.js"></script>
 <link rel="stylesheet" type="text/css" href="css/TableSorter.css" />
 <link rel="stylesheet" type="text/css" href="css/msgcntr.css" />
 
@@ -426,7 +419,7 @@ function mySetMainFrameHeightViewCell(id)
 
     </h:form> 
     
-	<script type="text/javascript">
+	<script>
 		//Put this code in the jsp page since IE8 was having trouble with $(document).ready() function.
 		SynMainLite.setupTableParsers();
 		SynMainLite.setupTableHeaders();

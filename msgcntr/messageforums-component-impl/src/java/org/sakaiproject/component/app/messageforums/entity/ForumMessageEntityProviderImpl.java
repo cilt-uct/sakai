@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2005-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.component.app.messageforums.entity;
 
 import java.text.DateFormat;
@@ -9,8 +24,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.orm.hibernate4.HibernateOptimisticLockingFailureException;
+
 import org.sakaiproject.api.app.messageforums.Attachment;
 import org.sakaiproject.api.app.messageforums.DiscussionForum;
 import org.sakaiproject.api.app.messageforums.DiscussionForumService;
@@ -25,8 +41,8 @@ import org.sakaiproject.api.app.messageforums.entity.ForumMessageEntityProvider;
 import org.sakaiproject.api.app.messageforums.ui.DiscussionForumManager;
 import org.sakaiproject.api.app.messageforums.ui.PrivateMessageManager;
 import org.sakaiproject.api.app.messageforums.ui.UIPermissionsManager;
-import org.sakaiproject.authz.cover.SecurityService;
-import org.sakaiproject.component.cover.ServerConfigurationService;
+import org.sakaiproject.authz.api.SecurityService;
+import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.entitybroker.EntityReference;
 import org.sakaiproject.entitybroker.EntityView;
 import org.sakaiproject.entitybroker.entityprovider.annotations.EntityCustomAction;
@@ -40,11 +56,10 @@ import org.sakaiproject.entitybroker.entityprovider.extension.RequestGetter;
 import org.sakaiproject.entitybroker.entityprovider.extension.RequestStorage;
 import org.sakaiproject.entitybroker.entityprovider.search.Restriction;
 import org.sakaiproject.entitybroker.entityprovider.search.Search;
-import org.sakaiproject.site.cover.SiteService;
-import org.sakaiproject.user.api.UserNotDefinedException;
-import org.sakaiproject.user.cover.UserDirectoryService;
-import org.springframework.orm.hibernate3.HibernateOptimisticLockingFailureException;
+import org.sakaiproject.site.api.SiteService;
+import org.sakaiproject.user.api.UserDirectoryService;
 
+@Slf4j
 public class ForumMessageEntityProviderImpl implements ForumMessageEntityProvider,
     AutoRegisterEntityProvider, PropertyProvideable, RESTful, RequestStorable, RequestAware, ActionsExecutable {
 
@@ -52,9 +67,10 @@ public class ForumMessageEntityProviderImpl implements ForumMessageEntityProvide
   private PrivateMessageManager privateMessageManager;
   private UIPermissionsManager uiPermissionsManager;
   private MessageForumsMessageManager messageManager;
-  private static final Logger LOG = LoggerFactory.getLogger(ForumMessageEntityProviderImpl.class);
-  
-
+  private ServerConfigurationService serverConfigurationService;
+  private SecurityService securityService;
+  private SiteService siteService;
+  private UserDirectoryService userDirectoryService;
 
 private RequestStorage requestStorage;
   public void setRequestStorage(RequestStorage requestStorage) {
@@ -76,7 +92,7 @@ private RequestStorage requestStorage;
       topic = forumManager.getTopicById(Long.valueOf(id));
     }
     catch (Exception e) {
-      e.printStackTrace();
+      log.error(e.getMessage(), e);
     }
     return (topic != null);
   }
@@ -191,8 +207,22 @@ private RequestStorage requestStorage;
 	  // TODO Auto-generated method stub
 
   }
-  
-  public List<DecoratedMessage> findReplies(List<Message> messages, Long messageId, Long topicId, Map msgIdReadStatusMap){
+
+	private String getProfileImageURL(String authorId) {
+
+		if (null == authorId || authorId.trim().length() == 0 ) {
+			return null;
+		}
+		StringBuffer sb = new StringBuffer();
+		sb.append(serverConfigurationService.getServerUrl());
+		sb.append("/direct/profile/");
+		sb.append(authorId);
+		sb.append("/image/thumb");
+		return sb.toString();
+	}
+
+
+	public List<DecoratedMessage> findReplies(List<Message> messages, Long messageId, Long topicId, Map msgIdReadStatusMap){
 	  List<DecoratedMessage> replies = new ArrayList<DecoratedMessage>();
 
 	  for (Message message : messages) {
@@ -214,6 +244,7 @@ private RequestStorage requestStorage;
 							  message.getBody(), "" + message.getModified().getTime(),
 							  attachments, findReplies(messages, message.getId(),
 									  topicId, msgIdReadStatusMap), message.getAuthor(), message.getInReplyTo() == null ? null : message.getInReplyTo().getId(),
+							  getProfileImageURL(message.getAuthorId()),
 											  "" + message.getCreated().getTime(), readStatus.booleanValue(), "", "");
 					  replies.add(dMessage);
 				  }		  
@@ -254,7 +285,7 @@ private RequestStorage requestStorage;
 	  String topicId = "";
 	  String typeUuid = "";
 	  String siteId = "";
-	  String userId = UserDirectoryService.getCurrentUser().getId();
+	  String userId = userDirectoryService.getCurrentUser().getId();
 	  if (userId == null || "".equals(userId)){
 		  return null;
 	  }
@@ -284,7 +315,7 @@ private RequestStorage requestStorage;
 		  siteId = forumManager.getContextForForumById(dForum.getId());
 
 		  //make sure the user has access too this forum and topic and site:
-		  if(dForum.getDraft().equals(Boolean.FALSE) && dTopic.getDraft().equals(Boolean.FALSE) && SecurityService.unlock(userId, SiteService.SITE_VISIT, "/site/" + siteId)){
+		  if(dForum.getDraft().equals(Boolean.FALSE) && dTopic.getDraft().equals(Boolean.FALSE) && securityService.unlock(userId, SiteService.SITE_VISIT, "/site/" + siteId)){
 
 			  if (getUiPermissionsManager().isRead(dTopic.getId(), false, false, userId, siteId))
 			  {
@@ -318,6 +349,7 @@ private RequestStorage requestStorage;
 									  message.getBody(), "" + message.getModified().getTime(),
 									  attachments, findReplies(messages, message.getId(),
 											  new Long(topicId), msgIdReadStatusMap), message.getAuthor(), message.getInReplyTo() == null ? null : message.getInReplyTo().getId(),
+									  getProfileImageURL(message.getAuthorId()),
 													  "" + message.getCreated().getTime(), readStatus.booleanValue(), "", "");				  
 
 							  dMessages.add(dMessage);
@@ -383,6 +415,7 @@ private RequestStorage requestStorage;
 					  .getId(), null, pvtMessage.getTitle(),
 					  pvtMessage.getBody(), "" + pvtMessage.getModified().getTime(),
 					  attachments, null, pvtMessage.getAuthor(), pvtMessage.getInReplyTo() == null ? null : pvtMessage.getInReplyTo().getId(),
+					  getProfileImageURL(pvtMessage.getAuthorId()),
 							  "" + pvtMessage.getCreated().getTime(), read, pvtMessage.getRecipientsAsText(), pvtMessage.getLabel());				  
 
 			  dMessages.add(dMessage);
@@ -410,18 +443,16 @@ private RequestStorage requestStorage;
 		  try {
 			  Thread.sleep(SynopticMsgcntrManager.OPT_LOCK_WAIT);
 		  } catch (InterruptedException e) {
-			  e.printStackTrace();
+			  log.error(e.getMessage(), e);
 		  }
 
 		  numOfAttempts--;
 
 		  if (numOfAttempts <= 0) {
-			  System.out
-			  .println("ForumMessageEntityProviderImpl: markAsRead: HibernateOptimisticLockingFailureException no more retries left");
-			  holfe.printStackTrace();
+			  log.info("ForumMessageEntityProviderImpl: markAsRead: HibernateOptimisticLockingFailureException no more retries left");
+			  log.error(holfe.getMessage(), holfe);
 		  } else {
-			  System.out
-			  .println("ForumMessageEntityProviderImpl: markAsRead: HibernateOptimisticLockingFailureException: attempts left: "
+			  log.info("ForumMessageEntityProviderImpl: markAsRead: HibernateOptimisticLockingFailureException: attempts left: "
 					  + numOfAttempts);
 			  markAsRead(userId, siteId, readMessageId, numOfAttempts);
 		  }
@@ -430,18 +461,16 @@ private RequestStorage requestStorage;
 		  try {
 			  Thread.sleep(SynopticMsgcntrManager.OPT_LOCK_WAIT);
 		  } catch (InterruptedException ie) {
-			  ie.printStackTrace();
+			  log.error(ie.getMessage(), ie);
 		  }
 
 		  numOfAttempts--;
 
 		  if (numOfAttempts <= 0) {
-			  System.out
-			  .println("ForumMessageEntityProviderImpl: markAsRead: no more retries left");
-			  e.printStackTrace();
+			  log.info("ForumMessageEntityProviderImpl: markAsRead: no more retries left");
+			  log.error(e.getMessage(), e);
 		  } else {
-			  System.out
-			  .println("ForumMessageEntityProviderImpl: markAsRead:  attempts left: "
+			  log.info("ForumMessageEntityProviderImpl: markAsRead:  attempts left: "
 					  + numOfAttempts);
 			  markAsRead(userId, siteId, readMessageId, numOfAttempts);
 		  }
@@ -488,7 +517,7 @@ private RequestStorage requestStorage;
         if("site".equals(view.getPathSegment(3))){
         	siteId = view.getPathSegment(4);
         }
-        String userId = UserDirectoryService.getCurrentUser().getId();
+        String userId = userDirectoryService.getCurrentUser().getId();
 		if (userId == null || "".equals(userId) || siteId == null
 				|| "".equals(siteId) || messageId == null
 				|| "".equals(messageId)) {
@@ -600,13 +629,14 @@ private RequestStorage requestStorage;
 	 private List<DecoratedMessage> replies;
 	 private String authoredBy;
 	 private int indentIndex = 0;
+	 private String profileImageUrl;
 	 private Long replyTo;
 	 private String createdOn;
 	 private boolean read;
 	 private String recipients;
 	 private String label;
 	 
-	public DecoratedMessage(Long messageId, Long topicId, String title, String body, String lastModified, List<String> attachments, List<DecoratedMessage> replies, String authoredBy, Long replyTo, String createdOn, boolean read, String recipients, String label){
+	public DecoratedMessage(Long messageId, Long topicId, String title, String body, String lastModified, List<String> attachments, List<DecoratedMessage> replies, String authoredBy, Long replyTo, String profileImageUrl, String createdOn, boolean read, String recipients, String label){
 		  this.messageId = messageId;
 		  this.topicId = topicId;
 		  this.title = title;
@@ -615,6 +645,7 @@ private RequestStorage requestStorage;
 		  this.replies = replies;
 		  this.lastModified = lastModified;
 		  this.authoredBy = authoredBy;
+		  this.profileImageUrl = profileImageUrl;
 		  this.replyTo = replyTo;
 		  this.createdOn = createdOn;
 		  this.read = read;
@@ -684,7 +715,16 @@ private RequestStorage requestStorage;
 	public void setIndentIndex(int indentIndex) {
 		this.indentIndex = indentIndex;
 	}
-	public Long getReplyTo() {
+
+	  public String getProfileImageUrl() {
+		  return profileImageUrl;
+	  }
+
+	  public void setProfileImageUrl(String profileImageUrl) {
+		  this.profileImageUrl = profileImageUrl;
+	  }
+
+	  public Long getReplyTo() {
 		return replyTo;
 	}
 	public void setReplyTo(Long replyTo) {
@@ -743,4 +783,21 @@ public void setMessageManager(MessageForumsMessageManager messageManager) {
 	this.messageManager = messageManager;
 }
 
+	public void setServerConfigurationService(ServerConfigurationService serverConfigurationService) {
+		this.serverConfigurationService = serverConfigurationService;
+	}
+
+	public void setSecurityService(SecurityService securityService) {
+		this.securityService = securityService;
+	}
+
+	public void setSiteService(SiteService siteService) {
+		this.siteService = siteService;
+	}
+
+	public void setUserDirectoryService(UserDirectoryService userDirectoryService) {
+		this.userDirectoryService = userDirectoryService;
+	}
+	
+	
 }

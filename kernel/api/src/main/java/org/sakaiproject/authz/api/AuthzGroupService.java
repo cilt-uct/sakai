@@ -79,6 +79,14 @@ public interface AuthzGroupService extends EntityProducer
 	static final String AUTH_ROLE = ".auth";
 
 	/**
+	 * Get all provider IDs for the realms given.
+	 *
+	 * @param realmIDs a List of the realms you want the provider IDs for.
+	 * @return a Map, where the key is the realm ID, and the value is a List of Strings of provider IDs for that realm
+	 */
+	public Map<String, List<String>> getProviderIDsForRealms(List<String> realmIDs);
+
+	/**
 	 * Access a list of AuthzGroups that meet specified criteria, naturally sorted.
 	 * NOTE: The group objects returned will not have the associated roles loaded.
 	 * if you need to save the realm retrieve it with {@link #getAuthzGroup(String)}
@@ -210,8 +218,10 @@ public interface AuthzGroupService extends EntityProducer
 	 *        The AuthzGroup to remove.
 	 * @exception AuthzPermissionException
 	 *            if the current user does not have permission to remove this AuthzGroup.
+	 * @throws AuthzRealmLockException
+	 *         if the group contains a lock preventing the removal
 	 */
-	void removeAuthzGroup(AuthzGroup azGroup) throws AuthzPermissionException;
+	void removeAuthzGroup(AuthzGroup azGroup) throws AuthzPermissionException, AuthzRealmLockException;
 
 	/**
 	 * Remove the AuthzGroup with this id, if it exists (fails quietly if not).
@@ -220,8 +230,10 @@ public interface AuthzGroupService extends EntityProducer
 	 *        The AuthzGroup id.
 	 * @exception AuthzPermissionException
 	 *            if the current user does not have permission to remove this AthzGroup.
+	 * @throws AuthzRealmLockException
+	 *         if the group contains a lock preventing the removal
 	 */
-	void removeAuthzGroup(String id) throws AuthzPermissionException;
+	void removeAuthzGroup(String id) throws AuthzPermissionException, AuthzRealmLockException;
 
 	/**
 	 * Access the internal reference which can be used to access the AuthzGroup from within the system.
@@ -243,8 +255,10 @@ public interface AuthzGroupService extends EntityProducer
 	 *         if the authzGroupId or role are not defined.
 	 * @throws AuthzPermissionException
 	 *         if the current user does not have permission to join this AuthzGroup.
+	 * @throws AuthzRealmLockException
+	 *         if the group contains a lock preventing the change
 	 */
-	void joinGroup(String authzGroupId, String role) throws GroupNotDefinedException, AuthzPermissionException;
+	void joinGroup(String authzGroupId, String role) throws GroupNotDefinedException, AuthzPermissionException, AuthzRealmLockException;
 
 	/**
 	 * Cause the current user to join the given AuthzGroup with this role, using SECURE_UPDATE_OWN_AUTHZ_GROUP security, 
@@ -262,8 +276,10 @@ public interface AuthzGroupService extends EntityProducer
 	 *         if the current user does not have permission to join this AuthzGroup.
 	 * @throws GroupFullException
 	 *         if adding the current user would cause the AuthzGroup to become larger than maxSize.
+	 * @throws AuthzRealmLockException
+	 *         if the group contains a lock preventing the change
 	 */
-	void joinGroup(String authzGroupId, String role, int maxSize) throws GroupNotDefinedException, AuthzPermissionException, GroupFullException;
+	void joinGroup(String authzGroupId, String role, int maxSize) throws GroupNotDefinedException, AuthzPermissionException, GroupFullException, AuthzRealmLockException;
 	
 	/**
 	 * Cause the current user to unjoin the given AuthzGroup, using SECURE_UPDATE_OWN_AUTHZ_GROUP security.
@@ -274,8 +290,10 @@ public interface AuthzGroupService extends EntityProducer
 	 *         if the authzGroupId or role are not defined.
 	 * @throws AuthzPermissionException
 	 *         if the current user does not have permission to unjoin this site.
+	 * @throws AuthzRealmLockException
+	 *         if the group contains a lock preventing the change
 	 */
-	void unjoinGroup(String authzGroupId) throws GroupNotDefinedException, AuthzPermissionException;
+	void unjoinGroup(String authzGroupId) throws GroupNotDefinedException, AuthzPermissionException, AuthzRealmLockException;
 
 	/**
 	 * Check permissions for the current user joining a group.

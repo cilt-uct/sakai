@@ -5,7 +5,7 @@
 	<parent>
 		<artifactId>sakai-rsf</artifactId>
 		<groupId>org.sakaiproject.rsf</groupId>
-		<version>12-SNAPSHOT</version>
+		<version>21-SNAPSHOT</version>
 	</parent>
 	<packaging>jar</packaging>
 	<artifactId>sakai-rsf-core</artifactId>
@@ -87,7 +87,7 @@
 		</dependency>
 		<dependency>
 			<groupId>javax.servlet</groupId>
-			<artifactId>servlet-api</artifactId>
+			<artifactId>javax.servlet-api</artifactId>
 			<scope>provided</scope>
 		</dependency>
 		<dependency>

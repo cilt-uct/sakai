@@ -31,7 +31,7 @@
     <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
       <head><%= request.getAttribute("html.head") %>
       <title><h:outputText value="#{questionPoolMessages.q_mgr}"/></title>
-<script type="text/JavaScript">
+<script>
 <%@ include file="/js/samigotree.js" %>
 	
 function flagFolders() {
@@ -53,43 +53,43 @@ function checkUpdate()
 }
 
 </script>
-<script src="/library/js/spinner.js" type="text/javascript"></script>
+<script src="/library/js/spinner.js"></script>
       </head>
 <body onload="collapseAllRows();flagRows();disabledButton();<%= request.getAttribute("html.body.onload") %>">
  <div class="portletBody">
 <!-- content... -->
 <h:form id="questionpoolshare">
 
-<f:verbatim><ul class="navIntraTool actionToolbar" role="menu">
-<li role="menuitem" class="firstToolBarItem"><span></f:verbatim>
-   	<h:commandLink title="#{generalMessages.t_assessment}" action="author"  immediate="true">
-   		<h:outputText value="#{generalMessages.assessment}"/>
-       	<f:actionListener
-         	type="org.sakaiproject.tool.assessment.ui.listener.author.AuthorActionListener" />
-   	</h:commandLink>
-       
-<f:verbatim></span></li></f:verbatim>
-<h:panelGroup rendered="#{authorization.adminTemplate and template.showAssessmentTypes}">
-<f:verbatim><li role="menuitem"><span></f:verbatim>
-
-   	<h:commandLink title="#{generalMessages.t_template}" action="template" immediate="true">
-        <h:outputText value="#{generalMessages.template}"/>
-      	<f:actionListener 
-      		type="org.sakaiproject.tool.assessment.ui.listener.author.TemplateListener" />
-   	</h:commandLink>
-
-<f:verbatim></span></li></f:verbatim>
-</h:panelGroup>
-<f:verbatim><li role="menuitem"><span class="current"></f:verbatim>
-
-   	<h:outputText value="#{questionPoolMessages.qps}"/>
-<f:verbatim></span></li>
-</ul></f:verbatim>
+<ul class="navIntraTool actionToolbar" role="menu">
+    <li role="menuitem">
+        <span>
+            <h:commandLink title="#{generalMessages.t_assessment}" action="author"  immediate="true">
+                <h:outputText value="#{generalMessages.assessment}"/>
+                <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.author.AuthorActionListener" />
+            </h:commandLink>
+        </span>
+    </li>
+    <h:panelGroup rendered="#{authorization.adminTemplate and template.showAssessmentTypes}">
+        <li role="menuitem">
+            <span>
+                <h:commandLink title="#{generalMessages.t_template}" action="template" immediate="true">
+                    <h:outputText value="#{generalMessages.template}"/>
+                    <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.author.TemplateListener" />
+                </h:commandLink>
+            </span>
+        </li>
+    </h:panelGroup>
+    <li role="menuitem">
+        <span class="current">
+            <h:outputText value="#{questionPoolMessages.qps}"/>
+        </span>
+    </li>
+</ul>
 
 
  <h3><h:outputText value="#{questionPoolMessages.share_pool}"/></h3>
 
-<h:messages styleClass="messageSamigo" rendered="#{! empty facesContext.maximumSeverity}" layout="table"/>
+<h:messages styleClass="sak-banner-error" rendered="#{! empty facesContext.maximumSeverity}" layout="table"/>
  
 <div class="tier1">
 <h4><h:outputText value="#{questionPoolMessages.members_with_access} #{questionpoolshare.questionPoolName}"/></h4>

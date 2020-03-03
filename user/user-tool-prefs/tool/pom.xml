@@ -4,17 +4,12 @@
   <parent>
     <artifactId>user</artifactId>
     <groupId>org.sakaiproject.user</groupId>
-    <version>12-SNAPSHOT</version>
+    <version>21-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
   <name>sakai-user-tool-prefs</name>
   <groupId>org.sakaiproject</groupId>
   <artifactId>sakai-user-tool-prefs</artifactId>
-  <organization>
-    <name>Sakai Project</name>
-    <url>http://sakaiproject.org/</url>
-  </organization>
-  <inceptionYear>2003</inceptionYear>
   <packaging>war</packaging>
   <dependencies>
     <dependency>
@@ -82,20 +77,19 @@
     <dependency>
       <groupId>taglibs</groupId>
       <artifactId>standard</artifactId>
-      <version>1.0.4</version>
+      <version>1.1.2</version>
     </dependency>
     <dependency>
       <groupId>javax.servlet</groupId>
       <artifactId>jstl</artifactId>
-      <scope>compile</scope>
     </dependency>
     <dependency>
          <groupId>javax.servlet.jsp</groupId>
-         <artifactId>jsp-api</artifactId>
+         <artifactId>javax.servlet.jsp-api</artifactId>
       </dependency>
     <dependency>
        <groupId>javax.servlet</groupId>
-       <artifactId>servlet-api</artifactId>
+       <artifactId>javax.servlet-api</artifactId>
     </dependency>
 
 	<dependency>
@@ -115,6 +109,10 @@
     <dependency>
       <groupId>org.springframework</groupId>
 	  <artifactId>spring-beans</artifactId>
+    </dependency>
+    <dependency>
+    	<groupId>org.apache.commons</groupId>
+    	<artifactId>commons-lang3</artifactId>
     </dependency>
   </dependencies>
   <build>

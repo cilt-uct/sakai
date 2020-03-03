@@ -26,41 +26,18 @@ package org.sakaiproject.lessonbuildertool.tool.producers;
 import java.util.ArrayList;
 import java.util.List;
 
-import java.net.URLEncoder;
-
-import org.sakaiproject.lessonbuildertool.service.LessonEntity;
-import org.sakaiproject.tool.cover.SessionManager;
-
-import org.sakaiproject.lessonbuildertool.SimplePage;
-import org.sakaiproject.lessonbuildertool.SimplePageItem;
-import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean;
-import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean.UrlItem;
-import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean.BltiTool;
-import org.sakaiproject.lessonbuildertool.tool.view.GeneralViewParameters;
-import org.sakaiproject.tool.api.Session;
-import org.sakaiproject.tool.cover.SessionManager;
-import org.sakaiproject.tool.cover.ToolManager;
-import org.sakaiproject.lessonbuildertool.model.SimplePageToolDao;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.sakaiproject.component.cover.ServerConfigurationService;     
-import org.sakaiproject.portal.util.ToolUtils;
-
-import org.sakaiproject.lessonbuildertool.service.BltiEntity;
+import org.apache.commons.lang3.StringUtils;
+import lombok.extern.slf4j.Slf4j;
 
 import uk.org.ponder.messageutil.MessageLocator;
-import uk.org.ponder.localeutil.LocaleGetter;										  
+import uk.org.ponder.localeutil.LocaleGetter;
 import uk.org.ponder.rsf.components.UIBranchContainer;
 import uk.org.ponder.rsf.components.UICommand;
 import uk.org.ponder.rsf.components.UIContainer;
-import uk.org.ponder.rsf.components.UIVerbatim;
 import uk.org.ponder.rsf.components.UIForm;
 import uk.org.ponder.rsf.components.UILink;
 import uk.org.ponder.rsf.components.UIOutput;
 import uk.org.ponder.rsf.components.UIInput;
-import uk.org.ponder.rsf.components.UISelect;
-import uk.org.ponder.rsf.components.UISelectChoice;
-import uk.org.ponder.rsf.components.UIInternalLink;
 import uk.org.ponder.rsf.components.decorators.UIFreeAttributeDecorator;
 import uk.org.ponder.rsf.flow.jsfnav.NavigationCase;
 import uk.org.ponder.rsf.flow.jsfnav.NavigationCaseReporter;
@@ -70,6 +47,18 @@ import uk.org.ponder.rsf.viewstate.SimpleViewParameters;
 import uk.org.ponder.rsf.viewstate.ViewParameters;
 import uk.org.ponder.rsf.viewstate.ViewParamsReporter;
 
+import org.sakaiproject.lessonbuildertool.SimplePage;
+import org.sakaiproject.lessonbuildertool.SimplePageItem;
+import org.sakaiproject.lessonbuildertool.service.BltiEntity;
+import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean;
+import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean.UrlItem;
+import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean.BltiTool;
+import org.sakaiproject.lessonbuildertool.tool.view.GeneralViewParameters;
+import org.sakaiproject.lessonbuildertool.model.SimplePageToolDao;   
+import org.sakaiproject.portal.util.ToolUtils;
+import org.sakaiproject.tool.cover.SessionManager;
+import org.sakaiproject.tool.cover.ToolManager;
+
 /**
  * Creates a list of LTI Content Items for the user to choose from. Their choice will be added
  * to the end of the list of items on this page.
@@ -78,15 +67,15 @@ import uk.org.ponder.rsf.viewstate.ViewParamsReporter;
  * @author Eric Jeney <jeney@rutgers.edu>
  * 
  */
+@Slf4j
 public class BltiPickerProducer implements ViewComponentProducer, NavigationCaseReporter, ViewParamsReporter {
-	private static final Logger log = LoggerFactory.getLogger(BltiPickerProducer.class);
 	public static final String VIEW_ID = "BltiPicker";
 
 	private SimplePageBean simplePageBean;
 	private SimplePageToolDao simplePageToolDao;
-private BltiEntity bltiEntity;
+	private BltiEntity bltiEntity;
 	public MessageLocator messageLocator;
-public LocaleGetter localeGetter;											     
+	public LocaleGetter localeGetter;
 
 	public void setSimplePageBean(SimplePageBean simplePageBean) {
 		this.simplePageBean = simplePageBean;
@@ -117,6 +106,8 @@ public LocaleGetter localeGetter;
 		    }
 		}
 
+		boolean appStoresOnly = ((GeneralViewParameters) viewparams).bltiAppStores;
+
 	Integer bltiToolId = ((GeneralViewParameters)viewparams).addTool;
 		BltiTool bltiTool = null;
 		if (bltiToolId == -1)
@@ -136,10 +127,18 @@ public LocaleGetter localeGetter;
 
 		simplePageBean.setItemId(itemId);
 
+		String ltiItemDescription = ToolUtils.getRequestParameter("ltiItemDescription");
+		if(StringUtils.isNotEmpty(ltiItemDescription)){
+			simplePageBean.setDescription(ltiItemDescription);
+		}
+
 		if (bltiTool != null)
 		    UIOutput.make(tofill, "mainhead", bltiTool.title);
-		else
-		    UIOutput.make(tofill, "mainhead", messageLocator.getMessage("simplepage.blti.chooser"));
+		else if (appStoresOnly) {
+			UIOutput.make(tofill, "mainhead", messageLocator.getMessage("simplepage.blti.launcher"));
+		} else {
+			UIOutput.make(tofill, "mainhead", messageLocator.getMessage("simplepage.blti.chooser"));
+		}
 
 		// here is a URL to return to this page
 		String comeBack = ToolUtils.getToolBaseUrl()+ "/" + ToolManager.getCurrentPlacement().getId() + "/BltiPicker?" +
@@ -164,29 +163,50 @@ public LocaleGetter localeGetter;
 			    currentItem = i.getSakaiId();
 			}
 
-			List<UrlItem> createLinks = bltiEntity.createNewUrls(simplePageBean, bltiToolId);
+			List<UrlItem> createLinks = bltiEntity.createNewUrls(simplePageBean, bltiToolId, appStoresOnly);
 			UrlItem mainLink = null;
 			int toolcount = 0;
+
+			UIBranchContainer toolListContainer = null;
+			if(appStoresOnly) {
+				// If we have one store, we get two links, the last one is the "Cancel/panel=Main" link
+				if ( createLinks.size() <= 2 ) {
+					toolListContainer = UIBranchContainer.make(tofill, "app-store-shortcut:");
+				} else {
+					toolListContainer = UIBranchContainer.make(tofill, "app-store-container:");
+				}
+			} else {
+				toolListContainer = UIBranchContainer.make(tofill, "external-tool-container:");
+				UIOutput.make(toolListContainer, "blti-name-header", messageLocator.getMessage("simplepage.blti.tool.name"));
+				UIOutput.make(toolListContainer, "blti-description-header", messageLocator.getMessage("simplepage.blti.tool.description"));
+			}
+
 			for (UrlItem createLink: createLinks) {
 			    if (createLink.Url.indexOf("panel=Main") >= 0) {
 				mainLink = createLink;
 				continue;
 			    }
 			    toolcount = 1;
-			    UIBranchContainer link = UIBranchContainer.make(tofill, "blti-create:");
+				UIBranchContainer linkContainer = UIBranchContainer.make(toolListContainer, "blti-create:");
 
-			    UILink.make(link, "blti-create-link", (bltiTool == null ? createLink.label : bltiTool.addText), createLink.Url)
-				.decorate(new UIFreeAttributeDecorator("title", messageLocator.getMessage("simplepage.blti.config")));
+				UILink link = UILink.make(linkContainer, "blti-create-link", createLink.Url);
+				link.decorate(new UIFreeAttributeDecorator("title", messageLocator.getMessage("simplepage.blti.config")));
+				UIOutput.make(linkContainer, "blti-create-text", (bltiTool == null ? createLink.label : bltiTool.addText));
+				UIOutput.make(linkContainer, "blti-create-description", (bltiTool == null ? createLink.description : bltiTool.description));
 
-			    if ( createLink.fa_icon != null ) {
-				UIOutput.make(link, "blti-create-icon", "")
+			    if ( createLink.fa_icon != null && !createLink.search ) {
+			        UIOutput.make(linkContainer, "blti-create-icon", "")
 				    .decorate(new UIFreeAttributeDecorator("class", "fa " + createLink.fa_icon));
+			    }
+
+			    if ( createLink.search ) {
+			        UIOutput.make(linkContainer, "blti-search-icon");
 			    }
 
 			}
 			
 			if ( toolcount > 0 ) {
-			    UIOutput.make(tofill, "blti-tools-text", messageLocator.getMessage("simplepage.blti.tools.text"));
+				UIOutput.make(tofill, "blti-tools-text", appStoresOnly ? messageLocator.getMessage("simplepage.blti.app.store.text") : messageLocator.getMessage("simplepage.blti.tools.text"));
 			} else { 
 			    UIOutput.make(tofill, "no-blti-tools");
 			    UIOutput.make(tofill, "no-blti-tools-text", messageLocator.getMessage("simplepage.no_blti_tools"));
@@ -211,6 +231,7 @@ public LocaleGetter localeGetter;
 				UIInput.make(fb, "select", "simplePageBean.selectedBlti", ltiItemId);
 				UIInput.make(fb, "add-before", "#{simplePageBean.addBefore}", ((GeneralViewParameters) viewparams).getAddBefore());
 				UIInput.make(fb, "item-id", "#{simplePageBean.itemId}");
+				UIInput.make(fb, "item-description", "simplePageBean.description", ltiItemDescription);
 				UICommand.make(fb, "submit", messageLocator.getMessage("simplepage.chooser.select"), "#{simplePageBean.addBlti}");
 				UICommand.make(fb, "cancel", messageLocator.getMessage("simplepage.cancel"), "#{simplePageBean.cancel}");
 

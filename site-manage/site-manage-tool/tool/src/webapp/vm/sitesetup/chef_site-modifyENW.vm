@@ -6,12 +6,12 @@
 #javascript("/library/js/fontIconPicker/2.0.1-cs/jquery.fonticonpicker.min.js")
 #css("/library/js/fontIconPicker/2.0.1-cs/css/jquery.fonticonpicker.css")
 #css("/library/js/fontIconPicker/2.0.1-cs/themes/grey-theme/jquery.fonticonpicker.grey.min.css")
+	#if($menu)#toolbar($menu)#end
 	<h3>
 		$tlang.getString("multipleTools.custom")
 	</h3>           
 	#if ($alertMessage)
-		<div class="alertMessage">$tlang.getString("gen.alert") $alertMessage</div>
-		<div class="clear"></div>
+		<div class="sak-banner-error">$tlang.getString("gen.alert") $alertMessage</div>
 	#end
 	
 	<form name = "toolForm" method = "post" action="#toolForm("SiteAction")">
@@ -20,20 +20,25 @@
 	
 	## customize lti tools
 	#if (!$!ltiTools.isEmpty())
-		<p class="instruction">
-			$tlang.getString("ltiTools.custom.instruction")
-		</p>
 		#foreach($ltiTool in $ltiTools.entrySet())
 			#set($ltiToolId=$ltiTool.getKey())
 			#if (!$!oldLtiTools.containsKey($ltiToolId))
-				## show the input only if the tool is not enabled in the site yet
+				## show the input only if the tool is not enabled in the site yet and display the heading only once
+				#if (!$!instruction)
+					#set($instruction=$tlang.getString("ltiTools.custom.instruction"))
+					<p class="instruction">
+						$instruction
+					</p>
+				#end
 				#set($ltiToolValues=$ltiTool.getValue())
 				#set($ltiToolFormInput=$ltiToolValues.get("formInput"))
-				<h4>
-					$ltiToolValues.get("title")
-				</h4>
-				$ltiToolFormInput<br/>
-<script type="text/javascript">jQuery(document).ready(function () { fontawesome_icon_picker('#${ltiToolId}_fa_icon'); });</script>
+				#if ($ltiToolValues.get("hasConfiguration"))
+					<h4>
+						$ltiToolValues.get("title")
+					</h4>
+					$!ltiToolFormInput<br/>
+					<script type="text/javascript">jQuery(document).ready(function () { fontawesome_icon_picker('#${ltiToolId}_fa_icon'); });</script>
+				#end
 
 			#end
 		#end
@@ -137,7 +142,7 @@
 									<label for="title_$toolId">
 										$!tlang.getString("multipleTools.title")
 									</label>
-									<input type="text" name="title_$toolId" id="title_$toolId" value="$validator.escapeHtml($!multipleToolIdTitleMap.get($toolId))" size="20" maxlength="$!maxToolTitleLength"/><span class="instruction"> $tlang.getString("multipleTools.title.suggest")</span>
+									<input type="text" name="title_$toolId" id="title_$toolId" value="$formattedText.escapeHtml($!multipleToolIdTitleMap.get($toolId))" size="20" maxlength="$!maxToolTitleLength"/><span class="instruction"> $tlang.getFormattedMessage("multipleTools.title.suggest", $maxToolTitleLength)</span>
 								</p>
 						 #set($attributeHashtable=false)
 							#set($attributeHashtable=$!multipleToolConfiguration.get($toolId))
@@ -147,7 +152,7 @@
 										<label for="$attributeInputName">
 											$clang.getString($attribute)
 										</label>
-										<input type="text" name="$attributeInputName" id="$attributeInputName" value="$validator.escapeHtml($!attributeHashtable.get($attribute))" size="50" />
+										<input type="text" name="$attributeInputName" id="$attributeInputName" value="$formattedText.escapeHtml($!attributeHashtable.get($attribute))" size="50" />
 								</p>
 								#end
 						#end

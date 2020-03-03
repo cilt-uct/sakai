@@ -19,22 +19,20 @@
  *
  **********************************************************************************/
 
-
-
 package org.sakaiproject.tool.assessment.ui.listener.evaluation;
+
+import java.util.ArrayList;
+import java.util.HashMap;
 
 import javax.faces.context.FacesContext;
 import javax.faces.event.AbortProcessingException;
 import javax.faces.event.ActionEvent;
 import javax.faces.event.ActionListener;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 import org.sakaiproject.tool.assessment.ui.bean.evaluation.QuestionScoresBean;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
-
-import java.util.HashMap;
 
 /**
  * <p>Title: Samigo</p>
@@ -43,10 +41,9 @@ import java.util.HashMap;
  * @author Ed Smiley
  * @version $Id$
  */
-
+@Slf4j
 public class ResetQuestionScoreListener implements ActionListener
 {
-  private static Logger log = LoggerFactory.getLogger(ResetQuestionScoreListener.class);
   private static ContextUtil cu;
 
   /**
@@ -58,8 +55,8 @@ public class ResetQuestionScoreListener implements ActionListener
     AbortProcessingException
   {
     QuestionScoresBean bean = (QuestionScoresBean) cu.lookupBean("questionScores");
+    bean.setAgents(new ArrayList());
     bean.setItemScoresMap(new HashMap());
     bean.setPublishedAssessment(null);
-    //System.out.println("****reset itemScoresMap");
   }
 }

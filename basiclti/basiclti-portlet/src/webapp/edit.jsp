@@ -56,8 +56,6 @@ Boolean allowSettings = (Boolean) rReq.getAttribute("allowSettings");
 
 Boolean allowRoster = (Boolean) rReq.getAttribute("allowRoster");
 
-Boolean allowContentLink = (Boolean) rReq.getAttribute("allowContentLink");
-
 %>
 <portlet:defineObjects/>
 <div class="portletBody">
@@ -68,15 +66,15 @@ Boolean allowContentLink = (Boolean) rReq.getAttribute("allowContentLink");
         allow(sp,"newpage") || 
         allow(sp,"frameheight") || allow(sp, "debug") ||
         allow(sp, "releasename") || allow(sp,"releaseemail")  ||
+        allow(sp, "sha256") ||
 		allow(sp,"custom") || 
 		allow(sp,"allowsettings") || allow(sp, "allowroster") || 
-        allow(sp, "allowoutcomes") || 
-		allow(sp, "contentlink") || allow(sp, "splash") ||
+        allow(sp, "allowoutcomes") || allow(sp, "splash") ||
         allow(sp, "fa_icon")
 ) { 
 
     if ( errorMsg != null ) { %>
-		<div class="alertMessage"><%= errorMsg %></div>
+		<div class="sak-banner-error"><%= errorMsg %></div>
 	<% } %>
 
 <script type="text/javascript" src="/library/js/headscripts.js"></script>
@@ -87,13 +85,13 @@ Boolean allowContentLink = (Boolean) rReq.getAttribute("allowContentLink");
 		<span>
 			<a href="<%=viewURL.toString()%>"><%=rb.getString("edit.exit")%></a>
 		</span>
-	</li>	
+	</li>
 	<li>
 		<span>
 			<a href="<%=resetURL.toString()%>"><%=rb.getString("edit.clear.prefs")%></a>
 		</span>
 	</li>
-</ul>	
+</ul>
 
 <form method="post" action="<%=launchURL.toString()%>">
 <% if ( allow(sp,"launch") || allow(sp,"xml") || allow(sp,"key") || allow(sp,"secret") ) { %>
@@ -239,6 +237,21 @@ if ( document.getElementById("UISwitcher") ) switchui();
 <span class="textPanelFooter"><%=rb.getString("iframe.height.detail") %></span>
 </p>
 <% } %>
+<% if ( allow(sp,"sha256") ) { %>
+	<p>
+		<label for="imsti.sha256">
+			<input type="checkbox" size="10" name="imsti.sha256" id="imsti.sha256"
+			<% if ( ov.getProperty("imsti.sha256",null) != null ) { %>
+            checked="yes" />
+			<% } else { %>
+            />
+			<% } %>
+			<%=rb.getString("sha256.legend") %>
+		</label>
+<span class="textPanelFooter"><%=rb.getString("imsti.sha256.detail") %></span>
+</p>
+<% } %>
+
 <% if ( allow(sp,"debug") ) { %>
 <p>
 <label for="imsti.debug">
@@ -282,7 +295,7 @@ if ( document.getElementById("UISwitcher") ) switchui();
    			/>
 			<% } %>
 			<%=rb.getString("privacy.releaseemail") %>
-		</label>	
+		</label>
 	<span class="textPanelFooter"><%=rb.getString("launch.privacy.detail") %></span>
 </p>
 <% } %>
@@ -301,16 +314,6 @@ if ( document.getElementById("UISwitcher") ) switchui();
 <% } %>
 
 <% } %>
-
-<% if ( allow(sp,"contentlink") && allowContentLink ) { %>
-<h3><%=rb.getString("contentlink.legend") %></h3>
-<p class="shorttext" style="clear:none">
-<label for="imsti.contentlink"><%=rb.getString("contentlink.label") %></label><br/>
-<input type="text" name="imsti.contentlink" size="80" id="imsti.contentlink" value="<%=ov.getProperty("imsti.contentlink","")%>"> 
-<span class="textPanelFooter"><%=rb.getString("contentlink.detail") %></span>
-</p>
-<% } %>
-
 
 <% if ( allow(sp,"allowsettings") && allowSettings ) { %>
 <h3><%=rb.getString("allowsettings.information") %></h3>
@@ -347,18 +350,18 @@ if ( document.getElementById("UISwitcher") ) switchui();
 <textarea rows="10" cols="60"  name="imsti.custom" id="imsti.custom" >
 <%=ov.getProperty("imsti.custom","")%>
 </textarea>
-
+	
 </p>
 <% } %>
-<p>
-<input type="submit" value="<%=rb.getString("update.options")%>">
+<p class="act">
+<input type="submit" value="<%=rb.getString("update.options")%>" class="active">
 <input type="submit" value="<%=rb.getString("edit.exit")%>" 
     onclick="window.location='<%=viewURL.toString()%>'; return false;"/>
 </p>
 </form>
 <% } else { 
     if ( errorMsg != null ) { %>
-		<div class="alertMessage"><%= errorMsg %></div>
+		<div class="sak-banner-error"><%= errorMsg %></div>
 	<% } %>
 
 <ul class="navIntraTool actionToolBar">
@@ -366,8 +369,8 @@ if ( document.getElementById("UISwitcher") ) switchui();
 		<span>
 			<a href="<%=viewURL.toString()%>"><%=rb.getString("edit.exit")%></a>
 		</span>
-	</li>	
-</ul>	
+	</li>
+</ul>
 <p class="instruction"><%=rb.getString("edit.nothing")%></p>
 <% } %>
 </div>

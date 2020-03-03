@@ -20,8 +20,6 @@
  **********************************************************************************/
 package org.sakaiproject.tool.messageforums.jsf;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -37,11 +35,15 @@ import javax.faces.context.FacesContext;
 import javax.faces.context.ResponseWriter;
 import javax.faces.el.ValueBinding;
 
+import com.sun.faces.renderkit.Attribute;
+import com.sun.faces.renderkit.html_basic.HtmlBasicRenderer;
+import com.sun.faces.renderkit.RenderKitUtils;
+import com.sun.faces.util.MessageUtils;
+
+import lombok.extern.slf4j.Slf4j;
+
 import org.sakaiproject.api.app.messageforums.Message;
 import org.sakaiproject.tool.messageforums.ui.DiscussionMessageBean;
-
-import com.sun.faces.renderkit.html_basic.HtmlBasicRenderer;
-import com.sun.faces.util.Util;
 
 /**
  * @author cwen
@@ -49,9 +51,9 @@ import com.sun.faces.util.Util;
  * TODO To change the template for this generated type comment go to
  * Window - Preferences - Java - Code Style - Code Templates
  */
+@Slf4j
 public class HierDataTableRender extends HtmlBasicRenderer 
 {
-	protected static Logger log = LoggerFactory.getLogger(HierDataTableRender.class);
 
 	private static final String RESOURCE_PATH = "/messageforums-tool";
 	private static final String BARIMG = RESOURCE_PATH + "/" + "images/collapse.gif";
@@ -71,13 +73,11 @@ public class HierDataTableRender extends HtmlBasicRenderer
 
 	public void encodeBegin(FacesContext context, UIComponent component) throws IOException {
 		if ((context == null) || (component == null)) {
-			throw new NullPointerException(Util.getExceptionMessageString(Util.NULL_PARAMETERS_ERROR_MESSAGE_ID));
+			throw new IllegalArgumentException(MessageUtils.getExceptionMessageString(MessageUtils.NULL_PARAMETERS_ERROR_MESSAGE_ID));
 		}
 		if (log.isTraceEnabled()) {
 			log.trace("Begin encoding component " + component.getId());
 		}
-
-
 
 		// suppress rendering if "rendered" property on the component is false.
 		if (!component.isRendered()) {
@@ -102,7 +102,8 @@ public class HierDataTableRender extends HtmlBasicRenderer
 		if (styleClass != null) {
 			writer.writeAttribute("class", styleClass, "styleClass");
 		}
-		Util.renderPassThruAttributes(writer, component, new String[] { "rows" });
+		Attribute[] EXTRA_ATTRIBUTES = { Attribute.attr("rows") };
+		RenderKitUtils.renderPassThruAttributes(context, writer, component, EXTRA_ATTRIBUTES);
 		writer.writeText("\n", null);
 		// Render the header facets (if any)
 		UIComponent header = getFacet(data, "header");
@@ -205,7 +206,7 @@ public class HierDataTableRender extends HtmlBasicRenderer
 
 	public void encodeChildren(FacesContext context, UIComponent component) throws IOException {
 		if ((context == null) || (component == null)) {
-			throw new NullPointerException(Util.getExceptionMessageString(Util.NULL_PARAMETERS_ERROR_MESSAGE_ID));
+			throw new IllegalArgumentException(MessageUtils.getExceptionMessageString(MessageUtils.NULL_PARAMETERS_ERROR_MESSAGE_ID));
 		}
 		if (log.isTraceEnabled()) {
 			log.trace("Begin encoding children " + component.getId());
@@ -238,11 +239,6 @@ public class HierDataTableRender extends HtmlBasicRenderer
 
 		for (data.setRowIndex(data.getFirst()); data.isRowAvailable(); data.setRowIndex(data.getRowIndex() + 1)) {
 			DiscussionMessageBean dmb = (DiscussionMessageBean) data.getRowData();
-
-//			// if this row has been deleted... skip it!
-//			if (dmb.getDeleted()) {
-//				continue;
-//			}
 
 			// walk up the messages to get the parent "thread"
 			Message tmpMsg = dmb.getMessage();
@@ -405,7 +401,7 @@ public class HierDataTableRender extends HtmlBasicRenderer
 
 	public void encodeEnd(FacesContext context, UIComponent component) throws IOException {
 		if ((context == null) || (component == null)) {
-			throw new NullPointerException(Util.getExceptionMessageString(Util.NULL_PARAMETERS_ERROR_MESSAGE_ID));
+			throw new IllegalArgumentException(MessageUtils.getExceptionMessageString(MessageUtils.NULL_PARAMETERS_ERROR_MESSAGE_ID));
 		}
 		if (!component.isRendered()) {
 			if (log.isTraceEnabled()) {

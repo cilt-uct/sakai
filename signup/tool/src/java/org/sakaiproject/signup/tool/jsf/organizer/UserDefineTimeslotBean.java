@@ -25,6 +25,7 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import javax.faces.component.UIData;
 import javax.faces.context.FacesContext;
@@ -38,6 +39,7 @@ import org.sakaiproject.signup.model.SignupTimeslot;
 import org.sakaiproject.signup.tool.jsf.TimeslotWrapper;
 import org.sakaiproject.signup.tool.util.SignupBeanConstants;
 import org.sakaiproject.signup.tool.util.Utilities;
+import org.sakaiproject.util.DateFormatterUtil;
 
 
 public class UserDefineTimeslotBean implements SignupBeanConstants {
@@ -75,6 +77,9 @@ public class UserDefineTimeslotBean implements SignupBeanConstants {
 	private boolean putInMultipleCalendarBlocks = true;
 	
 	String errorStyleValue = "background: #EEF3F6;";
+
+	private static String HIDDEN_ISO_STARTTIME = "startTimeISO8601";
+	private static String HIDDEN_ISO_ENDTIME = "endTimeISO8601";
 
 	public void init(SignupMeeting sMeeting, String backPageURL,
 			List<TimeslotWrapper> origTSwrpList, String whoPlaceOrder) {
@@ -212,6 +217,8 @@ public class UserDefineTimeslotBean implements SignupBeanConstants {
 		newTs.setId(old.getId());
 		newTs.setStartTime(old.getStartTime());
 		newTs.setEndTime(old.getEndTime());
+		newTs.setStartTimeString(old.getStartTimeString());
+		newTs.setEndTimeString(old.getEndTimeString());
 		newTs.setCanceled(old.isCanceled());
 		newTs.setLocked(old.isLocked());
 		newTs.setDisplayAttendees(old.isDisplayAttendees());
@@ -323,7 +330,10 @@ public class UserDefineTimeslotBean implements SignupBeanConstants {
 
 		SignupTimeslot ts = new SignupTimeslot();
 		ts.setStartTime(calendar.getTime());
+		
+		calendar.add(Calendar.MINUTE, 15);
 		ts.setEndTime(calendar.getTime());
+		
 		ts.setMaxNoOfAttendees(MAX_NUM_PARTICIPANTS);
 		TimeslotWrapper tsWrp = new TimeslotWrapper(ts);
 
@@ -379,22 +389,49 @@ public class UserDefineTimeslotBean implements SignupBeanConstants {
 	public void validateTimeslots(ActionEvent e) {
 		if (this.timeSlotWrpList == null)
 			return;
+		Map<String, String> params = FacesContext.getCurrentInstance().getExternalContext().getRequestParameterMap();
 		int position = 1;
+		int i = 1;
 		for (TimeslotWrapper tsWrp : this.timeSlotWrpList) {
 			if(tsWrp.getDeleted())
 				continue;//skip
 			
+			String isoStartTime = params.get((position - 1) + HIDDEN_ISO_STARTTIME);
+			String isoEndTime = params.get((position - 1) + HIDDEN_ISO_ENDTIME);
+			
+			if (isoStartTime == null && isoEndTime == null) {
+				while (isoStartTime == null) {
+					position++;
+					if (position > params.size()) {
+						this.validationError = true;
+						tsWrp.setErrorStyle(this.errorStyleValue);
+						Utilities.addErrorMessage(MessageFormat.format(Utilities.rb
+								.getString("event.data_sync_error"), i));
+						return;
+					}
+					isoStartTime = params.get((position - 1) + HIDDEN_ISO_STARTTIME);
+					isoEndTime = params.get((position - 1) + HIDDEN_ISO_ENDTIME);
+				}
+			}
+
+			if(DateFormatterUtil.isValidISODate(isoStartTime)){
+				tsWrp.getTimeSlot().setStartTime(sakaiFacade.getTimeService().parseISODateInUserTimezone(isoStartTime));
+			}
+			
+			if(DateFormatterUtil.isValidISODate(isoEndTime)){
+				tsWrp.getTimeSlot().setEndTime(sakaiFacade.getTimeService().parseISODateInUserTimezone(isoEndTime));
+			}
 			Date endTime = tsWrp.getTimeSlot().getEndTime();
 			Date startTime = tsWrp.getTimeSlot().getStartTime();
 			if (endTime.before(startTime) || endTime.equals(startTime)) {
 				this.validationError = true;
 				tsWrp.setErrorStyle(this.errorStyleValue);
 				Utilities.addErrorMessage(MessageFormat.format(Utilities.rb
-						.getString("event.endTimeslot_should_after_startTimeslot"),
-						new Object[] { position }));
+						.getString("event.endTimeslot_should_after_startTimeslot"), i));
 				return;
 			}
 			position++;
+			i++;
 		}
 
 	}

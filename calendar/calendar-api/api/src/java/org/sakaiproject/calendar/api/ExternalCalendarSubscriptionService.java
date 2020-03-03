@@ -43,14 +43,18 @@ public interface ExternalCalendarSubscriptionService
 	public final static String SAK_PROP_EXTSUBSCRIPTIONS_EVENTTYPE = "calendar.external.subscriptions.eventtype";
 
 	/**
+	 * sakai.properties: number of cached entries for institutional ical external subscriptions
+	 */
+	public final static String SAK_PROP_EXTSUBSCRIPTIONS_INST_CACHEENTRIES = "calendar.external.subscriptions.user.cacheentries";
+	
+	/**
 	 * sakai.properties: cache time for institutional ical external
 	 * subscriptions (iCal updated after expiration)
 	 */
 	public final static String SAK_PROP_EXTSUBSCRIPTIONS_INST_CACHETIME = "calendar.external.subscriptions.institutional.cachetime";
 
 	/**
-	 * sakai.properties: number of cached entries for user procided ical
-	 * external subscriptions
+	 * sakai.properties: number of cached entries for user-provided ical external subscriptions
 	 */
 	public final static String SAK_PROP_EXTSUBSCRIPTIONS_USER_CACHEENTRIES = "calendar.external.subscriptions.user.cacheentries";
 
@@ -62,6 +66,7 @@ public interface ExternalCalendarSubscriptionService
 
 	/** Key value for ToolConfig */
 	public final static String TC_PROP_SUBCRIPTIONS = "externalCalendarSubscriptions";
+	public final static String TC_PROP_SUBCRIPTIONS_WITH_TZ = "externalCalendarSubscriptionsWithTZ";
 
 	/** Value delimiter for subscription reference in ToolConfig */
 	public final static String SUBS_REF_DELIMITER = "_,_";
@@ -77,24 +82,25 @@ public interface ExternalCalendarSubscriptionService
 
 	/** Get Calendar object from Calendar Subscription */
 	public Calendar getCalendarSubscription(String reference);
+	public Calendar getCalendarSubscription(String reference, String userId, String tzid);
 
 	/** Get Calendar Subscriptions for specified Calendar channels */
-	public Set<String> getCalendarSubscriptionChannelsForChannels(
+	public Set<ExternalSubscriptionDetails> getCalendarSubscriptionChannelsForChannels(
 			String primaryCalendarReference,
 			Collection<Object> channels);
 
 	/** Get Calendar channels for specified Calendar channels */
-	public Set<String> getCalendarSubscriptionChannelsForChannel(String reference);
+	public Set<ExternalSubscriptionDetails> getCalendarSubscriptionChannelsForChannel(String reference);
 
 	/**
 	 * Get list of available institutional calendar subscriptions for a given
 	 * Calendar channel
 	 */
-	public Set<ExternalSubscription> getAvailableInstitutionalSubscriptionsForChannel(
+	public Set<ExternalSubscriptionDetails> getAvailableInstitutionalSubscriptionsForChannel(
 			String reference);
 
 	/** Get list of calendar subscriptions for a given Calendar channel */
-	public Set<ExternalSubscription> getSubscriptionsForChannel(String reference,
+	public Set<ExternalSubscriptionDetails> getSubscriptionsForChannel(String reference,
 			boolean loadCalendar);
 
 	/** Set list of calendar subscriptions for a given Calendar channel */

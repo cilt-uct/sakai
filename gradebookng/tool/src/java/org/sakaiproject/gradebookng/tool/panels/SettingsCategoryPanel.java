@@ -1,8 +1,24 @@
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.gradebookng.tool.panels;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.text.ParseException;
 import java.util.Collections;
 import java.util.HashMap;
@@ -12,7 +28,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.lang.BooleanUtils;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.Component;
 import org.apache.wicket.ajax.AjaxEventBehavior;
@@ -33,16 +49,14 @@ import org.apache.wicket.markup.html.form.RadioGroup;
 import org.apache.wicket.markup.html.form.TextField;
 import org.apache.wicket.markup.html.list.ListItem;
 import org.apache.wicket.markup.html.list.ListView;
-import org.apache.wicket.markup.html.panel.Panel;
 import org.apache.wicket.model.IModel;
 import org.apache.wicket.model.Model;
 import org.apache.wicket.model.PropertyModel;
+import org.apache.wicket.model.ResourceModel;
 import org.apache.wicket.model.StringResourceModel;
-import org.apache.wicket.spring.injection.annot.SpringBean;
 import org.apache.wicket.util.convert.ConversionException;
 import org.apache.wicket.util.convert.IConverter;
 import org.sakaiproject.gradebookng.business.GbCategoryType;
-import org.sakaiproject.gradebookng.business.GradebookNgBusinessService;
 import org.sakaiproject.gradebookng.business.util.FormatHelper;
 import org.sakaiproject.gradebookng.tool.component.GbAjaxButton;
 import org.sakaiproject.gradebookng.tool.model.GbSettings;
@@ -51,18 +65,16 @@ import org.sakaiproject.service.gradebook.shared.Assignment;
 import org.sakaiproject.service.gradebook.shared.CategoryDefinition;
 import org.sakaiproject.service.gradebook.shared.GradebookInformation;
 
-public class SettingsCategoryPanel extends Panel {
+public class SettingsCategoryPanel extends BasePanel {
 
 	private static final long serialVersionUID = 1L;
-
-	@SpringBean(name = "org.sakaiproject.gradebookng.business.GradebookNgBusinessService")
-	protected GradebookNgBusinessService businessService;
 
 	IModel<GbSettings> model;
 
 	boolean isDropHighest = false;
 	boolean isDropLowest = false;
 	boolean isKeepHighest = false;
+	boolean isEqualWeight = false;
 	boolean expanded = false;
 
 	Radio<Integer> categoriesAndWeighting;
@@ -73,6 +85,21 @@ public class SettingsCategoryPanel extends Panel {
 		super(id, model);
 		this.model = model;
 		this.expanded = expanded;
+	}
+
+	private enum DropKeepUsage {
+		CATEGORY("settingspage.categories.instructions.applydropkeep"),
+		EXCLUSIVE("settingspage.categories.hover.dropkeepusage");
+
+		private String message;
+
+		DropKeepUsage(final String message) {
+			this.message = message;
+		}
+
+		public String getMessage() {
+			return this.message;
+		}
 	}
 
 	@Override
@@ -95,17 +122,25 @@ public class SettingsCategoryPanel extends Panel {
 			if (category.getDropHighest() != null && category.getDropHighest() > 0) {
 				this.isDropHighest = true;
 			}
-			if (category.getDrop_lowest() != null && category.getDrop_lowest() > 0) {
+			if (category.getDropLowest() != null && category.getDropLowest() > 0) {
 				this.isDropLowest = true;
 			}
 			if (category.getKeepHighest() != null && category.getKeepHighest() > 0) {
 				this.isKeepHighest = true;
 			}
+			if (category.getEqualWeight()) {
+				this.isEqualWeight = true;
+			}
 
-			// check points
-			final Set<Double> points = new HashSet<>();
-			final List<Assignment> assignments = category.getAssignmentList();
-			assignments.forEach(a -> points.add(a.getPoints()));
+			// check for differing points if not using an equal weight category
+			final Set<BigDecimal> points = new HashSet<>();
+			if (!category.getEqualWeight()) {
+				for (Assignment a : category.getAssignmentList()) {
+					// Possible for some tools to send a big floating point double here so round it
+					final BigDecimal roundedPoints = new BigDecimal(a.getPoints()).setScale(2, RoundingMode.HALF_DOWN);
+					points.add(roundedPoints);
+				}
+			}
 
 			this.categoryDropKeepAvailability.put(category.getId(), (points.size() <= 1));
 
@@ -150,6 +185,9 @@ public class SettingsCategoryPanel extends Panel {
 		this.categoriesAndWeighting = new Radio<>("categoriesAndWeighting",
 				new Model<>(GbCategoryType.WEIGHTED_CATEGORY.getValue()));
 
+		// on load, if course grade displayed and points selected, disable categories and weighting
+		updateCategoriesAndWeightingRadioState();
+
 		categoryType.add(none);
 		categoryType.add(categoriesOnly);
 		categoryType.add(this.categoriesAndWeighting);
@@ -163,10 +201,9 @@ public class SettingsCategoryPanel extends Panel {
 
 			@Override
 			public boolean isVisible() {
-				// don't show if 'no categories' OR if course points is set
+				// don't show if 'no categories'
 				final GradebookInformation settings = SettingsCategoryPanel.this.model.getObject().getGradebookInformation();
-				return (GbCategoryType.valueOf(settings.getCategoryType()) != GbCategoryType.NO_CATEGORY
-						|| settings.isCoursePointsDisplayed());
+				return (GbCategoryType.valueOf(settings.getCategoryType()) != GbCategoryType.NO_CATEGORY);
 			}
 
 		};
@@ -211,7 +248,7 @@ public class SettingsCategoryPanel extends Panel {
 				if (!SettingsCategoryPanel.this.isDropLowest) {
 					for (final CategoryDefinition c : SettingsCategoryPanel.this.model.getObject().getGradebookInformation()
 							.getCategories()) {
-						c.setDrop_lowest(0);
+						c.setDropLowest(0);
 					}
 					target.appendJavaScript("$('.gb-category-droplowest').hide();");
 				}
@@ -245,6 +282,29 @@ public class SettingsCategoryPanel extends Panel {
 		keepHighest.setOutputMarkupId(true);
 		categoriesOptionsWrap.add(keepHighest);
 
+		// enable equal weight
+		final AjaxCheckBox equalWeight = new AjaxCheckBox("equalWeight", Model.of(this.isEqualWeight)) {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			protected void onUpdate(final AjaxRequestTarget target) {
+				SettingsCategoryPanel.this.isEqualWeight = getModelObject();
+
+				// reset
+				if (!SettingsCategoryPanel.this.isEqualWeight) {
+					for (final CategoryDefinition c : SettingsCategoryPanel.this.model.getObject().getGradebookInformation()
+							.getCategories()) {
+						c.setEqualWeight(false);
+					}
+					target.appendJavaScript("$('.gb-category-equalweight').hide();");
+				}
+
+				target.add(categoriesWrap);
+			}
+		};
+		equalWeight.setOutputMarkupId(true);
+		categoriesOptionsWrap.add(equalWeight);
+
 		// add the options wrapper
 		categoriesOptionsWrap.setOutputMarkupPlaceholderTag(true);
 		categoriesWrap.add(categoriesOptionsWrap);
@@ -276,12 +336,10 @@ public class SettingsCategoryPanel extends Panel {
 
 				// if categories and weighting, disable course grade points
 				final AjaxCheckBox points = settingsPage.getSettingsGradeReleasePanel().getPointsCheckBox();
-				if (type == GbCategoryType.WEIGHTED_CATEGORY) {
-					points.setEnabled(false);
-				} else {
-					points.setEnabled(true);
+				settingsPage.getSettingsGradeReleasePanel().updatePointsCheckboxState();
+				if (points.isVisibleInHierarchy()) {
+					target.add(points);
 				}
-				target.add(points);
 
 				// reinitialize any custom behaviour
 				target.appendJavaScript("sakai.gradebookng.settings.categories = new GradebookCategorySettings($('#settingsCategories'));");
@@ -319,7 +377,8 @@ public class SettingsCategoryPanel extends Panel {
 				final CategoryDefinition category = item.getModelObject();
 
 				// get the config. If there are no categories, detault is that the settings are enabled.
-				final boolean dropKeepEnabled = BooleanUtils.toBooleanDefaultIfNull(SettingsCategoryPanel.this.categoryDropKeepAvailability.get(category.getId()), true);
+				final boolean dropKeepEnabled = BooleanUtils
+						.toBooleanDefaultIfNull(SettingsCategoryPanel.this.categoryDropKeepAvailability.get(category.getId()), true);
 
 				// note that all of these fields must have an ajaxform behaviour attached
 				// so that their data is persisted into the model.
@@ -383,27 +442,30 @@ public class SettingsCategoryPanel extends Panel {
 
 				// declare these here so we can work with the values. Config updated afterwards
 				// mutually exclusive rules apply here
-				final TextField<Integer> categoryDropHighest = new TextField<Integer>("categoryDropHighest", new PropertyModel<Integer>(category, "dropHighest"));
-				final TextField<Integer> categoryDropLowest = new TextField<Integer>("categoryDropLowest", new PropertyModel<Integer>(category, "drop_lowest"));
-				final TextField<Integer> categoryKeepHighest = new TextField<Integer>("categoryKeepHighest", new PropertyModel<Integer>(category, "keepHighest"));
+				final TextField<Integer> categoryDropHighest = new TextField<Integer>("categoryDropHighest",
+						new PropertyModel<Integer>(category, "dropHighest"));
+				final TextField<Integer> categoryDropLowest = new TextField<Integer>("categoryDropLowest",
+						new PropertyModel<Integer>(category, "dropLowest"));
+				final TextField<Integer> categoryKeepHighest = new TextField<Integer>("categoryKeepHighest",
+						new PropertyModel<Integer>(category, "keepHighest"));
 
 				boolean categoryDropHighestEnabled = true;
 				boolean categoryDropLowestEnabled = true;
 				boolean categoryKeepHighestEnabled = true;
 
-				if(category.getDropHighest() != null && category.getDropHighest().intValue() > 0) {
-					categoryKeepHighest.setModelValue(new String[]{"0"});
+				if (category.getDropHighest() != null && category.getDropHighest().intValue() > 0) {
+					categoryKeepHighest.setModelValue(new String[] { "0" });
 					categoryKeepHighestEnabled = false;
 				}
 
-				if(category.getDrop_lowest() != null && category.getDrop_lowest().intValue() > 0) {
-					categoryKeepHighest.setModelValue(new String[]{"0"});
+				if (category.getDropLowest() != null && category.getDropLowest().intValue() > 0) {
+					categoryKeepHighest.setModelValue(new String[] { "0" });
 					categoryKeepHighestEnabled = false;
 				}
 
-				if(category.getKeepHighest() != null && category.getKeepHighest().intValue() > 0) {
-					categoryDropHighest.setModelValue(new String[]{"0"});
-					categoryDropLowest.setModelValue(new String[]{"0"});
+				if (category.getKeepHighest() != null && category.getKeepHighest().intValue() > 0) {
+					categoryDropHighest.setModelValue(new String[] { "0" });
+					categoryDropLowest.setModelValue(new String[] { "0" });
 					categoryDropHighestEnabled = false;
 					categoryDropLowestEnabled = false;
 				}
@@ -417,23 +479,31 @@ public class SettingsCategoryPanel extends Panel {
 					protected void onUpdate(final AjaxRequestTarget target) {
 						// if drop highest is non zero, keep highest is to be unavailable
 						Integer value = categoryDropHighest.getModelObject();
-						if(value == null) {
+						if (value == null) {
 							value = 0;
-							categoryDropHighest.setModelValue(new String[]{"0"});
-							target.add(categoryDropHighest);
+							categoryDropHighest.setModelValue(new String[] { "0" });
 						}
+
+						// remove tooltips and recalc
+						removeDropKeepDisabledToolTip(categoryDropHighest);
+						removeDropKeepDisabledToolTip(categoryDropLowest);
+						removeDropKeepDisabledToolTip(categoryKeepHighest);
 
 						categoryKeepHighest.setEnabled(true);
-						if(value.intValue() > 0) {
-							categoryKeepHighest.setModelValue(new String[]{"0"});
+						if (value.intValue() > 0) {
+							categoryKeepHighest.setModelValue(new String[] { "0" });
 							categoryKeepHighest.setEnabled(false);
+							addDropKeepDisabledToolTip(categoryKeepHighest, DropKeepUsage.EXCLUSIVE);
 						}
-
+						target.add(categoryDropHighest);
+						target.add(categoryDropLowest);
 						target.add(categoryKeepHighest);
 					}
 				});
 				categoryDropHighest.setEnabled(dropKeepEnabled && categoryDropHighestEnabled);
-
+				if (!categoryDropHighest.isEnabled()) {
+					addDropKeepDisabledToolTip(categoryDropHighest, dropKeepEnabled ? DropKeepUsage.EXCLUSIVE : DropKeepUsage.CATEGORY);
+				}
 				item.add(categoryDropHighest);
 
 				// drop lowest config
@@ -448,26 +518,35 @@ public class SettingsCategoryPanel extends Panel {
 						Integer value1 = categoryDropLowest.getModelObject();
 						Integer value2 = categoryDropHighest.getModelObject();
 
-						if(value1 == null) {
+						if (value1 == null) {
 							value1 = 0;
-							categoryDropLowest.setModelValue(new String[]{"0"});
-							target.add(categoryDropLowest);
+							categoryDropLowest.setModelValue(new String[] { "0" });
 						}
-						if(value2 == null) {
+						if (value2 == null) {
 							value2 = 0;
-							categoryDropHighest.setModelValue(new String[]{"0"});
-							target.add(categoryDropHighest);
+							categoryDropHighest.setModelValue(new String[] { "0" });
 						}
 
+						// remove tooltips and recalc
+						removeDropKeepDisabledToolTip(categoryDropHighest);
+						removeDropKeepDisabledToolTip(categoryDropLowest);
+						removeDropKeepDisabledToolTip(categoryKeepHighest);
+
 						categoryKeepHighest.setEnabled(true);
-						if(value1.intValue() > 0 || value2.intValue() > 0) {
-							categoryKeepHighest.setModelValue(new String[]{"0"});
+						if (value1.intValue() > 0 || value2.intValue() > 0) {
+							categoryKeepHighest.setModelValue(new String[] { "0" });
 							categoryKeepHighest.setEnabled(false);
+							addDropKeepDisabledToolTip(categoryKeepHighest, DropKeepUsage.EXCLUSIVE);
 						}
+						target.add(categoryDropHighest);
+						target.add(categoryDropLowest);
 						target.add(categoryKeepHighest);
 					}
 				});
 				categoryDropLowest.setEnabled(dropKeepEnabled && categoryDropLowestEnabled);
+				if (!categoryDropLowest.isEnabled()) {
+					addDropKeepDisabledToolTip(categoryDropLowest, dropKeepEnabled ? DropKeepUsage.EXCLUSIVE : DropKeepUsage.CATEGORY);
+				}
 				item.add(categoryDropLowest);
 
 				// keep highest config
@@ -480,26 +559,84 @@ public class SettingsCategoryPanel extends Panel {
 						// if keep highest is non zero, drop highest AND drop lowest are to be unavailable
 						Integer value = categoryKeepHighest.getModelObject();
 
-						if(value == null) {
+						if (value == null) {
 							value = 0;
-							categoryKeepHighest.setModelValue(new String[]{"0"});
-							target.add(categoryKeepHighest);
+							categoryKeepHighest.setModelValue(new String[] { "0" });
 						}
+
+						// remove tooltips and recalc
+						removeDropKeepDisabledToolTip(categoryDropHighest);
+						removeDropKeepDisabledToolTip(categoryDropLowest);
+						removeDropKeepDisabledToolTip(categoryKeepHighest);
 
 						categoryDropHighest.setEnabled(true);
 						categoryDropLowest.setEnabled(true);
-						if(value.intValue() > 0) {
-							categoryDropHighest.setModelValue(new String[]{"0"});
+						if (value.intValue() > 0) {
+
+							categoryDropHighest.setModelValue(new String[] { "0" });
 							categoryDropHighest.setEnabled(false);
-							categoryDropLowest.setModelValue(new String[]{"0"});
+							addDropKeepDisabledToolTip(categoryDropHighest, DropKeepUsage.EXCLUSIVE);
+
+							categoryDropLowest.setModelValue(new String[] { "0" });
 							categoryDropLowest.setEnabled(false);
+							addDropKeepDisabledToolTip(categoryDropLowest, DropKeepUsage.EXCLUSIVE);
 						}
 						target.add(categoryDropHighest);
 						target.add(categoryDropLowest);
+						target.add(categoryKeepHighest);
 					}
 				});
 				categoryKeepHighest.setEnabled(dropKeepEnabled && categoryKeepHighestEnabled);
+				if (!categoryKeepHighest.isEnabled()) {
+					addDropKeepDisabledToolTip(categoryKeepHighest, dropKeepEnabled ? DropKeepUsage.EXCLUSIVE : DropKeepUsage.CATEGORY);
+				}
 				item.add(categoryKeepHighest);
+
+				// equal weight
+				final CheckBox equalWeight = new CheckBox("equalWeight", new PropertyModel<Boolean>(category, "equalWeight"));
+				equalWeight.setOutputMarkupId(true);
+
+				// onchange: remove ability to set drop/keep lowest/highest if different points
+				equalWeight.add(new AjaxFormComponentUpdatingBehavior("onchange") {
+					private static final long serialVersionUID = 1L;
+
+					@Override
+					protected void onUpdate(final AjaxRequestTarget target) {
+						final boolean nodeChecked = equalWeight.getModelObject();
+						final boolean catDropKeep = BooleanUtils
+								.toBooleanDefaultIfNull(SettingsCategoryPanel.this.categoryDropKeepAvailability.get(category.getId()), true);
+
+						if (!nodeChecked) {
+							categoryKeepHighest.setModelValue(new String[] { "0" });
+							categoryKeepHighest.setEnabled(!catDropKeep);
+							addDropKeepDisabledToolTip(categoryKeepHighest, DropKeepUsage.EXCLUSIVE);
+
+							// disable drop lowest
+							categoryDropLowest.setModelValue(new String[] { "0" });
+							categoryDropLowest.setEnabled(!catDropKeep);
+							addDropKeepDisabledToolTip(categoryDropLowest, DropKeepUsage.EXCLUSIVE);
+
+							// disable drop highest
+							categoryDropHighest.setModelValue(new String[] { "0" });
+							categoryDropHighest.setEnabled(!catDropKeep);
+							addDropKeepDisabledToolTip(categoryDropHighest, DropKeepUsage.EXCLUSIVE);
+						}
+						else {
+							categoryKeepHighest.setEnabled(true);
+							categoryDropLowest.setEnabled(true);
+							categoryDropHighest.setEnabled(true);
+
+							removeDropKeepDisabledToolTip(categoryDropHighest);
+							removeDropKeepDisabledToolTip(categoryDropLowest);
+							removeDropKeepDisabledToolTip(categoryKeepHighest);
+						}
+
+						target.add(categoryDropHighest);
+						target.add(categoryDropLowest);
+						target.add(categoryKeepHighest);
+					}
+				});
+				item.add(equalWeight);
 
 				// remove button
 				final GbAjaxButton remove = new GbAjaxButton("remove") {
@@ -570,6 +707,9 @@ public class SettingsCategoryPanel extends Panel {
 				if (!SettingsCategoryPanel.this.isKeepHighest) {
 					response.render(OnDomReadyHeaderItem.forScript("$('.gb-category-keephighest').hide();"));
 				}
+				if (!SettingsCategoryPanel.this.isEqualWeight) {
+					response.render(OnDomReadyHeaderItem.forScript("$('.gb-category-equalweight').hide();"));
+				}
 			}
 		};
 		categoriesView.setReuseItems(true);
@@ -607,10 +747,11 @@ public class SettingsCategoryPanel extends Panel {
 	private CategoryDefinition stubCategoryDefinition() {
 		final CategoryDefinition cd = new CategoryDefinition();
 		cd.setExtraCredit(false);
-		cd.setWeight(new Double(0));
-		cd.setAssignmentList(Collections.<Assignment> emptyList());
+		cd.setEqualWeight(false);
+		cd.setWeight(Double.valueOf(0));
+		cd.setAssignmentList(Collections.<Assignment>emptyList());
 		cd.setDropHighest(0);
-		cd.setDrop_lowest(0);
+		cd.setDropLowest(0);
 		cd.setKeepHighest(0);
 
 		final GbSettings settings = this.model.getObject();
@@ -639,8 +780,10 @@ public class SettingsCategoryPanel extends Panel {
 			// convert
 			Double d;
 			try {
-				d = Double.valueOf(value) / 100;
-			} catch (final NumberFormatException e) {
+				final NumberFormat format = NumberFormat.getInstance(locale);
+				final Number number = format.parse(value);
+				d = number.doubleValue() / 100;
+			} catch (final java.text.ParseException e) {
 				throw new ConversionException(e).setResourceKey("settingspage.update.failure.categoryweightnumber");
 			}
 
@@ -672,7 +815,7 @@ public class SettingsCategoryPanel extends Panel {
 			// convert to percentage representation
 			final Double percentage = value * 100;
 
-			return FormatHelper.formatDoubleToDecimal(percentage);
+			return FormatHelper.formatGradeForDisplay(percentage);
 		}
 
 	}
@@ -701,7 +844,7 @@ public class SettingsCategoryPanel extends Panel {
 				weight = BigDecimal.ZERO;
 			}
 
-			if (!categoryDefinition.isExtraCredit()) {
+			if (!categoryDefinition.getExtraCredit()) {
 				total = total.add(weight);
 			}
 		}
@@ -739,5 +882,47 @@ public class SettingsCategoryPanel extends Panel {
 	// to enable inter panel comms
 	Radio<Integer> getCategoriesAndWeightingRadio() {
 		return this.categoriesAndWeighting;
+	}
+
+	// helper to apply the rules for whether the categories and weighting radio should be enabled
+	// runs via data from the model
+	protected void updateCategoriesAndWeightingRadioState() {
+		final GradebookInformation settings = this.model.getObject().getGradebookInformation();
+
+		// if course grade is NOT being displayed, enable categories and weighting
+		if (!settings.isCourseGradeDisplayed()) {
+			this.categoriesAndWeighting.setEnabled(true);
+		} else {
+			this.categoriesAndWeighting.setEnabled(false);
+		}
+
+		// if points selected, disable categories and weighting
+		if (settings.isCourseGradeDisplayed() && settings.isCoursePointsDisplayed()) {
+			this.categoriesAndWeighting.setEnabled(false);
+		} else {
+			this.categoriesAndWeighting.setEnabled(true);
+		}
+
+	}
+
+	/**
+	 * Helper to add the tooltip when drop/keep settings cause a field to be disabled.
+	 *
+	 * @param textfield
+	 * @param usage determines which message bundle to use for title and aria-label
+	 */
+	private void addDropKeepDisabledToolTip(final Component textfield, final DropKeepUsage usage) {
+		textfield.add(AttributeModifier.replace("title", new ResourceModel(usage.getMessage())));
+		textfield.add(AttributeModifier.replace("aria-label", new ResourceModel(usage.getMessage())));
+	}
+
+	/**
+	 * Helper to remove the tooltip from above
+	 *
+	 * @param textfield
+	 */
+	private void removeDropKeepDisabledToolTip(final Component textfield) {
+		textfield.add(AttributeModifier.remove("title"));
+		textfield.add(AttributeModifier.remove("aria-label"));
 	}
 }

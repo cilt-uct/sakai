@@ -24,7 +24,6 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -33,9 +32,7 @@ import java.util.Set;
 import javax.faces.context.FacesContext;
 import javax.faces.event.ActionEvent;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.section.api.coursemanagement.CourseSection;
 import org.sakaiproject.section.api.coursemanagement.EnrollmentRecord;
 import org.sakaiproject.section.api.coursemanagement.ParticipationRecord;
@@ -46,15 +43,17 @@ import org.sakaiproject.tool.section.decorator.SectionDecorator;
 import org.sakaiproject.tool.section.decorator.StudentSectionDecorator;
 import org.sakaiproject.tool.section.jsf.JsfUtil;
 
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * Controls the edit student sections page (where a single student is assigned to sections).
  * 
  * @author <a href="mailto:jholtzman@berkeley.edu">Josh Holtzman</a>
  *
  */
+@Slf4j
 public class EditStudentSectionsBean extends FilteredSectionListingBean implements Serializable {
 	private static final long serialVersionUID = 1L;
-	private static final Logger log = LoggerFactory.getLogger(EditStudentSectionsBean.class);
 
 	protected static final String UNASSIGNED = "unassigned";
 

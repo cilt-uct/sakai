@@ -1,14 +1,28 @@
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.search.elasticsearch;
 
 import com.github.javafaker.Faker;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Answers;
 import org.mockito.Mock;
-
-
 import org.mockito.runners.MockitoJUnitRunner;
 import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.component.api.ServerConfigurationService;
@@ -17,18 +31,18 @@ import org.sakaiproject.search.api.EntityContentProducer;
 import org.sakaiproject.search.api.InvalidSearchQueryException;
 import org.sakaiproject.search.api.SearchList;
 import org.sakaiproject.search.api.SearchResult;
-import org.sakaiproject.search.elasticsearch.filter.SearchItemFilter;
 import org.sakaiproject.search.elasticsearch.filter.impl.SearchSecurityFilter;
 import org.sakaiproject.search.model.SearchBuilderItem;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
+import org.sakaiproject.thread_local.api.ThreadLocalManager;
+//import org.sakaiproject.thread_local.impl.ThreadLocalComponent;
 import org.sakaiproject.tool.api.SessionManager;
 import org.sakaiproject.user.api.UserDirectoryService;
 
 import java.util.*;
 
 import static org.junit.Assert.*;
-import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
@@ -46,6 +60,7 @@ import static org.mockito.Mockito.*;
  * To change this template use File | Settings | File Templates.
  */
 @RunWith(MockitoJUnitRunner.class)
+@Slf4j
 public class ElasticSearchTest {
     ElasticSearchService elasticSearchService;
 
@@ -71,9 +86,12 @@ public class ElasticSearchTest {
     SecurityService securityService;
 
     @Mock
+    ThreadLocalManager threadLocalManager;// = new ThreadLocalComponent();
+
+    @Mock
     NotificationEdit notificationEdit;
 
-    ElasticSearchIndexBuilder elasticSearchIndexBuilder;
+    SiteElasticSearchIndexBuilder elasticSearchIndexBuilder;
 
     @Mock
     Notification notification;
@@ -107,6 +125,8 @@ public class ElasticSearchTest {
     @After
     public void tearDown() {
         elasticSearchService.destroy();
+        elasticSearchIndexBuilder.destroy();
+        threadLocalManager.clear();
     }
 
     public void createTestResources() {
@@ -134,8 +154,6 @@ public class ElasticSearchTest {
             resources.put(name, resource1);
             events.add(newEvent);
             when(newEvent.getResource()).thenReturn(resource1.getName());
-            when(newEvent.getContext()).thenReturn(siteId);
-            when(entityContentProducer.matches(name)).thenReturn(true);
             when(entityContentProducer.matches(newEvent)).thenReturn(true);
             when(entityContentProducer.getSiteId(name)).thenReturn(resource1.getSiteId());
             when(entityContentProducer.getAction(newEvent)).thenReturn(SearchBuilderItem.ACTION_ADD);
@@ -167,21 +185,26 @@ public class ElasticSearchTest {
         when(serverConfigurationService.getConfigData().getItems()).thenReturn(new ArrayList());
         when(serverConfigurationService.getServerId()).thenReturn("server1");
         when(serverConfigurationService.getServerName()).thenReturn("clusterName");
-        when(serverConfigurationService.getString("elasticsearch.index.number_of_shards")).thenReturn("1");
-        when(serverConfigurationService.getString("elasticsearch.index.number_of_replicas")).thenReturn("0");
 
         when(serverConfigurationService.getSakaiHomePath()).thenReturn(System.getProperty("java.io.tmpdir") + "/" + new Date().getTime());
-        when(notificationService.addTransientNotification()).thenReturn(notificationEdit);
         siteIds.add(siteId);
         when(siteService.getSites(SiteService.SelectionType.ANY, null, null, null, SiteService.SortType.NONE, null)).thenReturn(sites);
         when(siteService.isSpecialSite(siteId)).thenReturn(false);
-        elasticSearchIndexBuilder = new ElasticSearchIndexBuilder();
+        elasticSearchIndexBuilder = new SiteElasticSearchIndexBuilder();
+        elasticSearchIndexBuilder.setName(ElasticSearchIndexBuilder.DEFAULT_INDEX_BUILDER_NAME);
+        elasticSearchIndexBuilder.setIndexName(ElasticSearchIndexBuilder.DEFAULT_INDEX_NAME);
         elasticSearchIndexBuilder.setTestMode(true);
         elasticSearchIndexBuilder.setOnlyIndexSearchToolSites(false);
         elasticSearchIndexBuilder.setExcludeUserSites(false);
         elasticSearchIndexBuilder.setSecurityService(securityService);
         elasticSearchIndexBuilder.setSiteService(siteService);
         elasticSearchIndexBuilder.setServerConfigurationService(serverConfigurationService);
+        elasticSearchIndexBuilder.setEventTrackingService(eventTrackingService);
+        elasticSearchIndexBuilder.setUserDirectoryService(userDirectoryService);
+        elasticSearchIndexBuilder.setSiteService(siteService);
+        elasticSearchIndexBuilder.setFilter(filter);
+        elasticSearchIndexBuilder.setIgnoredSites("!admin,~admin");
+        elasticSearchIndexBuilder.setOnlyIndexSearchToolSites(false);
         elasticSearchIndexBuilder.setDelay(200);
         elasticSearchIndexBuilder.setPeriod(10);
         elasticSearchIndexBuilder.setContentIndexBatchSize(50);
@@ -276,26 +299,22 @@ public class ElasticSearchTest {
                 "}\n" +
                 "\n");
 
-        elasticSearchIndexBuilder.init();
+        filter.setSearchIndexBuilder(elasticSearchIndexBuilder);
 
         elasticSearchService = new ElasticSearchService();
         elasticSearchService.setTriggerFunctions(new ArrayList<String>());
-        elasticSearchService.setEventTrackingService(eventTrackingService);
+
         elasticSearchService.setServerConfigurationService(serverConfigurationService);
         elasticSearchService.setSessionManager(sessionManager);
         elasticSearchService.setUserDirectoryService(userDirectoryService);
         elasticSearchService.setNotificationService(notificationService);
-        elasticSearchService.setSiteService(siteService);
-        elasticSearchService.setIndexBuilder(elasticSearchIndexBuilder);
-        elasticSearchIndexBuilder.setOnlyIndexSearchToolSites(false);
-        filter.setSearchIndexBuilder(elasticSearchIndexBuilder);
-        elasticSearchService.setFilter(filter);
+        elasticSearchService.setThreadLocalManager(threadLocalManager);
         elasticSearchService.setLocalNode(true);
-        elasticSearchIndexBuilder.setIgnoredSites("!admin,~admin");
         elasticSearchService.init();
 
-        elasticSearchIndexBuilder.assureIndex();
         elasticSearchIndexBuilder.registerEntityContentProducer(entityContentProducer);
+        elasticSearchService.registerIndexBuilder(elasticSearchIndexBuilder);
+
     }
 
     @Test
@@ -303,10 +322,8 @@ public class ElasticSearchTest {
         Resource resource = new Resource(null, "xyz", "resource_with_no_content");
 
         when(event.getResource()).thenReturn(resource.getName());
-        when(entityContentProducer.matches("resource_with_no_content")).thenReturn(false);
         List resourceList = new ArrayList();
         resourceList.add(resource);
-        when(entityContentProducer.getSiteContentIterator("xyz")).thenReturn(resourceList.iterator());
 
         elasticSearchIndexBuilder.addResource(notification, event);
 
@@ -320,7 +337,7 @@ public class ElasticSearchTest {
             try {
                 elasticSearchIndexBuilder.addResource(notification, event);
             } catch (Exception e) {
-                e.printStackTrace();
+                log.error(e.getMessage(), e);
                 assertFalse("problem adding event: " + event.getEvent(), true);
             }
         }
@@ -362,7 +379,7 @@ public class ElasticSearchTest {
             SearchList list = elasticSearchService.search("asdf", siteIds, 0, 10);
             assertFalse(list.size() > 0 );
         } catch (InvalidSearchQueryException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
             fail();
         }
 
@@ -379,7 +396,7 @@ public class ElasticSearchTest {
             SearchList list = elasticSearchService.search("asdf", siteIds, 0, 10);
             assertFalse(list.size() > 0);
         } catch (InvalidSearchQueryException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
             fail();
         }
         assertTrue(elasticSearchService.getPendingDocs() == 0);
@@ -389,7 +406,7 @@ public class ElasticSearchTest {
         try {
             Thread.sleep(millis);
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
         }
     }
 
@@ -405,8 +422,13 @@ public class ElasticSearchTest {
             assertEquals(list.get(0).getReference(),resourceName);
             SearchResult result = list.get(0);
             assertTrue(result.getSearchResult().toLowerCase().contains("<b>"));
+
+            // Searching the title of the file should also return results
+            list = elasticSearchService.search("keyboard", siteIds, 0, 10);
+            assertNotNull(list.get(0) ) ;
+            assertEquals(list.get(0).getReference(),resourceName);
         } catch (InvalidSearchQueryException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
             fail();
         }
     }
@@ -425,7 +447,7 @@ public class ElasticSearchTest {
 
         elasticSearchIndexBuilder.refreshIndex();
 
-        System.out.println("testRebuildSiteIndex: " + elasticSearchService.getNDocs());
+        log.info("testRebuildSiteIndex: " + elasticSearchService.getNDocs());
         assertTrue(elasticSearchService.getNDocs() == 106);
     }
 
@@ -480,7 +502,6 @@ public class ElasticSearchTest {
         when(newEvent.getResource()).thenReturn(resource.getName());
         events.add(newEvent);
         when(entityContentProducer.matches(newEvent)).thenReturn(true);
-        when(entityContentProducer.matches(resourceName)).thenReturn(true);
 
         when(entityContentProducer.getSiteId(resourceName)).thenReturn(siteId);
         when(entityContentProducer.getAction(newEvent)).thenReturn(SearchBuilderItem.ACTION_ADD);

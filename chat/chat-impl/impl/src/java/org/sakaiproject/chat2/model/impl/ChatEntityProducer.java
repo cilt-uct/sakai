@@ -1,35 +1,32 @@
-/**********************************************************************************
-* $URL$
-* $Id$
-***********************************************************************************
-*
- * Copyright (c) 2007, 2008 The Sakai Foundation
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
  *
  * Licensed under the Educational Community License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *       http://www.opensource.org/licenses/ECL-2.0
+ *             http://opensource.org/licenses/ecl2
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*
-**********************************************************************************/
-
-/**
- * 
  */
+
 package org.sakaiproject.chat2.model.impl;
 
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -38,11 +35,18 @@ import java.util.Stack;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+import org.w3c.dom.DOMException;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+
 import org.sakaiproject.chat2.model.ChatChannel;
 import org.sakaiproject.chat2.model.ChatManager;
 import org.sakaiproject.chat2.model.ChatMessage;
+import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.entity.api.EntityManager;
@@ -58,23 +62,17 @@ import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.ToolConfiguration;
 import org.sakaiproject.site.cover.SiteService;
-import org.sakaiproject.time.cover.TimeService;
 import org.sakaiproject.user.cover.UserDirectoryService;
+import org.sakaiproject.util.ResourceLoader;
 import org.sakaiproject.util.StringUtil;
-import org.sakaiproject.util.Web;
-import org.w3c.dom.DOMException;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
+import org.sakaiproject.util.api.FormattedText;
 
 /**
  * @author chrismaurer
  *
  */
+@Slf4j
 public class ChatEntityProducer implements EntityProducer, EntityTransferrer {
-
-   protected final Logger logger = LoggerFactory.getLogger(getClass());
    private EntityManager entityManager;
    private ChatManager chatManager;
    
@@ -94,13 +92,13 @@ public class ChatEntityProducer implements EntityProducer, EntityTransferrer {
    
    
    protected void init() throws Exception {
-      logger.info("init()");
+      log.info("init()");
       
       try {
          getEntityManager().registerEntityProducer(this, ChatManager.REFERENCE_ROOT);
       }
       catch (Exception e) {
-         logger.warn("Error registering Chat Entity Producer", e);
+         log.warn("Error registering Chat Entity Producer", e);
       }
    }
    
@@ -109,7 +107,7 @@ public class ChatEntityProducer implements EntityProducer, EntityTransferrer {
     */
    protected void destroy()
    {
-      logger.info("destroy()");
+      log.info("destroy()");
    }
 
    
@@ -188,7 +186,7 @@ public class ChatEntityProducer implements EntityProducer, EntityTransferrer {
       }
       catch (Exception any)
       {
-         logger.warn("archive: exception archiving service: " + serviceName());
+         log.warn("archive: exception archiving service: " + serviceName());
       }
 
       stack.pop();
@@ -231,7 +229,7 @@ public class ChatEntityProducer implements EntityProducer, EntityTransferrer {
       }
       catch (Exception e)
       {
-         logger.warn("archive: exception archiving synoptic options for service: " + serviceName());
+         log.warn("archive: exception archiving synoptic options for service: " + serviceName());
       }
    }
 
@@ -260,15 +258,15 @@ public class ChatEntityProducer implements EntityProducer, EntityTransferrer {
 
          // else try {throw new Exception();} catch (Exception e) {M_log.warn("getResource(): unknown message ref subtype: " + m_subType + " in ref: " + m_reference, e);}
          else
-            logger.warn("getEntity(): unknown message ref subtype: " + ref.getSubType() + " in ref: " + ref.getReference());
+            log.warn("getEntity(): unknown message ref subtype: " + ref.getSubType() + " in ref: " + ref.getReference());
       }
       catch (NullPointerException e)
       {
-         logger.warn("getEntity(): " + e);
+         log.warn("getEntity(): " + e);
       } catch (IdUnusedException e) {
-         logger.warn("getEntity(): " + e);
+         log.warn("getEntity(): " + e);
       } catch (PermissionException e) {
-         logger.warn("getEntity(): " + e);
+         log.warn("getEntity(): " + e);
       }
       
 
@@ -349,19 +347,19 @@ public class ChatEntityProducer implements EntityProducer, EntityTransferrer {
          }
 
          else
-            logger.warn("getUrl(): unknown message ref subtype: " + ref.getSubType() + " in ref: " + ref.getReference());
+            log.warn("getUrl(): unknown message ref subtype: " + ref.getSubType() + " in ref: " + ref.getReference());
       }
       catch (PermissionException e)
       {
-         logger.warn("getUrl(): " + e);
+         log.warn("getUrl(): " + e);
       }
       catch (IdUnusedException e)
       {
-         logger.warn("getUrl(): " + e);
+         log.warn("getUrl(): " + e);
       }
       catch (NullPointerException e)
       {
-         logger.warn("getUrl(): " + e);
+         log.warn("getUrl(): " + e);
       }
 
       return url;
@@ -394,8 +392,11 @@ public class ChatEntityProducer implements EntityProducer, EntityTransferrer {
                ChatMessage message = getMessage(ref);
                String title = ref.getDescription();
                //MessageHeader messageHead = message.getHeader();
-               //String date = messageHead.getDate().toStringLocalFullZ();
-               String date = TimeService.newTime(message.getMessageDate().getTime()).toStringLocalFullZ();
+               ResourceLoader rl = new ResourceLoader();
+               Locale locale = rl.getLocale();       		
+               ZonedDateTime ldt = ZonedDateTime.ofInstant(message.getMessageDate().toInstant(), ZoneId.of(chatManager.getUserTimeZone()));
+               String date = ldt.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.LONG).withLocale(locale));
+               
                String from = UserDirectoryService.getUser(message.getOwner()).getDisplayName();
                //String from = messageHead.getFrom().getDisplayName();
                String groups = "";
@@ -404,11 +405,11 @@ public class ChatEntityProducer implements EntityProducer, EntityTransferrer {
                //{
                //   groups += "<li>" + i.next() + "</li>";
                //}
-               String body = Web.escapeHtml(message.getBody());
+               String body = ComponentManager.get(FormattedText.class).escapeHtml(message.getBody());
 
                sw
-                     .write("<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n"
-                           + "<html xmlns=\"http://www.w3.org/1999/xhtml\" lang=\"en\" xml:lang=\"en\">\n"
+                     .write("<!DOCTYPE html>\n"
+                           + "<html>\n"
                            + "<head>\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n"
                            + "<link href=\"");
                sw.write(skinRepo);
@@ -501,7 +502,7 @@ public class ChatEntityProducer implements EntityProducer, EntityTransferrer {
    public String merge(String siteId, Element root, String archivePath, String fromSiteId, Map attachmentNames, Map userIdTrans,
          Set userListAllowImport)
    {
-      logger.debug("trying to merge chat");
+      log.debug("trying to merge chat");
 
       // buffer for the results log
       StringBuilder results = new StringBuilder();
@@ -591,13 +592,13 @@ public class ChatEntityProducer implements EntityProducer, EntityTransferrer {
          }
          catch (DOMException e)
          {
-            logger.error(e.getMessage(), e);
+            log.error(e.getMessage(), e);
             results.append("merging " + getLabel()
                   + " failed during xml parsing.\n");
          }
          catch (Exception e)
          {
-            logger.error(e.getMessage(), e);
+            log.error(e.getMessage(), e);
             results.append("merging " + getLabel() + " failed.\n");
          }
       }
@@ -650,7 +651,7 @@ public class ChatEntityProducer implements EntityProducer, EntityTransferrer {
                }
             }
             else
-               logger.warn("parse(): unknown message subtype: " + subType + " in ref: " + reference);
+               log.warn("parse(): unknown message subtype: " + subType + " in ref: " + reference);
          }
 
          ref.set(ChatManager.APPLICATION_ID, subType, id, container, context);
@@ -675,17 +676,13 @@ public class ChatEntityProducer implements EntityProducer, EntityTransferrer {
     * TODO: link the old placement id to the new placement id instead of passing null in line:
     * ChatChannel newChannel = getChatManager().createNewChannel(toContext, oldChannel.getTitle(), false, false, null);
     */
-   public void transferCopyEntities(String fromContext, String toContext, List ids) 
-   {
-      try
-      {           
+   public Map<String, String> transferCopyEntities(String fromContext, String toContext, List<String> ids, List<String> transferOptions) {
+
+      try {
          // retrieve all of the chat rooms
          List channels = getChatManager().getContextChannels(fromContext, true);
-         if (channels != null && !channels.isEmpty()) 
-         {
-            Iterator channelIterator = channels.iterator();
-            while (channelIterator.hasNext()) 
-            {
+         if (channels != null && !channels.isEmpty()) {
+            for (Iterator channelIterator = channels.iterator(); channelIterator.hasNext();) {
                ChatChannel oldChannel = (ChatChannel)channelIterator.next();
                ChatChannel newChannel = getChatManager().createNewChannel(toContext, oldChannel.getTitle(), false, false, null);
                newChannel.setDescription(oldChannel.getDescription());
@@ -694,22 +691,18 @@ public class ChatEntityProducer implements EntityProducer, EntityTransferrer {
                newChannel.setPlacementDefaultChannel(oldChannel.isPlacementDefaultChannel());
                try {
                   getChatManager().updateChannel(newChannel, false);
-               } 
-               catch (Exception e) 
-               {
-                  logger.warn("Exception while creating channel: " + newChannel.getTitle() + ": " + e);
+               }  catch (Exception e) {
+                  log.warn("Exception while creating channel: " + newChannel.getTitle() + ": " + e);
                }
-
             }
          }
          
          transferSynopticOptions(fromContext, toContext);    
+      } catch (Exception any) {
+         log.warn(".transferCopyEntities(): exception in handling " + serviceName() + " : ", any);
       }
 
-      catch (Exception any)
-      {
-         logger.warn(".transferCopyEntities(): exception in handling " + serviceName() + " : ", any);
-      }
+	  return null;
    }
    
    /**
@@ -750,15 +743,15 @@ public class ChatEntityProducer implements EntityProducer, EntityTransferrer {
       }
       catch (PermissionException pe)
       {
-         logger.warn("PermissionException transferring synoptic options for " + serviceName() + ':', pe);
+         log.warn("PermissionException transferring synoptic options for " + serviceName() + ':', pe);
       }
       catch (IdUnusedException e)
       {
-         logger.warn("Channel " + fromContext + " cannot be found. ");
+         log.warn("Channel " + fromContext + " cannot be found. ");
       }
       catch (Exception e)
       {
-         logger.warn("transferSynopticOptions(): exception in handling " + serviceName() + " : ", e);
+         log.warn("transferSynopticOptions(): exception in handling " + serviceName() + " : ", e);
       }
    }
    
@@ -777,42 +770,30 @@ public class ChatEntityProducer implements EntityProducer, EntityTransferrer {
       this.chatManager = chatManager;
    }
    
-   public void transferCopyEntities(String fromContext, String toContext, List ids, boolean cleanup)
-	{	
-	   try
-	   {   
-		   if(cleanup == true) 
-		   {
-			   // retrieve all of the chat rooms
-			   List channels = getChatManager().getContextChannels(toContext, true);
-			   
-			   if (channels != null && !channels.isEmpty()) 
-			   {
-				   Iterator channelIterator = channels.iterator();
-				   
-				   while (channelIterator.hasNext()) 
-				   {
-					   ChatChannel oldChannel = (ChatChannel)channelIterator.next();
-					  
-					   try 
-					   {
-						   getChatManager().deleteChannel(oldChannel);
-					   } 
-					   catch (Exception e) 
-					   {
-						   logger.debug("Exception while removing chat channel: " + e);
-					   }
+    public Map<String, String> transferCopyEntities(String fromContext, String toContext, List<String> ids, List<String> transferOptions, boolean cleanup) {
 
-				   }
-			   }
-		   } 
-	       transferCopyEntities(fromContext, toContext, ids);
-	   }
+        try {
+            if (cleanup) {
+                // retrieve all of the chat rooms
+                List channels = getChatManager().getContextChannels(toContext, true);
 
-	   catch (Exception e)
-	   {
-	       logger.debug("Chat transferCopyEntities(): exception in handling " + e);
-	   }
-	}
+                if (channels != null && !channels.isEmpty()) {
+                    for (Iterator channelIterator = channels.iterator(); channelIterator.hasNext();) {
+                        ChatChannel oldChannel = (ChatChannel)channelIterator.next();
 
+                        try  {
+                            getChatManager().deleteChannel(oldChannel);
+                        } catch (Exception e) {
+                           log.debug("Exception while removing chat channel: " + e);
+                       }
+                    }
+                }
+            }
+            transferCopyEntities(fromContext, toContext, ids, transferOptions);
+        } catch (Exception e) {
+            log.debug("Chat transferCopyEntities(): exception in handling " + e);
+        }
+
+        return null;
+    }
 }

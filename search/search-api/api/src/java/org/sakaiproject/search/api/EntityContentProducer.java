@@ -25,6 +25,7 @@ import java.io.Reader;
 import java.util.Iterator;
 import java.util.Map;
 
+import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.event.api.Event;
 import org.sakaiproject.search.model.SearchBuilderItem;
 
@@ -37,7 +38,6 @@ import org.sakaiproject.search.model.SearchBuilderItem;
  */
 public interface EntityContentProducer
 {
-
 	/**
 	 * Should the consumer use the reader or is it OK to use a memory copy of
 	 * the content
@@ -81,6 +81,18 @@ public interface EntityContentProducer
 	String getUrl(String reference);
 
 	/**
+	 * Gets the url that displays the entity. You can specify a UrlType depending on
+	 * what kind of link you want.
+	 *
+	 * @param reference
+	 * @param EntityUrlType
+	 * @return The url as a String
+	 */
+	default String getUrl(String reference, Entity.UrlType urlType) {
+        return this.getUrl(reference);
+    }
+
+	/**
 	 * If the reference matches this EntityContentProducer return true
 	 * 
 	 * @param reference
@@ -108,20 +120,21 @@ public interface EntityContentProducer
 	 * @return
 	 */
 	String getTool();
-
-
 	
 	/**
 	 * get the site ID from the resource Name
+	 *
 	 * @param reference
-	 * @return
+	 * @return the site ID or {@code null} if a site ID is not present or this provider does not manage site-specific
+	 *   content
 	 */
 	String getSiteId(String reference);
 
 	/**
 	 * Get the site content as an iterator
 	 * @param context
-	 * @return
+	 * @return an iterator over all content associted with the given site ID, or an empty iterator if this provider
+	 *   does not manage site-specific content
 	 */
 	Iterator<String> getSiteContentIterator(String context);
 

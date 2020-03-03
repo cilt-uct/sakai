@@ -1,29 +1,40 @@
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.lessonbuildertool.tool.beans;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.HashSet;
 import java.util.Set;
-import java.util.Collection;
 
+import lombok.extern.slf4j.Slf4j;
+
+import org.sakaiproject.authz.api.AuthzGroup;
+import org.sakaiproject.authz.api.AuthzGroupService;
+import org.sakaiproject.authz.api.Member;
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.lessonbuildertool.SimplePageComment;
-import org.sakaiproject.lessonbuildertool.SimplePage;
 import org.sakaiproject.lessonbuildertool.SimplePageItem;
 import org.sakaiproject.lessonbuildertool.SimplePageQuestionResponse;
 import org.sakaiproject.lessonbuildertool.SimpleStudentPage;
 import org.sakaiproject.lessonbuildertool.model.SimplePageToolDao;
 import org.sakaiproject.lessonbuildertool.service.GradebookIfc;
-import org.sakaiproject.authz.api.AuthzGroupService;
-import org.sakaiproject.authz.api.Member;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.sakaiproject.authz.api.AuthzGroup;
 import org.sakaiproject.tool.cover.SessionManager;
 
-
+@Slf4j
 public class GradingBean {
-	private static final Logger log = LoggerFactory.getLogger(GradingBean.class);
 	public String id;
 	public String points;
 	public String jsId;
@@ -87,7 +98,6 @@ public class GradingBean {
 	private boolean gradeComment() {
 		boolean r = false;
 		
-		
 		SimplePageComment comment = simplePageToolDao.findCommentByUUID(id);
 		SimplePageItem commentItem = simplePageToolDao.findItem(comment.getItemId());
 		SimpleStudentPage studentPage = null;  // comments on student page only
@@ -96,6 +106,13 @@ public class GradingBean {
 		if(commentItem.getPageId() <= 0) {
 		    studentPage = simplePageToolDao.findStudentPage(Long.valueOf(commentItem.getSakaiId()));
 		    topItem = simplePageToolDao.findItem(studentPage.getItemId());
+		    if (! simplePageBean.itemOk(topItem.getId())) {
+			return false;
+		    }
+		} else {
+		    if (! simplePageBean.itemOk(commentItem.getId())) {
+			return false;
+		    }
 		}
 
 		String gradebookId = null;
@@ -122,7 +139,7 @@ public class GradingBean {
 		try {
 			r = gradebookIfc.updateExternalAssessmentScore(simplePageBean.getCurrentSiteId(), gradebookId, comment.getAuthor(), Double.toString(newpoints));
 		}catch(Exception ex) {
-			ex.printStackTrace();
+			log.error(ex.getMessage(), ex);
 		}
 		
 		if(r) {
@@ -154,6 +171,7 @@ public class GradingBean {
 		SimpleStudentPage page = simplePageToolDao.findStudentPage(Long.valueOf(id));
 		SimplePageItem pageItem = simplePageToolDao.findItem(page.getItemId());
 		Double newpoints = Double.valueOf(points);
+
 		// the idea was to not update if there's no change in points
 		// but there can be reasons to want to force grades back to the gradebook,
 		// particually for group pages where the group may have changed
@@ -161,6 +179,10 @@ public class GradingBean {
 		//  return new String[] {"success", jsId, String.valueOf(page.getPoints())};
 	        //}
 		
+		if (page.getPageId() != simplePageBean.getCurrentPageId()) {
+		    return false;
+		}
+
 		if (newpoints < 0.0 || newpoints > pageItem.getGradebookPoints()) {
 			return false;
 		}
@@ -199,6 +221,9 @@ public class GradingBean {
 		SimplePageItem questionItem = simplePageBean.findItem(response.getQuestionId());
 		Double newpoints = Double.valueOf(points);
 		
+		if (! simplePageBean.itemOk(questionItem.getId()))
+		    return false;
+
 		r = "true".equals(questionItem.getAttribute("questionGraded")) || questionItem.getGradebookId() != null;
 		if (questionItem.getGradebookId() != null)
 		    if (newpoints < 0.0 || newpoints > questionItem.getGradebookPoints()) {

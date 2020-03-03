@@ -37,9 +37,6 @@ import java.util.Set;
 
 import javax.imageio.ImageIO;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.PeriodAxis;
@@ -70,6 +67,7 @@ import org.jfree.data.xy.IntervalXYDataset;
 import org.jfree.data.xy.XYDataset;
 import org.jfree.ui.RectangleInsets;
 import org.jfree.util.SortOrder;
+import org.sakaiproject.event.api.EventTrackingService;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.sitestats.api.EventStat;
@@ -87,16 +85,15 @@ import org.sakaiproject.sitestats.api.chart.ChartService;
 import org.sakaiproject.sitestats.api.event.EventRegistryService;
 import org.sakaiproject.sitestats.api.report.Report;
 import org.sakaiproject.sitestats.api.report.ReportManager;
-import org.sakaiproject.sitestats.impl.event.EventRegistryServiceImpl;
 import org.sakaiproject.user.api.PreferencesService;
 import org.sakaiproject.user.api.UserDirectoryService;
-import org.sakaiproject.user.api.UserNotDefinedException;
 import org.sakaiproject.util.ResourceLoader;
 
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class ChartServiceImpl implements ChartService {
 	/** Static fields */
-	private static Logger				LOG									= LoggerFactory.getLogger(EventRegistryServiceImpl.class);
 	private static ResourceLoader	msgs								= new ResourceLoader("Messages");
 	private static final int		MIN_CHART_WIDTH_TO_DRAW_ALL_DAYS	= 640;
 
@@ -211,39 +208,39 @@ public class ChartServiceImpl implements ChartService {
 				CategoryDataset ds = (CategoryDataset) dataset;
 				return generateBarChart(siteId, ds, width, height, render3d, transparency, itemLabelsVisible, false);
 			}else{
-				LOG.warn("Dataset not supported for "+chartType+" chart type: only classes implementing CategoryDataset are supported.");
+				log.warn("Dataset not supported for "+chartType+" chart type: only classes implementing CategoryDataset are supported.");
 			}				
 		}else if(StatsManager.CHARTTYPE_LINE.equals(chartType)) {
 			if(dataset instanceof CategoryDataset) {
 				CategoryDataset ds = (CategoryDataset) dataset;
 				return generateLineChart(siteId, ds, width, height, render3d, transparency, itemLabelsVisible, false);
 			}else{
-				LOG.warn("Dataset not supported for "+chartType+" chart type: only classes implementing CategoryDataset are supported.");
+				log.warn("Dataset not supported for "+chartType+" chart type: only classes implementing CategoryDataset are supported.");
 			}
 		}else if(StatsManager.CHARTTYPE_PIE.equals(chartType)) {
 			if(dataset instanceof PieDataset) {
 				PieDataset ds = (PieDataset) dataset;
 				return generatePieChart(siteId, ds, width, height, render3d, transparency, false);
 			}else{
-				LOG.warn("Dataset not supported for "+chartType+" chart type: only classes implementing PieDataset are supported.");
+				log.warn("Dataset not supported for "+chartType+" chart type: only classes implementing PieDataset are supported.");
 			}
 		}else if(StatsManager.CHARTTYPE_TIMESERIES.equals(chartType)) {
 			if(dataset instanceof IntervalXYDataset) {
 				IntervalXYDataset ds = (IntervalXYDataset) dataset;
 				return generateTimeSeriesChart(siteId, ds, width, height, false, transparency, itemLabelsVisible, false, timePeriod);
 			}else{
-				LOG.warn("Dataset not supported for "+chartType+" chart type: only classes implementing XYDataset are supported.");
+				log.warn("Dataset not supported for "+chartType+" chart type: only classes implementing XYDataset are supported.");
 			}
 		}else if(StatsManager.CHARTTYPE_TIMESERIESBAR.equals(chartType)) {
 			if(dataset instanceof IntervalXYDataset) {
 				IntervalXYDataset ds = (IntervalXYDataset) dataset;
 				return generateTimeSeriesChart(siteId, ds, width, height, true, transparency, itemLabelsVisible, false, timePeriod);
 			}else{
-				LOG.warn("Dataset not supported for "+chartType+" chart type: only classes implementing XYDataset are supported.");
+				log.warn("Dataset not supported for "+chartType+" chart type: only classes implementing XYDataset are supported.");
 			}
 		}
 		
-		LOG.warn("Chart type "+chartType+" not supported: only line, bar, pie, timeseries are supported.");
+		log.warn("Chart type "+chartType+" not supported: only line, bar, pie, timeseries are supported.");
 		return null;
 	}
 	
@@ -287,42 +284,42 @@ public class ChartServiceImpl implements ChartService {
 					CategoryDataset ds = (CategoryDataset) dataset;
 					return generateBarChart(siteId, ds, width, height, render3d, transparency, itemLabelsVisible, false);
 				}else{
-					LOG.warn("Dataset not supported for "+chartType+" chart type: only classes implementing CategoryDataset are supported.");
+					log.warn("Dataset not supported for "+chartType+" chart type: only classes implementing CategoryDataset are supported.");
 				}				
 			}else if(StatsManager.CHARTTYPE_LINE.equals(chartType)) {
 				if(dataset instanceof CategoryDataset) {
 					CategoryDataset ds = (CategoryDataset) dataset;
 					return generateLineChart(siteId, ds, width, height, render3d, transparency, itemLabelsVisible, false);
 				}else{
-					LOG.warn("Dataset not supported for "+chartType+" chart type: only classes implementing CategoryDataset are supported.");
+					log.warn("Dataset not supported for "+chartType+" chart type: only classes implementing CategoryDataset are supported.");
 				}
 			}else if(StatsManager.CHARTTYPE_PIE.equals(chartType)) {
 				if(dataset instanceof PieDataset) {
 					PieDataset ds = (PieDataset) dataset;
 					return generatePieChart(siteId, ds, width, height, render3d, transparency, false);
 				}else{
-					LOG.warn("Dataset not supported for "+chartType+" chart type: only classes implementing PieDataset are supported.");
+					log.warn("Dataset not supported for "+chartType+" chart type: only classes implementing PieDataset are supported.");
 				}
 			}else if(StatsManager.CHARTTYPE_TIMESERIES.equals(chartType)) {
 				if(dataset instanceof IntervalXYDataset) {
 					IntervalXYDataset ds = (IntervalXYDataset) dataset;
 					return generateTimeSeriesChart(siteId, ds, width, height, false, transparency, itemLabelsVisible, false, timePeriod, firstDate, lastDate);
 				}else{
-					LOG.warn("Dataset not supported for "+chartType+" chart type: only classes implementing XYDataset are supported.");
+					log.warn("Dataset not supported for "+chartType+" chart type: only classes implementing XYDataset are supported.");
 				}
 			}else if(StatsManager.CHARTTYPE_TIMESERIESBAR.equals(chartType)) {
 				if(dataset instanceof IntervalXYDataset) {
 					IntervalXYDataset ds = (IntervalXYDataset) dataset;
 					return generateTimeSeriesChart(siteId, ds, width, height, true, transparency, itemLabelsVisible, false, timePeriod, firstDate, lastDate);
 				}else{
-					LOG.warn("Dataset not supported for "+chartType+" chart type: only classes implementing XYDataset are supported.");
+					log.warn("Dataset not supported for "+chartType+" chart type: only classes implementing XYDataset are supported.");
 				}
 			}
 			
-			LOG.warn("Chart type "+chartType+" not supported: only line, bar, pie, timeseries are supported.");
+			log.warn("Chart type "+chartType+" not supported: only line, bar, pie, timeseries are supported.");
 			return null;
 		}else{		
-			LOG.warn("Chart type "+chartType+" not supported: only line, bar, pie, timeseries are supported.");
+			log.warn("Chart type "+chartType+" not supported: only line, bar, pie, timeseries are supported.");
 			return null;
 		}
 	}
@@ -378,7 +375,7 @@ public class ChartServiceImpl implements ChartService {
 		// item labels
 		if(itemLabelsVisible) {
 			plot.getRangeAxis().setUpperMargin(0.2);
-			barrenderer.setItemLabelGenerator(new StandardCategoryItemLabelGenerator() {
+			barrenderer.setBaseItemLabelGenerator(new StandardCategoryItemLabelGenerator() {
 				private static final long	serialVersionUID	= 1L;
 
 				@Override
@@ -391,8 +388,8 @@ public class ChartServiceImpl implements ChartService {
 					return "";
 				}			
 			});
-			barrenderer.setItemLabelFont(new Font("SansSerif", Font.PLAIN, 8));
-			barrenderer.setItemLabelsVisible(true);
+			barrenderer.setBaseItemLabelFont(new Font("SansSerif", Font.PLAIN, 8));
+			barrenderer.setBaseItemLabelsVisible(true);
 		}
 
 		BufferedImage img = chart.createBufferedImage(width, height);
@@ -400,7 +397,7 @@ public class ChartServiceImpl implements ChartService {
 		try{
 			ImageIO.write(img, "png", out);
 		}catch(IOException e){
-			LOG.warn("Error occurred while generating SiteStats chart image data", e);
+			log.warn("Error occurred while generating SiteStats chart image data", e);
 		}
 		return out.toByteArray();
 	}
@@ -444,7 +441,7 @@ public class ChartServiceImpl implements ChartService {
 		// item labels
 		if(itemLabelsVisible) {
 			plot.getRangeAxis().setUpperMargin(0.2);
-			renderer.setItemLabelGenerator(new StandardCategoryItemLabelGenerator() {
+			renderer.setBaseItemLabelGenerator(new StandardCategoryItemLabelGenerator() {
 				private static final long	serialVersionUID	= 1L;
 
 				@Override
@@ -456,8 +453,8 @@ public class ChartServiceImpl implements ChartService {
 					return "";
 				}			
 			});
-			renderer.setItemLabelFont(new Font("SansSerif", Font.PLAIN, 8));
-			renderer.setItemLabelsVisible(true);
+			renderer.setBaseItemLabelFont(new Font("SansSerif", Font.PLAIN, 8));
+			renderer.setBaseItemLabelsVisible(true);
 		}
 
 		BufferedImage img = chart.createBufferedImage(width, height);
@@ -465,7 +462,7 @@ public class ChartServiceImpl implements ChartService {
 		try{
 			ImageIO.write(img, "png", out);
 		}catch(IOException e){
-			LOG.warn("Error occurred while generating SiteStats chart image data", e);
+			log.warn("Error occurred while generating SiteStats chart image data", e);
 		}
 		return out.toByteArray();
 	}
@@ -507,7 +504,7 @@ public class ChartServiceImpl implements ChartService {
 		try{
 			ImageIO.write(img, "png", out);
 		}catch(IOException e){
-			LOG.warn("Error occurred while generating SiteStats chart image data", e);
+			log.warn("Error occurred while generating SiteStats chart image data", e);
 		}
 		return out.toByteArray();
 	}
@@ -618,8 +615,8 @@ public class ChartServiceImpl implements ChartService {
         if(renderer instanceof XYLineAndShapeRenderer) {	
 	        XYLineAndShapeRenderer r = (XYLineAndShapeRenderer) renderer;		
 	        r.setDrawSeriesLineAsPath(true);
-	        r.setShapesVisible(true);
-	        r.setShapesFilled(true);
+	        r.setBaseShapesVisible(true);
+	        r.setBaseShapesFilled(true);
         }else if(renderer instanceof XYBarRenderer) {
         	//XYBarRenderer r = (XYBarRenderer) renderer;
         	ClusteredXYBarRenderer r = new ClusteredXYBarRenderer();
@@ -635,7 +632,7 @@ public class ChartServiceImpl implements ChartService {
 		// item labels
 		if(itemLabelsVisible) {
 			plot.getRangeAxis().setUpperMargin(0.2);
-			renderer.setItemLabelGenerator(new XYItemLabelGenerator() {
+			renderer.setBaseItemLabelGenerator(new XYItemLabelGenerator() {
 				private static final long	serialVersionUID	= 1L;
 
 				public String generateLabel(XYDataset dataset, int series, int item) {
@@ -647,8 +644,8 @@ public class ChartServiceImpl implements ChartService {
 
 						
 			});
-			renderer.setItemLabelFont(new Font("SansSerif", Font.PLAIN, 8));
-			renderer.setItemLabelsVisible(true);
+			renderer.setBaseItemLabelFont(new Font("SansSerif", Font.PLAIN, 8));
+			renderer.setBaseItemLabelsVisible(true);
 		}
 
 		BufferedImage img = chart.createBufferedImage(width, height);
@@ -656,7 +653,7 @@ public class ChartServiceImpl implements ChartService {
 		try{
 			ImageIO.write(img, "png", out);
 		}catch(IOException e){
-			LOG.warn("Error occurred while generating SiteStats chart image data", e);
+			log.warn("Error occurred while generating SiteStats chart image data", e);
 		}
 		return out.toByteArray();
 	}
@@ -681,7 +678,7 @@ public class ChartServiceImpl implements ChartService {
 		try{
 			ImageIO.write(img, "png", out);
 		}catch(IOException e){
-			LOG.warn("Error occurred while generating SiteStats chart image data", e);
+			log.warn("Error occurred while generating SiteStats chart image data", e);
 		}
 		return out.toByteArray();
 	}
@@ -690,7 +687,7 @@ public class ChartServiceImpl implements ChartService {
 	// Chart DataSet methods
 	// ######################################################################################
 	private DefaultCategoryDataset getVisitsWeekDataSet(String siteId) {
-//		LOG.info("Generating visitsWeekDataSet");
+//		log.info("Generating visitsWeekDataSet");
 		SummaryVisitsChartData svc = M_sm.getSummaryVisitsChartData(siteId, StatsManager.VIEW_WEEK);
 		if(svc == null) return null;
 		DefaultCategoryDataset visitsWeekDataSet = new DefaultCategoryDataset();
@@ -712,7 +709,7 @@ public class ChartServiceImpl implements ChartService {
 	}
 	
 	private DefaultCategoryDataset getVisitsMonthDataSet(String siteId, int width) {
-//		LOG.info("Generating visitsMonthDataSet");
+//		log.info("Generating visitsMonthDataSet");
 		SummaryVisitsChartData svc = M_sm.getSummaryVisitsChartData(siteId, StatsManager.VIEW_MONTH);
 		if(svc == null) return null;
 		DefaultCategoryDataset visitsMonthDataSet = new DefaultCategoryDataset();
@@ -741,7 +738,7 @@ public class ChartServiceImpl implements ChartService {
 	}
 	
 	private DefaultCategoryDataset getVisitsYearDataSet(String siteId) {
-//		LOG.info("Generating visitsYearDataSet");
+//		log.info("Generating visitsYearDataSet");
 		SummaryVisitsChartData svc = M_sm.getSummaryVisitsChartData(siteId, StatsManager.VIEW_YEAR);
 		if(svc == null) return null;
 		DefaultCategoryDataset visitsYearDataSet = new DefaultCategoryDataset();
@@ -763,7 +760,7 @@ public class ChartServiceImpl implements ChartService {
 	}
 	
 	private DefaultPieDataset getActivityWeekPieDataSet(String siteId) {
-//		LOG.info("Generating activityWeekPieDataSet");
+//		log.info("Generating activityWeekPieDataSet");
 		SummaryActivityChartData sac = M_sm.getSummaryActivityChartData(siteId, StatsManager.VIEW_WEEK, StatsManager.CHARTTYPE_PIE);
 		if(sac == null) return null;
 		DefaultPieDataset activityWeekPieDataSet = fillActivityPieDataSet(sac);
@@ -771,7 +768,7 @@ public class ChartServiceImpl implements ChartService {
 	}
 	
 	private DefaultPieDataset getActivityMonthPieDataSet(String siteId) {
-//		LOG.info("Generating activityMonthPieDataSet");
+//		log.info("Generating activityMonthPieDataSet");
 		SummaryActivityChartData sac = M_sm.getSummaryActivityChartData(siteId, StatsManager.VIEW_MONTH, StatsManager.CHARTTYPE_PIE);
 		if(sac == null) return null;
 		DefaultPieDataset activityMonthPieDataSet = fillActivityPieDataSet(sac);
@@ -779,7 +776,7 @@ public class ChartServiceImpl implements ChartService {
 	}
 	
 	private DefaultPieDataset getActivityYearPieDataSet(String siteId) {
-//		LOG.info("Generating activityYearPieDataSet");
+//		log.info("Generating activityYearPieDataSet");
 		SummaryActivityChartData sac = M_sm.getSummaryActivityChartData(siteId, StatsManager.VIEW_YEAR, StatsManager.CHARTTYPE_PIE);
 		if(sac == null) return null;
 		DefaultPieDataset activityYearPieDataSet = fillActivityPieDataSet(sac);
@@ -820,7 +817,7 @@ public class ChartServiceImpl implements ChartService {
 			
 	
 	private DefaultCategoryDataset getActivityWeekBarDataSet(String siteId) {
-//		LOG.info("Generating activityWeekBarDataSet");
+//		log.info("Generating activityWeekBarDataSet");
 		SummaryActivityChartData sac = M_sm.getSummaryActivityChartData(siteId, StatsManager.VIEW_WEEK, StatsManager.CHARTTYPE_BAR);
 		if(sac == null) return null;
 		DefaultCategoryDataset activityWeekBarDataSet = new DefaultCategoryDataset();
@@ -839,7 +836,7 @@ public class ChartServiceImpl implements ChartService {
 	}
 	
 	private DefaultCategoryDataset getActivityMonthBarDataSet(String siteId, int width) {
-//		LOG.info("Generating activityMonthBarDataSet");
+//		log.info("Generating activityMonthBarDataSet");
 		SummaryActivityChartData sac = M_sm.getSummaryActivityChartData(siteId, StatsManager.VIEW_MONTH, StatsManager.CHARTTYPE_BAR);
 		if(sac == null) return null;
 		DefaultCategoryDataset activityMonthBarDataSet = new DefaultCategoryDataset();
@@ -866,7 +863,7 @@ public class ChartServiceImpl implements ChartService {
 	}
 	
 	private DefaultCategoryDataset getActivityYearBarDataSet(String siteId) {
-//		LOG.info("Generating activityYearBarDataSet");
+//		log.info("Generating activityYearBarDataSet");
 		SummaryActivityChartData sac = M_sm.getSummaryActivityChartData(siteId, StatsManager.VIEW_YEAR, StatsManager.CHARTTYPE_BAR);
 		if(sac == null) return null;
 		DefaultCategoryDataset activityYearBarDataSet = new DefaultCategoryDataset();
@@ -886,7 +883,7 @@ public class ChartServiceImpl implements ChartService {
 	}
 	
 	private AbstractDataset getCategoryDataset(Report report) {
-		List<Stat> reportData = report.getReportData();
+		List<? extends Stat> reportData = report.getReportData();
 		
 		// fill dataset
 		DefaultCategoryDataset dataSet = new DefaultCategoryDataset();
@@ -939,7 +936,7 @@ public class ChartServiceImpl implements ChartService {
 	}
 	
 	private AbstractDataset getPieDataset(Report report) {
-		List<Stat> reportData = report.getReportData();
+		List<? extends Stat> reportData = report.getReportData();
 		
 		// fill dataset
 		DefaultPieDataset dataSet = new DefaultPieDataset();
@@ -1010,7 +1007,7 @@ public class ChartServiceImpl implements ChartService {
 	}
 	
 	private AbstractDataset getTimeSeriesCollectionDataset(Report report) {
-		List<Stat> reportData = report.getReportData();
+		List<? extends Stat> reportData = report.getReportData();
 		
 		// fill dataset
 		TimeSeriesCollection dataSet = new TimeSeriesCollection();
@@ -1219,7 +1216,7 @@ public class ChartServiceImpl implements ChartService {
 				if(color.equalsIgnoreCase("white")) return Color.white;
 			}
 		}
-		LOG.info("Unable to parse body background-color (color:" + color+"). Assuming white.");
+		log.info("Unable to parse body background-color (color:" + color+"). Assuming white.");
 		return Color.white;
 	}
 	//periodGrouping
@@ -1247,7 +1244,7 @@ public class ChartServiceImpl implements ChartService {
 				if (userId != null) {
 					if(("-").equals(userId)) {
 						name = msgs.getString("user_anonymous");
-					}else if(("?").equals(userId)) {
+					}else if(EventTrackingService.UNKNOWN_USER.equals(userId)) {
 						name = msgs.getString("user_anonymous_access");
 					}else{
 						name = M_sm.getUserNameForDisplay(userId);
@@ -1354,7 +1351,7 @@ public class ChartServiceImpl implements ChartService {
 				}
 			}
 		}catch(Exception e) {
-			LOG.warn("Error occurred while getting value for chart", e);			
+			log.warn("Error occurred while getting value for chart", e);			
 		}
 		return null;
 	}
@@ -1391,7 +1388,7 @@ public class ChartServiceImpl implements ChartService {
 			}
 			return count;
 		}catch(Exception e) {
-			LOG.warn("Error occurred while getting total value for chart", e);			
+			log.warn("Error occurred while getting total value for chart", e);			
 		}
 		return null;
 	}

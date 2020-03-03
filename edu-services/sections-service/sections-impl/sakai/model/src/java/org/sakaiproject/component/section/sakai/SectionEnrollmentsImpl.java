@@ -27,9 +27,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.lang3.builder.ToStringBuilder;
+
 import org.sakaiproject.section.api.coursemanagement.CourseSection;
 import org.sakaiproject.section.api.coursemanagement.EnrollmentRecord;
 import org.sakaiproject.section.api.coursemanagement.SectionEnrollments;
@@ -44,15 +45,15 @@ import org.sakaiproject.section.api.coursemanagement.SectionEnrollments;
  * @author <a href="mailto:jholtzman@berkeley.edu">Josh Holtzman</a>
  *
  */
+@Slf4j
 public class SectionEnrollmentsImpl implements SectionEnrollments, Serializable {
 	private static final long serialVersionUID = 1L;
-	private static Logger log = LoggerFactory.getLogger(SectionEnrollmentsImpl.class);
 	
 	protected Map studentToMap;
 
 	public SectionEnrollmentsImpl(List enrollmentRecords) {
-		studentToMap = new HashMap();
-		for(Iterator iter = enrollmentRecords.iterator(); iter.hasNext();) {
+		studentToMap = new HashMap<>();
+		for(Iterator<EnrollmentRecord> iter = enrollmentRecords.iterator(); iter.hasNext();) {
 			EnrollmentRecord enrollment = (EnrollmentRecord)iter.next();
 			String userUid = enrollment.getUser().getUserUid();
 			CourseSection section = (CourseSection)enrollment.getLearningContext();

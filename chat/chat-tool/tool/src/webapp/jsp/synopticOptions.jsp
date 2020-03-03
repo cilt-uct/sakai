@@ -1,7 +1,7 @@
 <f:view>
 	<sakai:view title="#{msgs.synoptic_options_title}">
 		<h:form>
-			<sakai:messages rendered="#{!empty facesContext.maximumSeverity}" />
+			<h:messages rendered="#{!empty facesContext.maximumSeverity}" />
 
 			<sakai:group_box title="#{msgs.recent_chat_heading}">
 			<sakai:panel_edit>
@@ -22,10 +22,11 @@
 			</sakai:group_box>
 			
 			<sakai:button_bar>
-				<sakai:button_bar_item id="submit"
+				<h:commandButton id="submit"
 					action="#{ChatTool.processActionSynopticOptionsSave}"
-					value="#{msgs.update_text}" />
-				<sakai:button_bar_item id="reset"
+					value="#{msgs.update_text}"
+					styleClass="active" />
+				<h:commandButton id="reset"
 					action="#{ChatTool.processActionSynopticOptionsCancel}"
 					value="#{msgs['gen.cancel']}" />
 			</sakai:button_bar>

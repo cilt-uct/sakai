@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.component.app.scheduler.jobs;
 
 import java.util.Collections;
@@ -5,11 +20,16 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+import org.quartz.DisallowConcurrentExecution;
+import org.quartz.InterruptableJob;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
-import org.quartz.StatefulJob;
+import org.quartz.UnableToInterruptJobException;
+
+import org.springframework.beans.factory.annotation.Autowired;
+
 import org.sakaiproject.authz.api.AuthzGroup;
 import org.sakaiproject.authz.api.AuthzPermissionException;
 import org.sakaiproject.authz.api.GroupNotDefinedException;
@@ -24,14 +44,15 @@ import org.sakaiproject.tool.api.SessionManager;
  *
  * @author Matthew Buckett
  */
-public class AuthzGroupProviderSync implements StatefulJob {
-
-	private static final Logger log = LoggerFactory.getLogger(AuthzGroupProviderSync.class);
-	
+@DisallowConcurrentExecution
+@Slf4j
+public class AuthzGroupProviderSync implements InterruptableJob {
 	// If it's been modified in the last hour ignore it.
 	private long refreshAge = 3600000;
 	
 	private int batchSize = 200;
+
+	private boolean run = true;
 	
 	private SessionManager sessionManager;
 	private AuthzGroupService authzGroupService;
@@ -45,11 +66,11 @@ public class AuthzGroupProviderSync implements StatefulJob {
 		try {
 			groupsTotal = authzGroupService.countAuthzGroups(null);
 			Iterator<AuthzGroup> groupsIt = getAuthzGroups();
-			while (groupsIt.hasNext()) {
+			while (groupsIt.hasNext() && run) {
 				AuthzGroup group = groupsIt.next();
 				groupsProcessed++;
 				if (group.getProviderGroupId() != null && group.getProviderGroupId().length() > 0) {
-					if (System.currentTimeMillis() - group.getModifiedTime().getTime() > refreshAge) {
+					if (System.currentTimeMillis() - group.getModifiedDate().getTime() > refreshAge) {
 						try {
 							// Need to load the group before we can save it.
 							AuthzGroup groupToRefresh = authzGroupService.getAuthzGroup(group.getId());
@@ -81,7 +102,8 @@ public class AuthzGroupProviderSync implements StatefulJob {
 					" Processed: "+ groupsProcessed+
 					" Updated: "+ groupsUpdated+
 					" No Provider: "+ groupsNoProvider+
-					" Too New: "+ groupsTooNew
+					" Too New: "+ groupsTooNew+
+					((run)?" finished.":" stopped early.")
 					);
 			session.invalidate();
 		}
@@ -98,14 +120,14 @@ public class AuthzGroupProviderSync implements StatefulJob {
 			private int current = 1;
 			private int size = batchSize;
 			private boolean tryGetMore = true;
-			private Iterator<AuthzGroup> internalIt = Collections.EMPTY_LIST.iterator(); 
+			private Iterator<AuthzGroup> internalIt = Collections.<AuthzGroup>emptyList().iterator();
 			
 			private boolean checkOrLoadNext() {
 				if (internalIt.hasNext()) {
 					return true;
 				}
 				if (tryGetMore) {
-					List groups = authzGroupService.getAuthzGroups(null, new PagingPosition(current, current+size));
+					List<AuthzGroup> groups = authzGroupService.getAuthzGroups(null, new PagingPosition(current, current+size));
 					if (groups.size() < size) {
 						tryGetMore = false;
 					}
@@ -132,19 +154,28 @@ public class AuthzGroupProviderSync implements StatefulJob {
 		};
 	}
 
+	@Autowired(required = false)
 	public void setRefreshAge(long refreshAge) {
 		this.refreshAge = refreshAge;
 	}
-	
+
+	@Autowired(required = false)
 	public void setBatchSize(int batchSize) {
 		this.batchSize = batchSize;
 	}
 
+	@Autowired
 	public void setSessionManager(SessionManager sessionManager) {
 		this.sessionManager = sessionManager;
 	}
 
+	@Autowired
 	public void setAuthzGroupService(AuthzGroupService authzGroupService) {
 		this.authzGroupService = authzGroupService;
+	}
+
+	@Override
+	public void interrupt() throws UnableToInterruptJobException {
+		run = false;
 	}
 }

@@ -4,17 +4,18 @@
   <parent>
     <groupId>org.sakaiproject.content</groupId>
     <artifactId>cloud-content</artifactId>
-    <version>12-SNAPSHOT</version>
+    <version>21-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
   <name>Sakai Cloud Resources Providers (impl)</name>
   <groupId>org.sakaiproject.content</groupId>
   <artifactId>cloud-content-impl</artifactId>
-  <packaging>jar</packaging>
+  <packaging>sakai-component</packaging>
 
   <properties>
-    <jclouds.version>1.9.1</jclouds.version>
+    <jclouds.version>2.2.0</jclouds.version>
+    <deploy.target>components</deploy.target>
   </properties>
 
   <dependencies>

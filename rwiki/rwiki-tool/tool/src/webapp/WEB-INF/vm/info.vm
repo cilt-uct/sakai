@@ -67,7 +67,7 @@
 		<div class="navPanel">
 			<div class="viewNav">
 				<h3 class="breadcrumb">
-					<span id="breadPref">${rlb.jsp_info}:&nbsp;</span><span id="breadCurr">${util.escapeHtml($renderBean.localisedPageName)}</span>
+					<span id="breadPref">${rlb.jsp_info_breadcrumb}:&nbsp;</span><span id="breadCurr">${util.escapeHtml($renderBean.localisedPageName)}</span>
 				</h3>
 			</div>	
 			<div class="listNav specialLink">
@@ -492,9 +492,6 @@
 		    	<th><a href="#" class="rwiki_help_popup_link" name="feedshelp" >${rlb.jsp_feeds}</a></th>
 		     <td colspan="6">
 			      <ul id="feedsLinks">
-			       <li>
-					  <a href="${util.escapeHtml(${realmBean.printViewUrl})}" target="printview" >					  <img border="0" alt="${rlb.jsp_printer_friendly}" src="/library/image/silk/printer.png"/> ${rlb.jsp_printer_friendly}</a>
-			       </li>
 ##			       <li>
 ##			        <a href="${util.escapeHtml(${realmBean.publicViewUrl})}" target="publicview" >${rlb.jsp_public}</a>
 ##			       </li>

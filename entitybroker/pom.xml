@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.sakaiproject</groupId>
     <artifactId>master</artifactId>
-    <version>12-SNAPSHOT</version>
+    <version>21-SNAPSHOT</version>
     <relativePath>../master/pom.xml</relativePath>
   </parent>
 
@@ -12,11 +12,6 @@
   <groupId>org.sakaiproject</groupId>
   <artifactId>entitybroker</artifactId>
   <packaging>pom</packaging>
-  <organization>
-    <name>Sakai Project</name>
-    <url>http://sakaiproject.org/</url>
-  </organization>
-  <inceptionYear>2007</inceptionYear>
   <url>http://confluence.sakaiproject.org/confluence/x/F7M</url>
   <description>The Sakai Entity Broker is an entity system for use in Sakai. Ideally we
         want flexible entities which make development of integrated Sakai tools easier and
@@ -69,14 +64,6 @@
       <timezone>0</timezone>
     </developer>
   </developers>
-  <licenses>
-    <license>
-      <name>Educational Community License, Version 2.0</name>
-      <url>http://www.opensource.org/licenses/ecl2.txt</url>
-      <distribution>repo</distribution>
-    </license>
-  </licenses>
-  <!-- define source code repository location -->
   <dependencyManagement>
     <dependencies>
       <dependency>
@@ -115,14 +102,14 @@
       <dependency>
         <groupId>org.mortbay.jetty</groupId>
         <artifactId>jetty</artifactId>
-        <version>6.1.11</version>
+        <version>6.1.26</version>
         <type>jar</type>
         <scope>test</scope>
       </dependency>
       <dependency>
         <groupId>org.mortbay.jetty</groupId>
         <artifactId>jetty-servlet-tester</artifactId>
-        <version>6.1.11</version>
+        <version>6.1.26</version>
         <type>jar</type>
         <scope>test</scope>
       </dependency>

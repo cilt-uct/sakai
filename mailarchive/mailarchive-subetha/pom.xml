@@ -5,18 +5,13 @@
     <parent>
         <groupId>org.sakaiproject.mailarchive</groupId>
         <artifactId>mailarchive</artifactId>
-        <version>12-SNAPSHOT</version>
+        <version>21-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
     <name>sakai-mailarchive-subetha</name>
     <groupId>org.sakaiproject.mailarchive</groupId>
     <artifactId>sakai-mailarchive-subetha</artifactId>
-    <organization>
-        <name>Sakai Foundation</name>
-        <url>http://sakaiproject.org/</url>
-    </organization>
-    <inceptionYear>2014</inceptionYear>
     <packaging>sakai-component</packaging>
 
     <properties>
@@ -51,11 +46,11 @@
         </dependency>
         <dependency>
             <groupId>com.sun.mail</groupId>
-            <artifactId>javax.mail</artifactId>
+            <artifactId>jakarta.mail</artifactId>
         </dependency>
         <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
         </dependency>
         <dependency>
             <groupId>commons-io</groupId>
@@ -64,16 +59,15 @@
         <dependency>
             <groupId>commons-net</groupId>
             <artifactId>commons-net</artifactId>
-            <version>1.1.0</version>
+            <version>3.6</version>
         </dependency>
         <dependency>
             <groupId>javax.servlet</groupId>
-            <artifactId>servlet-api</artifactId>
+            <artifactId>javax.servlet-api</artifactId>
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
-            <version>1.9.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

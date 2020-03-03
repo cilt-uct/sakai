@@ -3,7 +3,7 @@
 <%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
 <%@ taglib uri="http://myfaces.apache.org/tomahawk" prefix="t" %>
 
-<f:view locale="#{UserLocale.localeExcludeCountryForIE}">
+<f:view>
 	<jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
 	   <jsp:setProperty name="msgs" property="baseName" value="messages"/>
 	</jsp:useBean>
@@ -12,11 +12,11 @@
 			@import url("/sakai-signup-tool/css/signupStyle.css");
 		</style>
 <h:outputText value="#{Portal.latestJQuery}" escape="false"/>
-		<script TYPE="text/javascript" LANGUAGE="JavaScript" src="/sakai-signup-tool/js/signupScript.js"></script>
-		
-    	<script type="text/javascript">
-    		 jQuery.noConflict();//this requried by calendar dropdown tomhawk
-    		 
+        <script src="/library/js/lang-datepicker/lang-datepicker.js"></script>
+		<script src="/sakai-signup-tool/js/signupScript.js"></script>
+
+		<script>
+
 		     var timeslotTag; 
 		     var maxAttendeeTag;
 		     var originalTsVal; 
@@ -30,6 +30,52 @@
 			 var signupBeginTag;
     	 	//initialization of the page
     	 	jQuery(document).ready(function() {
+
+                localDatePicker({
+                    input: '#meeting\\:startTime',
+                    useTime: 1,
+                    parseFormat: 'YYYY-MM-DD HH:mm:ss',
+                    allowEmptyDate: false,
+                    val: '<h:outputText value="#{CopyMeetingSignupMBean.signupMeeting.startTime}"><f:convertDateTime pattern="yyyy-MM-dd HH:mm:ss" timeZone="#{UserTimeZone.userTimeZone}" /></h:outputText>',
+                    ashidden: {
+                            iso8601: 'startTimeISO8601',
+                            month:"meeting_startTime_month",
+                            day:"meeting_startTime_day",
+                            year:"meeting_startTime_year",
+                            hour:"meeting_startTime_hours",
+                            minute:"meeting_startTime_minutes",
+                            ampm:"meeting_startTime_ampm"}
+                });
+
+                localDatePicker({
+                    input: '#meeting\\:endTime',
+                    useTime: 1,
+                    parseFormat: 'YYYY-MM-DD HH:mm:ss',
+                    allowEmptyDate: false,
+                    val: '<h:outputText value="#{CopyMeetingSignupMBean.signupMeeting.endTime}"><f:convertDateTime pattern="yyyy-MM-dd HH:mm:ss" timeZone="#{UserTimeZone.userTimeZone}" /></h:outputText>',
+                    ashidden: {
+                            iso8601: 'endTimeISO8601',
+                            month:"meeting_endTime_month",
+                            day:"meeting_endTime_day",
+                            year:"meeting_endTime_year",
+                            hour:"meeting_endTime_hours",
+                            minute:"meeting_endTime_minutes",
+                            ampm:"meeting_endTime_ampm"}
+                });
+
+                localDatePicker({
+                    input: '#meeting\\:until',
+                    useTime: 0,
+                    parseFormat: 'YYYY-MM-DD',
+                    allowEmptyDate: false,
+                    val: '<h:outputText value="#{CopyMeetingSignupMBean.repeatUntilString}"><f:convertDateTime pattern="yyyy-MM-dd" timeZone="#{UserTimeZone.userTimeZone}" /></h:outputText>',
+                    ashidden: {
+                            iso8601: 'untilISO8601',
+                            month:"meeting_until_month",
+                            day:"meeting_until_day",
+                            year:"meeting_until_year"}
+                });
+
     	 		timeslotTag = document.getElementById("meeting:numberOfSlot");
    	         	maxAttendeeTag = document.getElementById("meeting:numberOfAttendees");
    	         	originalTsVal = timeslotTag? timeslotTag.value : 0;
@@ -46,7 +92,6 @@
    	 		
 				 currentSiteSelection();
 	   	         otherUserSitesSelection();	         
-	   	         replaceCalendarImageIcon();
 	   	         initGroupTypeRadioButton();
 	   	         userDefinedTsChoice();
 	   	         isShowEmailChoice();
@@ -133,7 +178,9 @@
 			<h:outputText value="#{msgs.event_error_alerts} #{messageUIBean.errorMessage}" styleClass="alertMessage" escape="false" rendered="#{messageUIBean.error}"/>      			
 			<h:outputText id="iframeId" value="#{CopyMeetingSignupMBean.iframeId}" style="display:none"/>	
 			<h:form id="meeting">
-			 	<sakai:view_title value="#{msgs.event_copy_meeting_page_title}"/>
+				<div class="page-header">
+					<sakai:view_title value="#{msgs.event_copy_meeting_page_title}"/>
+				</div>
 				<sakai:doc_section>
 					<h:panelGrid columns="1" styleClass="instruction">						
 						<h:panelGroup> 
@@ -151,11 +198,10 @@
 					<%-- Title --%>
 					<div class="form-group row ">
 						<h:outputLabel value="#{msgs.event_name}" for="meetingTitle" escape="false" 
-									styleClass="col-lg-2 form-control-label form-required"/>
+									styleClass="col-lg-2 form-required"/>
 						<div class="col-lg-10">
-							<h:inputText id="meetingTitle" value="#{CopyMeetingSignupMBean.signupMeeting.title}" 
-								required="true" size="40" styleClass="editText form-control">
-								<f:validator validatorId="Signup.EmptyStringValidator"/>
+							<h:inputText id="meetingTitle" value="#{CopyMeetingSignupMBean.title}" 
+								size="40" styleClass="editText form-control">
 								<f:validateLength maximum="255" />
 							</h:inputText>
 							<h:message for="meetingTitle" errorClass="alertMessageInline"/>
@@ -165,7 +211,7 @@
 					<%-- Organiser --%>
 					<div class="form-group row">
 						<h:outputLabel value="#{msgs.event_owner}" for="creatorUserId" 
-								styleClass="col-lg-2 form-control-label" escape="false"/>
+								styleClass="col-lg-2" escape="false"/>
 						<div class="col-lg-10">
 						 	<h:selectOneMenu id="creatorUserId" value="#{CopyMeetingSignupMBean.creatorUserId}">
 								<f:selectItems value="#{CopyMeetingSignupMBean.instructors}"/>
@@ -175,7 +221,8 @@
 
 					<%-- Location --%>
 					<div class="form-group row ">
-						<h:outputLabel value="#{msgs.event_location}"  escape="false" styleClass="col-lg-2 form-control-label form-required"/>
+						<h:outputLabel value="#{msgs.event_location}"  escape="false" styleClass="col-lg-2 form-required" for="selectedLocation" />
+
 						<div class="col-lg-10">
 							<!-- Displays all the locations in the dropdown -->
 							<h:selectOneMenu id="selectedLocation" value="#{CopyMeetingSignupMBean.selectedLocation}">
@@ -200,7 +247,8 @@
 
 					<%--Category --%>
 					<div class="form-group row">
-						<h:outputLabel value="#{msgs.event_category}"  escape="false" styleClass="col-lg-2 form-control-label"/>
+						<h:outputLabel value="#{msgs.event_category}"  escape="false" styleClass="col-lg-2" for="selectedCategory" />
+
 						<div class="col-lg-10">
 							<!-- Displays all the categories in the dropdown -->
 							<h:selectOneMenu id="selectedCategory" value="#{CopyMeetingSignupMBean.selectedCategory}">
@@ -226,7 +274,7 @@
 
 					<%--Description --%>
 					<div class="form-group row">
-						<h:outputLabel value="#{msgs.event_description}" styleClass="col-lg-12 form-control-label" escape="false"/>
+						<h:outputLabel value="#{msgs.event_description}" styleClass="col-lg-12" escape="false"/>
 						<div class="col-lg-12">
 							<sakai:rich_text_area value="#{CopyMeetingSignupMBean.signupMeeting.description}"
 								 width="720" height="200" rows="5" columns="80"/>
@@ -256,43 +304,31 @@
 
 					<%-- Start time --%>
 					<div class="form-group row ">
-						<h:outputLabel value="#{msgs.event_start_time}"  styleClass="col-lg-2 form-control-label form-required" escape="false"/>
+						<h:outputLabel value="#{msgs.event_start_time}"  styleClass="col-lg-2 form-required" escape="false"/>
 						<h:panelGroup styleClass="editText col-lg-10" rendered="#{!CopyMeetingSignupMBean.customTsType}" layout="block" >
-							<t:inputDate id="startTime" type="both"  ampm="true" value="#{CopyMeetingSignupMBean.signupMeeting.startTime}" timeZone="#{UserTimeZone.userTimeZoneStr}"
-										style="color:black;" popupCalendar="true" onkeyup="setEndtimeMonthDateYear();getSignupDuration();sakai.updateSignupBeginsExact();return false;"
-										onchange="sakai.updateSignupBeginsExact();"/>
+							<h:inputText value="#{CopyMeetingSignupMBean.startTimeString}" size="28" id="startTime" 
+								onkeyup="setEndtimeMonthDateYear();getSignupDuration();sakai.updateSignupBeginsExact();return false;"
+								onchange="sakai.updateSignupBeginsExact();"/>
 							<h:message for="startTime" errorClass="alertMessageInline"/>
 						</h:panelGroup>
 						<h:panelGroup rendered="#{CopyMeetingSignupMBean.customTsType}" layout="block" styleClass="col-lg-6">
 							<h:outputText value="#{CopyMeetingSignupMBean.signupMeeting.startTime}" styleClass="longtext">
-								<f:convertDateTime pattern="EEEEEEEE, " timeZone="#{UserTimeZone.userTimeZone}"/>
-							</h:outputText>
-							<h:outputText value="#{CopyMeetingSignupMBean.signupMeeting.startTime}" styleClass="longtext">
-								<f:convertDateTime dateStyle="long" timeZone="#{UserTimeZone.userTimeZone}"/>
-							</h:outputText>
-							<h:outputText value="#{CopyMeetingSignupMBean.signupMeeting.startTime}" styleClass="longtext">
-								<f:convertDateTime pattern=", h:mm a" timeZone="#{UserTimeZone.userTimeZone}"/>
+								<f:convertDateTime pattern="#{UserLocale.fullDateTimeFormat}" timeZone="#{UserTimeZone.userTimeZone}"/>
 							</h:outputText>		
 						</h:panelGroup>
 					</div>
 
 					<%-- End time --%>
 					<div class="form-group row ">
-						<h:outputLabel value="#{msgs.event_end_time}" escape="false" styleClass="col-lg-2 form-control-label form-required"/>
+						<h:outputLabel value="#{msgs.event_end_time}" escape="false" styleClass="col-lg-2 form-required"/>
 						<h:panelGroup styleClass="editText col-lg-10" rendered="#{!CopyMeetingSignupMBean.customTsType}" layout="block">
-							<t:inputDate id="endTime" type="both" ampm="true" value="#{CopyMeetingSignupMBean.signupMeeting.endTime}" timeZone="#{UserTimeZone.userTimeZoneStr}" style="color:black;" popupCalendar="true" 
+							<h:inputText value="#{CopyMeetingSignupMBean.endTimeString}" size="28" id="endTime" 
 								onkeyup="getSignupDuration(); sakai.updateSignupEndsExact(); return false;" onchange="sakai.updateSignupEndsExact();"/>
 							<h:message for="endTime" errorClass="alertMessageInline"/>
 						</h:panelGroup>
 						<h:panelGroup rendered="#{CopyMeetingSignupMBean.customTsType}" styleClass="col-lg-6" layout="block">
 							<h:outputText value="#{CopyMeetingSignupMBean.signupMeeting.endTime}" styleClass="longtext">
-								<f:convertDateTime pattern="EEEEEEEE, " timeZone="#{UserTimeZone.userTimeZone}"/>
-							</h:outputText>
-							<h:outputText value="#{CopyMeetingSignupMBean.signupMeeting.endTime}" styleClass="longtext">
-									<f:convertDateTime dateStyle="long" timeZone="#{UserTimeZone.userTimeZone}"/>
-							</h:outputText>
-							<h:outputText value="#{CopyMeetingSignupMBean.signupMeeting.endTime}" styleClass="longtext">
-								<f:convertDateTime pattern=", h:mm a" timeZone="#{UserTimeZone.userTimeZone}"/>
+								<f:convertDateTime pattern="#{UserLocale.fullDateTimeFormat}" timeZone="#{UserTimeZone.userTimeZone}"/>
 							</h:outputText>
 						</h:panelGroup>
 					</div>
@@ -304,7 +340,7 @@
 					</div>
 					<%--  Meeting frequency --%>
 					<div class="form-group row">
-						<h:outputLabel styleClass="form-control-label col-lg-2" value="#{msgs.event_recurrence}" />
+						<h:outputLabel styleClass="col-lg-2" value="#{msgs.event_recurrence}" />
 						<div class="col-lg-10">
 							<h:selectOneMenu id="recurSelector" value="#{CopyMeetingSignupMBean.repeatType}" styleClass="titleText" onchange="isShowCalendar(value); isShowAssignToAllChoice(); isCopyRecurEvents(value); return false;">
 								<f:selectItem itemValue="no_repeat" itemLabel="#{msgs.label_once}"/>
@@ -329,7 +365,7 @@
 												</h:panelGroup>
 												<h:panelGroup id="endOfDate" style="margin-left:3px;">
 													<!-- t:inputCalendar id="ex" value=""  renderAsPopup="true" monthYearRowClass="" renderPopupButtonAsImage="true" dayCellClass=""   styleClass="untilCalendar"/ -->             					
-													<t:inputDate id="until" type="date"  value="#{CopyMeetingSignupMBean.repeatUntil}"  popupCalendar="true"   styleClass="untilCalendar"/>
+												<h:inputText value="#{CopyMeetingSignupMBean.repeatUntilString}" size="28" id="until" />
 													<h:message for="until" errorClass="alertMessageInline" style="margin-left:10px" /> 
 												</h:panelGroup>
 											</h:panelGrid>
@@ -341,7 +377,7 @@
 
 					<%-- Signup begin --%>
 					<div class="form-group row">
-						<h:outputLabel value="#{msgs.event_signup_start}" styleClass="form-control-label col-lg-2"
+						<h:outputLabel value="#{msgs.event_signup_start}" styleClass="col-lg-2"
 								rendered="#{!CopyMeetingSignupMBean.announcementType}" escape="false"/>
 						<h:panelGroup layout="block" rendered="#{!CopyMeetingSignupMBean.announcementType}" styleClass="col-lg-10">
 							<h:panelGroup>
@@ -366,7 +402,7 @@
 					
 					<%-- Signup end --%>
 					<div class="form-group row">
-						<h:outputLabel value="#{msgs.event_signup_deadline}" styleClass="form-control-label col-lg-2"
+						<h:outputLabel value="#{msgs.event_signup_deadline}" styleClass="col-lg-2"
 								rendered="#{!CopyMeetingSignupMBean.announcementType}" escape="false"/>
 						<h:panelGroup layout="block" styleClass="col-lg-10" rendered="#{!CopyMeetingSignupMBean.announcementType}">
 							<h:panelGroup>
@@ -390,7 +426,7 @@
 
 					<%-- Display site/groups --%>
 					<div class="form-group row ">
-						<h:outputLabel value ="#{msgs.event_publish_to}" styleClass="form-control-label col-lg-2 form-required"/>
+						<h:outputLabel value ="#{msgs.event_publish_to}" styleClass="col-lg-2 form-required"/>
 						<div class="col-lg-10">
 							<h:panelGroup rendered="#{CopyMeetingSignupMBean.missingSitGroupWarning}" layout="block">
 								<h:panelGrid columns="1">
@@ -476,7 +512,7 @@
 					
 					<%-- Attendance --%>
 					<h:panelGroup styleClass="form-group row" rendered="#{CopyMeetingSignupMBean.attendanceOn}" layout="block">
-						<h:outputLabel value="#{msgs.event_signup_attendance}" escape="false" styleClass="col-lg-2 form-control-label"/>
+						<h:outputLabel value="#{msgs.event_signup_attendance}" escape="false" styleClass="col-lg-2"/>
 						<div class="col-lg-10">
 							<h:selectBooleanCheckbox id="attendanceSelection" value="#{CopyMeetingSignupMBean.signupMeeting.allowAttendance}" />
 							<h:outputLabel value="#{msgs.attend_taken}" for="attendanceSelection" styleClass="titleText"/>
@@ -486,7 +522,7 @@
 
 					<%-- Handle meeting types --%>
 					<div class="form-group row ">
-						<h:outputLabel value ="#{msgs.event_type_title}" styleClass="col-lg-2 form-control-label form-required"/>
+						<h:outputLabel value ="#{msgs.event_type_title}" styleClass="col-lg-2 form-required"/>
 						<div class="col-lg-10">
 							<h:outputText value="#{msgs.label_custom_timeslots}"  escape="false" rendered="#{CopyMeetingSignupMBean.customTsType}"/>
 							<h:panelGroup rendered="#{!CopyMeetingSignupMBean.customTsType}">                
@@ -495,38 +531,56 @@
 										<f:selectItems value="#{CopyMeetingSignupMBean.meetingTypeRadioBttns}"/>
 									</h:selectOneRadio> 
 								</h:panelGroup>
-								<div class="table-responsive">
-								<h:panelGrid columns="1" columnClasses="miCol1">
-									<%-- multiple: --%>
-									<h:panelGroup rendered="#{CopyMeetingSignupMBean.individualType}">            
-										<h:panelGrid columns="2" id="mutipleCh" styleClass="mi" columnClasses="miCol1,miCol2"> 
-											<h:outputText id="maxAttendeesPerSlot" style="display:none" value="#{CopyMeetingSignupMBean.maxAttendeesPerSlot}"></h:outputText>
-											<h:outputText id="maxSlots" style="display:none" value="#{CopyMeetingSignupMBean.maxSlots}"></h:outputText>   
-											<h:outputText value="#{msgs.event_num_slot_avail_for_signup}" />
-											<h:inputText  id="numberOfSlot" value="#{CopyMeetingSignupMBean.numberOfSlots}" size="2" styleClass="editText" onkeyup="getSignupDuration();return false;" style="margin-left:12px" />
-											<h:outputText value="#{msgs.event_num_participant_per_timeslot}" styleClass="titleText" escape="false"/>                    
-											<h:inputText id="numberOfAttendees" value="#{CopyMeetingSignupMBean.maxNumOfAttendees}" styleClass="editText" size="2" style="margin-left:12px" onkeyup="validateAttendee();return false;" />
-											<h:outputText value="#{msgs.event_duration_each_timeslot_not_bold}" styleClass="titleText" escape="false"/>
-											<h:inputText id='currentTimeslotDuration' value="0" styleClass='longtext_red' size="2" onfocus="this.blur();" style="margin-left:12px;" />             
-										</h:panelGrid>
-									</h:panelGroup>
-									<%-- single: --%>
-									<h:panelGroup rendered="#{CopyMeetingSignupMBean.groupType}">
-										<h:panelGrid columns="2" id="singleCh" rendered="true" styleClass="si" columnClasses="miCol1,miCol2">                
-											<h:selectOneRadio id="groupSubradio" value="#{CopyMeetingSignupMBean.unlimited}"  onclick="switchSingle(value)" styleClass="meetingRadioBtn" layout="pageDirection" >
-												<f:selectItem itemValue="#{false}" itemLabel="#{msgs.tab_max_attendee}"/>
-												<f:selectItem itemValue="#{true}" itemLabel="#{msgs.unlimited_num_attendee}"/>
-											</h:selectOneRadio>
-											<h:panelGrid columns="1" columnClasses="miCol1">
-												<h:panelGroup  styleClass="meetingMaxAttd" >
-													<h:inputText id="maxAttendee" value="#{CopyMeetingSignupMBean.maxNumOfAttendees}" size="2" styleClass="editText" onkeyup="validateParticipants();return false;"/>	                                 
-												</h:panelGroup>
-												<h:outputText value="&nbsp;" styleClass="titleText" escape="false"/>
-											</h:panelGrid>
-										</h:panelGrid>
-									</h:panelGroup>
-									<h:outputText id="announ" value="&nbsp;" rendered="#{CopyMeetingSignupMBean.announcementType}" styleClass="titleText" escape="false"/>
-								</h:panelGrid></div>
+								<%-- multiple: --%>
+								<h:panelGroup rendered="#{CopyMeetingSignupMBean.individualType}" id="multipleCh" styleClass="mi" layout="block">
+									<h:outputText id="maxAttendeesPerSlot" style="display:none" value="#{CopyMeetingSignupMBean.maxAttendeesPerSlot}" />
+									<h:outputText id="maxSlots" style="display:none" value="#{CopyMeetingSignupMBean.maxSlots}" />
+
+									<div class="form-group row">
+										<h:outputLabel value="#{msgs.event_num_slot_avail_for_signup}" for="numberOfSlot" styleClass="col-lg-4" />
+										<h:panelGroup styleClass="col-lg-8" layout="block">
+											<h:inputText id="numberOfSlot" value="#{CopyMeetingSignupMBean.numberOfSlots}" size="2" styleClass="editText" onkeyup="getSignupDuration();return false;" />
+										</h:panelGroup>
+									</div>
+
+									<div class="form-group row">
+										<h:outputLabel value="#{msgs.event_num_participant_per_timeslot}" for="numberOfAttendees" styleClass="col-lg-4 titleText" escape="false" />
+										<h:panelGroup styleClass="col-lg-8" layout="block">
+											<h:inputText id="numberOfAttendees" value="#{CopyMeetingSignupMBean.maxNumOfAttendees}" styleClass="editText" size="2" onkeyup="validateAttendee();return false;" />
+										</h:panelGroup>
+									</div>
+
+									<div class="form-group row">
+										<h:outputLabel value="#{msgs.event_duration_each_timeslot_not_bold}" for="currentTimeslotDuration" styleClass="col-lg-4 titleText" escape="false" />
+										<h:panelGroup styleClass="col-lg-8" layout="block">
+											<h:inputText id="currentTimeslotDuration" value="0" styleClass='longtext_red' size="2" disabled="true" />
+										</h:panelGroup>
+									</div>
+								</h:panelGroup>
+
+								<%-- single: --%>
+								<h:panelGroup rendered="#{CopyMeetingSignupMBean.groupType}" styleClass="si" layout="block">
+									<div class="form-group row">
+										<t:selectOneRadio id="groupSubradio" value="#{CopyMeetingSignupMBean.unlimited}" onclick="switchSingle(value)" styleClass="meetingRadioBtn" layout="spread">
+											<f:selectItem itemValue="#{false}" itemLabel="#{msgs.tab_max_attendee}"/>
+											<f:selectItem itemValue="#{true}" itemLabel="#{msgs.unlimited_num_attendee}"/>
+										</t:selectOneRadio>
+										<div class="form-group row">
+											<h:panelGroup styleClass="col-lg-4">
+												<t:radio for="groupSubradio" id="radioMaxAttendee" index="0" />
+											</h:panelGroup>
+											<h:panelGroup styleClass="col-lg-8 meetingMaxAttd" layout="block">
+												<h:inputText id="maxAttendee" value="#{CopyMeetingSignupMBean.maxNumOfAttendees}" size="2" styleClass="editText" onkeyup="validateParticipants();return false;"/>
+											</h:panelGroup>
+										</div>
+										<div class="form-group row">
+											<h:panelGroup styleClass="col-lg-4">
+												<t:radio for="groupSubradio" id="radioUnlimitedAttendee" index="1" />
+											</h:panelGroup>
+										</div>
+									</div>
+								</h:panelGroup>
+								<h:outputText id="announ" value="&nbsp;" rendered="#{CopyMeetingSignupMBean.announcementType}" styleClass="titleText" escape="false"/>
 							</h:panelGroup>
 						</div>
 					</div>
@@ -534,7 +588,7 @@
 					<!-- User can switch from individual type to custom_ts type -->
 					<h:panelGroup rendered="#{!CopyMeetingSignupMBean.customTsType && !CopyMeetingSignupMBean.announcementType}" 
 								styleClass="form-group row" layout="block">
-						<h:outputLabel id="userDefTsChoice_1" value="" styleClass="form-control-label col-lg-2"/>
+						<h:outputLabel id="userDefTsChoice_1" value="" styleClass="col-lg-2"/>
 						<div class="col-lg-10">
 							<h:panelGroup id="userDefTsChoice_2"  styleClass="longtext" layout="block">
 								<h:panelGrid>
@@ -557,7 +611,7 @@
 
 					<!-- Edit custom defined TS -->
 					<h:panelGroup styleClass="form-group row" rendered="#{CopyMeetingSignupMBean.customTsType}" layout="block">
-						<h:outputLabel value="#{msgs.event_show_schedule}" styleClass="col-lg-2 form-control-label"/>
+						<h:outputLabel value="#{msgs.event_show_schedule}" styleClass="col-lg-2"/>
 						<div class="col-lg-10">
 							<h:commandLink action="#{CopyMeetingSignupMBean.editUserDefTimeSlots}" >
 								<h:graphicImage value="/images/cal.gif" alt="close" style="border:none;cursor:pointer; padding-right:5px;" styleClass="openCloseImageIcon" />
@@ -568,7 +622,7 @@
 					
 					<!-- Keep Current participants -->
 					<h:panelGroup  rendered="#{!CopyMeetingSignupMBean.announcementType}" layout="block" styleClass="form-group row">
-						<h:outputLabel value="#{msgs.event_keep_current_attendees}" styleClass="col-lg-2 form-control-label" escape="false" />
+						<h:outputLabel value="#{msgs.event_keep_current_attendees}" styleClass="col-lg-2" escape="false" />
 						<div class="col-lg-10">
 							<h:panelGrid columns="1" >
 								<h:panelGroup styleClass="longtext">
@@ -585,7 +639,7 @@
 					
 					<!-- Publish to calendar -->
 					<div class="form-group row">
-						<h:outputLabel  value="#{msgs.event_publish_to_calendar}" styleClass="col-lg-2 form-control-label" escape="false" />
+						<h:outputLabel  value="#{msgs.event_publish_to_calendar}" styleClass="col-lg-2" escape="false" />
 						<div class="col-lg-10">
 							<h:selectBooleanCheckbox value="#{CopyMeetingSignupMBean.publishToCalendar}"/>
 							<h:outputText value="#{msgs.event_yes_publish_to_calendar}" escape="false"/>
@@ -594,7 +648,7 @@
 
 					<!--  Announce Availability -->
 					<div class="form-group row">
-						<h:outputLabel value="#{msgs.event_create_email_notification}" styleClass="col-lg-2 form-control-label" escape="false"/>
+						<h:outputLabel value="#{msgs.event_create_email_notification}" styleClass="col-lg-2" escape="false"/>
 						<h:panelGroup styleClass="col-lg-10" layout="block" rendered="#{!CopyMeetingSignupMBean.publishedSite}">
 							<h:selectBooleanCheckbox value="#{CopyMeetingSignupMBean.sendEmail}" disabled="true"/>
 							<h:outputText value="#{msgs.event_email_not_send_out_label}" escape="false" style="color:#b11"/>
@@ -615,7 +669,7 @@
 				</div>
 
 				<sakai:button_bar>
-					<h:commandButton id="copy" action="#{CopyMeetingSignupMBean.processSaveCopy}" actionListener="#{CopyMeetingSignupMBean.validateCopyMeeting}" value="#{msgs.publish_new_evnt_button}" 
+					<h:commandButton id="copy" styleClass="active" action="#{CopyMeetingSignupMBean.processSaveCopy}" actionListener="#{CopyMeetingSignupMBean.validateCopyMeeting}" value="#{msgs.publish_new_evnt_button}" 
 					onclick="return alertTruncatedAttendees('#{msgs.event_alert_truncate_attendee}','#{UserDefineTimeslotBean.truncatedAttendees}')"/> 			
 					<h:commandButton id="cancel" action="#{CopyMeetingSignupMBean.doCancelAction}" value="#{msgs.cancel_button}" />  
                 </sakai:button_bar>

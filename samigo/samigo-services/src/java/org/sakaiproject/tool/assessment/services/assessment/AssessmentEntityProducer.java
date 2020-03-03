@@ -1,13 +1,25 @@
+/**
+ * Copyright (c) 2005-2016 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.tool.assessment.services.assessment;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.net.URLDecoder;
-import java.net.URLEncoder;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -15,23 +27,16 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.Stack;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.sakaiproject.authz.api.SecurityAdvisor;
-import org.sakaiproject.authz.cover.SecurityService;
-import org.sakaiproject.content.api.ContentResource;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+
 import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.entity.api.EntityProducer;
 import org.sakaiproject.entity.api.EntityTransferrer;
-import org.sakaiproject.entity.api.EntityTransferrerRefMigrator;
 import org.sakaiproject.entity.api.HttpAccess;
 import org.sakaiproject.entity.api.Reference;
 import org.sakaiproject.entity.api.ResourceProperties;
 import org.sakaiproject.entity.cover.EntityManager;
-import org.sakaiproject.exception.IdUnusedException;
-import org.sakaiproject.exception.PermissionException;
-import org.sakaiproject.exception.TypeException;
 import org.sakaiproject.tool.assessment.data.dao.assessment.Answer;
 import org.sakaiproject.tool.assessment.data.dao.assessment.AssessmentData;
 import org.sakaiproject.tool.assessment.data.dao.assessment.ItemData;
@@ -44,17 +49,13 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
+import lombok.extern.slf4j.Slf4j;
 
-
-
-public class AssessmentEntityProducer implements EntityTransferrer,
-		EntityProducer, EntityTransferrerRefMigrator {
+@Slf4j
+public class AssessmentEntityProducer implements EntityTransferrer, EntityProducer {
 
     private static final int QTI_VERSION = 1;
     private static final String ARCHIVED_ELEMENT = "assessment";
-    private Logger log = LoggerFactory.getLogger(AssessmentEntityProducer.class);
     private QTIServiceAPI qtiService;
 
 	public void init() {
@@ -79,13 +80,8 @@ public class AssessmentEntityProducer implements EntityTransferrer,
 		return toolIds;
 	}
 
-        public void transferCopyEntities(String fromContext, String toContext, List resourceIds)
-        {
-                transferCopyEntitiesRefMigrator(fromContext, toContext, resourceIds); 
-        }
+	public Map<String, String> transferCopyEntities(String fromContext, String toContext, List<String> resourceIds, List<String> transferOptions) {
 
-        public Map<String, String> transferCopyEntitiesRefMigrator(String fromContext, String toContext, List resourceIds)
-	{
 		AssessmentService service = new AssessmentService();
 		Map<String, String> transversalMap = new HashMap<String, String>();
 		service.copyAllAssessments(fromContext, toContext, transversalMap);
@@ -214,37 +210,25 @@ public class AssessmentEntityProducer implements EntityTransferrer,
 		return true;
 	}
 
-	 
-        public void transferCopyEntities(String fromContext, String toContext, List ids, boolean cleanup)
-        {
-                transferCopyEntitiesRefMigrator(fromContext, toContext, ids, cleanup);
-        }
+	public Map<String, String> transferCopyEntities(String fromContext, String toContext, List<String> ids, List<String> options, boolean cleanup) {
 
-        public Map<String, String> transferCopyEntitiesRefMigrator(String fromContext, String toContext, List ids, boolean cleanup)
-	{	
-		try
-		{
-			if(cleanup == true)
-			{
-			        if (log.isDebugEnabled()) log.debug("deleting assessments from " + toContext);
+		try {
+			if (cleanup) {
+				if (log.isDebugEnabled()) log.debug("deleting assessments from " + toContext);
 				AssessmentService service = new AssessmentService();
 				List assessmentList = service.getAllActiveAssessmentsbyAgent(toContext);
 				log.debug("found " + assessmentList.size() + " assessments in site: " + toContext);
-				Iterator iter =assessmentList.iterator();
-				while (iter.hasNext()) {
+				for (Iterator iter = assessmentList.iterator(); iter.hasNext();) {
 					AssessmentData oneassessment = (AssessmentData) iter.next();
 					log.debug("removing assessemnt id = " +oneassessment.getAssessmentId() );
 					service.removeAssessment(oneassessment.getAssessmentId().toString());
 				}
 			}
-		}
-		catch (Exception e)
-		{
-			e.printStackTrace();
-			log.info("transferCopyEntities: End removing Assessment data");
+		} catch (Exception e) {
+			log.error("transferCopyEntities: End removing Assessment data", e);
 		}
 		
-		return transferCopyEntitiesRefMigrator(fromContext, toContext, ids);
+		return transferCopyEntities(fromContext, toContext, ids, null);
 	}
 
 	/**

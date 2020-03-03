@@ -32,8 +32,8 @@ import java.util.regex.Pattern;
 import javax.servlet.ServletConfig;
 import javax.servlet.http.HttpServletRequest;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.tool.api.SessionManager;
 
@@ -43,12 +43,10 @@ import org.sakaiproject.tool.api.SessionManager;
  * </p>
  * @deprecated use apache commons utils for {@link org.sakaiproject.util.api.FormattedText}, this will be removed after 2.9 - Dec 2011
  */
-@Deprecated 
+@Deprecated
+@Slf4j
 public class Web
 {
-	/** Our log (commons). */
-	private static Logger M_log = LoggerFactory.getLogger(Web.class);
-
 	// used to remove javascript from html
 	private static final String START_JAVASCRIPT = "<script";
 	private static final String END_JAVASCRIPT = "</script>";
@@ -59,7 +57,7 @@ public class Web
 	 * @param value
 	 *        The string to escape.
 	 * @return value fully escaped for HTML.
-     * @deprecated this is a passthrough for {@link FormattedText#escapeHtml(String, boolean)} so use that instead
+     * @deprecated this is a passthrough for {@link org.sakaiproject.util.api.FormattedText#escapeHtml(String, boolean)} so use that instead
 	 */
 	public static String escapeHtml(String value)
 	{
@@ -72,7 +70,7 @@ public class Web
 	 * @param value
 	 *        The string to escape.
 	 * @return value escaped for HTML.
-	 * @deprecated this is a passthrough for {@link FormattedText#escapeHtmlFormattedText(String)} so use that instead
+	 * @deprecated this is a passthrough for {@link org.sakaiproject.util.api.FormattedText#escapeHtmlFormattedText(String)} so use that instead
 	 */
 	public static String escapeHtmlFormattedText(String value)
 	{
@@ -87,7 +85,7 @@ public class Web
      * @param escapeNewlines
      *        Whether to escape newlines as "&lt;br /&gt;\n" so that they appear as HTML line breaks.
      * @return value fully escaped for HTML.
-     * @deprecated this is a passthrough for {@link FormattedText#escapeHtml(String, boolean)} so use that instead
+     * @deprecated this is a passthrough for {@link org.sakaiproject.util.api.FormattedText#escapeHtml(String, boolean)} so use that instead
      */
     public static String escapeHtml(String value, boolean escapeNewlines) {
         return FormattedText.escapeHtml(value, escapeNewlines);
@@ -99,7 +97,7 @@ public class Web
      * @param value
      *        The string to escape.
      * @return value escaped.
-     * @deprecated just a passthrough for {@link FormattedText#escapeJsQuoted(String)} so use that instead
+     * @deprecated just a passthrough for {@link org.sakaiproject.util.api.FormattedText#escapeJsQuoted(String)} so use that instead
      */
     public static String escapeJsQuoted(String value)
     {
@@ -115,7 +113,7 @@ public class Web
      * @param id
      *        The string to escape.
      * @return id fully escaped using URL rules.
-     * @deprecated just a passthrough for {@link Validator#escapeUrl(String)} so use that instead
+     * @deprecated just a passthrough for {@link java.net.URLEncode#encode(String, String)} so use that instead
      */
     public static String escapeUrl(String id)
     {
@@ -170,6 +168,8 @@ public class Web
 	 * @param value
 	 *        The string to escape.
 	 * @return value fully escaped using javascript / html identifier rules.
+	 * 
+	 * @deprecated use commons-text {@link org.apache.commons.text.StringEscapeUtils}
 	 */
 	public static String escapeJavascript(String value)
 	{
@@ -203,7 +203,7 @@ public class Web
 		}
 		catch (Exception e)
 		{
-			M_log.warn("escapeJavascript: ", e);
+			log.warn("escapeJavascript: ", e);
 			return value;
 		}
 	}
@@ -360,13 +360,20 @@ public class Web
 	 * @param req
 	 *        The request.
 	 * @return The URL back to this server based on the current request.
-	 * @deprecated use RequestFilter.serverUrl
+	 * @deprecated use {@link RequestFilter#serverUrl(HttpServletRequest)}
 	 */
 	public static String serverUrl(HttpServletRequest req)
 	{
 	    return RequestFilter.serverUrl(req);
 	}
 
+	/**
+	 * @param out
+	 * @param html
+	 * @param config
+	 * @param req
+	 * @return
+	 */
 	public static String snoop(PrintWriter out, boolean html, ServletConfig config, HttpServletRequest req)
 	{
 		// if no out, send to system out
@@ -546,7 +553,7 @@ public class Web
 	 **
 	 ** This method require inclusion of the javamail mail package. 
 	 ** @deprecated  It is now possible to specify encoded filenames for the browser
-	 **              see @link{Web#buildContentDisposition}
+	 **              see {@link Web#buildContentDisposition}
 	 **/
 	public static String encodeFileName(HttpServletRequest req, String fileName )
 	{
@@ -562,7 +569,7 @@ public class Web
 		}
 		catch (java.io.UnsupportedEncodingException e)
 		{
-			M_log.error(e.getMessage(), e);
+			log.error(e.getMessage(), e);
 		}
 		
 		return fileName;		

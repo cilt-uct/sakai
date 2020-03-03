@@ -23,18 +23,20 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
+
+import com.rometools.rome.feed.synd.SyndEnclosure;
+import com.rometools.rome.feed.synd.SyndEntry;
+import com.rometools.rome.feed.synd.SyndFeed;
+import com.rometools.rome.io.FeedException;
+import com.rometools.rome.io.SyndFeedInput;
+import com.rometools.rome.io.XmlReader;
 
 import au.edu.anu.portal.portlets.rss.model.Attachment;
 import au.edu.anu.portal.portlets.rss.utils.Messages;
 
-import com.sun.syndication.feed.synd.SyndEnclosure;
-import com.sun.syndication.feed.synd.SyndEntry;
-import com.sun.syndication.feed.synd.SyndFeed;
-import com.sun.syndication.io.FeedException;
-import com.sun.syndication.io.SyndFeedInput;
-import com.sun.syndication.io.XmlReader;
 
 /**
  * This class parses a feed via ROME
@@ -45,14 +47,15 @@ import com.sun.syndication.io.XmlReader;
  * @author Steve Swinsburg (steve.swinsburg@anu.edu.au)
  *
  */
+@Slf4j
 public class FeedParser {
 
     private SyndFeedInput input;
-	
+
 	public FeedParser() {
 		input  = new SyndFeedInput();
 	}
-	
+
 	/**
 	 * Parse the given feed url and return the raw type
 	 * @param feedUrl
@@ -74,18 +77,17 @@ public class FeedParser {
 			return feed;
 			
 		} catch (MalformedURLException e) {
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 		} catch (IllegalArgumentException e) {
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 		} catch (FeedException e) {
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 		} catch (IOException e) {
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 		}
 		return null;
 	}
-	
-	
+
 	/**
 	 * Parses the entries contained in an RSS feed, extracts the enclosures, converts them to an {@link Attachment}
 	 * adds them to the map with the entry uri as key.
@@ -143,8 +145,7 @@ public class FeedParser {
 		
 		return attachments;
 	}
-	
-	
+
 	/**
 	 * Helper to format the length from bytes into a human readable format eg 126 kB
 	 * @param length
@@ -153,7 +154,5 @@ public class FeedParser {
 	private static String formatLength(long length){
 		return FileUtils.byteCountToDisplaySize(length);
 	}
-	
-	
-	
+
 }

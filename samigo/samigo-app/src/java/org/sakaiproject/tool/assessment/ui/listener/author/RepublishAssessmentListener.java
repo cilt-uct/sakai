@@ -1,9 +1,25 @@
+/**
+ * Copyright (c) 2005-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.tool.assessment.ui.listener.author;
 
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 import javax.faces.context.FacesContext;
 import javax.faces.event.AbortProcessingException;
@@ -11,8 +27,7 @@ import javax.faces.event.ActionEvent;
 import javax.faces.event.ActionListener;
 
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.sakaiproject.samigo.util.SamigoConstants;
 import org.sakaiproject.event.cover.EventTrackingService;
 import org.sakaiproject.service.gradebook.shared.GradebookExternalAssessmentService;
 import org.sakaiproject.service.gradebook.shared.GradebookService;
@@ -36,6 +51,8 @@ import org.sakaiproject.tool.assessment.ui.bean.author.AssessmentBean;
 import org.sakaiproject.tool.assessment.ui.bean.author.AuthorBean;
 import org.sakaiproject.tool.assessment.ui.bean.author.PublishRepublishNotificationBean;
 import org.sakaiproject.tool.assessment.ui.bean.author.PublishedAssessmentSettingsBean;
+import org.sakaiproject.tool.assessment.ui.bean.authz.AuthorizationBean;
+import org.sakaiproject.tool.assessment.ui.bean.delivery.DeliveryBean;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 import org.sakaiproject.util.ResourceLoader;
 
@@ -61,18 +78,19 @@ public class RepublishAssessmentListener implements ActionListener {
 		
 		// Go to database to get the newly updated data. The data inside beans might not be up to date.
 		PublishedAssessmentFacade assessment = publishedAssessmentService.getPublishedAssessment(publishedAssessmentId);
-		EventTrackingService.post(EventTrackingService.newEvent("sam.pubassessment.republish", "siteId=" + AgentFacade.getCurrentSiteId() + ", publishedAssessmentId=" + publishedAssessmentId, true));
+		EventTrackingService.post(EventTrackingService.newEvent(SamigoConstants.EVENT_PUBLISHED_ASSESSMENT_REPUBLISH, "siteId=" + AgentFacade.getCurrentSiteId() + ", publishedAssessmentId=" + publishedAssessmentId, true));
 
 		assessment.setStatus(AssessmentBaseIfc.ACTIVE_STATUS);
 		publishedAssessmentService.saveAssessment(assessment);
 
 		AuthorBean author = (AuthorBean) ContextUtil.lookupBean("author");
+		AuthorizationBean authorization = (AuthorizationBean) ContextUtil.lookupBean("authorization");
 		// If there are submissions, need to regrade them
 		if (author.getIsRepublishAndRegrade() && hasGradingData) {
 			regradeRepublishedAssessment(publishedAssessmentService, assessment);
 		}
 		
-		EventTrackingService.post(EventTrackingService.newEvent("sam.pubassessment.republish", "siteId=" + AgentFacade.getCurrentSiteId() + ", publishedAssessmentId=" + publishedAssessmentId, true));
+		EventTrackingService.post(EventTrackingService.newEvent(SamigoConstants.EVENT_PUBLISHED_ASSESSMENT_REPUBLISH, "siteId=" + AgentFacade.getCurrentSiteId() + ", publishedAssessmentId=" + publishedAssessmentId, true));
 		assessment.setStatus(AssessmentBaseIfc.ACTIVE_STATUS);
 		publishedAssessmentService.saveAssessment(assessment);
 		updateGB(assessment);
@@ -83,8 +101,8 @@ public class RepublishAssessmentListener implements ActionListener {
 		PublishAssessmentListener publishAssessmentListener = new PublishAssessmentListener();
 		String subject = publishRepublishNotification.getNotificationSubject();
 		String notificationMessage = publishAssessmentListener.getNotificationMessage(publishRepublishNotification, publishedAssessmentSettings.getTitle(), publishedAssessmentSettings.getReleaseTo(), publishedAssessmentSettings.getStartDateString(), publishedAssessmentSettings.getPublishedUrl(),
-				publishedAssessmentSettings.getReleaseToGroupsAsString(), publishedAssessmentSettings.getDueDateString(), publishedAssessmentSettings.getTimedHours(), publishedAssessmentSettings.getTimedMinutes(), 
-				publishedAssessmentSettings.getUnlimitedSubmissions(), publishedAssessmentSettings.getSubmissionsAllowed(), publishedAssessmentSettings.getScoringType(), publishedAssessmentSettings.getFeedbackDelivery(), publishedAssessmentSettings.getFeedbackDateString());
+				publishedAssessmentSettings.getDueDateString(), publishedAssessmentSettings.getTimedHours(), publishedAssessmentSettings.getTimedMinutes(), 
+				publishedAssessmentSettings.getUnlimitedSubmissions(), publishedAssessmentSettings.getSubmissionsAllowed(), publishedAssessmentSettings.getScoringType(), publishedAssessmentSettings.getFeedbackDelivery(), publishedAssessmentSettings.getFeedbackDateString(), publishedAssessmentSettings.getFeedbackEndDateString(), publishedAssessmentSettings.getFeedbackScoreThreshold());
 		if (publishRepublishNotification.getSendNotification()) {
 		    publishAssessmentListener.sendNotification(assessment, publishedAssessmentService, subject, notificationMessage, publishedAssessmentSettings.getReleaseTo());
 		}
@@ -92,11 +110,15 @@ public class RepublishAssessmentListener implements ActionListener {
 		GradingService gradingService = new GradingService();
 		AssessmentService assessmentService = new AssessmentService();
 		AuthorActionListener authorActionListener = new AuthorActionListener();
-		authorActionListener.prepareAssessmentsList(author, assessmentService, gradingService, publishedAssessmentService);
+		authorActionListener.prepareAssessmentsList(author, authorization, assessmentService, gradingService, publishedAssessmentService);
 		
 		// Tell AuthorBean that we just published an assessment
 		// This will allow us to jump directly to published assessments tab
 		author.setJustPublishedAnAssessment(true);
+		
+		// Update Delivery Bean
+		DeliveryBean delivery = (DeliveryBean) ContextUtil.lookupBean("delivery");
+		delivery.setPublishedAssessment(assessment);
 		
 		//update Calendar Events
        boolean addDueDateToCalendar = FacesContext.getCurrentInstance().getExternalContext().getRequestParameterMap().get("publishAssessmentForm:calendarDueDate2") != null;
@@ -106,9 +128,9 @@ public class RepublishAssessmentListener implements ActionListener {
 	}
 	
 	private void regradeRepublishedAssessment (PublishedAssessmentService pubService, PublishedAssessmentFacade publishedAssessment) {
-		HashMap publishedItemHash = pubService.preparePublishedItemHash(publishedAssessment);
-		HashMap publishedItemTextHash = pubService.preparePublishedItemTextHash(publishedAssessment);
-		HashMap publishedAnswerHash = pubService.preparePublishedAnswerHash(publishedAssessment);
+		Map publishedItemHash = pubService.preparePublishedItemHash(publishedAssessment);
+		Map publishedItemTextHash = pubService.preparePublishedItemTextHash(publishedAssessment);
+		Map publishedAnswerHash = pubService.preparePublishedAnswerHash(publishedAssessment);
 		PublishedAssessmentSettingsBean publishedAssessmentSettings = (PublishedAssessmentSettingsBean) ContextUtil
 			.lookupBean("publishedSettings");
 		// Actually we don't really need to consider linear or random here.

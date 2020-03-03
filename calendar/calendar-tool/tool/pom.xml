@@ -5,18 +5,13 @@
     <parent>
         <groupId>org.sakaiproject.calendar</groupId>
         <artifactId>calendar</artifactId>
-        <version>12-SNAPSHOT</version>
+        <version>21-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
     <name>sakai-calendar-tool</name>
     <groupId>org.sakaiproject.calendar</groupId>
     <artifactId>sakai-calendar-tool</artifactId>
-    <organization>
-        <name>The Sakai Foundation</name>
-        <url>http://sakaiproject.org/</url>
-    </organization>
-    <inceptionYear>2003</inceptionYear>
     <packaging>war</packaging>
 
     <dependencies>
@@ -66,11 +61,15 @@
         </dependency>
         <dependency>
             <groupId>javax.servlet</groupId>
-            <artifactId>servlet-api</artifactId>
+            <artifactId>javax.servlet-api</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-beans</artifactId>
+        </dependency>
+        <dependency>
+          <groupId>org.apache.commons</groupId>
+          <artifactId>commons-lang3</artifactId>
         </dependency>
     </dependencies>
 

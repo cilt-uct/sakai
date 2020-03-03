@@ -28,11 +28,13 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.SessionScoped;
 import javax.faces.model.SelectItem;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.sakaiproject.component.cover.ServerConfigurationService;
+import org.sakaiproject.portal.util.PortalUtils;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentIfc;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.SectionDataIfc;
 import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
@@ -46,16 +48,11 @@ import org.sakaiproject.tool.assessment.ui.bean.delivery.ItemContentsBean;
 import org.sakaiproject.tool.assessment.ui.bean.delivery.SectionContentsBean;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 
-/**
- * @author rshastri
- *
- * To change the template for this generated type comment go to
- * Window&gt;Preferences&gt;Java&gt;Code Generation&gt;Code and Comments
- *
- * Used to be org.navigoproject.ui.web.asi.author.assessment.AssessmentActionForm.java
- */
+/* For author: Assessment backing bean.*/
+@Slf4j
+@ManagedBean(name="assessmentBean")
+@SessionScoped
 public class AssessmentBean  implements Serializable {
-    private static Logger log = LoggerFactory.getLogger(AssessmentBean.class);
 
   /** Use serialVersionUID for interoperability. */
   private final static long serialVersionUID = -630950053380808339L;
@@ -64,9 +61,9 @@ public class AssessmentBean  implements Serializable {
   private String title;
   // ArrayList of SectionContentsBean
   private List<SectionContentsBean> sections = new ArrayList<SectionContentsBean>(); // this contains list of SectionFacde
-  private ArrayList<SelectItem> sectionList = new ArrayList<SelectItem>(); // this contains list of javax.faces.model.SelectItem
-  private ArrayList otherSectionList = new ArrayList(); // contains SectionItem of section except the current section
-  private ArrayList partNumbers = new ArrayList();
+  private List<SelectItem> sectionList = new ArrayList<SelectItem>(); // this contains list of javax.faces.model.SelectItem
+  private List otherSectionList = new ArrayList(); // contains SectionItem of section except the current section
+  private List partNumbers = new ArrayList();
   private int questionSize=0;
   private double totalScore=0;
   private String newQuestionTypeId;
@@ -111,7 +108,7 @@ public class AssessmentBean  implements Serializable {
       setSectionList(sectionArray);
     }
     catch (Exception ex) {
-	ex.printStackTrace();
+	log.error(ex.getMessage(), ex);
     }
   }
 
@@ -136,11 +133,11 @@ public class AssessmentBean  implements Serializable {
     return sections;
   }
 
-  public void setSections(ArrayList sections) {
+  public void setSections(List sections) {
     this.sections = sections;
   }
 
-  public ArrayList getPartNumbers() {
+  public List getPartNumbers() {
     return partNumbers;
   }
 
@@ -164,7 +161,7 @@ public class AssessmentBean  implements Serializable {
    
    for(int i=0;i<this.sections.size();i++){
       SectionContentsBean sectionBean = (SectionContentsBean) sections.get(i);
-      ArrayList items = sectionBean.getItemContents();
+      List<ItemContentsBean> items = sectionBean.getItemContents();
 
       int itemsInThisSection =0;
       if (sectionBean.getSectionAuthorType().equals(SectionDataIfc.RANDOM_DRAW_FROM_QUESTIONPOOL)) {
@@ -178,9 +175,11 @@ public class AssessmentBean  implements Serializable {
 
       this.questionSize += itemsInThisSection;
       for (int j=0; j<itemsInThisSection; j++){
-          ItemContentsBean item = (ItemContentsBean)items.get(j);
+          ItemContentsBean item = items.get(j);
           if (item.getItemData().getScore()!=null){
-            this.totalScore += item.getItemData().getScore().doubleValue();
+            if(item.getItemData().getIsExtraCredit()==null || !item.getItemData().getIsExtraCredit()) {
+              this.totalScore += item.getItemData().getScore();
+            }
           }
       }
     }
@@ -265,7 +264,7 @@ public class AssessmentBean  implements Serializable {
     }
   }
 
-  public ArrayList<SelectItem> getSectionList(){
+  public List<SelectItem> getSectionList(){
     return sectionList;
   }
 
@@ -282,11 +281,11 @@ public class AssessmentBean  implements Serializable {
     this.firstSectionId = firstSectionId;
   }
 
-  public ArrayList getOtherSectionList(){
+  public List getOtherSectionList(){
       return otherSectionList;
   }
 
-  public void setOtherSectionList(ArrayList list){
+  public void setOtherSectionList(List list){
       this.otherSectionList = list; // list contains javax.faces.model.SelectItem
   }
 
@@ -343,5 +342,9 @@ public class AssessmentBean  implements Serializable {
 		  result =  assessmentService.isExportable(assessment);
 	  }
 	  return result;
+  }
+
+  public String getCDNQuery() {
+		return PortalUtils.getCDNQuery();
   }
 }

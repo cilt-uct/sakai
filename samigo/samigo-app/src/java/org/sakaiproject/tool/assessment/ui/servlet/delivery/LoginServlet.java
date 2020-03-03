@@ -19,16 +19,13 @@
  *
  **********************************************************************************/
 
-
-
 package org.sakaiproject.tool.assessment.ui.servlet.delivery;
+
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
-
-import org.apache.commons.lang.BooleanUtils;
 
 import javax.faces.component.UICommand;
 import javax.faces.component.UIComponent;
@@ -40,9 +37,11 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.BooleanUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.exception.IdUnusedException;
+import org.sakaiproject.samigo.util.SamigoConstants;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.cover.SiteService;
 import org.sakaiproject.tool.assessment.data.dao.assessment.AssessmentAccessControl;
@@ -65,7 +64,7 @@ import org.sakaiproject.user.cover.UserDirectoryService;
  * @author Ed Smiley
  * @version $Id$
  */
-
+@Slf4j
 public class LoginServlet
     extends HttpServlet
 {
@@ -73,7 +72,6 @@ public class LoginServlet
 	 * 
 	 */
 	private static final long serialVersionUID = -5495078878170443939L;
-	private static Logger log = LoggerFactory.getLogger(LoginServlet.class);
 
 	private SiteService siteService;
 
@@ -91,7 +89,7 @@ public class LoginServlet
       throws ServletException, IOException
   {
 	String alias = req.getParameter("id");
-	if ((alias==null) ||("").equals(alias)){
+	if (StringUtils.isEmpty(alias)) {
 		log.warn("The published URL you have entered is incorrect. id is missing. Please check in Published Settings.");
 		return;
 	}
@@ -109,7 +107,21 @@ public class LoginServlet
     // As this class is only used for taking assessment via URL, 
     // there should not be any assessment grading data at this point
     delivery.setAssessmentGrading(null);
-    delivery.setActionString("takeAssessmentViaUrl");
+
+    PublishedAssessmentService service = new PublishedAssessmentService();
+    PublishedAssessmentFacade pub = service.getPublishedAssessmentIdByAlias(alias);
+
+    String siteId = pub.getOwnerSiteId();
+
+    boolean isInstructor = PersistenceService.getInstance()
+        .getAuthzQueriesFacade()
+        .hasPrivilege(SamigoConstants.AUTHZ_EDIT_ASSESSMENT_ANY, siteId);
+
+    if (isInstructor) {
+        delivery.setActionString("previewAssessment");
+    } else {
+        delivery.setActionString("takeAssessmentViaUrl");
+    }
 
     // reset timer in case this is a timed assessment
     delivery.setTimeElapse("0");
@@ -128,8 +140,6 @@ public class LoginServlet
     // 2. If so, goto welcome.faces
     // 3. If not, goto login.faces
     // both pages will set agentId and then direct user to BeginAssessment
-    PublishedAssessmentService service = new PublishedAssessmentService();
-    PublishedAssessmentFacade pub = service.getPublishedAssessmentIdByAlias(alias);
 
     if (pub==null){
 		log.warn("The published URL you have entered is incorrect. Please check in Published Settings.");
@@ -143,6 +153,10 @@ public class LoginServlet
 
     BeginDeliveryActionListener listener = new BeginDeliveryActionListener();
     listener.populateBeanFromPub(delivery, pub);
+
+    if (!isInstructor) {
+        listener.processAction(null);
+    }
 
     RequestDispatcher dispatcher = null;
     String path = "/jsf/delivery/invalidAssessment.faces";
@@ -177,6 +191,8 @@ public class LoginServlet
           // in 2.2, agentId is differnt from req.getRemoteUser()
           agentIdString = AgentFacade.getAgentString();
         }
+        delivery.setAnonymousLogin(false);
+        person.setAnonymousId(null);
       }
 
       log.debug("*** agentIdString: "+agentIdString);
@@ -191,7 +207,6 @@ public class LoginServlet
         // Assessment is available for taking
         else if ("safeToProceed".equals(nextAction)){
           // if assessment is available, set it in delivery bean for display in deliverAssessment.jsp
-          listener.processAction(null);
           path = "/jsf/delivery/beginTakingAssessment_viaurl.faces";
         }
         // Assessment is currently not available (eg., retracted for edit, due date has passed, submission limit has been reached, etc)
@@ -218,6 +233,9 @@ public class LoginServlet
         }
         else if ("timeExpired".equals(nextAction)){
         	path = "/jsf/delivery/timeExpired.faces";
+        }
+        else if ("accessDenied".equals(nextAction)) {
+        	path = "/jsf/delivery/accessDenied.faces";
         }
         else {
         	path = "/jsf/delivery/assessmentNotAvailable.faces";
@@ -333,5 +351,4 @@ public class LoginServlet
 	  }
 	  return false;
   }
-  
 }

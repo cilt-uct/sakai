@@ -4,7 +4,7 @@
     <parent>
       <groupId>org.sakaiproject</groupId>
       <artifactId>master</artifactId>
-      <version>12-SNAPSHOT</version>
+      <version>21-SNAPSHOT</version>
       <relativePath>../master/pom.xml</relativePath>
     </parent>
 
@@ -14,7 +14,6 @@
   <packaging>pom</packaging>
 
   <modules>
-    <module>components</module>
     <module>postem-api</module>
     <module>postem-app</module>
     <module>postem-hbm</module>

@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.site.util;
 
 public class SiteConstants {
@@ -39,7 +54,9 @@ public class SiteConstants {
 	 * This stores the list of roles that a group should have as participants from the containing sites.
 	 */
 	public static final String GROUP_PROP_ROLE_PROVIDERID = "group_prop_role_providerid";
-	
+
+	public static final String GROUP_PROP_WSETUP_CREATED = "group_prop_wsetup_created";
+
 	public static final int SITE_GROUP_TITLE_LIMIT = 99;
 	
 	// system property variable to hide PageOrder tab for certain types of sites, e.g. if set to "course,project", the PageOrder tool tab will be hidden for all course sites and project sites. 
@@ -62,4 +79,20 @@ public class SiteConstants {
 	public final static String SITE_ACTIVE = "pubView";
 
 	public final static String SITE_INACTIVE = "inactive";
+
+	//SAK-32127
+	public final static String SITE_PROPERTY_HIDE_RESOURCES_SPECIAL_HIDDEN = "poh.resources.content.sync.visibility";
+	public final static boolean SITE_PROPERTY_HIDE_RESOURCES_SPECIAL_HIDDEN_DEFAULT = true;
+
+	public final static String PARTICIPANT_FILTER_TYPE_ALL = "[all]";
+	public final static String PARTICIPANT_FILTER_TYPE_ROLE = "[role]";
+	public final static String PARTICIPANT_FILTER_TYPE_GROUP = "[group]";
+	public final static String PARTICIPANT_FILTER_TYPE_SECTION = "[section]";
+
+	// For returning to Site Info landing page after clicking 'Cancel' from sub-projects
+	public static final String STATE_TEMPLATE_INDEX = "site.templateIndex"; // The name of the Attribute for display template index
+	public static final String SITE_INFO_TEMPLATE_INDEX = "12";
+
+	// For returning to 'Manage Participants' after successful participant add
+	public static final String MANAGE_PARTICIPANTS_TEMPLATE_INDEX = "63";
 }

@@ -21,28 +21,53 @@
 
 package org.sakaiproject.tool.impl;
 
-import org.apache.commons.collections.iterators.IteratorChain;
-import org.apache.commons.lang.mutable.MutableLong;
+import java.io.Serializable;
+import java.lang.reflect.Array;
+import java.util.Collection;
+import java.util.Date;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
+import javax.servlet.ServletContext;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
+import javax.servlet.http.HttpSessionBindingEvent;
+import javax.servlet.http.HttpSessionBindingListener;
+import javax.servlet.http.HttpSessionContext;
+
+import org.apache.commons.collections4.iterators.IteratorChain;
+import org.apache.commons.collections4.iterators.IteratorEnumeration;
+import org.apache.commons.lang3.mutable.MutableLong;
 import org.sakaiproject.event.api.UsageSession;
 import org.sakaiproject.id.api.IdManager;
 import org.sakaiproject.thread_local.api.ThreadLocalManager;
-import org.sakaiproject.tool.api.*;
-import org.sakaiproject.util.IteratorEnumeration;
+import org.sakaiproject.tool.api.ContextSession;
+import org.sakaiproject.tool.api.NonPortableSession;
+import org.sakaiproject.tool.api.RebuildBreakdownService;
+import org.sakaiproject.tool.api.Session;
+import org.sakaiproject.tool.api.SessionAttributeListener;
+import org.sakaiproject.tool.api.SessionBindingEvent;
+import org.sakaiproject.tool.api.SessionBindingListener;
+import org.sakaiproject.tool.api.SessionManager;
+import org.sakaiproject.tool.api.SessionStore;
+import org.sakaiproject.tool.api.ToolSession;
 import org.sakaiproject.util.RequestFilter;
 import org.sakaiproject.util.ResourceLoader;
 
-import javax.servlet.ServletContext;
-import javax.servlet.http.*;
-import java.io.Serializable;
-import java.lang.reflect.Array;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import com.carrotsearch.sizeof.ObjectTree;
+import com.carrotsearch.sizeof.RamUsageEstimator;
+import lombok.extern.slf4j.Slf4j;
 
 
 /*************************************************************************************************************************************************
  * Entity: Session Also is an HttpSession
  ************************************************************************************************************************************************/
-
+@Slf4j
 public class MySession implements Session, HttpSession, Serializable
 {
 	/**
@@ -511,6 +536,32 @@ public class MySession implements Session, HttpSession, Serializable
 
 		else
 		{
+			if (log.isDebugEnabled()) {
+				// DO NOT USE this in a production system as calculating object sizes is very
+				// CPU intensive and is for debugging only. YOU HAVE BEEN WARNED.
+				try {
+					long size = RamUsageEstimator.sizeOf(value);
+					StringBuilder msg = new StringBuilder("sizeOf [session id = ");
+					msg.append(this.m_id).append("]");
+					msg.append(":[").append(name).append(" => ").append(value.getClass().getName()).append("]");
+					msg.append(" size is ").append(RamUsageEstimator.humanReadableUnits(size));
+
+					if (log.isTraceEnabled()) {
+						// to get a dump of the object tree turn on trace level logging
+						// don't dump anything over 1MB
+						if (size <= 1048576 ) {
+							msg.append(", dumping object tree:\n");
+							msg.append(ObjectTree.dump(value));
+						} else {
+							msg.append(", object is over 1MB skipping dump\n");
+						}
+					}
+					log.debug("{}", msg);
+				} catch(Exception e) {
+					log.error("sizeOf could not calculate the size of [session => attribute]:[{} => {}]", this.m_id, name, e);
+				}
+			}
+
 			Object old = null;
 
 			// If this is not a terracotta clustered environment then immediately

@@ -4,16 +4,11 @@
     <name>Sakai Entity Broker Utilities</name>
     <groupId>org.sakaiproject.entitybroker</groupId>
     <artifactId>entitybroker-utils</artifactId>
-    <organization>
-        <name>CARET, University of Cambridge</name>
-        <url>http://www.caret.cam.ac.uk/</url>
-    </organization>
-    <inceptionYear>2007</inceptionYear>
     <packaging>jar</packaging>
     <parent>
         <artifactId>entitybroker</artifactId>
         <groupId>org.sakaiproject</groupId>
-        <version>12-SNAPSHOT</version>
+        <version>21-SNAPSHOT</version>
     </parent>
     <dependencies>
         <!-- internal dependencies -->
@@ -46,6 +41,14 @@
             <groupId>org.sakaiproject.kernel</groupId>
             <artifactId>sakai-component-manager</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.sakaiproject.kernel</groupId>
+            <artifactId>sakai-kernel-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+        </dependency>
         <!-- required for bean cloning and reflection -->
         <dependency>
             <groupId>org.azeckoski</groupId>
@@ -59,8 +62,11 @@
             <version>3.1</version>
         </dependency>
         <dependency>
+            <!--TODO Move to javax.servlet-api version of master-->
             <groupId>javax.servlet</groupId>
             <artifactId>servlet-api</artifactId>
+            <version>2.5</version>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
     <build>

@@ -72,7 +72,24 @@
     </h:column>
 
 
-    <h:column>
+      <h:column rendered="#{questionpool.showTags == 'true'}" >
+          <f:facet name="header">
+              <h:panelGroup>
+                  <h:outputText value="#{questionPoolMessages.t_tags}" />
+              </h:panelGroup>
+          </f:facet>
+          <t:dataList value="#{question.itemTagSet.toArray()}" var="tag" layout="unorderedList">
+              <f:verbatim><span></f:verbatim>
+              <h:outputText value="#{tag.tagLabel}"/>
+              <f:verbatim><span class="collection"></f:verbatim>
+              (<h:outputText value="#{tag.tagCollectionName}"/>)
+              <f:verbatim></span></span></br>  </f:verbatim>
+          </t:dataList>
+      </h:column>
+
+
+
+      <h:column>
       <f:facet name="header">
         <h:panelGroup>
           <h:outputText value="#{questionPoolMessages.q_type}" />
@@ -95,6 +112,26 @@
      <h:outputText rendered="#{question.typeId== 16}" value="#{authorMessages.image_map_question}"/><!-- // IMAGEMAP_QUESTION -->
 
     </h:column>
+    
+    <h:column>
+      <f:facet name="header">
+        <h:panelGroup>
+          <h:outputText value="#{questionPoolMessages.q_points}" />
+        </h:panelGroup>
+      </f:facet>
+       <h:outputText value="#{question.score}"/>
+    </h:column>
+
+    <h:column>
+      <f:facet name="header">
+        <h:panelGroup>
+          <h:outputText value="#{questionPoolMessages.last_mod}" />
+        </h:panelGroup>
+      </f:facet>
+       <h:outputText value="#{question.lastModifiedDate}">
+           <f:convertDateTime dateStyle="medium" timeStyle="short" timeZone="#{author.userTimeZone}" />
+       </h:outputText>
+    </h:column>    
 
     <h:column id="colimport" rendered="#{questionpool.importToAuthoring == 'true'}" >
       <f:facet name="header">

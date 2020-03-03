@@ -19,38 +19,35 @@
  *
  **********************************************************************************/
 
-
-
 package org.sakaiproject.tool.assessment.ui.bean.evaluation;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.SessionScoped;
 import javax.faces.event.ActionEvent;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
-import org.sakaiproject.jsf.model.PhaseAware;
+import org.apache.commons.lang3.StringUtils;
+
+import org.sakaiproject.jsf2.model.PhaseAware;
 import org.sakaiproject.tool.assessment.business.entity.RecordingData;
 import org.sakaiproject.tool.assessment.services.assessment.PublishedAssessmentService;
 import org.sakaiproject.tool.assessment.ui.bean.util.Validator;
 import org.sakaiproject.tool.assessment.ui.listener.evaluation.SubmissionStatusListener;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 
-
-/**
- * <p>Description: class form for evaluating submission status</p>
- *
- *
- */
-public class SubmissionStatusBean
-  implements Serializable, PhaseAware
-{
+/* For evaluation: Submission Status backing bean. */
+@Slf4j
+@ManagedBean(name="submissionStatus")
+@SessionScoped
+public class SubmissionStatusBean implements Serializable, PhaseAware {
   private String assessmentId;
   private String publishedId;
 
@@ -75,13 +72,12 @@ public class SubmissionStatusBean
   private RecordingData recordingData;
   private String totalPeople;
   private String firstItem;
-  private HashMap answeredItems;
-  private static Logger log = LoggerFactory.getLogger(SubmissionStatusBean.class);
+  private Map answeredItems;
   
   //private String selectedSectionFilterValue = TotalScoresBean.ALL_SECTIONS_SELECT_VALUE;
   private String selectedSectionFilterValue = null;
 
-  private ArrayList allAgents;
+  private List allAgents;
   
   // Paging.
   private int firstScoreRow;
@@ -93,6 +89,9 @@ public class SubmissionStatusBean
   private String defaultSearchString;
   
   private Boolean releasedToGroups = null;
+
+  // Rubrics
+  private String rbcsToken;
 
   /**
    * Creates a new SubmissionStatusBean object.
@@ -115,7 +114,7 @@ public class SubmissionStatusBean
 			allAgents = getAllAgents();
 		}
 		
-		ArrayList matchingAgents;
+		List matchingAgents;
 		if (isFilteredSearch()) {
 			matchingAgents = findMatchingAgents(searchString);
 		}
@@ -123,7 +122,7 @@ public class SubmissionStatusBean
 			matchingAgents = allAgents;
 		}
 		scoreDataRows = matchingAgents.size();
-		ArrayList newAgents = new ArrayList();
+		List newAgents = new ArrayList();
 		if (maxDisplayedScoreRows == 0) {
 			newAgents = matchingAgents;
 		} else {
@@ -582,7 +581,7 @@ public class SubmissionStatusBean
    * This returns a map of which items actually have answers.
    * Used by QuestionScores.
    */
-  public HashMap getAnsweredItems()
+  public Map getAnsweredItems()
   {
     return answeredItems;
   }
@@ -591,7 +590,7 @@ public class SubmissionStatusBean
    * This stores a map of which items actually have answers.
    * Used by QuestionScores.
    */
-  public void setAnsweredItems(HashMap newItems)
+  public void setAnsweredItems(Map newItems)
   {
     answeredItems = newItems;
   }
@@ -634,11 +633,11 @@ public class SubmissionStatusBean
       return scoreDataRows;
   }
   
-  public void setAllAgents(ArrayList allAgents) {
+  public void setAllAgents(List allAgents) {
 	  this.allAgents = allAgents;
   }
 
-  public ArrayList getAllAgents()
+  public List getAllAgents()
   {
     log.debug("getAllAgents()");
     TotalScoresBean totalScoresBean = (TotalScoresBean) ContextUtil.lookupBean("totalScores");
@@ -679,8 +678,8 @@ public class SubmissionStatusBean
         return !StringUtils.equals(searchString, defaultSearchString);
 	}
 
-	public ArrayList findMatchingAgents(final String pattern) {
-		ArrayList filteredList = new ArrayList();
+	public List findMatchingAgents(final String pattern) {
+		List filteredList = new ArrayList();
 		// name1 example: John Doe
 		StringBuilder name1;
 		// name2 example: Doe, John
@@ -716,5 +715,12 @@ public class SubmissionStatusBean
 		}
 		return releasedToGroups;
 	}
-	
+
+  public String getRbcsToken() {
+    return rbcsToken;
+  }
+
+  public void setRbcsToken(String rbcsToken) {
+    this.rbcsToken = rbcsToken;
+  }
 }

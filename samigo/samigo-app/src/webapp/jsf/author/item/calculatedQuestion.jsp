@@ -2,7 +2,7 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
 <%@ taglib uri="http://www.sakaiproject.org/samigo" prefix="samigo" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <!DOCTYPE html
      PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -42,14 +42,15 @@ confirmation dialog
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head><%= request.getAttribute("html.head") %>
 	<title><h:outputText value="#{authorMessages.item_display_author}"/></title>
-	<script type="text/javascript" src="/samigo-app/js/info.js"></script>
+	<script src="/samigo-app/js/info.js"></script>
 	<!-- AUTHORING -->
-	<samigo:script path="/js/authoring.js"/>
-	<script type="text/javascript">
+	<script src="/samigo-app/js/authoring.js"></script>
+	<script>
 	$(document).ready(function() {
 		initCalcQuestion();
 	});
 	</script>
+
 </head>
 <%-- unfortunately have to use a scriptlet here --%>
 <body onload="<%= request.getAttribute("html.body.onload") %>">
@@ -123,6 +124,9 @@ confirmation dialog
 		</div>
 	</div>
 
+	<!-- Extra Credit -->
+	<%@ include file="/jsf/author/inc/extraCreditSetting.jspf" %>
+
     <%-- 2 QUESTION TEXT --%>
     <div class="longtext"> <h:outputLabel value="#{authorMessages.q_text}" />
     <br/></div>
@@ -145,6 +149,12 @@ confirmation dialog
 				<li><h:outputText value="#{authorMessages.calc_question_simple_instructions_step_3b}" /></li>
 			</ol>
 		</ol>
+		<div class="mathjax-warning" style="display: none;">
+			<h:outputText value="#{authorMessages.accepted_characters}" escape="false"/>
+			<div class="sak-banner-warn">
+				<h:outputText value="#{authorMessages.mathjax_usage_warning}" escape="false"/>
+			</div>
+		</div>
 		<label><h:outputText value="#{authorMessages.calc_question_example_label}"/></label>
 		<p class="tier2"><h:outputText value="#{authorMessages.calc_question_example1}"/></p>
 		<p class="tier2"><h:outputText value="#{authorMessages.calc_question_example1_formula}"/></p>
@@ -468,6 +478,8 @@ confirmation dialog
 			</div>
 		</div>
 	</h:panelGroup>
+
+	<%@ include file="/jsf/author/item/tags.jsp" %>
 
 	<p class="act">
 		<h:commandButton 

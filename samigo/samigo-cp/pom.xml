@@ -5,23 +5,18 @@
 	<parent>
 		<groupId>org.sakaiproject.samigo</groupId>
 		<artifactId>samigo</artifactId>
-		<version>12-SNAPSHOT</version>
+		<version>21-SNAPSHOT</version>
 	</parent>
     
 	<name>Sakai Samigo Content Packaging (samigo-cp)</name>
 	<groupId>org.sakaiproject.samigo</groupId>
 	<artifactId>samigo-cp</artifactId>
-	<organization>
-		<name>Sakai Project</name>
-		<url>http://sakaiproject.org/</url>
-	</organization>
-	<inceptionYear>2007</inceptionYear>
 	<packaging>jar</packaging>
     
 	<dependencies>
 		<dependency>
 			<groupId>javax.servlet</groupId>
-			<artifactId>servlet-api</artifactId>
+			<artifactId>javax.servlet-api</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.sakaiproject.kernel</groupId>
@@ -43,6 +38,10 @@
 			<groupId>${project.groupId}</groupId>
 			<artifactId>samigo-qti</artifactId>
 		</dependency>
+        <dependency>
+            <groupId>org.sakaiproject.jsf2</groupId>
+            <artifactId>jsf2-app</artifactId>
+        </dependency>
         <dependency>
             <groupId>jdom</groupId>
             <artifactId>jdom</artifactId>

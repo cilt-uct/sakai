@@ -140,9 +140,6 @@ LOG-LOG-LOG-LOG-LOG
 	id="editLink"  
 	title="${resourceLoaderBean.getString("jsp_edit")}" >${resourceLoaderBean.getString("jsp_edit")}</a> 
 </span></li>
-#else
-<li><span
-	id="editLink" class="pageLinkInactive" >${resourceLoaderBean.getString("jsp_edit")}</span> </li>
 #end
 #end	
 #if ($useInfoLink) 
@@ -281,10 +278,12 @@ ${util.formatDateTime($date,$request)}
 				<h5 class="commentsTitle specialLink" >
 					<a href="#" id="commentsToggle" class="toggleOpen">${rlb.jsp_hide_comments}</a>
 					<span id="totalComments" class="textPanelFooter"></span>
-					<span class="commentsToolBar">
-						<a href="#" id="createCommentLink" onclick="ajaxRefPopup(this,'${util.escapeHtml(${renderBean.newCommentURL})}',0); return false;" >${rlb.jsp_addcomment}</a>
-					</span>								
-				</h5>								
+					#if (${renderBean.canEdit} || ${renderBean.canCreate})
+						<span class="commentsToolBar">
+							<a href="#" id="createCommentLink" onclick="ajaxRefPopup(this,'${util.escapeHtml(${renderBean.newCommentURL})}',0); return false;" >${rlb.jsp_addcomment}</a>
+						</span>
+					#end
+				</h5>
 			</li>
 		</ul>	
 		<ul class="rwiki_comments specialLink" id ="commentsList">	
@@ -295,10 +294,12 @@ ${util.formatDateTime($date,$request)}
 				<li class="rwikicommentbody_${comment.commentLevel} commentList">
 					<div class="commentHeader"><span class="commentAuthor">#formatDisplayName(${comment.rwikiObject.user})</span><span class="textPanelFooter">(${comment.rwikiObject.version})</span>
 							<ul class="actionItem itemAction">
-								<li><span>
-									<a href="#" onclick="ajaxRefPopup(this,'${util.escapeHtml(${comment.newCommentURL})}',0); return false;" >${rlb.jsp_comment}</a>
-								</span></li>
-								#if (${comment.canEdit})
+								#if (${renderBean.canEdit} || ${renderBean.canCreate})
+									<li><span>
+										<a href="#" onclick="ajaxRefPopup(this,'${util.escapeHtml(${comment.newCommentURL})}',0); return false;" >${rlb.jsp_comment}</a>
+									</span></li>
+								#end
+								#if (${comment.canEdit} && (${renderBean.canEdit} || ${renderBean.canCreate}) )
 									<li><span>
 										<a href="#" onclick="ajaxRefPopup(this,'${util.escapeHtml(${comment.editCommentURL})}',0); return false;" >${rlb.jsp_edit}</a>
 									</span></li>

@@ -33,9 +33,16 @@ import java.util.Set;
 import java.util.Stack;
 import java.util.Vector;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.lang3.StringUtils;
+
+import org.sakaiproject.authz.api.AuthzRealmLockException;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+
 import org.sakaiproject.authz.api.AuthzGroup;
 import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.authz.api.GroupNotDefinedException;
@@ -61,25 +68,18 @@ import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserNotDefinedException;
 import org.sakaiproject.util.BaseResourceProperties;
 import org.sakaiproject.util.BaseResourcePropertiesEdit;
-import org.sakaiproject.util.StringUtil;
 import org.sakaiproject.util.Validator;
 import org.sakaiproject.util.Web;
 import org.sakaiproject.util.Xml;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
 
 /**
  * <p>
  * BaseSite is a base implementation of the Site API Site.
  * </p>
  */
+@Slf4j
 public class BaseSite implements Site
 {
-	/** Our log (commons). */
-	private static Logger M_log = LoggerFactory.getLogger(BaseSite.class);
-
 	/** A fixed class serian number. */
 	private static final long serialVersionUID = 1L;
 
@@ -229,11 +229,8 @@ public class BaseSite implements Site
 	/**
 	 * Construct from another Site, exact.
 	 * 
-	 * @param site
-	 *        The other site to copy values from.
-	 * @param exact
-	 *        If true, we copy ids - else we generate new ones for site, page
-	 *        and tools.
+	 * @param other
+	 * 		  the source site
 	 */
 	public BaseSite(BaseSiteService siteService, Site other)
 	{
@@ -243,7 +240,7 @@ public class BaseSite implements Site
 	/**
 	 * Construct from another Site.
 	 * 
-	 * @param site
+	 * @param other
 	 *        The other site to copy values from.
 	 * @param exact
 	 *        If true, we copy ids - else we generate new ones for site, page
@@ -638,21 +635,21 @@ public class BaseSite implements Site
 		if (this.siteService == null) {
 			this.siteService = (BaseSiteService) ComponentManager.get(SiteService.class);
 			if (this.siteService == null) {
-				M_log.error("Cannot set the SiteService when set from BaseSite");
+				log.error("Cannot set the SiteService when set from BaseSite");
 			}
 		}
 		sessionManager = other.sessionManager;
 		if (this.sessionManager == null) {
 			this.sessionManager = (SessionManager) ComponentManager.get(SessionManager.class);
 			if (this.sessionManager == null) {
-				M_log.error("Cannot set the SessionManager when set from BaseSite");
+				log.error("Cannot set the SessionManager when set from BaseSite");
 			}
 		}
 		userDirectoryService = other.userDirectoryService;
 		if (this.userDirectoryService == null) {
 			this.userDirectoryService = (UserDirectoryService) ComponentManager.get(UserDirectoryService.class);
 			if (this.userDirectoryService == null) {
-				M_log.error("Cannot set the UserDirectoryService when set from BaseSite");
+				log.error("Cannot set the UserDirectoryService when set from BaseSite");
 			}
 		}
 
@@ -1730,6 +1727,22 @@ public class BaseSite implements Site
 	 */
 	public void removeGroup(Group group)
 	{
+		try {
+			deleteGroup(group);
+		} catch (AuthzRealmLockException arle) {
+			log.warn(arle.getMessage());
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public void deleteGroup(Group group) throws AuthzRealmLockException
+	{
+		RealmLockMode lockMode = getRealmLock();
+		if(RealmLockMode.ALL.equals(lockMode) || RealmLockMode.DELETE.equals(lockMode)) {
+			throw new AuthzRealmLockException("Can't remove a locked group " + group.getId());
+		}
 		// remove it
 		m_groups.remove(group);
 
@@ -1807,7 +1820,7 @@ public class BaseSite implements Site
 				}
 				catch (Exception t)
 				{
-					M_log.warn("getAzg: " + t);
+					log.warn("getAzg: " + t);
 				}
 			}
 		}
@@ -1946,6 +1959,26 @@ public class BaseSite implements Site
 		return changed;
 	}
 
+	@Override
+	public RealmLockMode getRealmLock() {
+		return getAzg().getRealmLock();
+	}
+
+	@Override
+	public RealmLockMode getLockForReference(String reference) {
+		return getAzg().getLockForReference(reference);
+	}
+
+	@Override
+	public void setLockForReference(String reference, RealmLockMode lockMode) {
+		throw new UnsupportedOperationException("Realm locks are currently not supported for Sites");
+	}
+
+	@Override
+	public List<String[]> getRealmLocks() {
+		return getAzg().getRealmLocks();
+	}
+
 	public boolean isSoftlyDeleted() {
 		return m_isSoftlyDeleted;
 	}
@@ -1996,6 +2029,4 @@ public class BaseSite implements Site
 	public void setFullyLoaded(boolean flag) {
 		m_fullyLoaded = flag;
 	}
-
-
 }

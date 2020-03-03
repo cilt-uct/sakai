@@ -49,44 +49,43 @@
 					<h:outputLabel for="meetingsTable" value="#{msgs.section_logistics}" styleClass="formLabel"/>
 					<h:panelGroup>
 						<h:dataTable id="meetingsTable" value="#{section.meetings}" var="meeting">					
-							<% // One column per meeting.  Use a div to add a line break in the form controls %>
-							<h:column>
-								<t:div>
-									<h:outputLabel value="#{msgs.student_view_header_day}"/>
-								</t:div>
-								<t:div styleClass="meetingFirstCol">
-									<h:outputLabel value="#{msgs.section_start_time}"/>
-								</t:div>
-								<t:div styleClass="meetingFirstCol">
-									<h:outputLabel value="#{msgs.section_end_time}"/>
-								</t:div>
-								<t:div styleClass="meetingFirstCol">
-									<h:outputLabel value="#{msgs.student_view_header_location}"/>
-								</t:div>
-							</h:column>
 							<h:column>
 								<h:panelGroup>
 									<t:div styleClass="paddedMeetingRow">
-										<h:selectBooleanCheckbox id="monday" value="#{meeting.monday}"/>
-										<h:outputLabel for="monday" value="#{bean.monday}"/>
+										<h:panelGroup styleClass="meetingDay">
+											<h:selectBooleanCheckbox id="monday" value="#{meeting.monday}"/>
+											<h:outputLabel for="monday" value="#{bean.monday}"/>
+										</h:panelGroup>
 							
-										<h:selectBooleanCheckbox id="tuesday" value="#{meeting.tuesday}"/>
-										<h:outputLabel for="tuesday" value="#{bean.tuesday}"/>
+										<h:panelGroup styleClass="meetingDay">
+											<h:selectBooleanCheckbox id="tuesday" value="#{meeting.tuesday}"/>
+											<h:outputLabel for="tuesday" value="#{bean.tuesday}"/>
+										</h:panelGroup>
 							
-										<h:selectBooleanCheckbox id="wednesday" value="#{meeting.wednesday}"/>
-										<h:outputLabel for="wednesday" value="#{bean.wednesday}"/>
+										<h:panelGroup styleClass="meetingDay">
+											<h:selectBooleanCheckbox id="wednesday" value="#{meeting.wednesday}"/>
+											<h:outputLabel for="wednesday" value="#{bean.wednesday}"/>
+										</h:panelGroup>
 							
-										<h:selectBooleanCheckbox id="thursday" value="#{meeting.thursday}"/>
-										<h:outputLabel for="thursday" value="#{bean.thursday}"/>
+										<h:panelGroup styleClass="meetingDay">
+											<h:selectBooleanCheckbox id="thursday" value="#{meeting.thursday}"/>
+											<h:outputLabel for="thursday" value="#{bean.thursday}"/>
+										</h:panelGroup>
 							
-										<h:selectBooleanCheckbox id="friday" value="#{meeting.friday}"/>
-										<h:outputLabel for="friday" value="#{bean.friday}"/>
+										<h:panelGroup styleClass="meetingDay">
+											<h:selectBooleanCheckbox id="friday" value="#{meeting.friday}"/>
+											<h:outputLabel for="friday" value="#{bean.friday}"/>
+										</h:panelGroup>
 							
-										<h:selectBooleanCheckbox id="saturday" value="#{meeting.saturday}"/>
-										<h:outputLabel for="saturday" value="#{bean.saturday}"/>
+										<h:panelGroup styleClass="meetingDay">
+											<h:selectBooleanCheckbox id="saturday" value="#{meeting.saturday}"/>
+											<h:outputLabel for="saturday" value="#{bean.saturday}"/>
+										</h:panelGroup>
 							
-										<h:selectBooleanCheckbox id="sunday" value="#{meeting.sunday}"/>
-										<h:outputLabel for="sunday" value="#{bean.sunday}"/>
+										<h:panelGroup styleClass="meetingDay">
+											<h:selectBooleanCheckbox id="sunday" value="#{meeting.sunday}"/>
+											<h:outputLabel for="sunday" value="#{bean.sunday}"/>
+										</h:panelGroup>
 									</t:div>
 		
 									<t:div styleClass="indent">
@@ -112,7 +111,7 @@
 									</t:div>
 			
 									<t:div styleClass="indent meetingSecondCol">
-										<h:inputText id="location" value="#{meeting.location}" maxlength="20" />
+										<h:inputText id="location" value="#{meeting.location}" maxlength="80" size="40" />
                                         <h:message for="startTime" styleClass="validationEmbedded"/>
                                         <h:message for="endTime" styleClass="validationEmbedded"/>
 									</t:div>

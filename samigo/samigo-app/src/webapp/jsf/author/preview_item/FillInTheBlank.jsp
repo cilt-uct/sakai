@@ -40,7 +40,7 @@ should be included in file importing DeliveryMessages
 <samigo:dataLine value="#{itemText.answerArraySorted}" var="answer"
    separator=", " first="0" rows="100" >
   <h:column>
-    <h:outputText escape="false" value="#{answer.text}" />
+    <h:outputText escape="true" value="#{answer.text}" />
   </h:column>
 </samigo:dataLine>
     </h:column>
@@ -60,3 +60,5 @@ should be included in file importing DeliveryMessages
   <h:outputText rendered="#{question.itemData.inCorrectItemFeedback != null && question.itemData.inCorrectItemFeedback ne '' && !author.isEditPendingAssessmentFlow && publishedSettings.feedbackAuthoring ne '2'}"
     value="#{question.itemData.inCorrectItemFeedback}" escape="false" />
 </h:panelGrid>
+
+<%@ include file="/jsf/author/preview_item/tags.jsp" %>

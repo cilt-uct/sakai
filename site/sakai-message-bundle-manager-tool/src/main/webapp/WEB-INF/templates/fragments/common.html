@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:dt="http://github.com/dandelion/datatables">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
 <body>
 <head th:fragment="head">
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
@@ -9,23 +9,19 @@
 </head>
 <div th:fragment="bootstrap">
   <script>includeLatestJQuery('common.html');</script>
+  <script>includeWebjarLibrary('bootstrap');</script>
   <script th:inline="javascript">
-    /*<![CDATA[*/
-    /** Adjust frame height (if in an iframe) */
-    $(document)
-        .ready(
-            function() {
-              var toolId = /*[[${#httpServletRequest.getAttribute('sakai.tool.placement.id')}]]*/'toolId';
-              if (toolId) {
-                setMainFrameHeight('Main' + toolId.replace(/-/g, 'x'));
-              }
-            });
-    /*]]>*/
+    $(document).ready(function () {
+      var toolId = /*[[${#httpServletRequest.getAttribute('sakai.tool.placement.id')}]]*/'toolId';
+      if (toolId) {
+        setMainFrameHeight('Main' + toolId.replace(/-/g, 'x'));
+      }
+    });
   </script>
 </div>
 <div th:fragment="loadBundlesFromDb (enabled)">
   <div th:unless="${enabled}">
-    <div class="alert alert-warning" role="alert" th:text="#{common.warning}">
+    <div class="sak-banner-warn" role="alert" th:text="#{common.warning}">
       Message bundle editing is not activated, please see your Administrator.
     </div>
     <p></p>
@@ -33,7 +29,7 @@
 </div>
 <div th:fragment="admin (admin)">
   <div th:unless="${admin}">
-    <div class="alert alert-danger" role="alert" th:text="#{common.danger}">
+    <div class="sak-banner-error" role="alert" th:text="#{common.danger}">
       You must be an admin to use this tool, please see your Administrator.
     </div>
     <p></p>

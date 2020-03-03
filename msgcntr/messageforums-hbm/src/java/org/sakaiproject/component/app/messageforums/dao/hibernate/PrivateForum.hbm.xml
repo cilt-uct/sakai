@@ -1,9 +1,6 @@
-<?xml version="1.0"?>
-<!DOCTYPE hibernate-mapping
-    PUBLIC "-//Hibernate/Hibernate Mapping DTD//EN"
-    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
-
-<hibernate-mapping>
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN" "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping package="org.sakaiproject.component.app.messageforums.dao.hibernate">
 
   <class name="org.sakaiproject.component.app.messageforums.dao.hibernate.PrivateForumImpl"
     table="MFR_PRIVATE_FORUM_T" optimistic-lock="version">
@@ -47,7 +44,7 @@
         <key column="pf_surrogateKey"/>                        
         <one-to-many class="org.sakaiproject.component.app.messageforums.dao.hibernate.TopicImpl"/>            
     </set>-->
-    <set name="topicsSet" lazy="true" cascade="save-update"
+    <set name="topicsSet" lazy="true" cascade="persist,merge,save-update"
       sort="org.sakaiproject.component.app.messageforums.dao.hibernate.util.comparator.TopicBySortIndexAscAndCreatedDateDesc" batch-size="50">
         <key column="pf_surrogateKey"/>                        
         <one-to-many class="org.sakaiproject.component.app.messageforums.dao.hibernate.TopicImpl"/>            

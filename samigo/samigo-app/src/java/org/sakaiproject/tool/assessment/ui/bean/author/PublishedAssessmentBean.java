@@ -19,27 +19,22 @@
  *
  **********************************************************************************/
 
-
-
 package org.sakaiproject.tool.assessment.ui.bean.author;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.SessionScoped;
 
-/**
- * @author rshastri
- *
- * To change the template for this generated type comment go to
- * Window&gt;Preferences&gt;Java&gt;Code Generation&gt;Code and Comments
- *
- * Used to be org.navigoproject.ui.web.asi.author.assessment.published.PublishedAssessmentActionForm.java
- */
+import lombok.extern.slf4j.Slf4j;
+
+/* For author: Published Assessment backing bean. */
+@Slf4j
+@ManagedBean(name="publishedassessment")
+@SessionScoped
 public class PublishedAssessmentBean implements Serializable
 {
-  private static Logger log = LoggerFactory.getLogger(PublishedAssessmentBean.class);
 
   /** Use serialVersionUID for interoperability. */
   private final static long serialVersionUID = 206375673822116682L;

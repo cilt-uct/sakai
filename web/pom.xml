@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.sakaiproject</groupId>
     <artifactId>master</artifactId>
-    <version>12-SNAPSHOT</version>
+    <version>21-SNAPSHOT</version>
     <relativePath>../master/pom.xml</relativePath>
   </parent>
 
@@ -20,7 +20,6 @@
       <modules>
         <module>web-api/api</module>
         <module>web-impl/impl</module>
-        <module>web-impl/pack</module>
         <module>web-tool/tool</module>
         <module>web-portlet</module> 
       </modules>
@@ -33,7 +32,6 @@
       <modules>
         <module>web-api/api</module>
         <module>web-impl/impl</module>
-        <module>web-impl/pack</module>
         <module>web-tool/tool</module>
         <module>web-portlet</module> 
       </modules>

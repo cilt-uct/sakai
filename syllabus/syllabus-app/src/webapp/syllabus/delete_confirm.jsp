@@ -21,7 +21,7 @@
 		  	<h3>
 					<h:outputText  value="#{msgs.delConfNotice}" />
 			</h3>	
-			<div class="alertMessage">
+			<div class="sak-banner-warn">
 				<h:outputText  value="#{msgs.delConfAlert}" />
 			</div>
 				<h:dataTable value="#{SyllabusTool.selectedEntries}" var="eachEntry"  summary="#{msgs.del_conf_listsummary}" styleClass="listHier lines nolines">
@@ -81,7 +81,7 @@
 							<h:outputText  value="#{msgs.delConfHeaderRemove}" />
 						</f:facet>
 						<f:subview id="deleteImg" rendered="#{eachEntry.selected}">
-							<f:verbatim><img src="/library/image/silk/cancel.png" onclick="$('.datInputStart').focus();"/></f:verbatim>
+							<f:verbatim><span class="fa fa-times" onclick="$('.datInputStart').focus();"></span></f:verbatim>
 						</f:subview>
 					</h:column>
 				</h:dataTable>

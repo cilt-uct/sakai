@@ -44,6 +44,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import lombok.extern.slf4j.Slf4j;
+
 import org.sakaiproject.authz.api.PermissionsHelper;
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.component.cover.ServerConfigurationService;
@@ -68,12 +70,10 @@ import org.sakaiproject.tool.api.ToolSession;
 import org.sakaiproject.tool.cover.SessionManager;
 import org.sakaiproject.util.Resource;
 import org.sakaiproject.util.ResourceLoader;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 public class FolderType extends BaseResourceType implements ExpandableResourceType 
 {
-	private static final Logger logger = LoggerFactory.getLogger(FolderType.class);
 	protected String typeId = ResourceType.TYPE_FOLDER;
 	protected String helperId = "sakai.resource.type.helper";
 	
@@ -355,7 +355,7 @@ public class FolderType extends BaseResourceType implements ExpandableResourceTy
 			try {
 				zipUtil.compressFolder(reference);
 			} catch (Exception e) {
-				logger.warn(e.getMessage());
+				log.warn(e.getMessage());
 			}			
 		}
 		
@@ -414,6 +414,52 @@ public class FolderType extends BaseResourceType implements ExpandableResourceTy
 			}
 		}
 		return iconLocation;
+	}
+	
+	public String getIconClass(ContentEntity entity, boolean expanded)
+	{
+		String iconClass = "fa fa-folder-open-o";
+		if(entity.isCollection())
+		{
+			ContentCollection collection = (ContentCollection) entity;
+			int memberCount = collection.getMemberCount();
+			if(memberCount == 0)
+			{
+				iconClass = "fa fa-folder-o";
+			}
+			else if(memberCount > ResourceType.EXPANDABLE_FOLDER_SIZE_LIMIT)
+			{
+				iconClass = "fa fa-folder";
+			}
+			else if(expanded) 
+			{
+				iconClass = "fa fa-folder-open";
+			}
+			else 
+			{
+				iconClass = "fa fa-folder";
+			}
+		}
+		return iconClass;
+	}
+	
+	public String getIconClass(ContentEntity entity) 
+	{
+		String iconClass = "fa fa-folder-open-o";
+		if(entity != null && entity.isCollection())
+		{
+			ContentCollection collection = (ContentCollection) entity;
+			int memberCount = collection.getMemberCount();
+			if(memberCount == 0)
+			{
+				iconClass = "fa fa-folder-o";
+			}
+			else if(memberCount > ResourceType.EXPANDABLE_FOLDER_SIZE_LIMIT)
+			{
+				iconClass = "fa fa-folder";
+			}
+		}
+		return iconClass;
 	}
 	
 	public String getId() 

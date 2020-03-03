@@ -10,12 +10,15 @@
 		<style type="text/css">
 			@import url("/sakai-signup-tool/css/signupStyle.css");
 		</style>
-		<script TYPE="text/javascript" LANGUAGE="JavaScript" src="/sakai-signup-tool/js/signupScript.js"></script>
+		<h:outputText value="#{Portal.latestJQuery}" escape="false"/>
+		<script src="/sakai-signup-tool/js/signupScript.js"></script>
 		
 		<sakai:view_content>
 			<h:outputText value="#{msgs.event_error_alerts} #{messageUIBean.errorMessage}" styleClass="alertMessage" escape="false" rendered="#{messageUIBean.error}"/> 
 			<h:form id="meeting">
-			 	<sakai:view_title value="#{msgs.event_addSignup_attendee_page_title}"/>
+				<div class="page-header">
+					<sakai:view_title value="#{msgs.event_addSignup_attendee_page_title}"/>
+				</div>
 
 				<h:panelGrid columns="2" columnClasses="titleColumn,valueColumn" style="margin-top:20px;">
 					<h:outputText value="#{msgs.event_name}" styleClass="titleText" escape="false"/>
@@ -27,14 +30,14 @@
 					<h:outputText value="#{msgs.event_timeslot}" escape="false"/>					
 					<h:panelGroup>				    
 		  		   		<h:outputText value="#{AttendeeSignupMBean.timeslotWrapper.timeSlot.startTime}">
-							<f:convertDateTime pattern="h:mm a" timeZone="#{UserTimeZone.userTimeZone}"/>
+							<f:convertDateTime pattern="#{UserLocale.localizedTimeFormat}" timeZone="#{UserTimeZone.userTimeZone}"/>
 						</h:outputText>
 						<h:outputText value="#{AttendeeSignupMBean.timeslotWrapper.timeSlot.startTime}" rendered="#{AttendeeSignupMBean.meetingWrapper.meeting.meetingCrossDays}">
 								<f:convertDateTime pattern=", EEEEEEEE" timeZone="#{UserTimeZone.userTimeZone}"/>
 						</h:outputText>	
 						<h:outputText value="#{msgs.timeperiod_divider}" escape="false"/>
 						<h:outputText value="#{AttendeeSignupMBean.timeslotWrapper.timeSlot.endTime}">
-							<f:convertDateTime pattern="h:mm a" timeZone="#{UserTimeZone.userTimeZone}"/>
+							<f:convertDateTime pattern="#{UserLocale.localizedTimeFormat}" timeZone="#{UserTimeZone.userTimeZone}"/>
 						</h:outputText>
 						<h:outputText value="#{AttendeeSignupMBean.timeslotWrapper.timeSlot.endTime}" styleClass="longtext">
 							<f:convertDateTime pattern=", EEEEEEEE, " timeZone="#{UserTimeZone.userTimeZone}"/>

@@ -32,26 +32,27 @@ import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import lombok.extern.slf4j.Slf4j;
+
 import org.sakaiproject.importer.api.HandlesImportable;
 import org.sakaiproject.importer.api.Importable;
 import org.sakaiproject.importer.impl.importables.AssessmentAnswer;
 import org.sakaiproject.importer.impl.importables.AssessmentQuestion;
 import org.sakaiproject.importer.impl.importables.QuestionPool;
+import org.sakaiproject.samigo.util.SamigoConstants;
 import org.sakaiproject.tool.assessment.data.dao.assessment.Answer;
 import org.sakaiproject.tool.assessment.data.dao.assessment.AnswerFeedback;
 import org.sakaiproject.tool.assessment.data.dao.assessment.ItemText;
 import org.sakaiproject.tool.assessment.facade.ItemFacade;
 import org.sakaiproject.tool.assessment.facade.QuestionPoolFacade;
+import org.sakaiproject.tool.assessment.facade.AgentFacade;
 import org.sakaiproject.tool.assessment.services.ItemService;
 import org.sakaiproject.tool.assessment.services.QuestionPoolService;
 import org.sakaiproject.tool.cover.SessionManager;
+import org.sakaiproject.event.cover.EventTrackingService;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-
+@Slf4j
 public class SamigoPoolHandler implements HandlesImportable {
-	private static Logger log = LoggerFactory.getLogger(SamigoPoolHandler.class);
 
 	// Samigo identifies each question type with an int
 	public static final int TRUE_FALSE = 4;
@@ -215,7 +216,8 @@ public class SamigoPoolHandler implements HandlesImportable {
 			itemFacade.setCreatedDate(new java.util.Date());
 			itemFacade.setLastModifiedBy(SessionManager.getCurrentSessionUserId());
 			itemFacade.setLastModifiedDate(new java.util.Date());
-			itemService.saveItem(itemFacade);
+			itemFacade = itemService.saveItem(itemFacade);
+			EventTrackingService.post(EventTrackingService.newEvent(SamigoConstants.EVENT_ASSESSMENT_SAVEITEM, "/sam/" + AgentFacade.getCurrentSiteId() + "/saved itemId=" + itemFacade.getItemId().toString(), true));
 			rv.add(itemFacade);
 			
 		}

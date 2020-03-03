@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 /**********************************************************************************
  * $URL: $
@@ -22,13 +37,18 @@
  *
  **********************************************************************************/
 
-
 package org.sakaiproject.lessonbuildertool.service;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.InputStream;
 import java.io.Serializable;
+import java.lang.reflect.Method;
+import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.InetAddress;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -42,83 +62,82 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.Stack;
+import java.util.UUID;
 import java.util.Vector;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 import java.io.InputStream;
 import java.io.FileInputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.lang.reflect.Method;
-import java.util.regex.PatternSyntaxException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.apache.commons.fileupload.disk.DiskFileItem;
+import org.apache.commons.lang3.StringUtils;
+import org.jsoup.Jsoup;
+import org.jsoup.select.Elements;
+import org.sakaiproject.authz.api.AuthzRealmLockException;
 import org.sakaiproject.authz.api.SecurityAdvisor;
 import org.sakaiproject.authz.api.SecurityService;
-import org.sakaiproject.memory.api.MemoryService;
 import org.sakaiproject.content.api.ContentHostingService;
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.component.cover.ServerConfigurationService;
+import org.sakaiproject.content.api.ContentHostingService;
 import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.entity.api.EntityProducer;
 import org.sakaiproject.entity.api.EntityTransferrer;
-import org.sakaiproject.entity.api.EntityTransferrerRefMigrator;
 import org.sakaiproject.entity.api.HttpAccess;
 import org.sakaiproject.entity.api.Reference;
 import org.sakaiproject.entity.api.ResourceProperties;
+import org.sakaiproject.entity.api.ResourcePropertiesEdit;
 import org.sakaiproject.entity.cover.EntityManager;
 import org.sakaiproject.entitybroker.EntityReference;
-import org.sakaiproject.thread_local.cover.ThreadLocalManager;
 import org.sakaiproject.entitybroker.entityprovider.CoreEntityProvider;
 import org.sakaiproject.entitybroker.entityprovider.capabilities.AutoRegisterEntityProvider;
-import org.sakaiproject.entitybroker.entityprovider.capabilities.Statisticable;
-import org.sakaiproject.entitybroker.entityprovider.capabilities.InputTranslatable;
-import org.sakaiproject.entitybroker.entityprovider.capabilities.Inputable;
 import org.sakaiproject.entitybroker.entityprovider.capabilities.Createable;
-
+import org.sakaiproject.entitybroker.entityprovider.capabilities.InputTranslatable;
+import org.sakaiproject.entitybroker.entityprovider.capabilities.Statisticable;
 import org.sakaiproject.entitybroker.util.AbstractEntityProvider;
 import org.sakaiproject.lessonbuildertool.LessonBuilderAccessAPI;
-import org.sakaiproject.lessonbuildertool.ToolApi;
 import org.sakaiproject.lessonbuildertool.SimplePage;
 import org.sakaiproject.lessonbuildertool.SimplePageGroup;
 import org.sakaiproject.lessonbuildertool.SimplePageItem;
-import org.sakaiproject.lessonbuildertool.SimplePageItemImpl;
-import org.sakaiproject.lessonbuildertool.SimplePageItemAttributeImpl;
-import org.sakaiproject.lessonbuildertool.SimplePageQuestionAnswer;
-import org.sakaiproject.lessonbuildertool.model.SimplePageToolDao;
+import org.sakaiproject.lessonbuildertool.ToolApi;
+import org.sakaiproject.lessonbuildertool.api.LessonBuilderEvents;
 import org.sakaiproject.lessonbuildertool.cc.CartridgeLoader;
 import org.sakaiproject.lessonbuildertool.cc.Parser;
 import org.sakaiproject.lessonbuildertool.cc.PrintHandler;
 import org.sakaiproject.lessonbuildertool.cc.ZipLoader;
-import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean;
+import org.sakaiproject.lessonbuildertool.model.SimplePageToolDao;
 import org.sakaiproject.lessonbuildertool.tool.beans.OrphanPageFinder;
+import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean;
+import org.sakaiproject.lti.api.LTIService;
+import org.sakaiproject.memory.api.MemoryService;
+import org.sakaiproject.service.gradebook.shared.ConflictingAssignmentNameException;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SitePage;
-import org.sakaiproject.site.api.ToolConfiguration;
 import org.sakaiproject.site.api.SiteService;
-import org.sakaiproject.tool.api.Tool;
-import org.sakaiproject.tool.api.ToolSession;
+import org.sakaiproject.site.api.ToolConfiguration;
+import org.sakaiproject.thread_local.cover.ThreadLocalManager;
 import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.tool.api.SessionManager;
+import org.sakaiproject.tool.api.Tool;
 import org.sakaiproject.tool.api.ToolManager;
-import org.sakaiproject.entity.api.ResourceProperties;
-import org.sakaiproject.entity.api.ResourcePropertiesEdit;
-import org.sakaiproject.exception.IdUnusedException;
+import org.sakaiproject.tool.api.ToolSession;
+import org.sakaiproject.util.RequestFilter;
 import org.sakaiproject.util.ResourceLoader;
 import org.sakaiproject.util.Xml;
-import org.sakaiproject.util.RequestFilter;
-import uk.org.ponder.messageutil.MessageLocator;
+import org.springframework.context.MessageSource;
 import org.w3c.dom.Attr;
 import org.w3c.dom.DOMException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-import org.springframework.context.MessageSource;
 
+import lombok.extern.slf4j.Slf4j;
+import uk.org.ponder.messageutil.MessageLocator;
 
 /**
  * @author hedrick
@@ -127,12 +146,10 @@ import org.springframework.context.MessageSource;
  * configuration property. That's handled separately in site.xml
  *
  */
+@Slf4j
 public class LessonBuilderEntityProducer extends AbstractEntityProvider
-    implements EntityProducer, EntityTransferrer, EntityTransferrerRefMigrator, Serializable, 
+    implements EntityProducer, EntityTransferrer, Serializable,
 	       CoreEntityProvider, AutoRegisterEntityProvider, Statisticable, InputTranslatable, Createable, ToolApi  {
-
-   protected final Logger logger = LoggerFactory.getLogger(getClass());
-
    private static final String ARCHIVE_VERSION = "2.4"; // in case new features are added in future exports
    private static final String VERSION_ATTR = "version";
    private static final String NAME = "name";
@@ -153,16 +170,16 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
    public final static String REF_LB_FORUM = "lessonbuilder/fix/forum/";
 
 
-    // other tools don't copy group access restrictions, so I think we probably shouldn't. The data is
-    // there in the archive
-    public final boolean RESTORE_GROUPS = false;
+   // other tools don't copy group access restrictions, so I think we probably shouldn't. The data is
+   // there in the archive
+   public final boolean RESTORE_GROUPS = false;
 
-    private ToolManager toolManager;
-    private SecurityService securityService;
-    private SessionManager sessionManager;
-    private SiteService siteService;
-    private ContentHostingService contentHostingService;
-    private MemoryService memoryService;
+   private ToolManager toolManager;
+   private SecurityService securityService;
+   private SessionManager sessionManager;
+   private SiteService siteService;
+   private ContentHostingService contentHostingService;
+   private MemoryService memoryService;
    private SimplePageToolDao simplePageToolDao;
    private LessonEntity forumEntity;
    private LessonEntity quizEntity;
@@ -171,6 +188,7 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
    private GradebookIfc gradebookIfc;
    private LessonBuilderAccessAPI lessonBuilderAccessAPI;
    private MessageSource messageSource;
+	private LTIService ltiService;
    public void setLessonBuilderAccessAPI(LessonBuilderAccessAPI l) {
        lessonBuilderAccessAPI = l;
    }
@@ -205,7 +223,7 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
      *   migrateEmbedded links - for all text items in site, call kernel linkMigrationHelper
      */     
 
- // The attributes in HTML that should have their values looked at and possibly re-written
+   // The attributes in HTML that should have their values looked at and possibly re-written
    private Collection<String> attributes = new HashSet<String>(
 				    Arrays.asList(new String[] { "href", "src", "background", "action",
 				    "pluginspage", "pluginurl", "classid", "code", "codebase",
@@ -223,13 +241,13 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 
 
    public void init() {
-      logger.info("init()");
+      log.info("init()");
       
       try {
          EntityManager.registerEntityProducer(this, REFERENCE_ROOT);
       }
       catch (Exception e) {
-         logger.warn("Error registering Link Tool Entity Producer", e);
+         log.warn("Error registering Link Tool Entity Producer", e);
       }
 
       lessonBuilderAccessAPI.setToolApi(this);
@@ -244,8 +262,8 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 	  if (linkMigrationHelper != null)
 	      migrateAllLinks = linkMigrationHelper.getMethod("migrateAllLinks", new Class[] { Set.class, String.class });
       } catch (Exception e) {
-	  logger.info("Exception in introspection " + e);
-	  logger.info("loader " + RequestFilter.class.getClassLoader());
+	  log.info("Exception in introspection " + e);
+	  log.info("loader " + RequestFilter.class.getClassLoader());
       }
 
       // Builds a Regexp selector.
@@ -285,11 +303,17 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
       servers.add("localhost");
       // if neither is defined we're in trouble;
       if (servers.size() == 0)
-	  logger.info("LessonBuilderEntityProducer ERROR: neither servername nor serverid defined in sakai.properties");
+	  log.info("LessonBuilderEntityProducer ERROR: neither servername nor serverid defined in sakai.properties");
 
       // this slightly odd code is for testing. It lets us test by reloading just lesson builder.
       // otherwise we have to restart sakai, since the entity stuff can't be restarted
       if (false) {
+	  SecurityAdvisor mergeAdvisor = new SecurityAdvisor() {
+		  public SecurityAdvice isAllowed(String userId, String function, String reference) {
+		      return SecurityAdvice.ALLOWED;
+		  }
+	      };
+
       try {
 	  Document doc = Xml.createDocument();
 	  Stack stack = new Stack();
@@ -309,27 +333,20 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 	  Xml.writeDocument(doc, "/tmp/xmlout");
 
 	  // we don't have an actual user at this point, so need to force checks to work
-	  securityService.pushAdvisor(new SecurityAdvisor() {
-		  public SecurityAdvice isAllowed(String userId, String function, String reference) {
-		      return SecurityAdvice.ALLOWED;
-		  }
-	      });
-
+	  securityService.pushAdvisor(mergeAdvisor);
 
 	  merge("0134937b-ce16-440c-80a6-fb088d79e5ad",  (Element)doc.getFirstChild().getFirstChild(), "/tmp/archive", "45d48248-ba23-4829-914a-7219c3ced2dd", null, null, null);
-
-
       } catch (Exception e) {
-	  logger.info(e.getMessage(), e);
+	  log.info(e.getMessage(), e);
       } finally {
-	  securityService.popAdvisor();
+	  securityService.popAdvisor(mergeAdvisor);
       }
       }
 
       try {
 	  ComponentManager.loadComponent("org.sakaiproject.lessonbuildertool.service.LessonBuilderEntityProducer", this);
       } catch (Exception e) {
-	  logger.warn("Error registering Lesson Builder Entity Producer with Spring. Lessonbuilder will work, but Lesson Builder instances won't be imported from site archives. This normally happens only if you redeploy Lessonbuilder. Suggest restarting Sakai", e);
+	  log.warn("Error registering Lesson Builder Entity Producer with Spring. Lessonbuilder will work, but Lesson Builder instances won't be imported from site archives. This normally happens only if you redeploy Lessonbuilder. Suggest restarting Sakai", e);
       }
 
    }
@@ -339,7 +356,7 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
     */
    public void destroy()
    {
-      logger.info("destroy()");
+      log.info("destroy()");
    }
 
     // lessonbuilder allows new tools to be created that use lessonbuilder. They will have
@@ -561,7 +578,7 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 	     }
 	 }
 
-	 logger.info("Skipped over " + orphansSkipped + " orphaned pages while archiving site " + siteId);
+	 log.info("Skipped over " + orphansSkipped + " orphaned pages while archiving site " + siteId);
 
          Collection<ToolConfiguration> tools = site.getTools(myToolIds());
 	 int count = 0;
@@ -572,20 +589,20 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 
 		 addAttr(doc, element, "toolid", config.getPageId());
 		 addAttr(doc, element, "name" , config.getContainingPage().getTitle());
+		 addAttr(doc, element, "pagePosition" , config.getContainingPage().getPosition() + "");
 
 		 Properties props = config.getPlacementConfig();
-
-		 String roleList = props.getProperty("functions.require");
-		 if (roleList == null)
-		     roleList = "";
+		 String roleList = StringUtils.trimToEmpty(props.getProperty("functions.require"));
+		 String pageVisibility = StringUtils.trimToEmpty(props.getProperty("sakai-portal:visible"));
 
 		 addAttr(doc, element, "functions.require", roleList);
+		 addAttr(doc, element, "pageVisibility" , pageVisibility);
 		 
 		 // should be impossible for these nulls, but we've seen it
 		 if (simplePageToolDao.getTopLevelPageId(config.getPageId()) != null)
 		     addAttr(doc, element, "pageId", Long.toString(simplePageToolDao.getTopLevelPageId(config.getPageId())));
 		 else
-		     logger.warn("archive site " + siteId + " tool page " + config.getPageId() + " null lesson");
+		     log.warn("archive site " + siteId + " tool page " + config.getPageId() + " null lesson");
 		 // addPage(doc, element,  simplePageToolDao.getTopLevelPageId(config.getPageId()));
 		 
 		 lessonbuilder.appendChild(element);
@@ -607,8 +624,7 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
       }
       catch (Exception any)
       {
-	  any.printStackTrace();
-         logger.warn("archive: exception archiving service: " + any + " " +  serviceName());
+         log.warn("archive: exception archiving service: " + any + " " +  serviceName());
       }
 
       stack.pop();
@@ -712,7 +728,6 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 
 	   Node node = allChildrenNodes.item(i);
 	   if (node.getNodeType() == Node.ELEMENT_NODE) {
-
 	       Element itemElement = (Element) node;
 	       if (itemElement.getTagName().equals("item")) {
 		   String s = itemElement.getAttribute("sequence");
@@ -732,7 +747,58 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 		       if (sakaiId.startsWith(prefix))
 			   sakaiId = "/group/" + siteId + "/" + sakaiId.substring(prefix.length());
 		       else
-			   logger.error("sakaiId not recognized " + sakaiId);
+			   log.error("sakaiId not recognized: {}", sakaiId);
+		   } else if (type == SimplePageItem.BLTI) {
+			   try {
+				   // We need to import the BLTI tool to the new site and update the sakaiid
+				   String[] bltiId = sakaiId.split("/");
+				   Long ltiContentId = Long.valueOf(bltiId[2]);
+
+				   Map<String, Object> ltiContent = ltiService.getContentDao(ltiContentId, oldSiteId, securityService.isSuperUser());
+				   String launchUrl = (String) ltiContent.get(LTIService.LTI_LAUNCH);
+				   String ltiTitle = (String) ltiContent.get(LTIService.LTI_TITLE);
+				   String xmlStr = (String) ltiContent.get(LTIService.LTI_XMLIMPORT);
+				   String ltiCustom = (String) ltiContent.get(LTIService.LTI_CUSTOM);
+				   Long ltiToolId = getLong(ltiContent.get(LTIService.LTI_TOOL_ID));
+				   sakaiId = importLTITool(siteId, launchUrl, ltiTitle, xmlStr, ltiCustom, ltiToolId);
+			   } catch (Exception e) {
+				   log.warn("Unable to import LTI tool to new site: {}", e);
+			   }
+	           } else if (type == SimplePageItem.TEXT) {
+			String html = itemElement.getAttribute("html");
+			Pattern idPattern = Pattern.compile("(https?://[^/]+/access/basiclti/site)/" + Pattern.quote(oldSiteId) + "/content:([0-9]+)");
+			Matcher matcher = idPattern.matcher(html);
+			StringBuffer sb = new StringBuffer();
+			boolean foundLtiLink = false;
+			while(matcher.find()) {
+				String urlFirstPart = matcher.group(1);
+				Long ltiContentId = Long.valueOf(matcher.group(2));
+				log.info("Updating reference: {}", matcher.group(0));
+				foundLtiLink = true;
+				try {
+					Map<String, Object> ltiContent = ltiService.getContentDao(ltiContentId, oldSiteId, securityService.isSuperUser());
+					String launchUrl = (String) ltiContent.get(LTIService.LTI_LAUNCH);
+					String ltiTitle = (String) ltiContent.get(LTIService.LTI_TITLE);
+					String xmlStr = (String) ltiContent.get(LTIService.LTI_XMLIMPORT);
+					String ltiCustom = (String) ltiContent.get(LTIService.LTI_CUSTOM);
+					Long ltiToolId = getLong(ltiContent.get(LTIService.LTI_TOOL_ID));
+					sakaiId = importLTITool(siteId, launchUrl, ltiTitle, xmlStr, ltiCustom, ltiToolId);
+					String[] bltiId = sakaiId.split("/");
+					ltiContentId = Long.valueOf(bltiId[2]);
+				} catch (Exception e) {
+					log.warn("Unable to import LTI tool to new site: {}", e);
+				} finally {
+					String updatedReference = urlFirstPart + "/" + siteId + "/content:" + ltiContentId;
+					log.info("New reference: {}", updatedReference);
+					matcher.appendReplacement(sb, Matcher.quoteReplacement(updatedReference));
+				}
+			}
+
+			if(foundLtiLink) {
+				matcher.appendTail(sb);
+				explanation = sb.toString();
+				log.info("Updated at least one LTI reference lesson HTML");
+			}
 		   } else if (type == SimplePageItem.PAGE) {
 		       // sakaiId should be the new page ID
 		       Long newPageId = pageMap.get(Long.valueOf(sakaiId));
@@ -842,6 +908,9 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 		   if (attributes != null && attributes.getLength() > 0) {
 		       Node attributesNode = attributes.item(0); // only one
 		       String attributeString = attributesNode.getTextContent();
+			   if(type == SimplePageItem.RESOURCE_FOLDER && StringUtils.isNotEmpty(attributeString)){
+				   attributeString = StringUtils.replace(attributeString, oldSiteId, siteId);
+			   }
 		       item.setAttributeString(attributeString);
 		   }
 
@@ -869,9 +938,13 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 			       title = title.substring(0, ii+1) + item.getId() + ")";
 			   }
 
-			   gradebookIfc.addExternalAssessment(siteId, s, null, title, Double.valueOf(itemElement.getAttribute("gradebookPoints")), null, "Lesson Builder");
-			   needupdate = true;
-			   item.setGradebookId(s);
+			   try {
+			       gradebookIfc.addExternalAssessment(siteId, s, null, title, Double.valueOf(itemElement.getAttribute("gradebookPoints")), null, "Lesson Builder");
+			       needupdate = true;
+			       item.setGradebookId(s);
+			   } catch(ConflictingAssignmentNameException cane){
+			       log.error("ConflictingAssignmentNameException for title {} and attribute {}.", title, "gradebookId");
+			   }
 		   }
 		   
 		   s = itemElement.getAttribute("altGradebook");
@@ -890,10 +963,14 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 			   if (false) {
 			       ii = title.lastIndexOf(":");
 			       title = title.substring(0, ii+1) + item.getId() + ")";
-			   }			       
-			   gradebookIfc.addExternalAssessment(siteId, s, null, title, Double.valueOf(itemElement.getAttribute("altPoints")), null, "Lesson Builder");
-			   needupdate = true;
-			   item.setAltGradebook(s);
+			   }
+			   try {
+			       gradebookIfc.addExternalAssessment(siteId, s, null, title, Double.valueOf(itemElement.getAttribute("altPoints")), null, "Lesson Builder");
+			       needupdate = true;
+			       item.setAltGradebook(s);
+			   } catch(ConflictingAssignmentNameException cane){
+			       log.error("ConflictingAssignmentNameException for title {} and attribute {}.", title, "altGradebook");
+			   }
 		   }
 
 		   // have to save again, I believe
@@ -976,31 +1053,25 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 	   return;
 
        for (SimplePageItem item: items) {
-	   if (item.getType() == SimplePageItem.TEXT) {
-	       String s = item.getHtml();
-	       if (s != null) {
-		   String fixed = fixUrls(s, oldServer, siteId, fromSiteId, itemMap);
-		   if (!s.equals(fixed)) {
-		       item.setHtml(fixed);
-		       simplePageToolDao.quickUpdate(item);
-		   }
-	       }
-	   }
+           if (item.getType() == SimplePageItem.TEXT) {
+               String s = item.getHtml();
+               if (StringUtils.isNotBlank(s)) {
+                   String fixed = fixUrls(s, oldServer, siteId, fromSiteId, itemMap);
+                   if (!StringUtils.equals(s ,fixed)) {
+                       item.setHtml(fixed);
+                       simplePageToolDao.quickUpdate(item);
+                   }
+               }
+           }
        }
 
     }
 
-
     public String fixUrls(String s, String oldServer, String siteId, String fromSiteId, Map<Long,Long> itemMap) {
-
-	ContentCopyContext context = new ContentCopyContext(fromSiteId, siteId, oldServer);
-
-       // should use CopyContent in kernel once KNL-737 is implemented. I'm including a copy of
-       // it for the moment
-	return convertHtmlContent(context, s, null, itemMap);
-
+        ContentCopyContext context = new ContentCopyContext(fromSiteId, siteId, oldServer);
+        String htmlWithAttachments = transferAttachmentFiles(s, fromSiteId, siteId);
+        return convertHtmlContent(context, htmlWithAttachments, null, itemMap);
    }
-
 
    public String merge(String siteId, Element root, String archivePath, String fromSiteId, Map attachmentNames, Map userIdTrans,
 		       Set userListAllowImport) {
@@ -1043,16 +1114,25 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 		     Long oldPageId = Long.valueOf(oldPageIdString);
 		     SimplePage page = simplePageToolDao.makePage("0", siteId, title, 0L, 0L);
 		     String gradebookPoints = pageElement.getAttribute("gradebookpoints");
-		     if (gradebookPoints != null && !gradebookPoints.equals("")) {
+		     if (StringUtils.isNotEmpty(gradebookPoints)) {
 			 page.setGradebookPoints(Double.valueOf(gradebookPoints));
 		     }
 		     String folder = pageElement.getAttribute("folder");
-		     if (folder != null && !folder.equals(""))
+		     if (StringUtils.isNotEmpty(folder))
 			 page.setFolder(folder);
+		     // Carry over the custom CSS sheet if present. These are of the form
+		     // "/group/SITEID/LB-CSS/whatever.css", so we need to map the SITEID
+		     String cssSheet = pageElement.getAttribute("csssheet");
+		     if (StringUtils.isNotEmpty(cssSheet))
+			 page.setCssSheet(cssSheet.replace("/group/"+fromSiteId+"/", "/group/"+siteId+"/"));
 		     simplePageToolDao.quickSaveItem(page);
-		     if (gradebookPoints != null && !gradebookPoints.equals("")) {
-			 gradebookIfc.addExternalAssessment(siteId, "lesson-builder:" + page.getPageId(), null,
+		     if (StringUtils.isNotEmpty(gradebookPoints)) {
+		       try {
+			     gradebookIfc.addExternalAssessment(siteId, "lesson-builder:" + page.getPageId(), null,
 							    title, Double.valueOf(gradebookPoints), null, "Lesson Builder");
+			   } catch(ConflictingAssignmentNameException cane){
+			     log.error("merge: ConflictingAssignmentNameException for title {}.", title);
+			   }
 		     }
 		     pageMap.put(oldPageId, page.getPageId());
 		 }
@@ -1103,6 +1183,8 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 
 			 String toolTitle = trimToNull(element.getAttribute("name"));
 			 String rolelist = element.getAttribute("functions.require");
+			 String pagePosition = element.getAttribute("pagePosition");
+			 String pageVisibility = element.getAttribute("pageVisibility");
 
 			 if(toolTitle != null) {
 			     Tool tr = toolManager.getTool(LESSONBUILDER_ID);
@@ -1131,23 +1213,31 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 			     // if we alrady have an appropriate blank page from the template, page and tool are set
 
 			     if (page == null) {
-				 page = site.addPage(); 
-				 tool = page.addTool(LESSONBUILDER_ID);
+			    	 page = site.addPage(); 
+			    	 tool = page.addTool(LESSONBUILDER_ID);
+			    	 if (StringUtils.isNotBlank(pagePosition)) {
+			    		 int integerPosition = Integer.parseInt(pagePosition);
+			    		 page.setPosition(integerPosition);
+			    	 }
 			     }
 
 			     String toolId = tool.getPageId();
 			     if (toolId == null) {
-				 logger.error("unable to find new toolid for copy of " + oldToolId);
+				 log.error("unable to find new toolid for copy of " + oldToolId);
 				 continue;
 			     }
 
+			     if (StringUtils.isNotBlank(rolelist)) {
+				     tool.getPlacementConfig().setProperty("functions.require", rolelist);
+			     }
+			     if (StringUtils.isNotBlank(pageVisibility)) {
+				     tool.getPlacementConfig().setProperty("sakai-portal:visible", pageVisibility);
+			     }
 			     tool.setTitle(toolTitle);
-			     if (rolelist != null)
-				 tool.getPlacementConfig().setProperty("functions.require", rolelist);
-			     count++;
 			     page.setTitle(toolTitle);
 			     page.setTitleCustom(true);
 			     siteService.save(site);
+			     count++;
 				      
 			     // now fix up the page. new format has it as attribute
 			     String pageId = trimToNull(element.getAttribute("pageId"));
@@ -1156,21 +1246,21 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 				 // normally just one
 				 Node pageNode = element.getFirstChild();
 				 if (pageNode == null || pageNode.getNodeType() != Node.ELEMENT_NODE) {
-				     logger.error("page node not element");
+				     log.error("page node not element");
 				     continue;
 				 }
 				 Element pageElement = (Element)pageNode;
 				 pageId = trimToNull(pageElement.getAttribute("pageid"));
 			     }
 			     if (pageId == null) {
-				 logger.error("page node without old pageid");
+				 log.error("page node without old pageid");
 				 continue;
 			     }
 
 			     // fix up the new copy of the page to be top level
 			     SimplePage simplePage = simplePageToolDao.getPage(pageMap.get(Long.valueOf(pageId)));
 			     if (simplePage == null) {
-				 logger.error("can't find new copy of top level page");
+				 log.error("can't find new copy of top level page");
 				 continue;
 			     }
 			     simplePage.setParent(null);
@@ -1190,13 +1280,13 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
          }
          catch (DOMException e)
          {
-            logger.error(e.getMessage(), e);
+            log.error(e.getMessage(), e);
             results.append("merging " + getLabel()
                   + " failed during xml parsing.\n");
          }
          catch (Exception e)
          {
-            logger.error(e.getMessage(), e);
+            log.error(e.getMessage(), e);
             results.append("merging " + getLabel() + " failed.\n");
          }
       }
@@ -1218,6 +1308,8 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 	   return false;
        String id = reference.substring(i);
        i = id.indexOf("/", 1);
+       if (i < 0)
+	   return false;
        type = id.substring(1, i);
        String numstring = id.substring(i+1);
        i = numstring.indexOf("/");
@@ -1285,20 +1377,11 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
       return true;
    }
    
-	public void transferCopyEntities(String fromContext, String toContext, List ids)
-	{
-	    transferCopyEntitiesImpl(fromContext, toContext, ids, false);
-	}
-
-	public void transferCopyEntities(String fromContext, String toContext, List ids, boolean cleanup) {
-	    transferCopyEntitiesImpl(fromContext, toContext, ids, cleanup);
-	}    
-
-	public Map<String, String> transferCopyEntitiesRefMigrator(String fromContext, String toContext, List<String> ids) {
+	public Map<String, String> transferCopyEntities(String fromContext, String toContext, List<String> ids, List<String> options) {
 	    return transferCopyEntitiesImpl(fromContext, toContext, ids, false);
 	}
 
-	public Map<String, String> transferCopyEntitiesRefMigrator(String fromContext, String toContext, List<String> ids, boolean cleanup) {
+	public Map<String, String> transferCopyEntities(String fromContext, String toContext, List<String> ids, List<String> options, boolean cleanup) {
 	    return transferCopyEntitiesImpl(fromContext, toContext, ids, cleanup);
 	}
    
@@ -1311,32 +1394,23 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 		if(cleanup == true) {
 		    Site toSite = siteService.getSite(toContext);
 				
-		    List toSitePages = toSite.getPages();
+		    List<SitePage> toSitePages = toSite.getPages();
 		    if (toSitePages != null && !toSitePages.isEmpty()) {
-			Vector removePageIds = new Vector();
-			Iterator pageIter = toSitePages.iterator();
-			while (pageIter.hasNext()) {
-			    SitePage currPage = (SitePage) pageIter.next();
+		    	Vector<String> removePageIds = new Vector<>();
+		    	for (SitePage currPage : toSitePages) {
+		    		List<String> toolIds = myToolList();
+		    		List<ToolConfiguration> toolList = currPage.getTools();
+		    		for (ToolConfiguration toolConfig : toolList) {
+		    			if (toolIds.contains(toolConfig.getToolId())) {
+		    				removePageIds.add(toolConfig.getPageId());
+		    			}
+		    		}
+		    	}
+		    	for (String removeId : removePageIds) {
+		    		SitePage sitePage = toSite.getPage(removeId);
+		    		toSite.removePage(sitePage);
+		    	}
 
-			    List<String> toolIds = myToolList();
-
-			    List toolList = currPage.getTools();
-			    Iterator toolIter = toolList.iterator();
-			    while (toolIter.hasNext()) {
-				
-				ToolConfiguration toolConfig = (ToolConfiguration)toolIter.next();
-
-				if (toolIds.contains(toolConfig.getToolId())) {
-				    removePageIds.add(toolConfig.getPageId());
-				}
-			    }
-			}
-			for (int i = 0; i < removePageIds.size(); i++) {
-			    String removeId = (String) removePageIds.get(i);
-			    SitePage sitePage = toSite.getPage(removeId);
-			    toSite.removePage(sitePage);
-			}
-				
 		    }
 		    siteService.save(toSite);
 		    ToolSession session = sessionManager.getCurrentToolSession();
@@ -1354,7 +1428,7 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 
 		}
 
-		logger.debug("lesson builder transferCopyEntities");
+		log.debug("lesson builder transferCopyEntities");
 		Document doc = Xml.createDocument();
 		Stack stack = new Stack();
 		Element root = doc.createElement("archive");
@@ -1387,13 +1461,13 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 		// site-manage will stomp on it. So we need a different way to say that group fixup is needed
 
 	    } catch (Exception e) {
-		logger.error(e.getMessage(), e);
+		log.error(e.getMessage(), e);
 	    }
 
 	    try {
 		Site toSite = siteService.getSite(toContext);
 	    } catch (Exception e) {
-		logger.error(e.getMessage(), e);
+		log.error(e.getMessage(), e);
 	    }		
 
 	    // set this flag for the group update, which we really do need in duplicate
@@ -1484,12 +1558,12 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 		    SimplePageItem i = simplePageToolDao.findItem(item.getId());
 		    if (item != null) {
 			i.setHtml(newBody);
-			logger.debug("html - (post mod):"+msgBody);
+			log.debug("html - (post mod):"+msgBody);
 			simplePageToolDao.quickUpdate(i);
 		    }
 		}
 	    } catch (Exception e) {
-		logger.warn("Problem migrating links in Lessonbuilder"+e);
+		log.warn("Problem migrating links in Lessonbuilder"+e);
 	    }
 	}		
     }
@@ -1539,7 +1613,7 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 	  try {
 	      site = siteService.getSite(toContext);
 	  } catch (Exception e) {
-	      logger.error("can't get site " + toContext + " " + e);
+	      log.error("can't get site " + toContext + " " + e);
 	      return;
 	  }
 
@@ -1561,12 +1635,16 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 	  }
 
 	  for (Group group: delGroups) {
-	      site.removeGroup(group);      
+	      try {
+	        site.deleteGroup(group);
+	      } catch (AuthzRealmLockException arle) {
+	        log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
+	      }
 	  }
 	  try {
 	      siteService.save(site);
 	  } catch (Exception e) {
-	      logger.warn("unable to save set to upgrade groups", e);
+	      log.warn("unable to save set to upgrade groups", e);
 	  }
 
       }
@@ -1682,6 +1760,10 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 	messageSource = s;
     }
 
+	public void setLtiService(LTIService s) {
+		ltiService = s;
+	}
+
     // sitestats support
 
     public boolean entityExists(String id) {
@@ -1702,7 +1784,17 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
     }
 
     public final static String[] EVENT_KEYS= 
-	new String[] {"lessonbuilder.create", "lessonbuilder.delete", "lessonbuilder.update", "lessonbuilder.read"};
+	new String[] {LessonBuilderEvents.PAGE_CREATE,
+                    LessonBuilderEvents.PAGE_READ,
+                    LessonBuilderEvents.PAGE_UPDATE,
+                    LessonBuilderEvents.PAGE_DELETE,
+                    LessonBuilderEvents.ITEM_CREATE,
+                    LessonBuilderEvents.ITEM_READ,
+                    LessonBuilderEvents.ITEM_UPDATE,
+                    LessonBuilderEvents.ITEM_DELETE,
+                    LessonBuilderEvents.COMMENT_CREATE,
+                    LessonBuilderEvents.COMMENT_UPDATE,
+                    LessonBuilderEvents.COMMENT_DELETE};
 
     /**
      * Return an array of all the event keys which should be tracked for statistics
@@ -1755,19 +1847,16 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 	}
     }
 
-    private String convertHtmlContent(ContentCopyContext context,
-				      String content, String contentUrl, Map<Long,Long> itemMap) {
-	
+    private String convertHtmlContent(ContentCopyContext context, String content, String contentUrl, Map<Long,Long> itemMap) {
 	// this old code (below) seems to have come from an old version of the kerne's reference migrator.
 	// It's too complex for me to verify that it's right.
 	// At this point the kernel just does string replacements. So I'm going to
-	// replace /access/content/group/NNN with the new value
+	// replace NNN with the new value
 	// and also fix up the dummy references.
 
-	String oldurl = "/access/content/group/" + context.getOldSiteId().replace(" ", "%20");
-	String newurl = "/access/content/group/" + context.getNewSiteId().replace(" ", "%20");
-
-	content = content.replace(oldurl, newurl);
+        String oldSiteReference = context.getOldSiteId();
+        String newSiteReference = context.getNewSiteId();
+        content = StringUtils.replace(content, oldSiteReference, newSiteReference);
 
 	// no point doing this code unless we actually have a dummy url in it
 	if (content.indexOf(ITEMDUMMY) >= 0) {
@@ -1789,36 +1878,7 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 	    content = newcontent.toString();
 	}
 
-	if (false) {
-	StringBuilder output = new StringBuilder();
-	Matcher matcher = attributePattern.matcher(content);
-	int contentPos = 0;
-
-	StringBuffer newContent = new StringBuffer();
-	while (matcher.find()) {
-	    String url = matcher.group(3);
-
-	    // processUrl does a parse of the URL. It will fail if there is a space
-	    // in it. But spaces are often used by humans, since they actually work.
-	    // And a CKEditor bug inserts them. So handle them correctly.
-	    url = url.replace(" ", "%20");
-	    url = processUrl(context, url, contentUrl, itemMap);
-	    // Content up to the match.
-	    int copyTo = matcher.start(3);
-	    // Start the second copy after the match.
-	    int copyFrom = matcher.end(3);
-	    int copyEnd = matcher.end();
-	    
-	    output.append(content.substring(contentPos, copyTo));
-	    output.append(url);
-	    output.append(content.substring(copyFrom, copyEnd));
-	    contentPos = copyEnd;
-	}
-	    output.append(content.substring(contentPos));
-	    return output.toString();
-	} // end of if false
-
-	return content;
+        return content;
 
     }
 
@@ -1899,8 +1959,7 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 			// sorry, no can do
 			//addPath(context, link.getPath());
 		    } catch (URISyntaxException e) {
-			System.err.println("Supplied contentUrl isn't valid: "
-				 + contentUrl);
+			log.error("Supplied contentUrl isn't valid: {}", contentUrl);
 		    }
 		}
 	    }
@@ -1908,7 +1967,7 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 	} catch (URISyntaxException e) {
 	    // Logger this so we may get an idea of the things that are breaking
 	    // the parser.
-	    System.err.println("Failed to parse URL: " + value + " " + e.getMessage());
+	    log.error("Failed to parse URL: {} {}", value, e.getMessage());
 	}
 	return value;
     }
@@ -2020,7 +2079,7 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 		// don't set until we know the save worked
 		dummyPageId = page.getId();
 	    } catch (Exception e) {
-		logger.info("can't add dummy page to site " + e);
+		log.info("can't add dummy page to site " + e);
 	    }
 	    toolSession = ses.getToolSession(tool.getId());
 	    sessionManager.setCurrentToolSession(toolSession);
@@ -2066,8 +2125,7 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 		return ret;
 
 	    } catch (Exception e) {
-		logger.info("exception in createentity " + e);
-		e.printStackTrace();
+		log.info("exception in createentity " + e);
 		return "exception in createentity " + e;
 	    } finally {
 		try {
@@ -2151,5 +2209,159 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
     private long idFromRef (String reference) {
         return idFromRef(reference,4);
     }
+
+    /**
+     * Parses an HTML content, extracts the URLs of the HTML content and transfer the missing files into the new site.
+     */
+    private String transferAttachmentFiles(String msgBody, String oldSiteId, String newSiteId) {
+        String replacedBody = msgBody;
+        String serverURL = ServerConfigurationService.getServerUrl();
+        String collectionPrefix = "/access/content/";
+        if(StringUtils.isNotBlank(msgBody)) {
+            org.jsoup.nodes.Document doc = Jsoup.parse(msgBody);
+
+            Elements links = doc.select("a[href]");
+            Elements media = doc.select("[src]");
+            Elements imports = doc.select("link[href]");
+            List<String> references = new ArrayList<String>();
+            // href ...
+            for (org.jsoup.nodes.Element link : links) {
+                references.add(link.attr("abs:href"));
+            }
+
+            // img ...
+            for (org.jsoup.nodes.Element src : media) {
+                references.add(src.attr("abs:src"));
+            }
+
+            // js, css, ...
+            for (org.jsoup.nodes.Element link : imports) {
+                references.add(link.attr("abs:href"));
+            }
+
+            for (String reference : references) {
+                if (reference.contains(oldSiteId) && reference.contains(collectionPrefix)) {
+                    try {
+                        String oldReferenceId = reference;
+                        oldReferenceId = StringUtils.replace(oldReferenceId, collectionPrefix, "/");
+                        oldReferenceId = StringUtils.replace(oldReferenceId, serverURL, StringUtils.EMPTY);
+                        //Try secure and non-secure URLs too, for instances with a mix of configurations.
+                        oldReferenceId = StringUtils.replace(oldReferenceId, StringUtils.replace(serverURL, "https://", "http://"), StringUtils.EMPTY);
+                        oldReferenceId = StringUtils.replace(oldReferenceId, StringUtils.replace(serverURL, "http://", "https://"), StringUtils.EMPTY);
+                        String newReferenceId = StringUtils.replace(oldReferenceId, oldSiteId, newSiteId);
+                        contentHostingService.copy(oldReferenceId, newReferenceId);
+                        replacedBody = StringUtils.replace(replacedBody, oldSiteId, newSiteId);
+                        } catch(Exception e) {
+                            log.error("Error transfering file from site {} to site {}.", oldSiteId, newSiteId, e);
+                        }
+                }
+            }
+        }
+        return replacedBody;
+    }
+
+	private String importLTITool(String siteId, String launchUrl, String bltiTitle, String strXml, String custom, Long ltiToolId)
+			throws Exception
+	{
+		if ( ltiService == null ) return null;
+
+		// If there is no launch url saved in the lti content get it from the corresponding tool
+		if (launchUrl == null) {
+			Map<String, Object> ltiTool = ltiService.getToolDao(ltiToolId, siteId, securityService.isSuperUser());
+			launchUrl = (String) ltiTool.get(LTIService.LTI_LAUNCH);
+		}
+		String toolUrl = launchUrl;
+		int pos = toolUrl.indexOf("?");
+		if ( pos > 0 ) {
+			toolUrl = toolUrl.substring(0, pos);
+		}
+
+		// Check for global tool configurations (prefer global)
+		Map<String,Object> theTool = null;
+		List<Map<String,Object>> tools = ltiService.getToolsDao(null,null,0,0,"!admin");
+		String lastLaunch = "";
+		for ( Map<String,Object> tool : tools ) {
+			String toolLaunch = (String) tool.get(LTIService.LTI_LAUNCH);
+			// Prefer the longest match
+			if (toolUrl.startsWith(toolLaunch) && toolLaunch.length() > lastLaunch.length()) {
+				theTool = tool;
+				lastLaunch = toolLaunch;
+			}
+		}
+
+		// Check for within-site tool configurations (prefer global)
+		if ( theTool == null ) {
+			tools = ltiService.getToolsDao(null,null,0,0,siteId);
+			lastLaunch = "";
+			for ( Map<String,Object> tool : tools ) {
+				String toolLaunch = (String) tool.get(LTIService.LTI_LAUNCH);
+				// Prefer the longest match
+				if ( toolUrl.startsWith(toolLaunch) && toolLaunch.length() > lastLaunch.length()) {
+					theTool = tool;
+					lastLaunch = toolLaunch;
+				}
+			}
+		}
+
+		// If we still do not have a tool configuration throw an error
+		if ( theTool == null ) {
+			log.error("LORI Launch configuration not found- "+toolUrl);
+			throw new Exception("LORI Launch configuration not found");
+		}
+
+		// Found a tool - time to insert content
+		Map<String,Object> theContent = null;
+
+		Properties props = new Properties ();
+		String toolId = getLong(theTool.get(LTIService.LTI_ID)).toString();
+		props.setProperty(LTIService.LTI_TOOL_ID,toolId);
+		props.setProperty(LTIService.LTI_PLACEMENTSECRET, UUID.randomUUID().toString());
+		props.setProperty(LTIService.LTI_TITLE, bltiTitle);
+		props.setProperty(LTIService.LTI_PAGETITLE, bltiTitle);
+		props.setProperty(LTIService.LTI_LAUNCH,launchUrl);
+		props.setProperty(LTIService.LTI_SITE_ID,siteId);
+
+		if ( strXml != null) props.setProperty(LTIService.LTI_XMLIMPORT,strXml);
+		if ( custom != null ) props.setProperty(LTIService.LTI_CUSTOM,custom);
+
+		log.debug("Inserting content associated with toolId="+toolId);
+
+		// Insert as admin into siteId, on error throw upwards
+		Object result = ltiService.insertContentDao(props, "!admin");
+		if ( result instanceof String ) {
+			log.error("Could not insert content - "+result);
+		} else {
+			log.debug("Adding LTI tool "+result);
+		}
+		if ( result instanceof Long ) theContent = ltiService.getContentDao((Long) result, siteId);
+
+		String sakaiId = null;
+		if ( theContent != null ) {
+			sakaiId = "/blti/" + theContent.get(LTIService.LTI_ID);
+		}
+		return sakaiId;
+	}
+
+	private Long getLong(Object key) {
+		Long retval = getLongNull(key);
+		if (retval != null)
+			return retval;
+		return new Long(-1);
+	}
+
+	private Long getLongNull(Object key) {
+		if (key == null)
+			return null;
+		if (key instanceof Number)
+			return new Long(((Number) key).longValue());
+		if (key instanceof String) {
+			try {
+				return new Long((String) key);
+			} catch (Exception e) {
+				return null;
+			}
+		}
+		return null;
+	}
 
 }

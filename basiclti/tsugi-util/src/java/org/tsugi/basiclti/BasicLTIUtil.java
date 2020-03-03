@@ -19,19 +19,12 @@
 
 package org.tsugi.basiclti;
 
-import static org.tsugi.basiclti.BasicLTIConstants.LTI_MESSAGE_TYPE;
-import static org.tsugi.basiclti.BasicLTIConstants.LTI_MESSAGE_TYPE_TOOLPROXYREGISTRATIONREQUEST;
-import static org.tsugi.basiclti.BasicLTIConstants.LTI_MESSAGE_TYPE_TOOLPROXY_RE_REGISTRATIONREQUEST;
 import static org.tsugi.basiclti.BasicLTIConstants.LTI_MESSAGE_TYPE_BASICLTILAUNCHREQUEST;
 import static org.tsugi.basiclti.BasicLTIConstants.LTI_MESSAGE_TYPE_CONTENTITEMSELECTIONREQUEST;
 import static org.tsugi.basiclti.BasicLTIConstants.LTI_VERSION;
 import static org.tsugi.basiclti.BasicLTIConstants.LTI_VERSION_1;
-import static org.tsugi.basiclti.BasicLTIConstants.LTI_VERSION_2;
 import static org.tsugi.basiclti.BasicLTIConstants.CUSTOM_PREFIX;
-import static org.tsugi.basiclti.BasicLTIConstants.EXTENSION_PREFIX;
 import static org.tsugi.basiclti.BasicLTIConstants.LTI_MESSAGE_TYPE;
-import static org.tsugi.basiclti.BasicLTIConstants.LTI_VERSION;
-import static org.tsugi.basiclti.BasicLTIConstants.OAUTH_PREFIX;
 import static org.tsugi.basiclti.BasicLTIConstants.TOOL_CONSUMER_INSTANCE_CONTACT_EMAIL;
 import static org.tsugi.basiclti.BasicLTIConstants.TOOL_CONSUMER_INSTANCE_DESCRIPTION;
 import static org.tsugi.basiclti.BasicLTIConstants.TOOL_CONSUMER_INSTANCE_GUID;
@@ -41,14 +34,16 @@ import static org.tsugi.basiclti.BasicLTIConstants.TOOL_CONSUMER_INSTANCE_URL;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Date;
+import java.util.TimeZone;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.TreeMap;
 import java.util.UUID;
-import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import java.text.SimpleDateFormat;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -65,9 +60,14 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+
+import lombok.extern.slf4j.Slf4j;
+
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.JSONValue;
 
 /* Leave out until we have JTidy 0.8 in the repository 
  import org.w3c.tidy.Tidy;
@@ -111,10 +111,13 @@ import java.io.OutputStreamWriter;
  * &lt;/basic_lti_link&gt;
  * </pre>
  */
+@Slf4j
 public class BasicLTIUtil {
 
-	// We use the built-in Java logger because this code needs to be very generic
-	private static Logger M_log = Logger.getLogger(BasicLTIUtil.class.toString());
+	// How to make ISO8601 Dates
+	// https://stackoverflow.com/questions/2891361/how-to-set-time-zone-of-a-java-util-date
+	// https://stackoverflow.com/questions/2201925/converting-iso-8601-compliant-string-to-java-util-date
+	public static final String ISO_8601_FORMAT = "yyyy-MM-dd'T'HH:mm:ssz";
 
 	/** To turn on really verbose debugging */
 	private static boolean verbosePrint = false;
@@ -122,12 +125,7 @@ public class BasicLTIUtil {
 	private static final Pattern CUSTOM_REGEX = Pattern.compile("[^A-Za-z0-9]");
 	private static final String UNDERSCORE = "_";
 
-	// Simple Debug Print Mechanism
-	public static void dPrint(String str) {
-		if (verbosePrint)
-			System.out.println(str);
-		M_log.fine(str);
-	}
+	private static final String EMPTY_JSON_OBJECT = "{\n}\n";
 
 	// Returns true if this is a Basic LTI message with minimum values to meet the protocol
 	public static boolean isRequest(HttpServletRequest request) {
@@ -135,8 +133,6 @@ public class BasicLTIUtil {
 		String message_type = request.getParameter(LTI_MESSAGE_TYPE);
 		if ( message_type == null ) return false;
 		if ( message_type.equals(LTI_MESSAGE_TYPE_BASICLTILAUNCHREQUEST) ||
-		     message_type.equals(LTI_MESSAGE_TYPE_TOOLPROXYREGISTRATIONREQUEST) ||
-		     message_type.equals(LTI_MESSAGE_TYPE_TOOLPROXY_RE_REGISTRATIONREQUEST) ||
 		     message_type.equals(LTI_MESSAGE_TYPE_CONTENTITEMSELECTIONREQUEST) ) {
 			// Seems plausible
 		} else {
@@ -145,11 +141,7 @@ public class BasicLTIUtil {
 
 		String version = request.getParameter(LTI_VERSION);
 		if ( version == null ) return true;
-		if ( version.equals(LTI_VERSION_1) || version.equals(LTI_VERSION_2) ) {
-			// Another pass
-		} else {
-			return false;
-		}
+		if ( !version.equals(LTI_VERSION_1) ) return false;
 
 		return true;
 	}
@@ -167,8 +159,7 @@ public class BasicLTIUtil {
 		}
 
 		if ( expected_oauth_key != null && ! expected_oauth_key.equals(oauth_consumer_key) ) {
-			M_log.warning("BasicLTIUtil.validateMessage Incorrect consumer key="+oauth_consumer_key+
-				" expected key="+expected_oauth_key);
+			log.warn("BasicLTIUtil.validateMessage Incorrect consumer key={} expected key={}", oauth_consumer_key, expected_oauth_key);
 			return "Incorrect consumer key "+oauth_consumer_key;
 		}
 
@@ -246,7 +237,7 @@ public class BasicLTIUtil {
 	 * Add the necessary fields and sign.
 	 * 
 	 * @deprecated See:
-	 *	 {@link BasicLTIUtil#signProperties(Map, String, String, String, String, String, String, String, String, String)}
+	 *	 {@link BasicLTIUtil#signProperties(Map, String, String, String, String, String, String, String, String, String, Map)}
 	 * 
 	 * @param postProp
 	 * @param url
@@ -322,7 +313,7 @@ public class BasicLTIUtil {
 			postProp.put("oauth_callback", "about:blank");
 
 		if (oauth_consumer_key == null || oauth_consumer_secret == null) {
-			dPrint("No signature generated in signProperties");
+			log.debug("No signature generated in signProperties");
 			return postProp;
 		}
 
@@ -333,7 +324,7 @@ public class BasicLTIUtil {
 		try {
 			oam.addRequiredParameters(acc);
 			String base_string = OAuthSignatureMethod.getBaseString(oam);
-			M_log.fine("Base Message String\n"+base_string+"\n");
+			log.debug("Base Message String\n{}\n", base_string);
 			if ( extra != null ) {
 				extra.put("BaseString", base_string);
 			}
@@ -347,16 +338,13 @@ public class BasicLTIUtil {
 			}
 			return nextProp;
 		} catch (net.oauth.OAuthException e) {
-			M_log.warning("BasicLTIUtil.signProperties OAuth Exception "
-					+ e.getMessage());
+			log.warn("BasicLTIUtil.signProperties OAuth Exception {}", e.getMessage());
 			throw new Error(e);
 		} catch (java.io.IOException e) {
-			M_log.warning("BasicLTIUtil.signProperties IO Exception "
-					+ e.getMessage());
+			log.warn("BasicLTIUtil.signProperties IO Exception {}", e.getMessage());
 			throw new Error(e);
 		} catch (java.net.URISyntaxException e) {
-			M_log.warning("BasicLTIUtil.signProperties URI Syntax Exception "
-					+ e.getMessage());
+			log.warn("BasicLTIUtil.signProperties URI Syntax Exception {}", e.getMessage());
 			throw new Error(e);
 		}
 
@@ -366,7 +354,7 @@ public class BasicLTIUtil {
 	 * Check if the properties are properly signed
 	 * 
 	 * @deprecated See:
-	 *			 {@link BasicLTIUtil#checkProperties(Map, String, String, String, String, String, String, String, String, String)}
+	 *			 {@link BasicLTIUtil#checkProperties(Map, String, String, String, String)}
 	 * 
 	 * @param postProp
 	 * @param url
@@ -410,7 +398,7 @@ public class BasicLTIUtil {
 		try {
 			base_string = OAuthSignatureMethod.getBaseString(oam);
 		} catch (Exception e) {
-			M_log.warning(e.getLocalizedMessage());
+			log.warn(e.getLocalizedMessage());
 			base_string = null;
 			return false;
 		}
@@ -418,10 +406,10 @@ public class BasicLTIUtil {
 		try {
 			oav.validateMessage(oam, acc);
 		} catch (Exception e) {
-			M_log.warning("Provider failed to validate message");
-			M_log.warning(e.getLocalizedMessage());
+			log.warn("Provider failed to validate message");
+			log.warn(e.getLocalizedMessage());
 			if (base_string != null) {
-				M_log.warning(base_string);
+				log.warn(base_string);
 			}
 			return false;
 		}
@@ -431,7 +419,7 @@ public class BasicLTIUtil {
 	/**
 	 * Create the HTML to render a POST form and then automatically submit it.
 	 * 
-	 * @deprecated Moved to {@link #postLaunchHTML(Map, String, boolean)}
+	 * @deprecated Moved to {@link #postLaunchHTML(Map, String, String, boolean, Map)}
 	 * @param cleanProperties
 	 * @param endpoint
 	 *		  The LTI launch url.
@@ -451,7 +439,7 @@ public class BasicLTIUtil {
 	/**
 	 * Create the HTML to render a POST form and then automatically submit it.
 	 * 
-	 * @deprecated Moved to {@link #postLaunchHTML(Map, String, boolean)}
+	 * @deprecated Moved to {@link #postLaunchHTML(Map, String, String, boolean, boolean, Map)}
 	 * @param cleanProperties
 	 * @param endpoint
 	 *		  The LTI launch url.
@@ -553,14 +541,18 @@ public class BasicLTIUtil {
 		}
 
 		// Paint the submit button
-		text.append("<input type=\"submit\" value=\"");
-		text.append(htmlspecialchars(launchtext));
-		text.append("\">\n");
-
 		if ( debug ) {
+			text.append("<input type=\"submit\" value=\"");
+			text.append(htmlspecialchars(launchtext));
+			text.append("\">\n");
+
 			text.append(" <input type=\"Submit\" value=\"Show Launch Data\" onclick=\"document.getElementById('ltiLaunchDebug_");
 			text.append(submit_uuid);
 			text.append("').style.display = 'block';return false;\">\n");
+		} else {
+			text.append("<input type=\"submit\" style=\"display: none\" value=\"");
+			text.append(htmlspecialchars(launchtext));
+			text.append("\">\n");
 		}
 
 		if ( extra != null ) {
@@ -637,7 +629,7 @@ public class BasicLTIUtil {
 	 * @param method
 	 * @param url
 	 * @param oauth_consumer_key
-	 * @param oauth_consumer_secret
+	 * @param oauth_secret
 	 */
 	public static String getOAuthURL(String method, String url, 
 		String oauth_consumer_key, String oauth_secret)
@@ -650,7 +642,7 @@ public class BasicLTIUtil {
 	 * @param method
 	 * @param url
 	 * @param oauth_consumer_key
-	 * @param oauth_consumer_secret
+	 * @param oauth_secret
 	 * @param signature
 	 */
 	public static String getOAuthURL(String method, String url, 
@@ -671,7 +663,7 @@ public class BasicLTIUtil {
 		    url = OAuth.addParameters(url, om.getParameters());
 		    return url;
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 			return null;
 		}
 	}
@@ -681,7 +673,7 @@ public class BasicLTIUtil {
 	 * @param method
 	 * @param url
 	 * @param oauth_consumer_key
-	 * @param oauth_consumer_secret
+	 * @param oauth_secret
 	 * HttpURLConnection connection = sendOAuthURL('GET', url, oauth_consumer_key, oauth_secret)
 	 * int responseCode = connection.getResponseCode();
 	 * String data = readHttpResponse(connection)
@@ -709,7 +701,7 @@ public class BasicLTIUtil {
 			int responseCode = connection.getResponseCode();
 			return connection;
 		} catch(Exception e) {
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 			return null;
 		}
 	}
@@ -746,7 +738,7 @@ public class BasicLTIUtil {
 			in.close();
 			return response.toString();
 		} catch(Exception e) {
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 			return null;
 		}
 	}
@@ -768,12 +760,11 @@ public class BasicLTIUtil {
 		try {
 			tm = XMLMap.getFullMap(descriptor.trim());
 		} catch (Exception e) {
-			M_log.warning("BasicLTIUtil exception parsing BasicLTI descriptor: "
-					+ e.getMessage());
+			log.warn("BasicLTIUtil exception parsing BasicLTI descriptor: {}", e.getMessage());
 			return false;
 		}
 		if (tm == null) {
-			M_log.warning("Unable to parse XML in parseDescriptor");
+			log.warn("Unable to parse XML in parseDescriptor");
 			return false;
 		}
 
@@ -797,13 +788,13 @@ public class BasicLTIUtil {
 		List<Map<String, Object>> theList = XMLMap.getList(tm,
 				"/basic_lti_link/custom/parameter");
 		for (Map<String, Object> setting : theList) {
-			dPrint("Setting=" + setting);
+			log.debug("Setting={}", setting);
 			String key = XMLMap.getString(setting, "/!key"); // Get the key attribute
 			String value = XMLMap.getString(setting, "/"); // Get the value
 			if (key == null || value == null)
 				continue;
 			key = "custom_" + mapKeyName(key);
-			dPrint("key=" + key + " val=" + value);
+			log.debug("key={} val={}", key, value);
 			postProp.setProperty(key, value);
 		}
 		return true;
@@ -824,12 +815,11 @@ public class BasicLTIUtil {
 		try {
 			tm = XMLMap.getFullMap(descriptor.trim());
 		} catch (Exception e) {
-			M_log.warning("BasicLTIUtil exception parsing BasicLTI descriptor: "
-					+ e.getMessage());
+			log.warn("BasicLTIUtil exception parsing BasicLTI descriptor: {}", e.getMessage());
 			return false;
 		}
 		if (tm == null) {
-			M_log.warning("Unable to parse XML in parseDescriptor");
+			log.warn("Unable to parse XML in parseDescriptor");
 			return false;
 		}
 
@@ -853,13 +843,13 @@ public class BasicLTIUtil {
 		List<Map<String, Object>> theList = XMLMap.getList(tm,
 				"/basic_lti_link/custom/parameter");
 		for (Map<String, Object> setting : theList) {
-			dPrint("Setting=" + setting);
+			log.debug("Setting={}", setting);
 			String key = XMLMap.getString(setting, "/!key"); // Get the key attribute
 			String value = XMLMap.getString(setting, "/"); // Get the value
 			if (key == null || value == null)
 				continue;
 			key = "custom_" + mapKeyName(key);
-			dPrint("key=" + key + " val=" + value);
+			log.debug("key={} val={}", key, value);
 			postProp.put(key, value);
 		}
 		return true;
@@ -871,12 +861,11 @@ public class BasicLTIUtil {
 		try {
 			tm = XMLMap.getFullMap(descriptor.trim());
 		} catch (Exception e) {
-			M_log.warning("BasicLTIUtil exception parsing BasicLTI descriptor"
-					+ e.getMessage());
+			log.warn("BasicLTIUtil exception parsing BasicLTI descriptor {}", e.getMessage());
 			return null;
 		}
 		if (tm == null) {
-			M_log.warning("Unable to parse XML in prepareForExport");
+			log.warn("Unable to parse XML in prepareForExport");
 			return null;
 		}
 		XMLMap.removeSubMap(tm, "/basic_lti_link/x-secure");
@@ -959,7 +948,6 @@ public class BasicLTIUtil {
 		retval = retval.replace("\"", "&quot;");
 		retval = retval.replace("<", "&lt;");
 		retval = retval.replace(">", "&gt;");
-		retval = retval.replace(">", "&gt;");
 		retval = retval.replace("=", "&#61;");
 		return retval;
 	}
@@ -968,11 +956,11 @@ public class BasicLTIUtil {
 	 * Simple utility method deal with a request that has the wrong URL when behind 
      * a proxy.
 	 * 
-	 * @param request
+	 * @param servletUrl
      * @param extUrl
      *   The url that the external world sees us as responding to.  This needs to be
      *   up to but not including the last slash like and not include any path information
-     *   http://www.sakaiproject.org - although we do compensate for extra stuff at the end.
+     *   https://www.sakailms.org/ - although we do compensate for extra stuff at the end.
 	 * @return
      *   The full path of the request with extUrl in place of whatever the request
      *   thinks is the current URL.
@@ -1142,4 +1130,80 @@ public class BasicLTIUtil {
 	public static boolean equalsIgnoreCase(String str1, String str2) {
 		return str1 == null ? str2 == null : str1.equalsIgnoreCase(str2);
 	}
+
+	/**
+         * Return a ISO 8601 formatted date
+	 */
+	public static String getISO8601() {
+		return getISO8601(null);
+	}
+
+	/**
+         * Return a ISO 8601 formatted date
+	 */
+	public static String getISO8601(Date date) {
+		if ( date == null ) {
+			date = new Date();
+		}
+		SimpleDateFormat isoFormat = new SimpleDateFormat(ISO_8601_FORMAT);
+		isoFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+		String timestamp = isoFormat.format(date);
+		timestamp = timestamp.replace("GMT", "Z");
+		return timestamp;
+	}
+
+
+	// Parse a provider profile with lots of error checking...
+	public static JSONArray forceArray(Object obj) 
+	{
+		if ( obj == null ) return null;
+		if ( obj instanceof JSONArray ) return (JSONArray) obj;
+		JSONArray retval = new JSONArray();
+		retval.add(obj);
+		return retval;
+	}
+
+	// Return a JSONArray or null. Promote a JSONObject to an array
+	public static JSONArray getArray(JSONObject obj, String key)
+	{
+		if ( obj == null ) return null;
+		Object o = obj.get(key);
+		if ( o == null ) return null;
+		if ( o instanceof JSONArray ) return (JSONArray) o;
+		if ( o instanceof JSONObject ) {
+			JSONArray retval = new JSONArray();
+			retval.add(o);
+			return retval;
+		}
+
+		// If this is a java.lang (i.e. String, Long, etc)
+		String className = o.getClass().getName();
+		if ( className.startsWith("java.lang") ) {
+			JSONArray retval = new JSONArray();
+			retval.add(o);
+			return retval;
+		}
+		return null;
+	}
+
+	// Return a JSONObject or null
+	public static JSONObject getObject(JSONObject obj, String key)
+	{
+		if ( obj == null ) return null;
+		Object o = obj.get(key);
+		if ( o == null ) return null;
+		if ( o instanceof JSONObject ) return (JSONObject) o;
+		return null;
+	}
+
+	// Return a String or null
+	public static String getString(JSONObject obj, String key)
+	{
+		if ( obj == null ) return null;
+		Object o = obj.get(key);
+		if ( o == null ) return null;
+		if ( o instanceof String ) return (String) o;
+		return null;
+	}
+
 }

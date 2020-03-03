@@ -31,14 +31,9 @@ import java.util.Set;
 
 import javax.xml.parsers.ParserConfigurationException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.w3c.dom.Document;
-import org.w3c.dom.Text;
-import org.w3c.dom.Element;
-
-import org.sakaiproject.component.cover.ServerConfigurationService; 
+import lombok.extern.slf4j.Slf4j;
+import org.sakaiproject.component.cover.ServerConfigurationService;
+import org.sakaiproject.content.api.ContentHostingService;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.exception.ServerOverloadException;
@@ -60,8 +55,10 @@ import org.sakaiproject.tool.assessment.qti.util.XmlUtil;
 import org.sakaiproject.tool.assessment.services.assessment.AssessmentService;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.cover.UserDirectoryService;
+import org.w3c.dom.Document;
+import org.w3c.dom.Text;
+import org.w3c.dom.Element;
 import org.xml.sax.SAXException;
-import org.sakaiproject.content.api.ContentHostingService;
 
 /**
  * <p>
@@ -71,8 +68,8 @@ import org.sakaiproject.content.api.ContentHostingService;
  * @version $Id$
  */
 
+@Slf4j
 public class ManifestGenerator {
-	private static Logger log = LoggerFactory.getLogger(ManifestGenerator.class);
 
 	/**default namespace and metadata namespace*/
 	private static String DEFAULT_NAMESPACE_URI = "http://www.imsglobal.org/xsd/imscp_v1p1";
@@ -222,16 +219,12 @@ public class ManifestGenerator {
 
 		} catch (PermissionException e) {
 			log.error(e.getMessage());
-			e.printStackTrace();
 		} catch (IdUnusedException e) {
 			log.error(e.getMessage());
-			e.printStackTrace();
 		} catch (TypeException e) {
 			log.error(e.getMessage());
-			e.printStackTrace();
 		} catch (ServerOverloadException e) {
 			log.error(e.getMessage());
-			e.printStackTrace();
 		}
 	}
 	
@@ -306,7 +299,7 @@ public class ManifestGenerator {
 	private void processDescription(String description) {
 		String prependString = ServerConfigurationService.getAccessUrl()
 				+ contentHostingService.REFERENCE_ROOT;
-		
+
 		// Hardcode here for now because I cannot find the API to get them
 		// Also, it is hardcoded in BaseContentService.java
 		String siteCollection = "/group/";
@@ -341,20 +334,19 @@ public class ManifestGenerator {
 							srcEndIndex = splittedRefString[j].indexOf("\"",
 									srcStartIndex + offset);
 							src = splittedRefString[j].substring(srcStartIndex + offset,
-									srcEndIndex).replace(" ", "");
+									srcEndIndex);
 
 							try {
 								src = URLDecoder.decode(src, "UTF-8");
 							} catch (UnsupportedEncodingException e) {
 								log.error(e.getMessage());
-								e.printStackTrace();
 							}
 
 							if (src.indexOf(siteCollection) > -1) {
 								resourceId = src.replace(prependString, "");
 								content = contentHostingService.getResource(resourceId).getContent();
 								if (content != null) {
-									contentMap.put(resourceId, content);
+									contentMap.put(resourceId.replace(" ", ""), content);
 								}
 							}
 							else if (src.indexOf(userCollection) > -1) {
@@ -362,14 +354,14 @@ public class ManifestGenerator {
 								resourceId = eidResourceId.replace(eid, userId);
 								content = contentHostingService.getResource(resourceId).getContent();
 								if (content != null) {
-									contentMap.put(eidResourceId, content);
+									contentMap.put(eidResourceId.replace(" ", ""), content);
 								}
 							}
 							else if (src.indexOf(attachment) > -1) {
 								resourceId = src.replace(prependString, "");
 								content = contentHostingService.getResource(resourceId).getContent();
 								if (content != null) {
-									contentMap.put(resourceId, content);
+									contentMap.put(resourceId.replace(" ", ""), content);
 								}
 							}
 							else {
@@ -381,16 +373,12 @@ public class ManifestGenerator {
 			}
 		} catch (PermissionException e) {
 			log.error(e.getMessage());
-			e.printStackTrace();
 		} catch (IdUnusedException e) {
 			log.error(e.getMessage());
-			e.printStackTrace();
 		} catch (TypeException e) {
 			log.error(e.getMessage());
-			e.printStackTrace();
 		} catch (ServerOverloadException e) {
 			log.error(e.getMessage());
-			e.printStackTrace();
 		}
 	}
 	

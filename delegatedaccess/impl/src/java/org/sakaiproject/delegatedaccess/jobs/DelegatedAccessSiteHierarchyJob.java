@@ -16,25 +16,21 @@
 
 package org.sakaiproject.delegatedaccess.jobs;
 
-import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
+
 import org.sakaiproject.delegatedaccess.dao.DelegatedAccessDao;
 import org.sakaiproject.delegatedaccess.logic.ProjectLogic;
 import org.sakaiproject.delegatedaccess.logic.SakaiProxy;
@@ -66,9 +62,8 @@ import org.sakaiproject.site.api.Site;
  * @author Bryan Holladay (holladay@longsight.com)
  *
  */
+@Slf4j
 public class DelegatedAccessSiteHierarchyJob implements Job{
-
-	private static final Logger log = LoggerFactory.getLogger(DelegatedAccessSiteHierarchyJob.class);
 	@Getter @Setter
 	private HierarchyService hierarchyService;
 	@Getter @Setter	
@@ -86,8 +81,9 @@ public class DelegatedAccessSiteHierarchyJob implements Job{
 
 	public void execute(JobExecutionContext arg0) throws JobExecutionException {
 		//this will stop the job if there is already another instance running
-		if(!jobIsRunning.compareAndSet(false, true)){
-			log.warn("Stopping job since this job is already running");
+		// or if this is an auto-recover restart attempt
+		if (!jobIsRunning.compareAndSet(false, true) || arg0.isRecovering()){
+			log.warn("Stopping job since this job is/was already running");
 			return;
 		}
 
@@ -190,7 +186,6 @@ public class DelegatedAccessSiteHierarchyJob implements Job{
 						}
 						errors += site.getId() + ": " + e.getMessage() + "\n\n";
 						StringWriter sw = new StringWriter();
-						e.printStackTrace(new PrintWriter(sw));
 						errors += sw.toString();
 					}
 				}

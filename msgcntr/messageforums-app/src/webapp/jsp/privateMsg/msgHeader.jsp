@@ -1,20 +1,39 @@
 <%--********************* Message Header*********************--%>
-<script type="text/javascript">includeLatestJQuery("msgcntr");</script>
-<sakai:script contextBase="/messageforums-tool" path="/js/sak-10625.js"/>
-<sakai:script contextBase="/messageforums-tool" path="/js/bulkops.js"/>		
-<sakai:script contextBase="/jsf-resource" path="/inputDate/inputDate.js"/>		
-<sakai:script contextBase="/jsf-resource" path="/inputDate/calendar1.js"/>		
-<sakai:script contextBase="/jsf-resource" path="/inputDate/calendar2.js"/>			
+<script>includeLatestJQuery("msgcntr");</script>
+<script src="/messageforums-tool/js/sak-10625.js"></script>
+<script src="/messageforums-tool/js/bulkops.js"></script>
+<script src="/library/js/lang-datepicker/lang-datepicker.js"></script>
+
+  <script>
+    $(document).ready(function() {
+     localDatePicker({
+      input: '#prefs_pvt_form\\:searchFromDate',
+      useTime: 0,
+      parseFormat: 'YYYY-MM-DD',
+      allowEmptyDate: true,
+      val: '<h:outputText value="#{PrivateMessagesTool.searchFromDate}"><f:convertDateTime pattern="yyyy-MM-dd"/></h:outputText>',
+      ashidden: { iso8601: 'searchFromDateISO8601' }
+    });
+     localDatePicker({
+      input: '#prefs_pvt_form\\:searchToDate',
+      useTime: 0,
+      parseFormat: 'YYYY-MM-DD',
+      allowEmptyDate: true,
+      val: '<h:outputText value="#{PrivateMessagesTool.searchToDate}"><f:convertDateTime pattern="yyyy-MM-dd"/></h:outputText>',
+      ashidden: { iso8601: 'searchToDateISO8601' }
+    });
+    });
+  </script>
 
   <h:panelGroup>
   <f:verbatim><div class="searchNav specialLink space_mobile"></f:verbatim>
     <h:outputLabel for="search_text"><h:outputText value="#{msgs.pvt_search_text}" /></h:outputLabel>
-    <f:verbatim><h:outputText value=" " /></f:verbatim>
+    <h:outputText value=" " />
 	  <h:inputText value="#{PrivateMessagesTool.searchText}" id="search_text" />
 		<h:commandButton styleClass="button_search" value="#{msgs.pvt_search}" action="#{PrivateMessagesTool.processSearch}" onkeypress="document.forms[0].submit;"/>
 		
 		<f:verbatim><span id='adv_button'></f:verbatim>
-		  <h:commandButton styleClass="button_search" value="#{msgs.pvt_advsearch}" onmousedown="javascript:toggleDisplay('adv_input','adv_button');setMainFrameHeight('#{PrivateMessagesTool.placementId}');" title="#{msgs.pvt_advsearch}"/>
+		  <h:commandButton id="advanced_search_button" styleClass="button_search" value="#{msgs.pvt_advsearch}" onmousedown="javascript:toggleDisplay('adv_input','adv_button');setMainFrameHeight('#{PrivateMessagesTool.placementId}');" title="#{msgs.pvt_advsearch}"/>
 		<f:verbatim></span></f:verbatim>
 		<f:verbatim></div></f:verbatim>
   </h:panelGroup>
@@ -64,24 +83,24 @@
 			  <f:verbatim><span class="labeled"></f:verbatim>
 			  <h:outputText value="#{msgs.pvt_beg_date}"/>
 			  <f:verbatim></span></f:verbatim>
-			  <sakai:input_date  value="#{PrivateMessagesTool.searchFromDate}" showDate="true" id="beg_date" />
+			  <h:inputText value="#{PrivateMessagesTool.searchFromDateString}" size="20" id="searchFromDate"/>
 			</h:panelGroup>
 			
 			<h:panelGroup styleClass="shorttext" id="pvt_end_date">
 			  <f:verbatim><span class="labeled"></f:verbatim>
 			  <h:outputText value="#{msgs.pvt_end_date}"/>
 			  <f:verbatim></span></f:verbatim>
-			  <sakai:input_date  value="#{PrivateMessagesTool.searchToDate}" showDate="true" id="end_date" />
+			  <h:inputText value="#{PrivateMessagesTool.searchToDateString}" size="20" id="searchToDate"/>
 			</h:panelGroup>	
 		
 
-		<f:verbatim></div><h:outputText value=" " /></f:verbatim>
+		<f:verbatim></div></f:verbatim><h:outputText value=" " />
 	</h:panelGroup>
 
 	  <h:panelGroup> <%-- This is the show items --%>
 	  	<f:verbatim><div class="viewNav messages_viewnav"></f:verbatim>
 	    <h:outputLabel for="viewlist"><h:outputText value="#{msgs.msg_view}" /></h:outputLabel>
-	    <f:verbatim><h:outputText value=" " /></f:verbatim>
+	    <h:outputText value=" " />
 			<h:selectOneMenu id="viewlist" onchange="this.form.submit();"  
 										      valueChangeListener="#{PrivateMessagesTool.processChangeSelectView}" 
 										      value="#{PrivateMessagesTool.selectView}">

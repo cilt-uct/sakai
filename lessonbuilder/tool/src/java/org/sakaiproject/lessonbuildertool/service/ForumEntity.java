@@ -25,69 +25,54 @@ package org.sakaiproject.lessonbuildertool.service;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Map;
 import java.util.Collection;
-import java.util.List;
-import java.util.Set;
-import java.util.SortedSet;
-import java.util.HashSet;
-import java.util.TreeSet;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.apache.commons.lang.StringEscapeUtils;
-
-import org.sakaiproject.lessonbuildertool.service.LessonSubmission;
-import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean;
-import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean.UrlItem;
-import org.sakaiproject.api.app.messageforums.BaseForum;
-import org.sakaiproject.api.app.messageforums.DiscussionForum;
-import org.sakaiproject.api.app.messageforums.DiscussionTopic;
-import org.sakaiproject.api.app.messageforums.Topic;
-import org.sakaiproject.api.app.messageforums.MessageForumsForumManager;
-import org.sakaiproject.api.app.messageforums.ui.DiscussionForumManager;
-import org.sakaiproject.api.app.messageforums.MessageForumsMessageManager;
-import org.sakaiproject.api.app.messageforums.PermissionLevelManager;
-import org.sakaiproject.api.app.messageforums.MessageForumsTypeManager;
+import org.hibernate.SessionFactory;
 import org.sakaiproject.api.app.messageforums.AreaManager;
 import org.sakaiproject.api.app.messageforums.Attachment;
+import org.sakaiproject.api.app.messageforums.BaseForum;
 import org.sakaiproject.api.app.messageforums.DBMembershipItem;
+import org.sakaiproject.api.app.messageforums.DiscussionForum;
+import org.sakaiproject.api.app.messageforums.DiscussionTopic;
+import org.sakaiproject.api.app.messageforums.MessageForumsForumManager;
+import org.sakaiproject.api.app.messageforums.MessageForumsMessageManager;
+import org.sakaiproject.api.app.messageforums.MessageForumsTypeManager;
 import org.sakaiproject.api.app.messageforums.PermissionLevel;
+import org.sakaiproject.api.app.messageforums.PermissionLevelManager;
 import org.sakaiproject.api.app.messageforums.PermissionsMask;
+import org.sakaiproject.api.app.messageforums.Topic;
+import org.sakaiproject.api.app.messageforums.ui.DiscussionForumManager;
 import org.sakaiproject.api.app.messageforums.ui.UIPermissionsManager;
+import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.component.app.messageforums.MembershipItem;
-
 import org.sakaiproject.component.cover.ComponentManager;
-import org.sakaiproject.tool.cover.ToolManager;
-import org.sakaiproject.site.api.ToolConfiguration;
+import org.sakaiproject.component.cover.ServerConfigurationService;
+import org.sakaiproject.db.cover.SqlService;
+import org.sakaiproject.id.cover.IdManager;
+import org.sakaiproject.lessonbuildertool.model.SimplePageToolDao;
+import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean;
+import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean.UrlItem;
+import org.sakaiproject.memory.api.Cache;
+import org.sakaiproject.memory.api.MemoryService;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
-import org.sakaiproject.authz.api.Role;
+import org.sakaiproject.site.api.ToolConfiguration;
 import org.sakaiproject.site.cover.SiteService;
-import org.sakaiproject.authz.api.AuthzGroupService;
-import org.sakaiproject.id.cover.IdManager;
-import org.sakaiproject.component.cover.ServerConfigurationService;             
-import org.sakaiproject.db.cover.SqlService;
-
-import org.sakaiproject.memory.api.Cache;
-import org.sakaiproject.memory.api.CacheRefresher;
-import org.sakaiproject.memory.api.MemoryService;
-
+import org.sakaiproject.tool.cover.ToolManager;
 import org.sakaiproject.util.FormattedText;
-import java.net.URLEncoder;
+import org.springframework.orm.hibernate4.HibernateTemplate;
+import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
 
+import lombok.extern.slf4j.Slf4j;
 import uk.org.ponder.messageutil.MessageLocator;
-
-import org.sakaiproject.lessonbuildertool.model.SimplePageToolDao;
-import org.springframework.orm.hibernate3.support.HibernateDaoSupport;
-import org.springframework.orm.hibernate3.HibernateTemplate;
-import org.springframework.orm.hibernate3.HibernateCallback;
-import org.hibernate.SessionFactory;
-import org.hibernate.Session;
-import org.hibernate.Transaction;
 
 /**
  * Interface to Message Forums, the forum that comes with Sakai
@@ -115,9 +100,8 @@ import org.hibernate.Transaction;
 // we save a copy of the session factory and then set it in the
 // instance when we need it.
 
+@Slf4j
 public class ForumEntity extends HibernateDaoSupport implements LessonEntity, ForumInterface {
-
-    private static Logger log = LoggerFactory.getLogger(ForumEntity.class);
 
     private static Cache topicCache = null;   // topicid => grouplist
     protected static final int DEFAULT_EXPIRATION = 10 * 60;
@@ -139,6 +123,8 @@ public class ForumEntity extends HibernateDaoSupport implements LessonEntity, Fo
 	ComponentManager.get("org.sakaiproject.api.app.messageforums.MessageForumsTypeManager");
 
     private LessonEntity nextEntity = null;
+    private SimplePageBean simplePageBean;
+
     public void setNextEntity(LessonEntity e) {
 	nextEntity = e;
     }
@@ -171,7 +157,7 @@ public class ForumEntity extends HibernateDaoSupport implements LessonEntity, Fo
 
     public void init () {	
 	//	topicCache = memoryService
-	//	    .newCache("org.sakaiproject.lessonbuildertool.service.ForumEntity.cache");
+	//	    .getCache("org.sakaiproject.lessonbuildertool.service.ForumEntity.cache");
 	sessionFactory = getSessionFactory();
     }
 
@@ -394,6 +380,10 @@ public class ForumEntity extends HibernateDaoSupport implements LessonEntity, Fo
 		return null;
 	    return forum.getTitle();
 	}
+    }
+
+    public String getDescription(){
+        return "";
     }
 
     public String getUrl() {
@@ -865,7 +855,7 @@ public class ForumEntity extends HibernateDaoSupport implements LessonEntity, Fo
 		ourTopic.setExtendedDescription(FormattedText.convertPlaintextToFormattedText(text));
 		shortText = text;
 	    }
-	    shortText = org.apache.commons.lang.StringUtils.abbreviate(shortText,254);
+	    shortText = org.apache.commons.lang3.StringUtils.abbreviate(shortText,254);
 
 	    ourTopic.setShortDescription(shortText);
 
@@ -903,14 +893,40 @@ public class ForumEntity extends HibernateDaoSupport implements LessonEntity, Fo
     public boolean notPublished() {
 	if (!objectExists())
 	    return true;
+	boolean isDraft = false;
 	if (type == TYPE_FORUM_TOPIC) {
-	    return topic.getOpenForum().getDraft();
+		isDraft = topic.getOpenForum().getDraft();
+		if(isDraft){
+			return true;
+		}
+		boolean topicVisibleByDate = !topic.getAvailabilityRestricted() || isResourceVisibleByDate(topic.getOpenDate(), topic.getCloseDate());
+		boolean forumVisibleByDate = !topic.getOpenForum().getAvailabilityRestricted() || isResourceVisibleByDate(topic.getOpenForum().getOpenDate(), topic.getOpenForum().getCloseDate());
+	    return !topicVisibleByDate || !forumVisibleByDate;
 	} else {
-	    return ((DiscussionForum)forum).getDraft();
+		isDraft = ((DiscussionForum)forum).getDraft();
+		if(isDraft){
+			return true;
+		}
+		boolean forumVisibleByDate = !((DiscussionForum)forum).getAvailabilityRestricted() || isResourceVisibleByDate(((DiscussionForum)forum).getOpenDate(), ((DiscussionForum)forum).getCloseDate());
+		
+	    return !forumVisibleByDate;
 	}
 
     }
 
+	private static boolean isResourceVisibleByDate(Date openDate, Date closeDate){
+		Date currentDate = new Date();
+
+		if(openDate != null && closeDate != null){
+			return currentDate.after(openDate) && currentDate.before(closeDate);
+		} else if(openDate != null && closeDate == null){
+			return currentDate.after(openDate);
+		} else if(openDate == null && closeDate != null){
+			return currentDate.before(closeDate);
+		}
+
+		return true;
+	}
     // return the list of groups if the item is only accessible to specific groups
     // null if it's accessible to the whole site.
     public List<String> getGroups(boolean nocache) {
@@ -1227,5 +1243,9 @@ public class ForumEntity extends HibernateDaoSupport implements LessonEntity, Fo
 	return null;
 
     }
+	@Override
+	public void setSimplePageBean(SimplePageBean simplePageBean) {
+		this.simplePageBean = simplePageBean;
+	}
 
 }

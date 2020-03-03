@@ -4,7 +4,9 @@
 	<h3>
 		$title 
 	</h3>
-	#if ($alertMessage)<div class="alertMessage">$tlang.getString("label.alert") $validator.escapeHtml($alertMessage)</div>#end
+	#if ($alertMessage)
+		<div class="sak-banner-error">$tlang.getString("label.alert") $formattedText.escapeHtml($alertMessage)</div>
+	#end
 	<p class="instruction">
 		$instruction
 		$required
@@ -23,7 +25,7 @@
 				<label for="name${DOT}$i">
 					$tlang.getString("name.file") 
 				</label>
-				<input type="text" size="40" id="displayName${DOT}$i" name="displayName${DOT}$i" value="$validator.escapeHtml("$!item.name")" />
+				<input type="text" size="40" id="displayName${DOT}$i" name="displayName${DOT}$i" value="$formattedText.escapeHtml("$!item.name")" />
 			</p>
 			<p class="instruction">$tlang.getString("instr.title")</p>
 			#parse("/vm/resources/sakai_properties.vm")
@@ -60,9 +62,15 @@
 						$tlang.getString("gen.email1")
 					</label>	
 					<select name="notify" id="notify">
-						<option value="r">$tlang.getString("gen.email2")</option>
-						<option value="o">$tlang.getString("gen.email3")</option>
-						<option value="n" selected="selected">$tlang.getString("gen.email4")</option>
+						#if ($noti)
+							<option value="r" #if($noti=="r") selected="selected" #end>$tlang.getString("gen.email2")</option>
+							<option value="o" #if($noti=="o") selected="selected" #end>$tlang.getString("gen.email3")</option>
+							<option value="n" #if($noti=="n") selected="selected" #end>$tlang.getString("gen.email4")</option>
+						#else
+							<option value="r">$tlang.getString("gen.email2")</option>
+							<option value="o">$tlang.getString("gen.email3")</option>
+							<option value="n" selected="selected">$tlang.getString("gen.email4")</option>
+						#end							
 					</select>
 				</p>	
 			#end

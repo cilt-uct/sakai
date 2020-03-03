@@ -27,8 +27,12 @@ import java.sql.ResultSet;
 import java.util.List;
 import java.util.Stack;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
 import org.sakaiproject.authz.api.AuthzGroup;
 import org.sakaiproject.authz.api.GroupNotDefinedException;
 import org.sakaiproject.authz.api.Role;
@@ -46,8 +50,6 @@ import org.sakaiproject.util.DoubleStorageUser;
 import org.sakaiproject.util.Xml;
 import org.sakaiproject.javax.Filter;
 import org.sakaiproject.javax.PagingPosition;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
 
 /**
  * <p>
@@ -57,11 +59,9 @@ import org.w3c.dom.Element;
  * The sql scripts in src/sql/chef_announcement.sql must be run on the database.
  * </p>
  */
+@Slf4j
 public class DbAnnouncementService extends BaseAnnouncementService
 {
-	/** Our logger. */
-	private static Logger M_log = LoggerFactory.getLogger(DbAnnouncementService.class);
-
 	/** The name of the db table holding announcement channels. */
 	protected String m_cTableName = "ANNOUNCEMENT_CHANNEL";
 
@@ -78,18 +78,7 @@ public class DbAnnouncementService extends BaseAnnouncementService
 	 *********************************************************************************************************************************************************************************************************************************************************/
 
 	/** Dependency: SqlService */
-	protected SqlService m_sqlService = null;
-
-	/**
-	 * Dependency: SqlService.
-	 * 
-	 * @param service
-	 *        The SqlService.
-	 */
-	public void setSqlService(SqlService service)
-	{
-		m_sqlService = service;
-	}
+	@Setter protected SqlService sqlService = null;
 
 	/**
 	 * Configuration: set the table name for the container.
@@ -180,12 +169,12 @@ public class DbAnnouncementService extends BaseAnnouncementService
 			// if we are auto-creating our schema, check and create
 			if (m_autoDdl)
 			{
-				m_sqlService.ddl(this.getClass().getClassLoader(), "sakai_announcement");
+				sqlService.ddl(this.getClass().getClassLoader(), "sakai_announcement");
 			}
 
 			super.init();
 
-			M_log.info("init(): tables: " + m_cTableName + " " + m_rTableName + " locks-in-db: " + m_locksInDb);
+			log.info("init(): tables: {} {} locks-in-db: {}", m_cTableName, m_rTableName, m_locksInDb);
 
 			// convert draft?
 			if (m_convertToDraft)
@@ -204,7 +193,7 @@ public class DbAnnouncementService extends BaseAnnouncementService
 		}
 		catch (Throwable t)
 		{
-			M_log.warn("init(): ", t);
+			log.warn("init(): ", t);
 		}
 	}
 
@@ -238,7 +227,7 @@ public class DbAnnouncementService extends BaseAnnouncementService
 		public DbStorage(DoubleStorageUser user)
 		{
 			super(m_cTableName, "CHANNEL_ID", m_rTableName, "MESSAGE_ID", "CHANNEL_ID", "MESSAGE_DATE", "OWNER", "DRAFT",
-					"PUBVIEW", FIELDS, m_locksInDb, "channel", "message", user, m_sqlService);
+					"PUBVIEW", FIELDS, m_locksInDb, "channel", "message", user, sqlService);
 
 		} // DbStorage
 
@@ -358,18 +347,18 @@ public class DbAnnouncementService extends BaseAnnouncementService
 	 */
 	protected void convertToDraft()
 	{
-		M_log.info("convertToDraft");
+		log.info("convertToDraft");
 
 		try
 		{
 			// get a connection
-			final Connection connection = m_sqlService.borrowConnection();
+			final Connection connection = sqlService.borrowConnection();
 			boolean wasCommit = connection.getAutoCommit();
 			connection.setAutoCommit(false);
 
 			// read all message records that need conversion
 			String sql = "select CHANNEL_ID, MESSAGE_ID, XML from " + m_rTableName /* + " where OWNER is null" */;
-			m_sqlService.dbRead(connection, sql, null, new SqlReader()
+			sqlService.dbRead(connection, sql, null, new SqlReader()
 			{
 				private int count = 0;
 
@@ -389,7 +378,7 @@ public class DbAnnouncementService extends BaseAnnouncementService
 						Element root = doc.getDocumentElement();
 						if (!root.getTagName().equals("message"))
 						{
-							M_log.warn("convertToDraft(): XML root element not message: " + root.getTagName());
+							log.warn("convertToDraft(): XML root element not message: {}", root.getTagName());
 							return null;
 						}
 						Message m = new BaseMessageEdit(null, root);
@@ -406,16 +395,15 @@ public class DbAnnouncementService extends BaseAnnouncementService
 						fields[1] = (draft ? "1" : "0");
 						fields[2] = channelId;
 						fields[3] = messageId;
-						boolean ok = m_sqlService.dbWrite(connection, update, fields);
+						boolean ok = sqlService.dbWrite(connection, update, fields);
 
 						if (!ok)
-							M_log.info("convertToDraft: channel: " + channelId + " message: " + messageId + " owner: " + owner
-									+ " draft: " + draft + " ok: " + ok);
+							log.info("convertToDraft: channel: {} message: {} owner: {} draft: {} ok: {}", channelId, messageId, owner, draft, ok);
 
 						count++;
 						if (count % 100 == 0)
 						{
-							M_log.info("convertToDraft: " + count);
+							log.info("convertToDraft: {}", count);
 						}
 						return null;
 					}
@@ -428,14 +416,14 @@ public class DbAnnouncementService extends BaseAnnouncementService
 
 			connection.commit();
 			connection.setAutoCommit(wasCommit);
-			m_sqlService.returnConnection(connection);
+			sqlService.returnConnection(connection);
 		}
 		catch (Throwable t)
 		{
-			M_log.warn("convertToDraft: failed: " + t);
+			log.warn("convertToDraft: failed: " + t);
 		}
 
-		M_log.info("convertToDraft: done");
+		log.info("convertToDraft: done");
 	}
 
 	/**
@@ -443,18 +431,18 @@ public class DbAnnouncementService extends BaseAnnouncementService
 	 */
 	protected void convertToPubView()
 	{
-		M_log.info("convertToPubView");
+		log.info("convertToPubView");
 
 		try
 		{
 			// get a connection
-			final Connection connection = m_sqlService.borrowConnection();
+			final Connection connection = sqlService.borrowConnection();
 			boolean wasCommit = connection.getAutoCommit();
 			connection.setAutoCommit(false);
 
 			// read all message records that need conversion
 			String sql = "select CHANNEL_ID, MESSAGE_ID, XML, PUBVIEW from " + m_rTableName;
-			m_sqlService.dbRead(connection, sql, null, new SqlReader()
+			sqlService.dbRead(connection, sql, null, new SqlReader()
 			{
 				public Object readSqlResultRecord(ResultSet result)
 				{
@@ -473,7 +461,7 @@ public class DbAnnouncementService extends BaseAnnouncementService
 						Element root = doc.getDocumentElement();
 						if (!root.getTagName().equals("message"))
 						{
-							M_log.warn("convertToPubView(): XML root element not message: " + root.getTagName());
+							log.warn("convertToPubView(): XML root element not message: {}", root.getTagName());
 							return null;
 						}
 						BaseMessageEdit m = new BaseMessageEdit(null, root);
@@ -515,11 +503,10 @@ public class DbAnnouncementService extends BaseAnnouncementService
 							fields[0] = "0";
 							fields[1] = channelId;
 							fields[2] = messageId;
-							boolean ok = m_sqlService.dbWrite(connection, update, fields);
+							boolean ok = sqlService.dbWrite(connection, update, fields);
 
 							if (!ok)
-								M_log.info("convertToPubView: channel: " + channelId + " message: " + messageId + " pubview: "
-										+ pubview + " ok: " + ok);
+								log.info("convertToPubView: channel: {} message: {} pubview: {} ok: {}", channelId, messageId, pubview, ok);
 						}
 
 						// update those that have pubview
@@ -540,11 +527,10 @@ public class DbAnnouncementService extends BaseAnnouncementService
 							fields[1] = xml;
 							fields[2] = channelId;
 							fields[3] = messageId;
-							boolean ok = m_sqlService.dbWrite(connection, update, fields);
+							boolean ok = sqlService.dbWrite(connection, update, fields);
 
 							if (!ok)
-								M_log.info("convertToPubView: channel: " + channelId + " message: " + messageId + " pubview: "
-										+ pubview + " ok: " + ok);
+								log.info("convertToPubView: channel: {} message: {} pubview: {} ok: {}", channelId, messageId, pubview, ok);
 						}
 
 						return null;
@@ -558,14 +544,14 @@ public class DbAnnouncementService extends BaseAnnouncementService
 
 			connection.commit();
 			connection.setAutoCommit(wasCommit);
-			m_sqlService.returnConnection(connection);
+			sqlService.returnConnection(connection);
 		}
 		catch (Throwable t)
 		{
-			M_log.warn("convertToPubView: failed: " + t);
+			log.warn("convertToPubView: failed: " + t);
 		}
 
-		M_log.info("convertToPubView: done");
+		log.info("convertToPubView: done");
 	}
 
 	/**

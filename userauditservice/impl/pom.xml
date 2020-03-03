@@ -4,23 +4,18 @@
     <parent>
         <groupId>org.sakaiproject.userauditservice</groupId>
         <artifactId>userauditservice</artifactId>
-        <version>12-SNAPSHOT</version>
+        <version>21-SNAPSHOT</version>
 	<relativePath>../pom.xml</relativePath>
     </parent>
 
     <name>Sakai Userauditservice Implementation (userauditservice-impl)</name>
     <groupId>org.sakaiproject.userauditservice</groupId>
     <artifactId>userauditservice-impl</artifactId>
-    <organization>
-        <name>Sakai Project</name>
-        <url>http://sakaiproject.org/</url>
-    </organization>
-    <inceptionYear>2013</inceptionYear>
     <description>Userauditservice implementation</description>
-    <packaging>jar</packaging>
+    <packaging>sakai-component</packaging>
 
     <properties>
-        <deploy.target />
+        <deploy.target>components</deploy.target>
     </properties>
 
     <dependencies>
@@ -29,8 +24,16 @@
             <artifactId>userauditservice-api</artifactId>
         </dependency>
         <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>userauditservice-util</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.sakaiproject.kernel</groupId>
             <artifactId>sakai-kernel-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.sakaiproject.kernel</groupId>
+            <artifactId>sakai-kernel-util</artifactId>
         </dependency>
     </dependencies>
 

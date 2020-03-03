@@ -37,8 +37,7 @@ import javax.faces.event.AbortProcessingException;
 import javax.faces.event.ActionEvent;
 import javax.faces.event.ActionListener;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.math3.util.Precision;
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.component.cover.ServerConfigurationService;
@@ -48,6 +47,8 @@ import org.sakaiproject.event.api.LearningResourceStoreService.LRS_Statement;
 import org.sakaiproject.event.api.LearningResourceStoreService.LRS_Verb;
 import org.sakaiproject.event.api.LearningResourceStoreService.LRS_Verb.SAKAI_VERB;
 import org.sakaiproject.event.api.NotificationService;
+import org.sakaiproject.rubrics.logic.RubricsConstants;
+import org.sakaiproject.rubrics.logic.RubricsService;
 import org.sakaiproject.samigo.util.SamigoConstants;
 import org.sakaiproject.tool.assessment.data.dao.grading.AssessmentGradingData;
 import org.sakaiproject.tool.assessment.data.dao.grading.ItemGradingAttachment;
@@ -60,8 +61,10 @@ import org.sakaiproject.tool.assessment.ui.bean.evaluation.AgentResults;
 import org.sakaiproject.tool.assessment.ui.bean.evaluation.QuestionScoresBean;
 import org.sakaiproject.tool.assessment.ui.bean.evaluation.TotalScoresBean;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
+import org.sakaiproject.tool.assessment.util.ParameterUtil;
 import org.sakaiproject.tool.assessment.util.SamigoLRSStatements;
 import org.sakaiproject.tool.assessment.util.TextFormat;
+import org.sakaiproject.tool.cover.SessionManager;
 
 /**
  * <p>
@@ -74,11 +77,12 @@ import org.sakaiproject.tool.assessment.util.TextFormat;
  * @version $Id$
  */
 
-public class QuestionScoreUpdateListener
+@Slf4j
+ public class QuestionScoreUpdateListener
   implements ActionListener
 {
-  private static Logger log = LoggerFactory.getLogger(QuestionScoreUpdateListener.class);
   private final EventTrackingService eventTrackingService= ComponentManager.get( EventTrackingService.class );
+  private final RubricsService rubricsService = ComponentManager.get(RubricsService.class);
 
   //private static EvaluationListenerUtil util;
   //private static BeanSort bs;
@@ -127,19 +131,15 @@ public class QuestionScoreUpdateListener
   {
     try
     {
+      ParameterUtil paramUtil = new ParameterUtil();
       GradingService delegate = new GradingService();
       //String publishedId = ContextUtil.lookupParam("publishedId");
       String itemId = ContextUtil.lookupParam("itemId");
       String which = ContextUtil.lookupParam("allSubmissions");
       if (which == null)
         which = "false";
-      Collection agents = bean.getAgents();
-      //ArrayList items = new ArrayList();
-      Iterator iter = agents.iterator();
-      while (iter.hasNext())
-      {
-        // each agent has a list of modified itemGrading
-        AgentResults ar = (AgentResults) iter.next();
+      List<AgentResults> agents = (List<AgentResults>) bean.getAgents();
+      for(AgentResults ar : agents){
         // Get the itemgradingdata list for this result
         ArrayList datas = (ArrayList) bean.getScoresByItem().get
           (ar.getAssessmentGradingId() + ":" + itemId);
@@ -162,7 +162,6 @@ public class QuestionScoreUpdateListener
         Iterator iter2 = datas.iterator();
         while (iter2.hasNext()){
           Object obj = iter2.next();
-          //log.info("Data = " + obj);
           ItemGradingData data = (ItemGradingData) obj;
 
           // check if there is differnce in score, if so, update. Otherwise, do nothing
@@ -175,7 +174,7 @@ public class QuestionScoreUpdateListener
           else {
         	  newAutoScore = (Double.valueOf(ar.getTotalAutoScore())).doubleValue() / (double) datas.size();
           }
-          String newComments = TextFormat.convertPlaintextToFormattedTextNoHighUnicode(log, ar.getComments());
+          String newComments = TextFormat.convertPlaintextToFormattedTextNoHighUnicode(ar.getComments());
           ar.setComments(newComments);
           if (newComments!=null) {
         	  newComments = newComments.trim();
@@ -236,6 +235,13 @@ public class QuestionScoreUpdateListener
         	  hasUpdateAttachment = true;
         	  updateAttachment(data, ar, bean);
           }
+		  
+          // Persist the rubric evaluation
+          String entityId = RubricsConstants.RBCS_PUBLISHED_ASSESSMENT_ENTITY_PREFIX + bean.getPublishedId() + "." + bean.getItemId();
+          if(rubricsService.hasAssociatedRubric(RubricsConstants.RBCS_TOOL_SAMIGO, entityId)){
+            String evaluatedItemId = ar.getAssessmentGradingId() + "." + bean.getItemId();
+            rubricsService.saveRubricEvaluation(RubricsConstants.RBCS_TOOL_SAMIGO, entityId, evaluatedItemId, ar.getIdString(), SessionManager.getCurrentSessionUserId(), paramUtil.getRubricConfigurationParameters(entityId, evaluatedItemId));
+          }
         }
       }
 
@@ -247,7 +253,7 @@ public class QuestionScoreUpdateListener
     }
     catch (Exception e)
     {
-      e.printStackTrace();
+      log.error(e.getMessage(), e);
       return false;
     }
     return true;
@@ -290,7 +296,7 @@ public class QuestionScoreUpdateListener
 		  eventTrackingService.post(eventTrackingService.newEvent(SamigoConstants.EVENT_ASSESSMENT_STUDENT_SCORE_UPDATE, 
 				  "siteId=" + AgentFacade.getCurrentSiteId() + ", Removing attachmentId = " + attachmentId, true));
 	  }
-	  bean.setIsAnyItemGradingAttachmentListModified(true);
+	  bean.setAnyItemGradingAttachmentListModified(true);
   }
 
   private HashMap getAttachmentIdHash(List list){

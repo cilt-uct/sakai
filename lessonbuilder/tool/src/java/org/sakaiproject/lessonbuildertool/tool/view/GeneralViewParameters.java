@@ -30,7 +30,7 @@ public class GeneralViewParameters extends SimpleViewParameters {
 	public static final int COMMENTS = 1;
 	public static final int STUDENT_CONTENT = 2;
 	public static final int STUDENT_PAGE = 3;
-	
+	public static final int CALENDAR = 4;
 	private String errorMessage = "";
 	private long sendingPage = -1;
 
@@ -50,6 +50,8 @@ public class GeneralViewParameters extends SimpleViewParameters {
 	public int addTool = -1;
 	public boolean postedComment = false;
 	public long studentItemId;
+
+	public boolean bltiAppStores = false;
 	
 	public String author; // An author whose comments should be highlighted
 	public String addBefore = ""; // itemid to add a new item before that item

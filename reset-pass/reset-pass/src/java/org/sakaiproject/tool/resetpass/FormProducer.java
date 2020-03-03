@@ -1,4 +1,19 @@
 /**
+ * Copyright (c) 2006-2015 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
  * 
  */
 package org.sakaiproject.tool.resetpass;
@@ -45,7 +60,10 @@ public class FormProducer implements ViewComponentProducer, DefaultView,Navigati
 
 	// prefix for targetted messages that are source in tool configuration rather than a resource bundle
 	private final String TOOL_CONFIG_PREFIX = "toolconfig_";
-	
+
+	private static final String MAX_PASSWORD_RESET_MINUTES = "accountValidator.maxPasswordResetMinutes";
+	private static final int MAX_PASSWORD_RESET_MINUTES_DEFAULT = 60;
+
 	/* (non-Javadoc)
 	 * @see uk.org.ponder.rsf.view.ViewComponentProducer#getViewID()
 	 */
@@ -128,26 +146,11 @@ public class FormProducer implements ViewComponentProducer, DefaultView,Navigati
 			UIVerbatim.make(tofill,"main",messageLocator.getMessage("mainText", args));
 		}
 		UIForm form = UIForm.make(tofill,"form");
-		boolean skipExpirationTime=true;
-		String expirationTime=serverConfigurationService.getString("accountValidator.maxPasswordResetMinutes");
-		if (expirationTime != null && !"".equals(expirationTime))
-		{
-			try
-			{
-				int totalMinutes=Integer.parseInt(expirationTime);
-
-				skipExpirationTime=false;
-				UIOutput.make( form, "output", messageLocator.getMessage("explanation", new Object[]{getFormattedMinutes(totalMinutes)} ));
-			}
-			catch (NumberFormatException nfe)
-			{
-
-			}
+		int expirationTime = serverConfigurationService.getInt(MAX_PASSWORD_RESET_MINUTES, MAX_PASSWORD_RESET_MINUTES_DEFAULT);
+		if(tml!=null && tml.size() == 0) {
+			UIOutput.make( form, "output", messageLocator.getMessage("explanation", new Object[]{getFormattedMinutes(expirationTime)} ));
 		}
-		if (skipExpirationTime)
-		{
-			UIOutput.make(form, "output", "");
-		}
+
 		UIInput.make(form,"input","#{userBean.email}");
 
 		boolean validatingAccounts = serverConfigurationService.getBoolean( "siteManage.validateNewUsers", false );

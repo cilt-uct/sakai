@@ -24,6 +24,8 @@ package org.sakaiproject.cheftool;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -31,16 +33,12 @@ import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.authz.cover.SecurityService;
 import org.sakaiproject.cheftool.api.Alert;
 import org.sakaiproject.cheftool.api.Menu;
@@ -62,10 +60,13 @@ import org.sakaiproject.tool.cover.SessionManager;
 import org.sakaiproject.tool.cover.ToolManager;
 import org.sakaiproject.util.EditorConfiguration;
 import org.sakaiproject.util.ParameterParser;
+import org.sakaiproject.util.RequestFilter;
 import org.sakaiproject.util.ResourceLoader;
-import org.sakaiproject.util.Validator;
 import org.sakaiproject.util.Web;
+import org.sakaiproject.util.api.FormattedText;
 import org.sakaiproject.vm.ActionURL;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * <p>
@@ -73,13 +74,11 @@ import org.sakaiproject.vm.ActionURL;
  * </p>
  */
 @SuppressWarnings("deprecation")
+@Slf4j
 public abstract class VelocityPortletPaneledAction extends ToolServlet
 {
 
 	private static final long serialVersionUID = 1L;
-
-	/** Our logger. */
-	private static Logger M_log = LoggerFactory.getLogger(VelocityPortletPaneledAction.class);
 
 	/** message bundle */
 	private static ResourceLoader rb = new ResourceLoader("velocity-tool");
@@ -114,9 +113,11 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
         protected static final String HELPER_MODE_DONE = "helper.done";
 
 	private ContentHostingService contentHostingService;
+	private FormattedText formattedText;
 
 	public VelocityPortletPaneledAction() {
 		contentHostingService = (ContentHostingService) ComponentManager.get(ContentHostingService.class.getName());
+		formattedText = ComponentManager.get(FormattedText.class);
 	}
 	
 	protected void initState(SessionState state, VelocityPortlet portlet, JetspeedRunData rundata)
@@ -174,7 +175,7 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
 	public static String mainPanelUpdateId(String toolId)
 	{
 		// TODO: who should be responsible for "Main" here? It's a Portal thing... -ggolden
-		return Validator.escapeJavascript("Main" + toolId);
+		return ComponentManager.get(FormattedText.class).escapeJavascript("Main" + toolId);
 
 	} // mainPanelUpdateId
 
@@ -188,9 +189,24 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
 	public static String titlePanelUpdateId(String toolId)
 	{
 		// TODO: who should be responsible for "Title" here? It's a Portal thing... -ggolden
-		return Validator.escapeJavascript("Title" + toolId);
+		return ComponentManager.get(FormattedText.class).escapeJavascript("Title" + toolId);
 
 	} // titlePanelUpdateId
+
+	/**
+	 * Add another string to the alert message.
+	 * Defaults to removing duplicates from the alert message
+	 * 
+	 * @param state
+	 *        The session state.
+	 * @param message
+	 *        The string to add.
+	 */
+
+	public static void addAlert(SessionState state, String message) {
+		
+		addAlert(state, message, true);
+	}
 
 	/**
 	 * Add another string to the alert message.
@@ -199,17 +215,19 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
 	 *        The session state.
 	 * @param message
 	 *        The string to add.
+	 * @param removeDuplicates
+	 * 		  Remove duplicates from the alert
 	 */
-	public static void addAlert(SessionState state, String message)
+	public static void addAlert(SessionState state, String message, boolean removeDuplicates)
 	{
 		String soFar = (String) state.getAttribute(STATE_MESSAGE);
-		if (soFar != null)
-		{
-			soFar = soFar + "\n\n" + message;
-		}
-		else
+		if (soFar == null)
 		{
 			soFar = message;
+		}
+		else if (!removeDuplicates || !soFar.contains(message))
+		{
+			soFar += "<br/>" + message;
 		}
 		state.setAttribute(STATE_MESSAGE, soFar);
 
@@ -347,7 +365,7 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
             String languageCode = locale.getLanguage();
             String countryCode = locale.getCountry();
             if(countryCode != null && countryCode.length() > 0) {
-                languageCode += "_" + countryCode;
+                languageCode += "-" + countryCode;
             }
             context.put("language",languageCode);
             context.put("dir", rl.getOrientation(locale));
@@ -446,6 +464,7 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
 
 				// setup for old style validator
 				setVmReference("validator", m_validator, req);
+				setVmReference("formattedText", formattedText, req);
 
 				// set standard no-cache headers
 				setNoCacheHeaders(res);
@@ -577,7 +596,7 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
 					}
 					catch (IOException e)
 					{
-						M_log.warn("IOException: ", e);
+						log.warn("IOException: ", e);
 					}
 				}
 			}
@@ -604,7 +623,10 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
 
 			try
 			{
-				res.sendRedirect(redirect);
+				//to prevent the 'response already committed' error
+				if(!(res.isCommitted())) {
+					res.sendRedirect(redirect);
+				}
 			}
 			catch (IOException e)
 			{
@@ -612,7 +634,7 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
 		}
 		else
 		{
-			M_log.debug("processAction: no action");
+			log.debug("processAction: no action");
 		}
 
 	} // processAction
@@ -640,9 +662,9 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
 				{
 					if (StringUtils.equalsIgnoreCase(toolId, insecureTools[i]))
 					{
-						if (M_log.isDebugEnabled())
+						if (log.isDebugEnabled())
 						{
-							M_log.debug("Will skip all CSRF checks on toolId=" + toolId);
+							log.debug("Will skip all CSRF checks on toolId=" + toolId);
 						}
 						skipCSRFCheck = true;
 						break;
@@ -661,7 +683,7 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
 				Object sessionAttr = SessionManager.getCurrentSession().getAttribute(UsageSessionService.SAKAI_CSRF_SESSION_ATTRIBUTE);
 				if ( sessionAttr == null )
 				{
-					M_log.warn("Missing CSRF Token session attribute: " + action + "; toolId=" + toolId);
+					log.warn("Missing CSRF Token session attribute: " + action + "; toolId=" + toolId);
 					return false;
 				}
 				
@@ -669,12 +691,12 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
 				String sessionToken = sessionAttr.toString();
 				if (csrfToken == null || sessionToken == null || !StringUtils.equals(csrfToken, sessionToken)) 
 				{
-					M_log.warn("CSRF Token mismatched or missing on velocity action: " + action + "; toolId=" + toolId);
+					log.warn("CSRF Token mismatched or missing on velocity action: " + action + "; toolId=" + toolId);
 					return false;
 				}
-				if (M_log.isDebugEnabled())
+				if (log.isDebugEnabled())
 				{
-					M_log.debug("CSRF token (" + csrfToken + ") matches on action: " + action + "; toolId=" + toolId);
+					log.debug("CSRF token (" + csrfToken + ") matches on action: " + action + "; toolId=" + toolId);
 				}
 			}
 		}
@@ -743,29 +765,29 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
 			}
 			catch (NoSuchMethodException e2)
 			{
-				M_log.warn("Exception calling method " + methodName + " " + e2);
+				log.warn("Exception calling method " + methodName + " " + e2);
 			}
 			catch (IllegalAccessException e2)
 			{
-				M_log.warn("Exception calling method " + methodName + " " + e2);
+				log.warn("Exception calling method " + methodName + " " + e2);
 			}
 			catch (InvocationTargetException e2)
 			{
 				String xtra = "";
 				if (e2.getCause() != null) xtra = " (Caused by " + e2.getCause() + ")";
-				M_log.warn("Exception calling method " + methodName + " " + e2 + xtra, e2);
+				log.warn("Exception calling method " + methodName + " " + e2 + xtra, e2);
 
 			}
 		}
 		catch (IllegalAccessException e)
 		{
-			M_log.warn("Exception calling method " + methodName + " " + e);
+			log.warn("Exception calling method " + methodName + " " + e);
 		}
 		catch (InvocationTargetException e)
 		{
 			String xtra = "";
 			if (e.getCause() != null) xtra = " (Caused by " + e.getCause() + ")";
-			M_log.warn("Exception calling method " + methodName + " " + e + xtra, e);
+			log.warn("Exception calling method " + methodName + " " + e + xtra, e);
 		}
 
 	} // actionDispatch
@@ -811,21 +833,21 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
 		}
 		catch (ClassNotFoundException e)
 		{
-			M_log.warn("Exception helper class not found " + e);
+			log.warn("Exception helper class not found " + e);
 		}
 		catch (NoSuchMethodException e)
 		{
-			M_log.warn("Exception calling method " + methodName + " " + e);
+			log.warn("Exception calling method " + methodName + " " + e);
 		}
 		catch (IllegalAccessException e)
 		{
-			M_log.warn("Exception calling method " + methodName + " " + e);
+			log.warn("Exception calling method " + methodName + " " + e);
 		}
 		catch (InvocationTargetException e)
 		{
 			String xtra = "";
 			if (e.getCause() != null) xtra = " (Caused by " + e.getCause() + ")";
-			M_log.warn("Exception calling method " + methodName + " " + e + xtra);
+			log.warn("Exception calling method " + methodName + " " + e + xtra);
 		}
 
 	} // helperActionDispatch
@@ -1106,7 +1128,7 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
 		if (placement != null)
 		{
 			String userId = SessionManager.getCurrentSessionUserId();
-			StringBuilder url = new StringBuilder(Web.serverUrl(request));
+			StringBuilder url = new StringBuilder(RequestFilter.serverUrl(request));
 			url.append("/courier/");
 			url.append(placement.getId());
 			url.append("?userId=");
@@ -1251,7 +1273,7 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
 			
       if ( formatArray.length != DEFAULT_FORMAT_ARRAY.length )
       {
-         M_log.warn("Unknown date format string (using default): " 
+         log.warn("Unknown date format string (using default): " 
                     + sdf.toPattern() );
          return DEFAULT_FORMAT_ARRAY;
       }
@@ -1289,7 +1311,7 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
 		if (formatArray.length != DEFAULT_TIME_FORMAT_ARRAY.length
 				&& formatArray.length != DEFAULT_TIME_FORMAT_ARRAY.length - 1)
 		{
-			M_log.warn("Unknown time format string (using default): " + format);
+			log.warn("Unknown time format string (using default): " + format);
 			return DEFAULT_TIME_FORMAT_ARRAY.clone();
 		}
 		else

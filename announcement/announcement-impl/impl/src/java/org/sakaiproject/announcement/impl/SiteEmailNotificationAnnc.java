@@ -21,13 +21,11 @@
 
 package org.sakaiproject.announcement.impl;
 
-import java.util.ArrayList;
+import java.time.Instant;
 import java.util.Iterator;
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.sakaiproject.announcement.api.AnnouncementChannel;
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.announcement.api.AnnouncementMessage;
 import org.sakaiproject.announcement.api.AnnouncementMessageEdit;
 import org.sakaiproject.announcement.api.AnnouncementMessageHeader;
@@ -36,29 +34,31 @@ import org.sakaiproject.api.app.scheduler.ScheduledInvocationCommand;
 import org.sakaiproject.authz.api.SecurityAdvisor;
 import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.component.cover.ServerConfigurationService;
+import org.sakaiproject.content.api.ContentHostingService;
+import org.sakaiproject.entity.api.EntityManager;
 import org.sakaiproject.entity.api.Reference;
 import org.sakaiproject.entity.api.ResourceProperties;
-import org.sakaiproject.entity.api.EntityManager;
 import org.sakaiproject.event.api.Event;
+import org.sakaiproject.event.api.EventTrackingService;
 import org.sakaiproject.event.api.Notification;
 import org.sakaiproject.event.api.NotificationEdit;
 import org.sakaiproject.event.api.NotificationService;
-import org.sakaiproject.content.api.ContentHostingService;
-import org.sakaiproject.event.api.EventTrackingService;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.message.api.MessageHeader;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
-import org.sakaiproject.time.api.Time;
-import org.sakaiproject.time.api.TimeService;
+import org.sakaiproject.time.api.UserTimeService;
 import org.sakaiproject.user.api.User;
-import org.sakaiproject.user.api.UserNotDefinedException;
 import org.sakaiproject.user.api.UserDirectoryService;
+import org.sakaiproject.user.api.UserNotDefinedException;
 import org.sakaiproject.util.EmailNotification;
-import org.sakaiproject.util.FormattedText;
 import org.sakaiproject.util.ResourceLoader;
 import org.sakaiproject.util.SiteEmailNotification;
+import org.sakaiproject.util.api.FormattedText;
+
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 
 /**
@@ -66,50 +66,25 @@ import org.sakaiproject.util.SiteEmailNotification;
  * SiteEmailNotificationAnnc fills the notification message and headers with details from the announcement message that triggered the notification event.
  * </p>
  */
+@Slf4j
 public class SiteEmailNotificationAnnc extends SiteEmailNotification  
 				implements ScheduledInvocationCommand
 {
 	private static ResourceLoader rb = new ResourceLoader("siteemaanc");
 	private static final String PORTLET_CONFIG_PARM_MERGED_CHANNELS = "mergedAnnouncementChannels";
 
-	/** Our logger. */
-	private static Logger M_log = LoggerFactory.getLogger(SiteEmailNotificationAnnc.class);
+	private static final String SAK_PROP_EMAIL_TO_MATCHES_FROM = "announcement.notification.email.to.matches.from";
+	private static final boolean SAK_PROP_EMAIL_TO_MATCHES_FROM_DEFAULT = false;
 
-	private EntityManager entityManager;
-	private SecurityService securityService;
-	private NotificationService notificationService;
-	private EventTrackingService eventTrackingService;
-	private SiteService siteService;
-	private TimeService timeService;
-	private UserDirectoryService userDirectoryService;
-
-	public void setEntityManager(EntityManager entityManager) {
-		this.entityManager = entityManager;
-	}
-
-	public void setSecurityService(SecurityService securityService) {
-		this.securityService = securityService;
-	}
-
-	public void setNotificationService(NotificationService notificationService) {
-		this.notificationService = notificationService;
-	}
-
-	public void setEventTrackingService(EventTrackingService eventTrackingService) {
-		this.eventTrackingService = eventTrackingService;
-	}
-
-	public void setTimeService(TimeService timeService) {
-		this.timeService = timeService;
-	}
-
-	public void setUserDirectoryService(UserDirectoryService userDirectoryService) {
-		this.userDirectoryService = userDirectoryService;
-	}
-
-	public void setSiteService(SiteService siteService) {
-		this.siteService = siteService;
-	}
+	@Setter private EntityManager entityManager;
+	@Setter private SecurityService securityService;
+	@Setter private NotificationService notificationService;
+	@Setter private EventTrackingService eventTrackingService;
+	@Setter private SiteService siteService;
+	@Setter private UserDirectoryService userDirectoryService;
+	@Setter private ServerConfigurationService serverConfigurationService;
+	@Setter private UserTimeService userTimeService;
+	@Setter private FormattedText formattedText;
 
 	/**
 	 * Construct.
@@ -149,9 +124,9 @@ public class SiteEmailNotificationAnnc extends SiteEmailNotification
 
 		// Put here since if release date after now, do not notify
 		// since scheduled notification has been set.
-		Time now = timeService.newTime();
+		Instant now = Instant.now();
 		
-		if (now.after(hdr.getDate()))
+		if (now.isAfter(hdr.getInstant()))
 		{
 			super.notify(notification, event);
 		}
@@ -184,20 +159,30 @@ public class SiteEmailNotificationAnnc extends SiteEmailNotification
 		}
 		catch (Exception ignore)
 		{
-			M_log.warn("Failed to load site: "+ siteId+ " for: "+ event.getResource());
+			log.warn("Failed to load site: {} for: {}", siteId, event.getResource());
 		}
 
 		// Now build up the message text.
 		if (AnnouncementService.SECURE_ANNC_ADD.equals(event.getEvent()))
 		{
-			buf.append(rb.getFormattedMessage("noti.header.add", new Object[]{title, url}));
+			if(!serverConfigurationService.getBoolean("notify.email.from.replyable", false)) {
+				buf.append(rb.getFormattedMessage("noti.header.sender.info.add", title, url, hdr.getFrom().getDisplayName()));
+			}
+			else {
+				buf.append(rb.getFormattedMessage("noti.header.add", title, url));
+			}
 		}
 		else
 		{
-			buf.append(rb.getFormattedMessage("noti.header.update", new Object[]{title, url}));
+			if(!serverConfigurationService.getBoolean("notify.email.from.replyable", false)) {
+				buf.append(rb.getFormattedMessage("noti.header.sender.info.update", title, url, hdr.getFrom().getDisplayName()));
+			}
+			else {
+				buf.append(rb.getFormattedMessage("noti.header.update", title, url));
+			}
 		}
-		buf.append(" " + rb.getString("at_date") + " ");
-		buf.append(hdr.getDate().toStringLocalFull());
+		buf.append(" ").append(rb.getString("at_date")).append(" ");
+		buf.append(userTimeService.shortLocalizedTimestamp(hdr.getInstant(), rb.getLocale()));
 		buf.append(newline);
 		buf.append(msg.getBody());
 		buf.append(newline);
@@ -206,14 +191,13 @@ public class SiteEmailNotificationAnnc extends SiteEmailNotification
 		List<Reference> attachments = hdr.getAttachments();
 		if (attachments.size() > 0)
 		{
-			buf.append(newline + rb.getString("Attachments") + newline);
-			for (Iterator<Reference> iAttachments = attachments.iterator(); iAttachments.hasNext();)
+			buf.append(newline).append(rb.getString("Attachments")).append(newline);
+			for (Reference attachment : attachments)
 			{
-				Reference attachment = (Reference) iAttachments.next();
 				String attachmentTitle = attachment.getProperties().getPropertyFormatted(ResourceProperties.PROP_DISPLAY_NAME);
-				buf.append("<a href=\"" + attachment.getUrl() + "\">");
+				buf.append("<a href=\"").append(attachment.getUrl()).append("\">");
 				buf.append(attachmentTitle);
-				buf.append("</a>" + newline);
+				buf.append("</a>").append(newline);
 			}
 		}
 
@@ -280,10 +264,17 @@ public class SiteEmailNotificationAnnc extends SiteEmailNotification
 		rv.add("Subject: " + getSubject(event));
 		
 		// from
-		rv.add(getFromAddress(event));
+		rv.add(getAddress(event, AddressField.FROM));
 
 		// to
-		rv.add(getTo(event));
+		if (ServerConfigurationService.getBoolean(SAK_PROP_EMAIL_TO_MATCHES_FROM, SAK_PROP_EMAIL_TO_MATCHES_FROM_DEFAULT))
+		{
+			rv.add(getAddress(event, AddressField.TO));
+		}
+		else
+		{
+			rv.add(getTo(event));
+		}
 
 		return rv;
 	}
@@ -321,8 +312,13 @@ public class SiteEmailNotificationAnnc extends SiteEmailNotification
 		String title = siteId;
 		try
 		{
-			Site site = siteService.getSite(siteId);
+			final Site site = siteService.getSite(siteId);
+			boolean shortDescription = ServerConfigurationService.getBoolean("announcement.email.use.short.description", false);
+
 			title = site.getTitle();
+			if(shortDescription && StringUtils.isNotEmpty(site.getShortDescription())) {
+				title = site.getShortDescription();
+			}
 		}
 		catch (Exception ignore)
 		{
@@ -333,13 +329,22 @@ public class SiteEmailNotificationAnnc extends SiteEmailNotification
 	}
 	
 	/**
-	 * Format the announcement notification from address.
-	 * 
-	 * @param event
-	 *        The event that matched criteria to cause the notification.
-	 * @return the announcement notification from address.
+	 * Defines the possible parameters for getAddress() to determine if we're getting the address for the 'From' or the 'To' field
 	 */
-	protected String getFromAddress(Event event)
+	private enum AddressField
+	{
+		FROM,
+		TO;
+	}
+
+	/**
+	 * Gets the address for either the "From:" or "To:" field in an announcement notification email.
+	 * They are formatted as follows:
+	 * From/To: "display address" <email address>
+	 * @param event the announcement event backing the notification
+	 * @param field specifies if we are getting the 'From' or the 'To' address
+	 */
+	private String getAddress(Event event, AddressField field)
 	{
 		Reference ref = entityManager.newReference(event.getResource());
 		
@@ -356,17 +361,16 @@ public class SiteEmailNotificationAnnc extends SiteEmailNotification
 		
 		String userEmail = ServerConfigurationService.getString("setup.request","no-reply@" + ServerConfigurationService.getServerName());
 		String userDisplay = ServerConfigurationService.getString("ui.service", "Sakai");
-		//String no_reply = "From: \"" + userDisplay + "\" <" + userEmail + ">";
-		//String no_reply_withTitle = "From: \"" + title + "\" <" + userEmail + ">";	
-		String from = "From: Sakai"; // fallback value
-		 if (title!=null && !title.equals("")){ 
-		     from = "From: \"" + title + "\" <" + userEmail + ">"; 
-		 } else {
-		     String fromVal = getFrom(event); // should not return null but better safe than sorry
-	         if (fromVal != null) {
-	             from = fromVal;
-	         }
-		 }
+		String address = field == AddressField.FROM ? "From: " : "To: ";
+		if (title!=null && !title.equals("")){
+			address = address + "\"" + title + "\" <" + userEmail + ">";
+		} else {
+			String val = field == AddressField.FROM ? getFrom(event) : getTo(event);
+			if (val != null)
+			{
+				address = val;
+			}
+		}
 		
 		// get the message
 		AnnouncementMessage msg = (AnnouncementMessage) ref.getEntity();
@@ -376,7 +380,7 @@ public class SiteEmailNotificationAnnc extends SiteEmailNotification
 		// SAK-20988 - emailFromReplyable@org.sakaiproject.event.api.NotificationService is deprecated
 		boolean notificationEmailFromReplyable = ServerConfigurationService.getBoolean("notify.email.from.replyable", false);
 		if (notificationEmailFromReplyable 
-		        && from.contains("no-reply@") 
+		        && address.contains(userEmail)
 		        && userId != null) 
 		{
 				try
@@ -387,16 +391,20 @@ public class SiteEmailNotificationAnnc extends SiteEmailNotification
 					if ((userEmail != null) && (userEmail.trim().length()) == 0) userEmail = null;
 					
 				} catch (UserNotDefinedException e) {
-					M_log.warn("Failed to load user from announcement header: " + userId + ". Will send from no-reply@" + ServerConfigurationService.getServerName()  + " instead.");
+					log.warn("Failed to load user from announcement header: {}. Will send with no-reply@{} instead.", userId, ServerConfigurationService.getServerName());
 				}
 				
 				// some fallback positions
 				if (userEmail == null) userEmail = ServerConfigurationService.getString("setup.request","no-reply@" + ServerConfigurationService.getServerName());
 				if (userDisplay == null) userDisplay = ServerConfigurationService.getString("ui.service", "Sakai");
-				from="From: \"" + userDisplay + "\" <" + userEmail + ">";
+
+				address = field == AddressField.FROM ? "From: \"" : "To: \"";
+				// 'From' should display the user; 'To' should display the site title; if the title is unavailable, fallback to the user
+				String display = (field == AddressField.FROM || StringUtils.isBlank(title)) ? userDisplay : title;
+				address = address + display + "\" <" + userEmail + ">";
 		}
 		
-		return from;
+		return address;
 	}
 
 	/**
@@ -423,10 +431,11 @@ public class SiteEmailNotificationAnnc extends SiteEmailNotification
 	{
 		// get the message
 		final Reference ref = entityManager.newReference(opaqueContext);
+
+		// needed to access the message
+		SecurityAdvisor sa = enableSecurityAdvisorToGetAnnouncement();
+
 		try {
-			// needed to access the message
-			enableSecurityAdvisorToGetAnnouncement();
-			
 			final AnnouncementMessage msg = (AnnouncementMessage) ref.getEntity();
 			if (msg!=null) {
 				final AnnouncementMessageHeader hdr = (AnnouncementMessageHeader) msg.getAnnouncementHeader();
@@ -457,7 +466,7 @@ public class SiteEmailNotificationAnnc extends SiteEmailNotification
 			// message within the super class, can't remove the
 			// SecurityAdvisor until this point
 			// done with access, need to remove from stack
-			disableSecurityAdvisor();
+			disableSecurityAdvisor(sa);
 		}
 	}
 
@@ -465,10 +474,10 @@ public class SiteEmailNotificationAnnc extends SiteEmailNotification
 	 * Establish a security advisor to allow the "embedded" azg work to occur
 	 * with no need for additional security permissions.
 	 */
-	protected void enableSecurityAdvisorToGetAnnouncement() {
+	protected SecurityAdvisor enableSecurityAdvisorToGetAnnouncement() {
 		// put in a security advisor so we can do our podcast work without need
 		// of further permissions
-		securityService.pushAdvisor(new SecurityAdvisor() {
+		SecurityAdvisor sa = new SecurityAdvisor() {
 			public SecurityAdvice isAllowed(String userId, String function,
 					String reference) {
 				if (function.equals(AnnouncementService.SECURE_ANNC_READ) || function.equals(ContentHostingService.AUTH_RESOURCE_READ)) // SAK-23300
@@ -476,14 +485,16 @@ public class SiteEmailNotificationAnnc extends SiteEmailNotification
 				else
 					return SecurityAdvice.PASS;
 			}
-		});
+		};
+		securityService.pushAdvisor(sa);
+		return sa;
 	}
 
 	/**
 	 * remove recent add SecurityAdvisor from stack
 	 */
-	protected void disableSecurityAdvisor() {
-		securityService.popAdvisor();
+	protected void disableSecurityAdvisor(SecurityAdvisor sa) {
+		securityService.popAdvisor(sa);
 	}
 
 
@@ -522,30 +533,40 @@ public class SiteEmailNotificationAnnc extends SiteEmailNotification
 		// Now build up the message text.
 		if (AnnouncementService.SECURE_ANNC_ADD.equals(event.getEvent()))
 		{
-			buf.append(FormattedText.convertFormattedTextToPlaintext(rb.getFormattedMessage("noti.header.add", new Object[]{title,url})));
+			if(!serverConfigurationService.getBoolean("notify.email.from.replyable", false)) {
+				buf.append(formattedText.convertFormattedTextToPlaintext(rb.getFormattedMessage("noti.header.sender.info.add", title, url, hdr.getFrom().getDisplayName())));
+			}
+			else {
+				buf.append(formattedText.convertFormattedTextToPlaintext(rb.getFormattedMessage("noti.header.add", title, url)));
+			}
 
 		}
 		else
 		{
-			buf.append(FormattedText.convertFormattedTextToPlaintext(rb.getFormattedMessage("noti.header.update", new Object[]{title,url})));
+			if(!serverConfigurationService.getBoolean("notify.email.from.replyable", false)) {
+				buf.append(formattedText.convertFormattedTextToPlaintext(rb.getFormattedMessage("noti.header.sender.info.update", title, url, hdr.getFrom().getDisplayName())));
+			}
+			else {
+				buf.append(formattedText.convertFormattedTextToPlaintext(rb.getFormattedMessage("noti.header.update", title, url)));
+			}
 		}
 		
-        buf.append(" " + rb.getString("at_date") + " ");
-        buf.append(hdr.getDate().toStringLocalFull());
+		buf.append(" ").append(rb.getString("at_date")).append(" ");
+        buf.append(userTimeService.shortLocalizedTimestamp(hdr.getInstant(), rb.getLocale()));
 		buf.append(newline);
-		buf.append(FormattedText.convertFormattedTextToPlaintext(msg.getBody()));
+		buf.append(formattedText.convertFormattedTextToPlaintext(msg.getBody()));
 		buf.append(newline);
 
 		// add any attachments
 		List attachments = hdr.getAttachments();
 		if (attachments.size() > 0)
 		{
-			buf.append(newline + rb.getString("Attachments") + newline);
+			buf.append(newline).append(rb.getString("Attachments")).append(newline);
 			for (Iterator iAttachments = attachments.iterator(); iAttachments.hasNext();)
 			{
 				Reference attachment = (Reference) iAttachments.next();
 				String attachmentTitle = attachment.getProperties().getPropertyFormatted(ResourceProperties.PROP_DISPLAY_NAME);
-				buf.append(attachmentTitle + ": " +attachment.getUrl() + newline);
+				buf.append(attachmentTitle).append(": ").append(attachment.getUrl()).append(newline);
 			}
 		}
 

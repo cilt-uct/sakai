@@ -21,6 +21,8 @@ package org.sakaiproject.sitestats.tool.wicket;
 import java.util.Locale;
 
 import org.apache.wicket.Component;
+import org.apache.wicket.core.request.mapper.CryptoMapper;
+import org.apache.wicket.core.util.crypt.KeyInSessionSunJceCryptFactory;
 import org.apache.wicket.request.IRequestHandler;
 import org.apache.wicket.request.cycle.RequestCycle;
 import org.apache.wicket.protocol.http.WebApplication;
@@ -36,9 +38,14 @@ import org.apache.wicket.devutils.debugbar.InspectorDebugPanel;
 import org.apache.wicket.devutils.debugbar.PageSizeDebugPanel;
 import org.apache.wicket.devutils.debugbar.SessionSizeDebugPanel;
 import org.apache.wicket.devutils.debugbar.VersionDebugContributor;
+import org.apache.wicket.request.IRequestMapper;
 import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.sitestats.tool.facade.SakaiFacade;
+import org.sakaiproject.sitestats.tool.wicket.components.JavaScriptToBucketResponseDecorator;
 import org.sakaiproject.sitestats.tool.wicket.pages.OverviewPage;
+import org.sakaiproject.sitestats.tool.wicket.pages.PreferencesPage;
+import org.sakaiproject.sitestats.tool.wicket.pages.ReportsPage;
+import org.sakaiproject.sitestats.tool.wicket.pages.UserActivityPage;
 import org.sakaiproject.util.ResourceLoader;
 
 
@@ -60,8 +67,14 @@ public class SiteStatsApplication extends WebApplication {
 		getResourceSettings().setResourceStreamLocator(new SiteStatsResourceStreamLocator());
 		getDebugSettings().setAjaxDebugModeEnabled(debug);
 
-		// Home page
+		// configure bottom page script loading
+		setHeaderResponseDecorator(new JavaScriptToBucketResponseDecorator("bottom-script-container"));
+
+		// Mount pages
 		mountPage("/home", OverviewPage.class);
+		mountPage("/reports", ReportsPage.class);
+		mountPage("/useractivity", UserActivityPage.class);
+		mountPage("/preferences", PreferencesPage.class);
 		
 		// On wicket session timeout, redirect to main page
 		getApplicationSettings().setPageExpiredErrorPage(OverviewPage.class);
@@ -102,6 +115,11 @@ public class SiteStatsApplication extends WebApplication {
 				}
 			});
 		}
+
+		// Encrypt URLs. This immediately sets up a session (note that things like CSS now becomes bound to the session)
+		getSecuritySettings().setCryptFactory(new KeyInSessionSunJceCryptFactory()); // Different key per user
+		final IRequestMapper cryptoMapper = new CryptoMapper(getRootRequestMapper(), this); 
+		setRootRequestMapper(cryptoMapper);
 	}
 	
 	@SuppressWarnings("unchecked")

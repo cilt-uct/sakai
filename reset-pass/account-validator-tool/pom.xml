@@ -3,11 +3,6 @@
    <name>Sakai Account Validator Tool</name>
   <groupId>org.sakaiproject.accountvalidator</groupId>
    <artifactId>accountvalidator</artifactId>
-   <organization>
-      <name>Sakai Project</name>
-      <url>http://sakaiproject.org/</url>
-   </organization>
-   <inceptionYear>2007</inceptionYear>
    <description>Account Validator Tool</description>
    <packaging>war</packaging>
 
@@ -15,7 +10,7 @@
    <parent>
      <groupId>org.sakaiproject.reset-pass</groupId>
 	<artifactId>reset-pass</artifactId>
-	<version>12-SNAPSHOT</version>
+	<version>21-SNAPSHOT</version>
    </parent>
 
    <properties>
@@ -82,13 +77,17 @@
       </dependency>
       <dependency>
       	<groupId>javax.servlet</groupId>
-      	<artifactId>servlet-api</artifactId>
+      	<artifactId>javax.servlet-api</artifactId>
       </dependency>
 		<dependency>
 			<groupId>joda-time</groupId>
 			<artifactId>joda-time</artifactId>
 			<version>${joda.time.version}</version>
 		</dependency>
+      <dependency>
+         <groupId>org.apache.commons</groupId>
+         <artifactId>commons-lang3</artifactId>
+      </dependency>
    </dependencies>
 
    

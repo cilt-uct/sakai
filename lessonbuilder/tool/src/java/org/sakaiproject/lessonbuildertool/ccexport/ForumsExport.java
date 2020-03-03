@@ -23,85 +23,35 @@
 
 package org.sakaiproject.lessonbuildertool.ccexport;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Set;
-import java.util.HashSet;
-import java.util.HashMap;
-import java.util.Collections;
-import java.util.SortedSet;
-import java.util.SortedMap;
-import java.util.TreeSet;
-import java.util.TreeMap;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.Map;
-import java.util.Iterator;
-import java.net.URLEncoder;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.apache.commons.lang.StringEscapeUtils;
-import org.sakaiproject.component.cover.ServerConfigurationService;
-
-import org.w3c.dom.Document;
-
-import org.sakaiproject.site.api.Group;
-import org.sakaiproject.site.api.Site;
-import org.sakaiproject.site.cover.SiteService;
-import org.sakaiproject.tool.api.Session;
-import org.sakaiproject.tool.cover.ToolManager;
-import org.sakaiproject.tool.cover.SessionManager;
-import org.sakaiproject.content.api.ContentResource;
-import org.sakaiproject.content.cover.ContentHostingService;
-import org.sakaiproject.component.cover.ComponentManager;
-
-import uk.org.ponder.messageutil.MessageLocator;
-
-import org.sakaiproject.lessonbuildertool.SimplePageItem;
-import org.sakaiproject.lessonbuildertool.model.SimplePageToolDao;
-import org.sakaiproject.db.cover.SqlService;
-import org.sakaiproject.db.api.SqlReader;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import org.sakaiproject.lessonbuildertool.ccexport.ZipPrintStream;
-import org.sakaiproject.lessonbuildertool.service.LessonEntity;
-
-import org.sakaiproject.api.app.messageforums.BaseForum;
+import org.apache.commons.text.StringEscapeUtils;
+import org.sakaiproject.api.app.messageforums.Attachment;
 import org.sakaiproject.api.app.messageforums.DiscussionForum;
 import org.sakaiproject.api.app.messageforums.DiscussionTopic;
-import org.sakaiproject.api.app.messageforums.Topic;
 import org.sakaiproject.api.app.messageforums.MessageForumsForumManager;
-import org.sakaiproject.api.app.messageforums.ui.DiscussionForumManager;
 import org.sakaiproject.api.app.messageforums.MessageForumsMessageManager;
-import org.sakaiproject.api.app.messageforums.PermissionLevelManager;
-import org.sakaiproject.api.app.messageforums.MessageForumsTypeManager;
-import org.sakaiproject.api.app.messageforums.AreaManager;
-import org.sakaiproject.api.app.messageforums.Attachment;
-import org.sakaiproject.api.app.messageforums.DBMembershipItem;
-import org.sakaiproject.api.app.messageforums.PermissionLevel;
-import org.sakaiproject.api.app.messageforums.PermissionsMask;
-import org.sakaiproject.api.app.messageforums.ui.UIPermissionsManager;
-import org.sakaiproject.component.app.messageforums.MembershipItem;
-
-import org.sakaiproject.entity.api.Reference;
-import org.sakaiproject.entity.api.ResourceProperties;
-import org.sakaiproject.util.Validator;
+import org.sakaiproject.api.app.messageforums.Topic;
+import org.sakaiproject.component.cover.ComponentManager;
+import org.sakaiproject.content.api.ContentResource;
+import org.sakaiproject.content.cover.ContentHostingService;
+import org.sakaiproject.lessonbuildertool.model.SimplePageToolDao;
+import org.sakaiproject.lessonbuildertool.service.LessonEntity;
+import org.sakaiproject.site.api.Site;
+import org.sakaiproject.site.cover.SiteService;
 import org.sakaiproject.util.FormattedText;
+
+import lombok.extern.slf4j.Slf4j;
+import uk.org.ponder.messageutil.MessageLocator;
 
 /*
  * set up as a singleton, but CCExport is not
  */
-
+@Slf4j
 public class ForumsExport {
-
-    private static Logger log = LoggerFactory.getLogger(ForumsExport.class);
-
     private static SimplePageToolDao simplePageToolDao;
 
     public void setSimplePageToolDao(Object dao) {
@@ -313,7 +263,7 @@ public class ForumsExport {
 	default:
 	    out.println("<topic xmlns=\"http://www.imsglobal.org/xsd/imsccv1p2/imsdt_v1p2\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://www.imsglobal.org/xsd/imsccv1p2/imsdt_v1p2 http://www.imsglobal.org/profile/cc/ccv1p2/ccv1p2_imsdt_v1p2.xsd\">");
 	}
-	out.println("  <title>" + StringEscapeUtils.escapeXml(item.title) + "</title>");
+	out.println("  <title>" + StringEscapeUtils.escapeXml11(item.title) + "</title>");
 
 	boolean useAttachments = (item.attachments.size() > 0);
 	List<String>attachments = new ArrayList<String>();
@@ -344,7 +294,7 @@ public class ForumsExport {
 	if (useAttachments || item.attachments.size() == 0 ) 
 	    out.println("  <text texttype=\"text/html\">" + text + "</text>");
 	else
-	    out.println("  <text texttype=\"text/html\">" + text + StringEscapeUtils.escapeXml(AssignmentExport.outputAttachments(resource, attachments, bean, "$IMS-CC-FILEBASE$../")) + "</text>");
+	    out.println("  <text texttype=\"text/html\">" + text + StringEscapeUtils.escapeXml11(AssignmentExport.outputAttachments(resource, attachments, bean, "$IMS-CC-FILEBASE$../")) + "</text>");
 
 	if (useAttachments) {
 	    out.println("  <attachments>");
@@ -374,7 +324,7 @@ public class ForumsExport {
 		lastAtom = URL; // for URL use the whole URL for the text
 	    else {
 		URL = "../" + bean.getLocation(physical); 
-		URL = StringEscapeUtils.escapeXml(URL.replaceAll("//", "/"));
+		URL = StringEscapeUtils.escapeXml11(URL.replaceAll("//", "/"));
 	    }
 	    out.println("    <attachment href=\"" + URL + "\"/>");
 	    bean.addDependency(resource, physical);

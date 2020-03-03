@@ -12,11 +12,10 @@
             <%= request.getAttribute("html.head") %>
             <title><h:outputText value="#{questionPoolMessages.transfer_pool_user}"/></title>
             
-            <script language="javascript" type="text/JavaScript">
+            <script language="javascript">
                 <%@ include file="/js/samigotree.js" %>
             </script>
-            <script src="/library/js/spinner.js" type="text/javascript"></script>
-
+			<script src="/library/js/spinner.js"></script>
         </head>
         <body onload="<%= request.getAttribute("html.body.onload") %>">
             <div class="portletBody">

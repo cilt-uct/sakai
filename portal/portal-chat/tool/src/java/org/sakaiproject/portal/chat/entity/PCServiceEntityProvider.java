@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.portal.chat.entity;
 
 import java.io.File;
@@ -5,6 +20,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
+import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -14,13 +30,14 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.UUID;
 
-import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import org.jgroups.Address;
 import org.jgroups.Channel;
 import org.jgroups.JChannel;
 import org.jgroups.Message;
 import org.jgroups.Receiver;
 import org.jgroups.View;
+import org.jgroups.jmx.JmxConfigurator;
 import org.sakaiproject.component.api.ComponentManager;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.email.api.EmailService;
@@ -46,8 +63,7 @@ import org.sakaiproject.profile2.model.Person;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.util.ResourceLoader;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Provides all the RESTful targets for the portal chat code in chat.js. Clustering
@@ -55,9 +71,8 @@ import org.slf4j.LoggerFactory;
  *
  * @author Adrian Fish (a.fish@lancaster.ac.uk)
  */
+@Slf4j
 public final class PCServiceEntityProvider extends AbstractEntityProvider implements Receiver, EntityProvider, Createable, Inputable, Outputable, ActionsExecutable, AutoRegisterEntityProvider, Describeable {
-
-	protected final Logger logger = LoggerFactory.getLogger(PCServiceEntityProvider.class);
 
 	private final static ResourceLoader rb = new ResourceLoader("portal-chat");
 
@@ -167,38 +182,40 @@ public final class PCServiceEntityProvider extends AbstractEntityProvider implem
         try {
             String channelId = serverConfigurationService.getString("portalchat.cluster.channel");
             if (channelId != null && !channelId.equals("")) {
-            	// Pick up the config file from sakai home if it exists
-            	File jgroupsConfig = new File(serverConfigurationService.getSakaiHomePath() + File.separator + "jgroups-config.xml");
-            	if (jgroupsConfig.exists()) {
-					logger.debug("Using jgroups config file: {}", jgroupsConfig.getAbsolutePath());
-            		clusterChannel = new JChannel(jgroupsConfig);
-            	} else {
-                    logger.debug("No jgroups config file. Using jgroup defaults.");
-            		clusterChannel = new JChannel();
-            	}
-            	
-				logger.debug("JGROUPS PROTOCOL: {}", clusterChannel.getProtocolStack().printProtocolSpecAsXML());
+                // Pick up the config file from sakai home if it exists
+                File jgroupsConfig = new File(serverConfigurationService.getSakaiHomePath() + File.separator + "jgroups-config.xml");
+                JChannel channel;
+                if (jgroupsConfig.exists()) {
+                    log.debug("Using jgroups config file: {}", jgroupsConfig.getAbsolutePath());
+                    clusterChannel = channel = new JChannel(jgroupsConfig);
+                } else {
+                    log.debug("No jgroups config file. Using jgroup defaults.");
+                    clusterChannel = channel = new JChannel();
+                }
+
+                log.debug("JGROUPS PROTOCOL: {}", clusterChannel.getProtocolStack().printProtocolSpecAsXML());
 
                 clusterChannel.setReceiver(this);
                 clusterChannel.connect(channelId);
                 // We don't want a copy of our JGroups messages sent back to us
                 clusterChannel.setDiscardOwnMessages(true);
+                JmxConfigurator.registerChannel(channel, ManagementFactory.getPlatformMBeanServer(), "DefaultDomain:name=JGroups");
                 clustered = true;
 
-                logger.info("Portal chat is connected on JGroups channel '" + channelId + "'"); 
+                log.info("Portal chat is connected on JGroups channel '" + channelId + "'"); 
             } else {
-                logger.info("No 'portalchat.cluster.channel' specified in sakai.properties. JGroups will not be used and chat messages will not be replicated."); 
+                log.info("No 'portalchat.cluster.channel' specified in sakai.properties. JGroups will not be used and chat messages will not be replicated."); 
             }
         } catch (Exception e) {
-            logger.error("Error creating JGroups channel. Chat messages will now NOT BE KEPT IN SYNC", e);
+            log.error("Error creating JGroups channel. Chat messages will now NOT BE KEPT IN SYNC", e);
         }
         
         int heartbeatMapSize = serverConfigurationService.getInt("portalchat.heartbeatmap.size",1000);
         heartbeatMap = new ConcurrentHashMap<String,UserMessage>(heartbeatMapSize,0.75F,64);
     }
     
-    public void destroy() {
-    	
+    public void destroy() throws Exception {
+    	super.destroy();
     	if (clusterChannel != null && clusterChannel.isConnected()) {
     		// This calls disconnect() first
     		clusterChannel.close();
@@ -217,7 +234,7 @@ public final class PCServiceEntityProvider extends AbstractEntityProvider implem
             connections = profileConnectionsLogic.getConnectionsForUser(uuid);
         } catch (NullPointerException npe) {
             // TODO: this needs tracing back into the Profile2 code
-            logger.error("NPE thrown by profile service. No connections will be returned for '" + uuid + "'");
+            log.error("NPE thrown by profile service. No connections will be returned for '" + uuid + "'");
         }
 
         List<Person> filteredConnections = new ArrayList<Person>();
@@ -235,7 +252,7 @@ public final class PCServiceEntityProvider extends AbstractEntityProvider implem
                     person.setPreferences(null);
                     
                 } catch (Exception e) {
-                    logger.error("Failed to sparsify Person instance. Skipping this person ...",e);
+                    log.error("Failed to sparsify Person instance. Skipping this person ...",e);
                     continue;
                 }
 
@@ -263,39 +280,39 @@ public final class PCServiceEntityProvider extends AbstractEntityProvider implem
      */
 	public String createEntity(EntityReference ref, Object entity, Map<String, Object> params) {
 
-        logger.debug("createEntity");
+        log.debug("createEntity");
 
 		final User currentUser = userDirectoryService.getCurrentUser();
 		final User anon = userDirectoryService.getAnonymousUser();
 		
 		if (anon.equals(currentUser)) {
-            logger.debug("No current user");
+            log.debug("No current user");
 			throw new SecurityException("You must be logged in to use this service");
 		}
 		
 		final String to = (String) params.get("to");
         if (to == null) {
-            logger.debug("No recipient");
+            log.debug("No recipient");
             throw new IllegalArgumentException("You must supply a recipient");
         }
 		
 		if (to.equals(currentUser.getId())) {
-            logger.debug("recipient is sender");
+            log.debug("recipient is sender");
 			throw new IllegalArgumentException("You can't chat with yourself");
 		}
-		
+
 		String message = (String) params.get("message");
 
 		if (message == null) {
-            logger.debug("no message supplied");
-            throw new IllegalArgumentException("You must supply a message");
-        }
+			log.debug("no message supplied");
+			throw new IllegalArgumentException("You must supply a message");
+		}
 
 		String siteId = (String) params.get("siteId");
-		logger.debug("siteId: {}", siteId);
+		log.debug("siteId: {}", siteId);
 
 		boolean isMessageToConnection = "true".equals(params.get("isMessageToConnection"));
-		logger.debug("isMessageToConnection: {}", isMessageToConnection);
+		log.debug("isMessageToConnection: {}", isMessageToConnection);
 
         // Sakai plays the role of signalling server in the WebRTC architecture.
 		boolean isVideoSignal = "true".equals(params.get("video"));
@@ -308,12 +325,12 @@ public final class PCServiceEntityProvider extends AbstractEntityProvider implem
             if (!isVideoSignal) {
                 profileMessagingLogic.sendNewMessage(to,currentUser.getId(), UUID.randomUUID().toString(), rb.getString("profile_message_subject"), message);
             }
-            logger.debug("returning OFFLINE ...");
-			return "OFFLINE";
+            log.debug("returning OFFLINE ...");
+            return "OFFLINE";
         }
 
-		logger.debug("message: {}", message);
-		logger.debug("isVideoSignal: {}", isVideoSignal);
+		log.debug("message: {}", message);
+		log.debug("isVideoSignal: {}", isVideoSignal);
 
 		// Sanitise the message. XSS attacks. Unescape single quotes. They are valid.
 		if (!isVideoSignal) { 
@@ -327,11 +344,11 @@ public final class PCServiceEntityProvider extends AbstractEntityProvider implem
 		
         if (clustered) {
             try {
-				logger.debug("Sending {} message to cluster ...", isVideoSignal ? "video signal " : "");
+                log.debug("Sending {} message to cluster ...", isVideoSignal ? "video signal " : "");
                 Message msg = new Message(null, null, userMessage);
             	clusterChannel.send(msg);
             } catch (Exception e) {
-                logger.error("Error sending JGroups message", e);
+                log.error("Error sending JGroups message", e);
             }
         }
 		
@@ -436,7 +453,7 @@ public final class PCServiceEntityProvider extends AbstractEntityProvider implem
 				this.credential = url.replaceFirst(WEBRTC_SERVER_REGEX, "$4");
 				this.host = url.replaceFirst(WEBRTC_SERVER_REGEX, "$5");
 			} else {
-				logger.warn("WebRTC Server doesn't match expected format!!");
+				log.warn("WebRTC Server doesn't match expected format!!");
 			}
 		}
 	}
@@ -449,13 +466,13 @@ public final class PCServiceEntityProvider extends AbstractEntityProvider implem
 	@EntityCustomAction(action = "latestData", viewKey = EntityView.VIEW_SHOW)
 	public Map<String,Object> handleLatestData(EntityReference ref, Map<String,Object> params) {
 		
-		logger.debug("handleLatestData");
+		log.debug("handleLatestData");
 
 		User currentUser = userDirectoryService.getCurrentUser();
 		User anon = userDirectoryService.getAnonymousUser();
 		
 		if (anon.equals(currentUser)) {
-            logger.debug("No current user");
+            log.debug("No current user");
 			throw new SecurityException("You must be logged in to use this service");
 		}
 		
@@ -463,31 +480,31 @@ public final class PCServiceEntityProvider extends AbstractEntityProvider implem
 		String videoAgent = (String) params.get("videoAgent");
 
 		String siteId = (String) params.get("siteId");
-		logger.debug("siteId: {}", siteId);
+		log.debug("siteId: {}", siteId);
 
-		logger.debug("online: {}", online);
+		log.debug("online: {}", online);
 
 		if (online != null && "true".equals(online)) {
 			
-			logger.debug("{} is online. Stamping their heartbeat ...", currentUser.getEid());
+			log.debug("{} is online. Stamping their heartbeat ...", currentUser.getEid());
 
 			UserMessage userMessage = new UserMessage(currentUser.getId(), videoAgent);
 			heartbeatMap.put(currentUser.getId(), userMessage);
 
             if (clustered) {
             	
-            	logger.debug("We are clustered. Propagating heartbeat ...");
+            	log.debug("We are clustered. Propagating heartbeat ...");
             	
                 Message msg = new Message(null, null, userMessage);
                 try {
                     clusterChannel.send(msg);
-                    logger.debug("Heartbeat message sent.");
+                    log.debug("Heartbeat message sent.");
                 } catch (Exception e) {
-                    logger.error("Error sending JGroups heartbeat message", e);
+                    log.error("Error sending JGroups heartbeat message", e);
                 }
             }
         } else {
-			logger.debug("{} is offline. Removing them from the message map ...", currentUser.getEid());
+			log.debug("{} is offline. Removing them from the message map ...", currentUser.getEid());
 
             synchronized (messageMap) {
                 messageMap.remove(currentUser.getId());
@@ -495,7 +512,7 @@ public final class PCServiceEntityProvider extends AbstractEntityProvider implem
 
 	        sendClearMessage(currentUser.getId());
 
-			logger.debug("{} is offline. Returning an empty data map ...", currentUser.getEid());
+			log.debug("{} is offline. Returning an empty data map ...", currentUser.getEid());
 
             return new HashMap<String,Object>(0);
         }
@@ -505,15 +522,20 @@ public final class PCServiceEntityProvider extends AbstractEntityProvider implem
         if (siteId != null && siteId.length() > 0 && showSiteUsers) {
 			// A site id has been specified, so we refresh our presence at the 
 			// location and retrieve the present users
-			String location = siteId + "-presence";
+			String location = siteId + PresenceService.PRESENCE_SUFFIX;
 			presenceService.setPresence(location);
-			List<User> presentSakaiUsers = presenceService.getPresentUsers(siteId + "-presence");
+			List<User> presentSakaiUsers = presenceService.getPresentUsers(siteId + PresenceService.PRESENCE_SUFFIX);
 			presentSakaiUsers.remove(currentUser);
 			for (User user : presentSakaiUsers) {
 				UserMessage heartbeat = heartbeatMap.get(user.getId());
-				// Flag this user as offline if they can't access portal chat
-				boolean offline = !portalChatPermittedHelper.checkChatPermitted(user.getId());
-				presentUsers.add(new PortalChatUser(user.getId(), user.getDisplayName(), offline, heartbeatMap.get(user.getId()).content));
+				if (heartbeat != null) {
+					// Flag this user as offline if they can't access portal chat
+					boolean offline = !portalChatPermittedHelper.checkChatPermitted(user.getId());
+					presentUsers.add(new PortalChatUser(user.getId(), user.getDisplayName(), offline, heartbeat.content));
+				}
+				else {
+					log.debug("Heartbeat is null so not adding {} to presentUsers", user.getId());
+				}
 			}
         }
 		
@@ -584,12 +606,12 @@ public final class PCServiceEntityProvider extends AbstractEntityProvider implem
 
         if (clustered) {
             try {
-				logger.debug("Sending messagMap clear message for {} ...", userId);
+				log.debug("Sending messagMap clear message for {} ...", userId);
             	UserMessage userMessage = new UserMessage(userId, true);
                 Message msg = new Message(null, null, userMessage);
                 clusterChannel.send(msg);
             } catch (Exception e) {
-                logger.error("Error sending JGroups clear message", e);
+                log.error("Error sending JGroups clear message", e);
             }
         }
     }
@@ -601,7 +623,7 @@ public final class PCServiceEntityProvider extends AbstractEntityProvider implem
 		User anon = userDirectoryService.getAnonymousUser();
 		
 		if (anon.equals(currentUser)) {
-            logger.debug("No current user");
+            log.debug("No current user");
 			throw new SecurityException("You must be logged in to use this service");
 		}
 		
@@ -625,7 +647,7 @@ public final class PCServiceEntityProvider extends AbstractEntityProvider implem
 		final User anon = userDirectoryService.getAnonymousUser();
 		
 		if (anon.equals(currentUser)) {
-            logger.debug("No current user");
+            log.debug("No current user");
 			throw new SecurityException("You must be logged in to use this service");
 		}
 
@@ -642,7 +664,7 @@ public final class PCServiceEntityProvider extends AbstractEntityProvider implem
         synchronized (messageMap) {
 
             if (!messageMap.containsKey(m.to)) {
-				logger.debug("No message map entry for '{}'. Creating new entries ...", m.to);
+				log.debug("No message map entry for '{}'. Creating new entries ...", m.to);
                 Map<String, Map<String, List<UserMessage>>> typeMap = new HashMap<String, Map<String, List<UserMessage>>>();
                 typeMap.put(PLAIN, new HashMap<String, List<UserMessage>>());
                 typeMap.get(PLAIN).put(m.siteId, new ArrayList<UserMessage>());
@@ -654,7 +676,7 @@ public final class PCServiceEntityProvider extends AbstractEntityProvider implem
             }
 
             if (m.video) {
-                logger.debug("Message is a video message");
+                log.debug("Message is a video message");
                 Map<String, List<UserMessage>> videoMap = messageMap.get(m.to).get(VIDEO);
 
                 if (m.fromConnection) {
@@ -665,16 +687,16 @@ public final class PCServiceEntityProvider extends AbstractEntityProvider implem
                     videoMap.put(m.siteId, Arrays.asList(m));
                 }
             } else {
-                logger.debug("Message is a plain message");
+                log.debug("Message is a plain message");
                 Map<String, List<UserMessage>> plainMap = messageMap.get(m.to).get(PLAIN);
 
                 if (m.fromConnection) {
                     plainMap.get(CONNECTION).add(m);
                 } else if (plainMap.containsKey(m.siteId)) {
-					logger.debug("plainMap already contains '{}'", m.siteId);
+					log.debug("plainMap already contains '{}'", m.siteId);
                     plainMap.get(m.siteId).add(m);
                 } else {
-					logger.debug("plainMap does not contain '{}'. A new list will be mapped", m.siteId);
+					log.debug("plainMap does not contain '{}'. A new list will be mapped", m.siteId);
                     plainMap.put(m.siteId, Arrays.asList(m));
                 }
             }
@@ -707,7 +729,7 @@ public final class PCServiceEntityProvider extends AbstractEntityProvider implem
 				final String emailFromAddress = "\"" + service + "\" <" + serverConfigurationService.getString("setup.request","no-reply@" + serverName) + ">";
 				emailService.send(emailFromAddress, email, subject, message, email, null, additionalHeaders);
 			} catch (Exception e) {
-                logger.error("sendEmail() failed for email: " + email,e);
+                log.error("sendEmail() failed for email: " + email,e);
 			}
 		}
 	}
@@ -727,11 +749,11 @@ public final class PCServiceEntityProvider extends AbstractEntityProvider implem
                         messageMap.remove(userId);
     				}
             	} else {
-            		logger.debug("Received heartbeat from cluster ...");
+            		log.debug("Received heartbeat from cluster ...");
             		heartbeatMap.put(message.from, message);
             	}
             } else  {
-				logger.debug("Received {} message from cluster ...",  message.video ? "video" : "");
+				log.debug("Received {} message from cluster ...",  message.video ? "video" : "");
                 addMessageToMap(message);
             } 
         }

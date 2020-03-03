@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>About</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="/library/js/headscripts.js"></script>
+    <link href="/library/webjars/fontawesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+</head>
+<script>
+    includeLatestJQuery('about.html');
+    includeWebjarLibrary('bootstrap');
+</script>
+
+<style type="text/css">
+.symbol {
+    text-align: center;
+    color: #000036;
+
+}
+
+.text{
+    font-size: 14pt;
+    text-align: center;
+    margin: 2rem 0 3rem
+}
+
+.panel { 
+    padding = 1.5rem;
+    border-color: #000036;;
+    border-radius: 1rem;
+
+}
+
+.jtop{
+    padding: 1rem 3rem;
+    margin-bottom: 2rem;
+    background-color: #e9ecef;
+    border-radius: 0.3rem;
+}
+
+.jtop > h1 {
+    font-size:36px;
+}
+
+.jtop > p {
+    font-size:18px;
+}
+
+</style>
+
+<body>
+<div class="jumbotron jtop">
+    <h1>About Sakai</h1>
+    <p>
+        Sakai is a set of software tools designed to help instructors,
+        researchers, and students create websites for collaboration.
+        Using a web browser, users choose from a set of features to create a site that meets their needs.
+    </p>
+</div>
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-4">
+            <p class="symbol"><i class="fa fa-flask" aria-hidden="true" style="font-size:25rem;"></i></p>
+            <p class="text">A researcher can create a website for collaboration on a project with colleagues.</p>
+        </div>
+        
+        <div class="col-md-4">
+            <p class="symbol"><i class="fa fa-university" aria-hidden="true" style="font-size:25rem;"></i></p>
+            <p class="text">An instructor can create a website that serves as an online discussion board for students to collaborate on an assignment.</p>
+        </div>
+        
+        <div class="col-md-4">
+            <p class="symbol"><i class="fa fa-graduation-cap" aria-hidden="true" style="font-size:25rem;"></i></p>
+            <p class="text">A student can create a site for a study group or for extra curricular activities (depending on institutional policy).</p>
+        </div>
+    </div>
+    <div class="panel panel-primary">
+            <div class ="panel-body">
+                <p style="font-size: 14pt;">
+                    Sakai is a part of the <a href="https://www.apereo.org" target="_blank">Apereo Foundation (https://www.apereo.org)</a>.
+                    An overview of Sakai can be found at <a href="https://www.sakailms.org/" target="_blank">https://www.sakailms.org/</a>.<br> 
+                    For more information, contact <a href="mailto:sakaicoordinator@apereo.org">the Sakai Community Coordinator</a>.
+                </p>
+            </div>
+        </div>
+</div>
+</body>
+</html>

@@ -19,13 +19,13 @@
  *
  **********************************************************************************/
 
-
-
 package org.sakaiproject.tool.assessment.ui.listener.delivery;
 
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.ResourceBundle;
 
 import javax.faces.context.FacesContext;
@@ -34,13 +34,13 @@ import javax.faces.event.ActionEvent;
 import javax.faces.event.ActionListener;
 import javax.servlet.http.HttpServletRequest;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.event.api.Event;
 import org.sakaiproject.event.api.EventTrackingService;
 import org.sakaiproject.event.cover.NotificationService;
+import org.sakaiproject.samigo.util.SamigoConstants;
 import org.sakaiproject.tool.assessment.api.SamigoApiFactory;
 import org.sakaiproject.tool.assessment.data.dao.assessment.EventLogData;
 import org.sakaiproject.tool.assessment.data.dao.grading.AssessmentGradingData;
@@ -57,12 +57,12 @@ import org.sakaiproject.tool.assessment.ui.bean.delivery.DeliveryBean;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 import org.sakaiproject.tool.assessment.ui.web.session.SessionUtil;
 import org.sakaiproject.tool.assessment.util.SamigoLRSStatements;
+import org.sakaiproject.util.api.FormattedText;
 
-
+@Slf4j
 public class LinearAccessDeliveryActionListener extends DeliveryActionListener
   implements ActionListener
 {
-  private static Logger log = LoggerFactory.getLogger(LinearAccessDeliveryActionListener.class);
   private static ResourceBundle eventLogMessages = ResourceBundle.getBundle("org.sakaiproject.tool.assessment.bundle.EventLogMessages");
   private final EventTrackingService eventTrackingService= ComponentManager.get( EventTrackingService.class );
 
@@ -134,7 +134,7 @@ public class LinearAccessDeliveryActionListener extends DeliveryActionListener
       AssessmentGradingData ag = null;
       
       // this returns a HashMap with (publishedItemId, itemGrading)
-      HashMap itemGradingHash = service.getLastItemGradingData(id, agent); 
+      Map itemGradingHash = service.getLastItemGradingData(id, agent);
       
       boolean isFirstTimeBegin = false;
       if (itemGradingHash!=null && itemGradingHash.size()>0){
@@ -181,7 +181,7 @@ public class LinearAccessDeliveryActionListener extends DeliveryActionListener
           eventLogData.setAssessmentId(Long.valueOf(id));
           eventLogData.setProcessId(delivery.getAssessmentGradingId());
           eventLogData.setStartDate(new Date());
-          eventLogData.setTitle(publishedAssessment.getTitle());
+          eventLogData.setTitle(ComponentManager.get(FormattedText.class).convertFormattedTextToPlaintext(publishedAssessment.getTitle()));
           eventLogData.setUserEid(agentEid); 
           String site_id= AgentFacade.getCurrentSiteId();
           if(site_id == null) {
@@ -194,7 +194,10 @@ public class LinearAccessDeliveryActionListener extends DeliveryActionListener
           eventLogData.setErrorMsg(eventLogMessages.getString("no_submission"));
           eventLogData.setEndDate(null);
           eventLogData.setEclipseTime(null);
-              
+          		  
+          String thisIp = ( (javax.servlet.http.HttpServletRequest) FacesContext.getCurrentInstance().getExternalContext().getRequest()).getRemoteAddr();
+          eventLogData.setIpAddress(thisIp);
+		  			  
           eventLogFacade.setData(eventLogData);
           eventService.saveOrUpdateEventLog(eventLogFacade);           	  
           int action = delivery.getActionMode();
@@ -210,7 +213,7 @@ public class LinearAccessDeliveryActionListener extends DeliveryActionListener
     			  int timeRemaining = Integer.parseInt(delivery.getTimeLimit()) - Integer.parseInt(delivery.getTimeElapse());
     			  eventRef.append(timeRemaining);
     		  }
-    		  Event event = eventTrackingService.newEvent("sam.assessment.take", eventRef.toString(), site_id, true, NotificationService.NOTI_REQUIRED, SamigoLRSStatements.getStatementForTakeAssessment(delivery.getAssessmentTitle(), delivery.getPastDue(), publishedAssessment.getReleaseTo(), false));
+    		  Event event = eventTrackingService.newEvent(SamigoConstants.EVENT_ASSESSMENT_TAKE, eventRef.toString(), site_id, true, NotificationService.NOTI_REQUIRED, SamigoLRSStatements.getStatementForTakeAssessment(delivery.getAssessmentTitle(), delivery.isPastDue(), publishedAssessment.getReleaseTo(), false));
     		  eventTrackingService.post(event);
     	  }
     	  else if (action == DeliveryBean.TAKE_ASSESSMENT_VIA_URL) {
@@ -227,7 +230,7 @@ public class LinearAccessDeliveryActionListener extends DeliveryActionListener
     		  }
     		  PublishedAssessmentService publishedAssessmentService = new PublishedAssessmentService();
     		  String siteId = publishedAssessmentService.getPublishedAssessmentOwner(Long.valueOf(delivery.getAssessmentId()));
-    		  Event event = eventTrackingService.newEvent("sam.assessment.take", eventRef.toString(), siteId, true, NotificationService.NOTI_REQUIRED, SamigoLRSStatements.getStatementForTakeAssessment(delivery.getAssessmentTitle(), delivery.getPastDue(), publishedAssessment.getReleaseTo(), true));
+    		  Event event = eventTrackingService.newEvent(SamigoConstants.EVENT_ASSESSMENT_TAKE, eventRef.toString(), siteId, true, NotificationService.NOTI_REQUIRED, SamigoLRSStatements.getStatementForTakeAssessment(delivery.getAssessmentTitle(), delivery.isPastDue(), publishedAssessment.getReleaseTo(), true));
     		  eventTrackingService.post(event);
     	  }    	  
       }
@@ -250,7 +253,7 @@ public class LinearAccessDeliveryActionListener extends DeliveryActionListener
       log.debug("after partIndex = " + delivery.getPartIndex());
       log.debug("after questionIndex = " + delivery.getQuestionIndex());
 
-      HashMap publishedAnswerHash = pubService.preparePublishedAnswerHash(publishedAssessment);
+      Map publishedAnswerHash = pubService.preparePublishedAnswerHash(publishedAssessment);
 
       if(itemGradingHash != null) {
           delivery.setTableOfContents(getContents(publishedAssessment, itemGradingHash,delivery, publishedAnswerHash));
@@ -284,8 +287,8 @@ public class LinearAccessDeliveryActionListener extends DeliveryActionListener
 	  }
 	  else {
 		  // For backward compatible
-		  ArrayList alist = gradingService.getLastItemGradingDataPosition(assessmentGradingData.getAssessmentGradingId(), assessmentGradingData.getAgentId());
-		  int partIndex = ((Integer)alist.get(0)).intValue();
+		  List<Integer> alist = gradingService.getLastItemGradingDataPosition(assessmentGradingData.getAssessmentGradingId(), assessmentGradingData.getAgentId());
+		  int partIndex = alist.get(0);
 		  if (partIndex == 0) {
 			  delivery.setPartIndex(0);
 		  }

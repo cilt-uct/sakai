@@ -20,9 +20,11 @@
 
 package org.sakaiproject.entitybroker.providers.model;
 
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
@@ -30,6 +32,7 @@ import java.util.Stack;
 import org.azeckoski.reflectutils.annotations.ReflectIgnoreClassFields;
 import org.azeckoski.reflectutils.annotations.ReflectTransient;
 import org.sakaiproject.authz.api.AuthzGroup;
+import org.sakaiproject.authz.api.AuthzRealmLockException;
 import org.sakaiproject.authz.api.Member;
 import org.sakaiproject.authz.api.Role;
 import org.sakaiproject.authz.api.RoleAlreadyDefinedException;
@@ -374,6 +377,14 @@ public class EntityGroup implements Group {
         throw new UnsupportedOperationException();
     }
 
+    public void insertMember(String arg0, String arg1, boolean arg2, boolean arg3) throws AuthzRealmLockException {
+        if (group != null) {
+            group.insertMember(arg0, arg1, arg2, arg3);
+            return;
+        }
+        throw new UnsupportedOperationException();
+    }
+
     public Role addRole(String arg0) throws RoleAlreadyDefinedException {
         if (group != null) {
             return group.addRole(arg0);
@@ -479,6 +490,37 @@ public class EntityGroup implements Group {
         throw new UnsupportedOperationException();
     }
 
+    @Override
+    public RealmLockMode getRealmLock() {
+        if (group != null) {
+            return group.getRealmLock();
+        }
+        return RealmLockMode.NONE;
+    }
+
+    @Override
+    public List<String[]> getRealmLocks() {
+        if (group != null) {
+            return group.getRealmLocks();
+        }
+        return Collections.emptyList();
+    }
+
+    @Override
+    public RealmLockMode getLockForReference(String reference) {
+        if (group != null) {
+            return group.getLockForReference(reference);
+        }
+        return RealmLockMode.NONE;
+    }
+
+    @Override
+    public void setLockForReference(String reference, RealmLockMode type) {
+        if (group != null) {
+            group.setLockForReference(reference, type);
+        }
+    }
+
     public void removeMember(String arg0) {
         if (group != null) {
             group.removeMember(arg0);
@@ -487,9 +529,25 @@ public class EntityGroup implements Group {
         throw new UnsupportedOperationException();
     }
 
+    public void deleteMember(String arg0) throws AuthzRealmLockException {
+        if (group != null) {
+            group.deleteMember(arg0);
+            return;
+        }
+        throw new UnsupportedOperationException();
+    }
+
     public void removeMembers() {
         if (group != null) {
             group.removeMembers();
+            return;
+        }
+        throw new UnsupportedOperationException();
+    }
+
+    public void deleteMembers() throws AuthzRealmLockException {
+        if (group != null) {
+            group.deleteMembers();
             return;
         }
         throw new UnsupportedOperationException();
@@ -517,5 +575,4 @@ public class EntityGroup implements Group {
         }
         throw new UnsupportedOperationException();
     }
-
 }

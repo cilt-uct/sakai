@@ -24,6 +24,7 @@
 package org.sakaiproject.tool.assessment.data.ifc.assessment;
 
 import java.util.Date;
+import java.util.Map;
 import java.util.Set;
 import java.util.List;
 
@@ -119,6 +120,10 @@ public interface ItemDataIfc extends Comparable<ItemDataIfc>, java.io.Serializab
 
   void setLastModifiedDate(Date lastModifiedDate);
 
+  Boolean getIsExtraCredit();
+
+  void setIsExtraCredit(Boolean isExtraCredit);
+
   Set<ItemTextIfc> getItemTextSet();
 
   void setItemTextSet(Set<ItemTextIfc> itemTextSet) ;
@@ -129,9 +134,17 @@ public interface ItemDataIfc extends Comparable<ItemDataIfc>, java.io.Serializab
 
   void setItemMetaDataSet(Set<ItemMetaDataIfc> itemMetaDataSet);
 
+  Set<ItemTagIfc> getItemTagSet();
+
+  void setItemTagSet(Set<ItemTagIfc> itemTagSet);
+
   Set<ItemFeedbackIfc> getItemFeedbackSet();
 
   void setItemFeedbackSet(Set<ItemFeedbackIfc> itemFeedbackSet);
+
+  String getHash();
+
+  void setHash(String hash);
 
   String getItemMetaDataByLabel(String label);
 
@@ -174,6 +187,10 @@ public interface ItemDataIfc extends Comparable<ItemDataIfc>, java.io.Serializab
   void setItemAttachmentSet(Set<ItemAttachmentIfc> itemAttachmentSet);
 
   List<ItemAttachmentIfc> getItemAttachmentList();
+  void addItemAttachment(ItemAttachmentIfc attachment);
+  void removeItemAttachmentById(Long attachmentId);
+  void removeItemAttachment(ItemAttachmentIfc attachment);
+  Map<Long, ItemAttachmentIfc> getItemAttachmentMap();
   
   String getLeadInText();
   String getThemeText();
@@ -200,6 +217,9 @@ public interface ItemDataIfc extends Comparable<ItemDataIfc>, java.io.Serializab
   public boolean getIsAnswerOptionsSimple();
   public boolean getIsAnswerOptionsRich();
   String getImageMapSrc();
+  String getImageMapAltText();
   Boolean getScoreDisplayFlag();
   void setScoreDisplayFlag(Boolean scoreDisplayFlag);
+  public String getTagListToJsonString();
+  public void setTagListToJsonString(String tagListToJsonString);
 }

@@ -15,19 +15,23 @@
  */
 package org.sakaiproject.contentreview.service;
 
+import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.SortedSet;
 
+import javax.servlet.http.HttpServletRequest;
+
 import org.sakaiproject.content.api.ContentResource;
-import org.sakaiproject.site.api.Site;
 import org.sakaiproject.contentreview.dao.ContentReviewItem;
 import org.sakaiproject.contentreview.exception.QueueException;
 import org.sakaiproject.contentreview.exception.ReportException;
 import org.sakaiproject.contentreview.exception.SubmissionException;
 import org.sakaiproject.contentreview.exception.TransientSubmissionException;
+import org.sakaiproject.site.api.Site;
 
 /**
  *  ContentReview Service manages submission to the Content review queue and retrieving reports from the service
@@ -144,6 +148,13 @@ public interface ContentReviewService {
 	 *  Check for reports for all submitted items that don't have reports yet 
 	 */
 	public void checkForReports();
+
+	/**
+	 *  Sync roster information with services that depend on membership information.
+	 *  For example, Turnitin Sakai API expects the creation of courses, assignments, 
+	 *  user accounts, and instructor assignments.
+	 */
+	public void syncRosters();
 	
 	
 	/**
@@ -245,9 +256,10 @@ public interface ContentReviewService {
 	/**
 	 *  Get a icon URL that for a specific score
 	 * @param score
+	 * @param contentId
 	 * @return
 	 */
-	public String getIconUrlforScore(Long score);
+	public String getIconCssClassforScore(int score, String contentId);
 	
 	/**
 	 *  Does the service support resubmissions?
@@ -257,9 +269,9 @@ public interface ContentReviewService {
 	
 	/**
 	 *  Remove an item from the review Queue
-	 * @param ContentId
+	 * @param contentId
 	 */
-	public void removeFromQueue(String ContentId);
+	public void removeFromQueue(String contentId);
 	
 	/**
 	 * Get a status message for a submission in the locale of the specified user
@@ -334,4 +346,82 @@ public interface ContentReviewService {
 	 */
 	public void createAssignment(String siteId, String taskId, Map extraAsnnOpts)
 	throws SubmissionException, TransientSubmissionException;
+
+	/**
+	 * This method returns all the information related with a ContentReviewItem encapsulated as a ContentReviewResult
+	 * Using this method will likely tie you to a particular Content Review implementation.
+	 * 
+	 * @param contentId
+	 * @return ContentReviewResult
+	 */	
+	public ContentReviewItem getContentReviewItemByContentId(String contentId);
+	
+	/**
+	 * Returns a hyperlink to a providers EULA, if empty, no EULA will be shown to the user
+	 * @return
+	 */
+	public String getEndUserLicenseAgreementLink(String userId);
+	
+	/**
+	 * Returns date for most recent EULA. If null, no date will be checked. If provided, the user must re-accept the EULA if the date has changed.
+	 * @return
+	 */
+	public Instant getEndUserLicenseAgreementTimestamp();
+	
+	/**
+	 * Returns version for most recent EULA. If provided, the user must re-accept the EULA if the version doesn't match.
+	 * @return
+	 */
+	public String getEndUserLicenseAgreementVersion();
+	
+	/**
+	 * Returns date for the user's last agreement to the EULA. If null, the user has not agreed.
+	 * @param userId
+	 * @return
+	 */
+	public Instant getUserEULATimestamp(String userId);
+	
+	/**
+	 * Returns version for the user's last agreement to the EULA. If null, the user has not agreed.
+	 * @param userId
+	 * @return
+	 */
+	public String getUserEULAVersion(String userId);
+	
+	/**
+	 * Sets date for the user's last agreement to the EULA to current date
+	 * @param userId
+	 */
+	public void updateUserEULATimestamp(String userId);
+	
+	/**
+	 * 
+	 * Option for providers to decide whether they want to use redirect logic
+	 * for the report URLs. This means that instead of loading the report URLs for the entire page
+	 * all at once, Sakai will only request the URL when the user clicks the link.
+	 * @param contentId
+	 * @param assignmentRef
+	 * @param userId
+	 * @param isInstructor
+	 * @return
+	 */
+	public String getReviewReportRedirectUrl(String contentId, String assignmentRef, String userId, String contextId, boolean isInstructor);
+	
+	/**
+	 * Webhook event listener that can be used to get messages sent from the provider to Sakai
+	 * @param request
+	 * @param customParam
+	 * @param providerId
+	 */
+	public void webhookEvent(HttpServletRequest request, int providerId, Optional<String> customParam);
+
+	/**
+	 * Gets the ContentReviewItem's last error localized for the current user session
+	 */
+	public String getLocalizedLastError(ContentReviewItem item);
+	
+	/**
+	 * Flag to determine whether the service accepts submissions on behalf of users
+	 */
+	public boolean allowSubmissionsOnBehalf();
 }

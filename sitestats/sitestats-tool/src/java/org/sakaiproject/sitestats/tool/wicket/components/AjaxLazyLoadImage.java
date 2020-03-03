@@ -18,8 +18,7 @@
  */
 package org.sakaiproject.sitestats.tool.wicket.components;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.Component;
 import org.apache.wicket.Page;
@@ -48,6 +47,7 @@ import org.apache.wicket.request.http.WebResponse.CacheScope;
 import org.apache.wicket.util.time.Duration;
 import org.sakaiproject.sitestats.tool.wicket.pages.MaximizedImagePage;
 
+@Slf4j
 public abstract class AjaxLazyLoadImage extends Panel {
 	private static final long			serialVersionUID					= 1L;
 	private SubmitLink					link								= null;
@@ -62,8 +62,6 @@ public abstract class AjaxLazyLoadImage extends Panel {
 	private int							maxWidth							= 800;
 	private int							maxHeight							= 600;
 
-	
-	private static Logger LOG = LoggerFactory.getLogger(AjaxLazyLoadImage.class);
 	// State:
 	// 0:add loading component
 	// 1:loading component added, waiting for ajax replace
@@ -90,7 +88,7 @@ public abstract class AjaxLazyLoadImage extends Panel {
 
 			@Override
 			protected void respond(AjaxRequestTarget target) {
-				//System.out.println("chartRenderAjaxBehavior.Responding for "+ getId());
+				//log.debug("chartRenderAjaxBehavior.Responding for "+ getId());
 				renderImage(target, true);
 			}
 			
@@ -115,8 +113,31 @@ public abstract class AjaxLazyLoadImage extends Panel {
 		form.add(new HiddenField("maxWidth"));
 		form.add(new HiddenField("maxHeight"));
 		add(form);
+
 	}
-	
+
+	@Override
+	public void renderHead(IHeaderResponse response) {
+		super.renderHead(response);
+		StringBuilder script = new StringBuilder("var fullscreenWidth = 0;")
+				.append(" var fullscreenHeight = 0;")
+				.append(" var obj = document.body;")
+				.append(" if (document.all) {")
+				// IE
+				.append("   fullscreenHeight = obj.scrollHeight;")
+				.append("   fullscreenWidth = obj.scrollWidth;")
+				.append(" } else {")
+				// Other browsers
+				.append("   fullscreenHeight = obj.clientHeight;")
+				.append("   fullscreenWidth = obj.clientWidth;")
+				.append(" }")
+				.append(" jQuery('.maxWidth').val(fullscreenWidth);")
+				.append(" jQuery('.maxHeight').val(fullscreenHeight);");
+
+		OnDomReadyHeaderItem onDomReady = OnDomReadyHeaderItem.forScript(script);
+		response.render(onDomReady);
+	}
+
 	@Override
 	protected void onBeforeRender() {
 		if(state == 0){

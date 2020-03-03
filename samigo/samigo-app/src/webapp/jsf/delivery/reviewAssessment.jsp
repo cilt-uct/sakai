@@ -31,16 +31,6 @@
   <f:view>
     <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
       <head><%= request.getAttribute("html.head") %>
-      <style type="text/css">
-        .TableColumn {
-          text-align: center
-        }
-        .TableClass {
-          border-style: dotted;
-          border-width: 0.5px;
-          border-color: light grey;
-        }
-      </style>
       <title><h:outputText value="#{deliveryMessages.item_display_author}"/></title>
       </head>
       <body onload="<%= request.getAttribute("html.body.onload") %>">
@@ -53,7 +43,7 @@
 
 <!-- FORM ... note, move these hiddens to whereever they are needed as fparams-->
 
-<h:messages styleClass="messageSamigo" rendered="#{! empty facesContext.maximumSeverity}" layout="table"/>
+<h:messages styleClass="sak-banner-error" rendered="#{! empty facesContext.maximumSeverity}" layout="table"/>
 
 <%-- PART/ITEM DATA TABLES --%>
 <div class="tier2">

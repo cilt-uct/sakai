@@ -5,17 +5,12 @@
     <parent>
         <groupId>org.sakaiproject.jsf</groupId>
         <artifactId>jsf</artifactId>
-        <version>12-SNAPSHOT</version>
+        <version>21-SNAPSHOT</version>
     </parent>
 
     <name>Sakai JSF Tool Using Sun's RI (jsf-myfaces-tool)</name>
     <groupId>org.sakaiproject.jsf</groupId>
     <artifactId>myfaces-tool</artifactId>
-    <organization>
-        <name>Sakai Project</name>
-        <url>http://www.sakaiproject.org/</url>
-    </organization>
-    <inceptionYear>2005</inceptionYear>
     <packaging>pom</packaging>
 
     <description>This is an include file used to express the common
@@ -27,7 +22,7 @@
     <dependencies>
         <dependency>
             <groupId>javax.servlet</groupId>
-            <artifactId>servlet-api</artifactId>
+            <artifactId>javax.servlet-api</artifactId>
         </dependency>
         <dependency>
             <groupId>javax.faces</groupId>
@@ -43,7 +38,7 @@
         </dependency>
         <dependency>
             <groupId>javax.servlet.jsp</groupId>
-            <artifactId>jsp-api</artifactId>
+            <artifactId>javax.servlet.jsp-api</artifactId>
         </dependency>
         <dependency>
             <groupId>javax.servlet</groupId>

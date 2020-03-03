@@ -20,12 +20,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.lang.StringUtils;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.api.common.edu.person.SakaiPerson;
+import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.profile2.conversion.ProfileConverter;
 import org.sakaiproject.profile2.dao.ProfileDao;
 import org.sakaiproject.profile2.model.BasicPerson;
 import org.sakaiproject.profile2.model.CompanyProfile;
+import org.sakaiproject.profile2.model.MimeTypeByteArray;
 import org.sakaiproject.profile2.model.Person;
 import org.sakaiproject.profile2.model.SocialNetworkingInfo;
 import org.sakaiproject.profile2.model.UserProfile;
@@ -33,10 +38,6 @@ import org.sakaiproject.profile2.types.PrivacyType;
 import org.sakaiproject.profile2.util.ProfileConstants;
 import org.sakaiproject.profile2.util.ProfileUtils;
 import org.sakaiproject.user.api.User;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import lombok.Setter;
 
 /**
  * Implementation of ProfileLogic for Profile2.
@@ -44,9 +45,8 @@ import lombok.Setter;
  * @author Steve Swinsburg (s.swinsburg@lancaster.ac.uk)
  *
  */
+@Slf4j
 public class ProfileLogicImpl implements ProfileLogic {
-
-	private static final Logger log = LoggerFactory.getLogger(ProfileLogicImpl.class);
 
 	/**
 	 * {@inheritDoc}
@@ -82,11 +82,12 @@ public class ProfileLogicImpl implements ProfileLogic {
 		p.setImageUrl(imageLogic.getProfileImageEntityUrl(userUuid, ProfileConstants.PROFILE_IMAGE_MAIN));
 		p.setImageThumbUrl(imageLogic.getProfileImageEntityUrl(userUuid, ProfileConstants.PROFILE_IMAGE_THUMBNAIL));
 			
-		//get SakaiPerson
 		SakaiPerson sakaiPerson = sakaiProxy.getSakaiPerson(userUuid);
-		if(sakaiPerson == null) {
-			//no profile, return basic info only.
-			return p;
+		if (sakaiPerson == null) {
+			sakaiPerson = sakaiProxy.createSakaiPerson(userUuid);
+			if (sakaiPerson == null) {
+				return p;
+			}
 		}
 		
 		//transform
@@ -361,8 +362,8 @@ public class ProfileLogicImpl implements ProfileLogic {
  	 */
 	@Override
 	public List<Person> getPersons(List<User> users) {
-		List<Person> list = new ArrayList<Person>();
-		for(User u:users){
+		List<Person> list = new ArrayList();
+		for (User u : users) {
 			list.add(getPerson(u));
 		}
 		return list;
@@ -505,8 +506,27 @@ public class ProfileLogicImpl implements ProfileLogic {
 		return;
 		
 	}
-	
-	
+
+	@Override
+	public String getUserNamePronunciationResourceId(String uuid) {
+		final String slash = Entity.SEPARATOR;
+		final StringBuilder path = new StringBuilder();
+		path.append(slash);
+		path.append("private");
+		path.append(slash);
+		path.append("namePronunciation");
+		path.append(slash);
+		path.append(uuid);
+		path.append(".wav");
+		return path.toString();
+	}
+
+	@Override
+	public MimeTypeByteArray getUserNamePronunciation(String uuid) {
+                String resourceId = this.getUserNamePronunciationResourceId(uuid);
+		return sakaiProxy.getResource(resourceId);
+	}
+
 	@Setter
 	private SakaiProxy sakaiProxy;
 	

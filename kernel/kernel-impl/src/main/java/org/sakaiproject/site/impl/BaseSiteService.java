@@ -21,14 +21,30 @@
 
 package org.sakaiproject.site.impl;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.io.PrintWriter;
+import java.util.*;
+import java.util.concurrent.CopyOnWriteArraySet;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.validator.routines.UrlValidator;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
 import org.sakaiproject.authz.api.*;
 import org.sakaiproject.component.api.ServerConfigurationService;
+import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.entity.api.*;
 import org.sakaiproject.event.api.Event;
 import org.sakaiproject.event.api.EventTrackingService;
+import org.sakaiproject.event.api.Notification;
+import org.sakaiproject.event.api.NotificationAction;
+import org.sakaiproject.event.api.NotificationService;
 import org.sakaiproject.exception.IdInvalidException;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.exception.IdUsedException;
@@ -43,32 +59,20 @@ import org.sakaiproject.time.api.Time;
 import org.sakaiproject.time.api.TimeService;
 import org.sakaiproject.tool.api.ActiveToolManager;
 import org.sakaiproject.tool.api.SessionManager;
+import org.sakaiproject.user.api.PreferencesService;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserNotDefinedException;
 import org.sakaiproject.util.*;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
-import java.io.PrintWriter;
-import java.util.*;
-import java.util.concurrent.CopyOnWriteArraySet;
-import org.sakaiproject.component.cover.ComponentManager;
 
 /**
  * <p>
  * BaseSiteService is a base implementation of the SiteService.
  * </p>
  */
+@Slf4j
 public abstract class BaseSiteService implements SiteService, Observer
 {
-	/** Our logger. */
-	private static Logger M_log = LoggerFactory.getLogger(BaseSiteService.class);
-
-
 	/**
 	 * Security advisor when updating sites. We only have one so we can check we pop the same one off the stack
 	 * that we put on.
@@ -90,6 +94,9 @@ public abstract class BaseSiteService implements SiteService, Observer
 	private static final String RESOURCECLASS = "resource.class.siteimpl";
 	private static final String RESOURCEBUNDLE = "resource.bundle.siteimpl";
 	private static final String ORIGINAL_SITE_ID_PROPERTY = "original-site-id";
+
+	private final UrlValidator siteIdValidator
+		= new UrlValidator(UrlValidator.ALLOW_LOCAL_URLS | UrlValidator.ALLOW_2_SLASHES);
 
 	private ResourceLoader rb = null;
 	// protected ResourceLoader rb = new ResourceLoader("site-impl");
@@ -295,11 +302,11 @@ public abstract class BaseSiteService implements SiteService, Observer
 				edit.regenerateIds();
 				storage().save(edit);
 
-				M_log.info("regenerateAllSiteIds: site: " + site.getId());
+				log.info("regenerateAllSiteIds: site: " + site.getId());
 			}
 			else
 			{
-				M_log.warn("regenerateAllSiteIds: null site in list");
+				log.warn("regenerateAllSiteIds: null site in list");
 			}
 		}
 	}
@@ -418,6 +425,12 @@ public abstract class BaseSiteService implements SiteService, Observer
 	 * @return the IdManager collaborator.
 	 */
 	protected abstract IdManager idManager();
+	
+	/**
+	 * 
+	 * @return the NotificationService collaborator
+	 */
+	protected abstract NotificationService notificationService();
 
 	/**********************************************************************************************************************************************************************************************************************************************************
 	 * Init and Destroy
@@ -499,7 +512,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 		}
 		catch (Exception t)
 		{
-			M_log.error(".init(): ", t);
+			log.error(".init(): ", t);
 		}
 	}
 
@@ -514,7 +527,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 		// Stop listening for site update events
 		eventTrackingService().deleteObserver(this);
 
-		M_log.info("destroy()");
+		log.info("destroy()");
 	}
 
 	/**********************************************************************************************************************************************************************************************************************************************************
@@ -898,6 +911,13 @@ public abstract class BaseSiteService implements SiteService, Observer
 		{
 			throw new IdUnusedException(site.getId());
 		}
+		
+		// Invalidate the user-site cache.
+		Site cached = getCachedSite(site.getId());
+		if (cached != null ) {
+			clearUserCacheForSite(site);
+		}
+		cacheSite(site);
 
 		try
 		{
@@ -928,6 +948,13 @@ public abstract class BaseSiteService implements SiteService, Observer
 		{
 			throw new IdUnusedException(site.getId());
 		}
+		
+		// Invalidate the user-site cache.
+		Site cached = getCachedSite(site.getId());
+		if (cached != null ) {
+			clearUserCacheForSite(site);
+		}
+		cacheSite(site);
 
 		try
 		{
@@ -966,7 +993,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 			}
 			catch (Exception e)
 			{
-				M_log.error("Advisor error in doSave()", e);
+				log.error("Advisor error in doSave()", e);
 			}
 		}
 
@@ -975,12 +1002,9 @@ public abstract class BaseSiteService implements SiteService, Observer
 		// complete the edit
 		storage().save(site);
 		
-		// Check to see if an this is an interesting enough change to invalidate the user-site cache.
-		// For now, we just check if the title changed because that persists in the portal navigation.
-		// As with other areas, if the main and user-site caches were more integrated (keeping references
-		// for users rather than copies), we would not have to synchronize explicitly here.
+		// Invalidate the user-site cache.
 		Site cached = getCachedSite(site.getId());
-		if (cached != null && site.getTitle() != null && !site.getTitle().equals(cached.getTitle())) {
+		if (cached != null ) {
 			clearUserCacheForSite(site);
 		}
 		cacheSite(site);
@@ -1004,7 +1028,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 		// track it
 		String event = site.getEvent();
 		if (event == null) event = SECURE_UPDATE_SITE;
-		eventTrackingService().post(eventTrackingService().newEvent(event, site.getReference(), true));
+		eventTrackingService().post(eventTrackingService().newEvent(event, site.getReference(), site.getId(), true, NotificationService.NOTI_OPTIONAL));
 
 		// clear the event for next time
 		site.setEvent(null);
@@ -1029,11 +1053,11 @@ public abstract class BaseSiteService implements SiteService, Observer
 		if (!ALLOW_ADVISOR.equals(popped)) {
 			if (popped == null)
 			{
-				M_log.warn("Someone has removed our advisor.");
+				log.warn("Someone has removed our advisor.");
 			}
 			else
 			{
-				M_log.warn("Removed someone elses advisor, adding it back.");
+				log.warn("Removed someone elses advisor, adding it back.");
 				securityService().pushAdvisor(popped);
 			}
 		}
@@ -1055,7 +1079,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 			}
 			catch (Exception t)
 			{
-				M_log.warn(".saveAzgs - site: " + t);
+				log.warn(".saveAzgs - site: " + t);
 			}
 			((BaseSite) site).m_azgChanged = false;
 		}
@@ -1077,10 +1101,12 @@ public abstract class BaseSiteService implements SiteService, Observer
 				try
 				{
 					authzGroupService().save(group.m_azg);
+					// track it
+					eventTrackingService().post(eventTrackingService().newEvent(SECURE_UPDATE_GROUP_MEMBERSHIP, group.getId(), true));
 				}
 				catch (Exception t)
 				{
-					M_log.warn(".saveAzgs - group: " + group.getTitle() + " : " + t);
+					log.warn(".saveAzgs - group: " + group.getTitle() + " : " + t);
 				}
 				group.m_azgChanged = false;
 			}
@@ -1136,6 +1162,43 @@ public abstract class BaseSiteService implements SiteService, Observer
 		return Arrays.asList(siteTypes);
 	}
 
+	/**
+	 * @inheritDoc
+	 */
+	@Override
+	public void silentlyUnpublish(List<String> siteIds)
+	{
+		if (siteIds == null)
+		{
+			throw new IllegalArgumentException("siteIds cannot be null");
+		}
+
+		String currentUser = sessionManager().getCurrentSessionUserId();
+		Time lastModifiedTime = timeService().newTime();
+
+		// complete the edit
+		storage().unpublish(siteIds, currentUser, lastModifiedTime);
+
+		// track it
+		String event = SECURE_UPDATE_SITE;
+		for (String siteId : siteIds)
+		{
+			String siteReference = siteReference(siteId);
+			eventTrackingService().post(eventTrackingService().newEvent(event, siteReference, true));
+		}
+	}
+
+	/**
+	 * Saves a site property for the sites with the specified IDs using the specified name-value pair in a single transaction.
+	 * NB: inserts only; doesn't do any duplicate checking. Vulnerable to unique constraint violations
+	 * Use this only when making very minimal changes in performance critical tasks.
+	 */
+	@Override
+	public void saveSitePropertyOnSites(String propertyName, String propertyValue, String... siteIds)
+	{
+		storage().writeProperty(propertyName, propertyValue, siteIds);
+	}
+
 	private boolean isCourseSite(String siteId) {
 		boolean rv = false;
 		try {
@@ -1145,7 +1208,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 				return true;
 				
 		} catch (IdUnusedException e) {
-			M_log.warn("isCourseSite(): no site with id: " + siteId);
+			log.warn("isCourseSite(): no site with id: " + siteId);
 		}
 		
 		return rv;
@@ -1160,7 +1223,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 				return true;
 				
 		} catch (IdUnusedException e) {
-			M_log.warn("isPortfolioSite(): no site with id: " + siteId);
+			log.warn("isPortfolioSite(): no site with id: " + siteId);
 		}
 		
 		return rv;
@@ -1175,7 +1238,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 				return true;
 				
 		} catch (IdUnusedException e) {
-			M_log.warn("isProjectSite(): no site with id: " + siteId);
+			log.warn("isProjectSite(): no site with id: " + siteId);
 		}
 		
 		return rv;
@@ -1208,6 +1271,14 @@ public abstract class BaseSiteService implements SiteService, Observer
 		}
 
 		id = Validator.escapeResourceName(id);
+
+		if (!serverConfigurationService().getBoolean("site.api.allow_malformed_ids", false)
+				&& !siteIdValidator.isValid("http://localhost/portal/site/" + id)) {
+			String message
+				= "Id " + id + " is not a valid id format. It can only contain url friendly characters";
+			log.warn(".addSite(): " + message);
+			throw new IdInvalidException(message);
+		}
 
 		// check for a valid site type
 		if (!Validator.checkSiteType(type)) {
@@ -1315,7 +1386,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 		}
 		catch (Exception e)
 		{
-			M_log.error(".addSite(): error copying realm", e);
+			log.error(".addSite(): error copying realm", e);
 		}
 
 		// clear the site's notification id in properties
@@ -1360,22 +1431,30 @@ public abstract class BaseSiteService implements SiteService, Observer
 	 */
 	public void removeSite(Site site) throws PermissionException, IdUnusedException
 	{
+		removeSite(site, false);
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public void removeSite(Site site, boolean isHardDelete) throws PermissionException, IdUnusedException
+	{
 		// check security (throws if not permitted)
 		unlock(SECURE_REMOVE_SITE, site.getReference());
 
 		// if soft site deletes are active
-		if(serverConfigurationService().getBoolean("site.soft.deletion", true)) {
+		if (!isHardDelete && serverConfigurationService().getBoolean("site.soft.deletion", true)) {
 			
-			M_log.debug("Soft site deletes are enabled.");
+			log.debug("Soft site deletes are enabled.");
 			
 			//KNL-983 only soft delete if not user site
 			//made it verbose for logging purposes
 			if(isUserSite(site.getId())) {
-				M_log.debug("Site: " + site.getId() + " is user site and will be hard deleted.");
+				log.debug("Site: " + site.getId() + " is user site and will be hard deleted.");
 			} else if (isSpecialSite(site.getId())) {
-				M_log.debug("Site: " + site.getId() + " is special site and will be hard deleted.");
+				log.debug("Site: " + site.getId() + " is special site and will be hard deleted.");
 			} else {
-				M_log.debug("Site: " + site.getId() + " is not user or special site and will be soft deleted.");
+				log.debug("Site: " + site.getId() + " is not user or special site and will be soft deleted.");
 			
 				// if site is not already softly deleted, softly delete it
 				// if already marked for deletion, check permission to hard delete, if ok, let continue.
@@ -1393,6 +1472,12 @@ public abstract class BaseSiteService implements SiteService, Observer
 		{
 			advisor.removed(site);
 		}
+
+		// Invalidate the user-site cache.
+		Site cached = getCachedSite(site.getId());
+		if (cached != null ) {
+			clearUserCacheForSite(site);
+		}
 		
 		// complete the edit
 		storage().remove(site);
@@ -1402,6 +1487,11 @@ public abstract class BaseSiteService implements SiteService, Observer
 
 		// get the services related to this site setup for the site's removal
 		disableRelated(site);
+
+		// Use the HardDelete interface to purge content from database
+		if (isHardDelete) {
+			hardDelete(site);
+		}
 	}
 
 	/**
@@ -1693,7 +1783,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 		String roleId = site.getJoinerRole();
 		if (roleId == null)
 		{
-			M_log.warn(".join(): null site joiner role for site: " + id);
+			log.warn(".join(): null site joiner role for site: " + id);
 			throw new PermissionException(user, AuthzGroupService.SECURE_UPDATE_OWN_AUTHZ_GROUP, siteReference(id));
 		}
 
@@ -1715,7 +1805,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 		}
 		catch(Exception e)
 		{
-			M_log.error(String.format("Unexpected exception joining user %s to site %s: ", user, id), e);
+			log.error(String.format("Unexpected exception joining user %s to site %s: ", user, id), e);
 			return;
 	}
 		
@@ -1726,7 +1816,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 		}
 		catch(Exception e)
 		{
-			M_log.error(String.format("Unexpected exception joining user %s to group in site %s: ", user, id), e);
+			log.error(String.format("Unexpected exception joining user %s to group in site %s: ", user, id), e);
 		}
 	}
         
@@ -1743,7 +1833,7 @@ public abstract class BaseSiteService implements SiteService, Observer
         }
         catch (IdUnusedException iue)
         {
-            M_log.error("Site could not be determined for allowed to join method: " + iue.getMessage(), iue);
+            log.error("Site could not be determined for allowed to join method: " + iue.getMessage(), iue);
             return false;
         }
         
@@ -1765,7 +1855,7 @@ public abstract class BaseSiteService implements SiteService, Observer
         }
         catch (IdUnusedException iue)
         {
-            M_log.error("Site could not be determined for getting the join group: " + iue.getMessage(), iue);
+            log.error("Site could not be determined for getting the join group: " + iue.getMessage(), iue);
         }
         
         // pass to the JoinDelegate method to handle the logic
@@ -1796,7 +1886,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 		}
 		catch( IdUnusedException ex ) 
         { 
-            M_log.debug( "isAlreadyMember()", ex ); 
+            log.debug( "isAlreadyMember()", ex ); 
         }
 		
 		// Otherwise they're not already a member, return false
@@ -1884,6 +1974,9 @@ public abstract class BaseSiteService implements SiteService, Observer
 		{
 			throw new PermissionException(e.getUser(), e.getFunction(), e.getResource());
 		}
+		catch (AuthzRealmLockException arle) {
+			log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
+		}
 	}
 
 	/**
@@ -1969,21 +2062,30 @@ public abstract class BaseSiteService implements SiteService, Observer
 	 * @param requireDescription when true, full descriptions will be included; when false, full descriptions may be omitted.
 	 * @param userID the returned sites will be those which can be accessed by the user with this internal ID. Uses the current user if null.
 	 * @param includeUnpublishedSites when true, unpublished sites will be included; when false, unpublished sites will be omitted.
+	 * @param excludedSites list with siteIDs to be excluded from being loaded. If no exclusions are required, set to NULL or empty list.
 	 * @return 
 	 */
-	private List<Site> getUserSitesByPublishedStatus( boolean requireDescription, String userID, boolean includeUnpublishedSites )
+	private List<Site> getUserSitesByPublishedStatus( boolean requireDescription, String userID, boolean includeUnpublishedSites, List excludedSites)
 	{
 		SortType sortType = SortType.TITLE_ASC;
 		SelectionType selectionType = includeUnpublishedSites ? SelectionType.MEMBER : SelectionType.ACCESS;
 
 		if( StringUtils.isBlank( userID ) )
 		{
-			return (List<Site>) getSites( selectionType, null, null, null, sortType, null, requireDescription );
+			return (List<Site>) getSites( selectionType, null, null, null, excludedSites, sortType, null, requireDescription );
 		}
 		else
 		{
-			return (List<Site>) getSites( selectionType, null, null, null, sortType, null, requireDescription, userID );
+			return (List<Site>) getSites( selectionType, null, null, null, excludedSites, sortType, null, requireDescription, userID );
 		}
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public List<String> getSiteIds(SelectionType type, Object ofType, String criteria, Map<String, String> propertyCriteria, Map<String, String> propertyRestrictions, SortType sort, PagingPosition page, String userId)
+	{
+		return storage().getSiteIds(type, ofType, criteria, propertyCriteria, propertyRestrictions, null, sort, page, userId);
 	}
 
 	/**
@@ -1999,11 +2101,18 @@ public abstract class BaseSiteService implements SiteService, Observer
 	public List<Site> getUserSites(boolean requireDescription) {
 		return getUserSites( requireDescription, false );
 	}
+	
+	/**
+	 * @inheritDoc
+	 */
+	public List<Site> getUserSites( boolean requireDescription, boolean includeUnpublishedSites ) {
+		return getUserSites( requireDescription, false, null );
+	}
 
 	/**
 	 * @inheritDoc
 	 */
-	public List<Site> getUserSites( boolean requireDescription, boolean includeUnpublishedSites )
+	public List<Site> getUserSites( boolean requireDescription, boolean includeUnpublishedSites, List excludedSites )
 	{
 		String userID = sessionManager().getCurrentSessionUserId();
 		List<Site> userSites = getCachedUserSites( userID );
@@ -2012,7 +2121,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 		// Retrieve sites on cache miss or anonymous user
 		if( userSites == null )
 		{
-			userSites = getUserSitesByPublishedStatus( requireDescription, null, includeUnpublishedSites );
+			userSites = getUserSitesByPublishedStatus( requireDescription, null, includeUnpublishedSites, excludedSites );
 
 			// Cache the results
 			setCachedUserSites( userID, userSites );
@@ -2028,17 +2137,25 @@ public abstract class BaseSiteService implements SiteService, Observer
 	{
 		return getUserSites( requireDescription, userId, false );
 	}
+	
+	/**
+	 * @inheritDoc
+	 */
+	public List<Site> getUserSites( boolean requireDescription, String userId, boolean includeUnpublishedSites )
+	{
+		return getUserSites( requireDescription, userId, includeUnpublishedSites, null );
+	}
 
 	/**
 	 * @inheritDoc
 	 */
-	public List<Site> getUserSites( boolean requireDescription, String userID, boolean includeUnpublishedSites )
+	public List<Site> getUserSites( boolean requireDescription, String userID, boolean includeUnpublishedSites, List excludedSites )
 	{
 		List<Site> userSites = getCachedUserSites( userID );
 
 		if( userSites == null )
 		{
-			userSites = getUserSitesByPublishedStatus( requireDescription, userID, includeUnpublishedSites );
+			userSites = getUserSitesByPublishedStatus( requireDescription, userID, includeUnpublishedSites, excludedSites );
 
 			// Cache the results
 			setCachedUserSites( userID, userSites );
@@ -2135,7 +2252,16 @@ public abstract class BaseSiteService implements SiteService, Observer
 	public List<Site> getSites(SelectionType type, Object ofType, String criteria, Map propertyCriteria, SortType sort,
 			PagingPosition page, boolean requireDescription)
 	{
-		return storage().getSites(type, ofType, criteria, propertyCriteria, sort, page, requireDescription);
+		return getSites(type, ofType, criteria, propertyCriteria, null, sort, page, requireDescription);
+	}
+	
+	/**
+	 * @inheritDoc
+	 */
+	public List<Site> getSites(SelectionType type, Object ofType, String criteria, Map propertyCriteria, List excludedSites, SortType sort,
+			PagingPosition page, boolean requireDescription)
+	{
+		return storage().getSites(type, ofType, criteria, propertyCriteria, excludedSites, sort, page, requireDescription);
 	}
 
 	/**
@@ -2143,7 +2269,15 @@ public abstract class BaseSiteService implements SiteService, Observer
 	 */
 	public List<Site> getSites(SelectionType type, Object ofType, String criteria, Map propertyCriteria, SortType sort, PagingPosition page, boolean requireDescription, String userId)
 	{
-		return storage().getSites(type, ofType, criteria, propertyCriteria, sort, page, requireDescription, userId);
+		return getSites(type, ofType, criteria, propertyCriteria, null, sort, page, requireDescription, userId);
+	}
+	
+	/**
+	 * @inheritDoc
+	 */
+	public List<Site> getSites(SelectionType type, Object ofType, String criteria, Map propertyCriteria, List excludedSites, SortType sort, PagingPosition page, boolean requireDescription, String userId)
+	{
+		return storage().getSites(type, ofType, criteria, propertyCriteria, excludedSites, sort, page, requireDescription, userId);
 	}
 
 	/* (non-Javadoc)
@@ -2198,7 +2332,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 			{
 				if (!this.siteExists(id)) 
 				{
-					M_log.warn("setUserSecurity passed a non existent site Id it will be discarded: " + id);
+					log.warn("setUserSecurity passed a non existent site Id it will be discarded: " + id);
 					nonExistentIds.add(id);
 				}
 			}
@@ -2213,7 +2347,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 			{
 				if (!this.siteExists(id)) 
 				{
-					M_log.warn("setUserSecurity passed a non existent site Id it will be discarded: " + id);
+					log.warn("setUserSecurity passed a non existent site Id it will be discarded: " + id);
 					nonExistentIds.add(id);
 				}
 			}
@@ -2229,7 +2363,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 			{
 				if (!this.siteExists(id)) 
 				{
-					M_log.warn("setUserSecurity passed a non existent site Id it will be discarded: " + id);
+					log.warn("setUserSecurity passed a non existent site Id it will be discarded: " + id);
 					nonExistentIds.add(id);
 				}
 			}
@@ -2292,8 +2426,8 @@ public abstract class BaseSiteService implements SiteService, Observer
 					res.setContentType("text/html; charset=UTF-8");
 					PrintWriter out = res.getWriter();
 					out
-							.println("<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">");
-					out.println("<html xmlns=\"http://www.w3.org/1999/xhtml\">");
+							.println("<!DOCTYPE html>");
+					out.println("<html>");
 					out.println("<head>");
 					out.println("<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />");
 					out.println("<meta http-equiv=\"Content-Style-Type\" content=\"text/css\" />");
@@ -2301,6 +2435,8 @@ public abstract class BaseSiteService implements SiteService, Observer
 							+ "/tool_base.css\" type=\"text/css\" rel=\"stylesheet\" media=\"all\" />");
 					out.println("<link href=\"" + skinRepo + "/" + skin
 							+ "/tool.css\" type=\"text/css\" rel=\"stylesheet\" media=\"all\" />");
+					out.println(serverConfigurationService().getString("portal.include.extrahead", ""));
+
 					out.println("<title>");
 					out.println(site.getTitle());
 					out.println("</title>");
@@ -2413,11 +2549,11 @@ public abstract class BaseSiteService implements SiteService, Observer
 		}
 		catch (IdUnusedException e)
 		{
-			M_log.warn("getEntity(): " + e);
+			log.warn("getEntity(): " + e);
 		}
 		catch (NullPointerException e)
 		{
-			M_log.warn("getEntity(): " + e);
+			log.warn("getEntity(): " + e);
 		}
 
 		return rv;
@@ -2453,7 +2589,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 		}
 		catch (Exception e)
 		{
-			M_log.warn("getEntityRealms(): " + e);
+			log.warn("getEntityRealms(): " + e);
 		}
 
 		return rv;
@@ -2470,10 +2606,10 @@ public abstract class BaseSiteService implements SiteService, Observer
 		        url = site.getUrl();
 		    } catch (IdUnusedException e) {
 		        // this could happen if the site reference is invalid
-		        if (M_log.isDebugEnabled()) M_log.debug("getEntityUrl(): " + e);
+		        if (log.isDebugEnabled()) log.debug("getEntityUrl(): " + e);
 		    } catch (Exception e) {
 		        // this is a real failure
-		        M_log.error("getEntityUrl(): "+e.getClass().getName()+": " + e, e);
+		        log.error("getEntityUrl(): "+e.getClass().getName()+": " + e, e);
 		    }
 		}
 		return url;
@@ -2549,7 +2685,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 				}
 				catch (Exception t)
 				{
-					M_log.error("Error encountered while notifying ContextObserver of Site Change", t);
+					log.error("Error encountered while notifying ContextObserver of Site Change", t);
 				}
 			}
 		}
@@ -2585,7 +2721,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 				}
 				catch (Exception t)
 				{
-					M_log.error("Error encountered while notifying ContextObserver of Site Change", t);
+					log.error("Error encountered while notifying ContextObserver of Site Change", t);
 				}
 			}
 		}
@@ -2599,6 +2735,29 @@ public abstract class BaseSiteService implements SiteService, Observer
 		finally
 		{
 			disableAzgSecurityAdvisor();
+		}
+	}
+	
+	/**
+	 * Sync up with all other services for a site that content should be hard-deleted from database.
+	 * 
+	 * @param site
+	 *        The site.
+	 */
+	protected void hardDelete(Site site) {
+		// skip if special
+		if (isSpecialSite(site.getId())) {
+			return;
+		}
+
+		// leverage the entityproducer registration system
+		for (EntityProducer ep : entityManager().getEntityProducers()) {
+			//if a registered service implements hard delete, then ask it to delete itself
+			if (ep instanceof HardDeleteAware) {
+				HardDeleteAware hd = (HardDeleteAware) ep;
+				log.info("Requesting hard delete for site: {}, tool: {}", site.getId(), ep.getLabel());
+				hd.hardDelete(site.getId());
+			}
 		}
 	}
 
@@ -2783,7 +2942,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 			}
 			catch (Exception e)
 			{
-				M_log.warn(".enableRealm: AuthzGroup exception: " + e);
+				log.warn(".enableRealm: AuthzGroup exception: " + e);
 			}
 		}
 	}
@@ -2802,7 +2961,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 		}
 		catch (Exception e)
 		{
-			M_log.warn(".removeSite: AuthzGroup exception: " + e);
+			log.warn(".removeSite: AuthzGroup exception: " + e);
 		}
 	}
 
@@ -2877,6 +3036,29 @@ public abstract class BaseSiteService implements SiteService, Observer
 		public void saveInfo(String siteId, String description, String infoUrl);
 
 		/**
+		 * Unpublish the sites by simply unsetting the PUBLISHED flag
+		 * @param siteIds
+		 *        The site to unpublish
+		 * @param modifedBy
+		 *        User who is unpublishing the site (as a userID)
+		 * @param modifiedOn
+		 *        Time that the site is unpublished
+		 */
+		public void unpublish(List<String> siteIds, String modifiedBy, Time modifiedOn);
+
+		/**
+		 * Writes site properties
+		 */
+		public void writeProperties(Entity r, ResourceProperties props);
+
+		/**
+		 * Saves a site property for the sites with the specified IDs using the specified name-value pair in a single transaction.
+		 * NB: inserts only; doesn't do any duplicate checking. Vulnerable to unique constraint violations
+		 * Use this only when making very minimal changes in performance critical tasks.
+		 */
+		public void writeProperty(String propertyName, String propertyValue, String... siteId);
+
+		/**
 		 * Remove this site.
 		 * 
 		 * @param user
@@ -2947,6 +3129,38 @@ public abstract class BaseSiteService implements SiteService, Observer
 		 */
 		public List<Site> getSites(SelectionType type, Object ofType, String criteria, Map propertyCriteria, SortType sort,
 				PagingPosition page, boolean requireDescription);
+		
+		/**
+		 * Access a list of Site objects that meet specified criteria, with control over description retrieval.
+		 * Note that this signature is primarily provided to help with performance when retrieving lists of
+		 * sites not for full display, specifically for the list of a user's sites for navigation. Note that
+		 * any sites that have their descriptions, pages, or tools cached will be returned completely, so some
+		 * or all full descriptions may be present even when requireDescription is passed as false.
+		 *
+		 * If a fully populated Site is desired from a potentially partially populated Site, call
+		 * {@link #getSite(String id) getSite} or {@link Site#loadAll()}. Either method will load and cache
+		 * whatever additional data is not yet cached.
+		 *
+		 * @param type
+		 *        The SelectionType specifying what sort of selection is intended.
+		 * @param ofType
+		 *        Site type criteria: null for any type; a String to match a single type; A String[], List or Set to match any type in the collection.
+		 * @param criteria
+		 *        Additional selection criteria: sits returned will match this string somewhere in their id, title, description, or skin.
+		 * @param propertyCriteria
+		 *        Additional selection criteria: sites returned will have a property named to match each key in the map, whose values match (somewhere in their value) the value in the map (may be null or empty).
+		 * @param excludedSites 
+		 *        List with siteIDs to be excluded from being loaded. If no exclusions are required, set to NULL or empty list.
+		 * @param sort
+		 *        A SortType indicating the desired sort. For no sort, set to SortType.NONE.
+		 * @param page
+		 *        The PagePosition subset of items to return.
+		 * @param requireDescription
+		 *        When true, force a full retrieval of each description; when false, return any uncached descriptions as the empty string
+		 * @return The List of Site objects that meet specified criteria.
+		 */
+		public List<Site> getSites(SelectionType type, Object ofType, String criteria, Map propertyCriteria, List excludedSites, SortType sort,
+				PagingPosition page, boolean requireDescription);
 
 		/**
 		 * Access a list of Site objects that meet specified criteria, with control over description retrieval.
@@ -2978,6 +3192,39 @@ public abstract class BaseSiteService implements SiteService, Observer
 		 * @return The List of Site objects that meet specified criteria.
 		 */
 		public List<Site> getSites(SelectionType type, Object ofType, String criteria, Map propertyCriteria, SortType sort, PagingPosition page, boolean requireDescription, String userId);
+		
+		/**
+		 * Access a list of Site objects that meet specified criteria, with control over description retrieval.
+		 * Note that this signature is primarily provided to help with performance when retrieving lists of
+		 * sites not for full display, specifically for the list of a user's sites for navigation. Note that
+		 * any sites that have their descriptions, pages, or tools cached will be returned completely, so some
+		 * or all full descriptions may be present even when requireDescription is passed as false.
+		 *
+		 * If a fully populated Site is desired from a potentially partially populated Site, call
+		 * {@link #getSite(String id) getSite} or {@link Site#loadAll()}. Either method will load and cache
+		 * whatever additional data is not yet cached.
+		 *
+		 * @param type
+		 *        The SelectionType specifying what sort of selection is intended.
+		 * @param ofType
+		 *        Site type criteria: null for any type; a String to match a single type; A String[], List or Set to match any type in the collection.
+		 * @param criteria
+		 *        Additional selection criteria: sits returned will match this string somewhere in their id, title, description, or skin.
+		 * @param propertyCriteria
+		 *        Additional selection criteria: sites returned will have a property named to match each key in the map, whose values match (somewhere in their value) the value in the map (may be null or empty).
+		 * @param excludedSites 
+		 *        List with siteIDs to be excluded from being loaded. If no exclusions are required, set to NULL or empty list.
+		 * @param sort
+		 *        A SortType indicating the desired sort. For no sort, set to SortType.NONE.
+		 * @param page
+		 *        The PagePosition subset of items to return.
+		 * @param requireDescription
+		 *        When true, force a full retrieval of each description; when false, return any uncached descriptions as the empty string
+		 * @param userId
+		 *        The returned sites will be those which can be accessed by the user with this internal ID
+		 * @return The List of Site objects that meet specified criteria.
+		 */
+		public List<Site> getSites(SelectionType type, Object ofType, String criteria, Map propertyCriteria, List excludedSites, SortType sort, PagingPosition page, boolean requireDescription, String userId);
 
 		/**
 		 * Get the Site IDs for all sites matching criteria.
@@ -3000,6 +3247,34 @@ public abstract class BaseSiteService implements SiteService, Observer
 		 * @return a List of the Site IDs for the sites matching the criteria.
 		 */
 		List<String> getSiteIds(SelectionType type, Object ofType, String criteria, Map<String, String> propertyCriteria, SortType sort, PagingPosition page);
+
+		/**
+		 * Get the Site IDs for all sites matching criteria.
+		 * This is useful when you only need the listing of site ids (for other operations) and do not need the actual Site objects.
+		 *
+		 * All parameters are the same as {@link #getSites(org.sakaiproject.site.api.SiteService.SelectionType, Object, String, Map, org.sakaiproject.site.api.SiteService.SortType, PagingPosition)}
+		 *
+		 * @param type
+		 *        The SelectionType specifying what sort of selection is intended.
+		 * @param ofType
+		 *        Site type criteria: null for any type; a String to match a single type; A String[], List or Set to match any type in the collection.
+		 * @param criteria
+		 *        Additional selection criteria: sites returned will match this string somewhere in their id, title, description, or skin.
+		 * @param propertyCriteria
+		 *        Additional selection criteria: sites returned will have a property named to match each key in the map, whose values match (somewhere in their value) the value in the map (may be null or empty).
+		 * @param propertyRestrictions
+		 *        Similar to propertyCriteria, except matches will be excluded
+		 * @param excludedSites
+		 *        siteIds to be excluded from the results
+		 * @param sort
+		 *        A SortType indicating the desired sort. For no sort, set to SortType.NONE.
+		 * @param page
+		 *        The PagePosition subset of items to return.
+		 * @param userId
+		 *        The returned sites will be those which can be accessed by the user with this internal ID
+		 * @return a List of the Site IDs for the sites matching the criteria.
+		 */
+		List<String> getSiteIds(SelectionType type, Object ofType, String criteria, Map<String, String> propertyCriteria, Map<String, String> propertyRestrictions, List<String> excludedSites, SortType sort, PagingPosition page, String userId);
 
 		/**
 		 * Count the Site objets that meet specified criteria.
@@ -3261,7 +3536,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 					}
 					catch (Exception t)
 					{
-						M_log.warn(".merge: " + t);
+						log.warn(".merge: " + t);
 					}
 				}
 			}
@@ -3359,7 +3634,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 		// just being paranoid, but lets make sure we don't get stuck in a loop here -ggolden
 		if (threadLocalManager().get("enforceGroupSubMembership") != null)
 		{
-			M_log.warn(".enforceGroupSubMembership: recursion avoided!: " + siteId);
+			log.warn(".enforceGroupSubMembership: recursion avoided!: " + siteId);
 			return;
 		}
 		threadLocalManager().set("enforceGroupSubMembership", siteId);
@@ -3447,10 +3722,10 @@ public abstract class BaseSiteService implements SiteService, Observer
 	 * regenerate that user's cache since the assumption is generally that the user would have
 	 * clicked a site link presented to them before their access was revoked.
 	 *
-	 * @param _ The Observable, which is effectively nothing with ETS
+	 * @param o The Observable, which is effectively nothing with ETS
 	 * @param eventObj The event from ETS; will be checked and no-op if null or not an Event
 	 */
-	public void update(Observable _, Object eventObj) {
+	public void update(Observable o, Object eventObj) {
 		if (eventObj == null || !(eventObj instanceof Event))
 		{
 			return;
@@ -3478,26 +3753,32 @@ public abstract class BaseSiteService implements SiteService, Observer
 
 		String eventType = event.getEvent();
 
-		if (EVENT_SITE_USER_INVALIDATE.equals(eventType))
-		{
-			// KNL-1171: always clear the cache for the user as the Site below may have been deleted
-			clearUserCacheForUser(event.getUserId());
+        if (eventType != null) {
+            switch (eventType) {
+                case SiteService.SECURE_UPDATE_SITE_MEMBERSHIP:
+                case SiteService.SECURE_UPDATE_GROUP_MEMBERSHIP:
+                case SiteService.SECURE_UPDATE_SITE:
+                    notifySiteParticipant("/gradebook/" + event.getContext() + "/");
+                    break;
+                case EVENT_SITE_USER_INVALIDATE:
+                    try {
+                        Site site = getSite(event.getResource());
+                        clearUserCacheForSite(site);
+                    } catch (IdUnusedException iue) {
+                        log.warn("Site not found when handling event ({})", event);
+                    }
+                case AuthzGroupService.SECURE_UNJOIN_AUTHZ_GROUP:
+                case EVENT_SITE_VISIT_DENIED:
+                case PreferencesService.SECURE_EDIT_PREFS:
+                    // always clear the cache for the user as the Site below may have been deleted
+                    clearUserCacheForUser(event.getUserId());
+                    break;
+                default:
+                    // do nothing for all other events
+            }
+        }
+    }
 
-			try {
-				Site site = getSite(event.getResource());
-				clearUserCacheForSite(site);
-			} catch (IdUnusedException e) {
-				if (M_log.isDebugEnabled())
-				{
-					M_log.debug("Site not found when handling an event (" + eventType + "), ID/REF: " + event.getResource());
-				}
-			}
-		}
-		else if (EVENT_SITE_VISIT_DENIED.equals(eventType) || AuthzGroupService.SECURE_UNJOIN_AUTHZ_GROUP.equals(eventType))
-		{
-			clearUserCacheForUser(event.getUserId());
-		}
-	}
 	protected Storage storage() {
 		return m_storage;
 	}
@@ -3533,7 +3814,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 			ResourceProperties rp = s.getProperties();
 			parentId = rp.getProperty(PROP_PARENT_ID);
 		} catch (IdUnusedException e) {
-			M_log.error("getParentSite failed for " + siteId + ": " + e.getClass() + " : " + e.getMessage());
+			log.error("getParentSite failed for " + siteId + ": " + e.getClass() + " : " + e.getMessage());
 			return null;
 		}
 		return parentId;
@@ -3542,15 +3823,59 @@ public abstract class BaseSiteService implements SiteService, Observer
 	/**
 	 * {@inheritDoc}
 	 */
-	public String getUserSpecificSiteTitle( Site site, String userID )
+	public String getUserSpecificSiteTitle(Site site, String userID)
+	{
+		return getUserSpecificSiteTitle(site, userID, null);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public String getUserSpecificSiteTitle(Site site, String userID, List<String> siteProviders)
 	{
 		if( m_siteTitleAdvisor != null )
 		{
-			return m_siteTitleAdvisor.getUserSpecificSiteTitle( site, userID );
+			return m_siteTitleAdvisor.getUserSpecificSiteTitle( site, userID, siteProviders );
 		}
 		else
 		{
 			return site.getTitle();
+		}
+	}
+	
+	public void notifySiteParticipant(String filter) {		
+		List<Notification> notifications = notificationService().findNotifications(
+				"gradebook.updateItemScore", 
+				filter);
+		
+		for (Notification notification : notifications) {
+			String eventDataString = notification.getProperties().getProperty("SAKAI:conditionEventState");
+			
+			Event event = eventTrackingService().newEvent(
+					"cond+" + notification.getFunction(), 
+					notification.getResourceFilter() + eventDataString, 
+					false);
+			
+			NotificationAction action = notification.getAction();
+			action.notify(notification, event);
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public SiteTitleValidationStatus validateSiteTitle(String orig, String stripped) {
+		orig = StringUtils.trimToEmpty(orig);
+		stripped = StringUtils.trimToEmpty(stripped);
+
+		if (!orig.equals(stripped) && StringUtils.isBlank(stripped)) {
+			return SiteTitleValidationStatus.STRIPPED_TO_EMPTY;
+		} else if (StringUtils.isBlank(stripped)) {
+			return SiteTitleValidationStatus.EMPTY;
+		} else if (stripped.length() > SITE_TITLE_MAX_LENGTH) {
+			return SiteTitleValidationStatus.TOO_LONG;
+		} else {
+			return SiteTitleValidationStatus.OK;
 		}
 	}
 }

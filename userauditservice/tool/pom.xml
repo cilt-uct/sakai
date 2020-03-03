@@ -5,18 +5,13 @@
     <parent>
         <groupId>org.sakaiproject.userauditservice</groupId>
         <artifactId>userauditservice</artifactId>
-        <version>12-SNAPSHOT</version>
+        <version>21-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
     <name>Sakai Userauditservice Tool (userauditservice-tool)</name>
     <groupId>org.sakaiproject.userauditservice</groupId>
     <artifactId>userauditservice-tool</artifactId>
-    <organization>
-        <name>The Sakai Foundation</name>
-        <url>http://sakaiproject.org/</url>
-    </organization>
-    <inceptionYear>2013</inceptionYear>
     <packaging>war</packaging>
 
     <dependencies>
@@ -28,13 +23,13 @@
             <groupId>org.sakaiproject.kernel</groupId>
             <artifactId>sakai-component-manager</artifactId>
         </dependency>
-	    <dependency>
+        <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>userauditservice-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>userauditservice-util</artifactId>
+            <groupId>org.sakaiproject.jsf</groupId>
+            <artifactId>jsf-tool</artifactId>
         </dependency>
         <dependency>
             <groupId>org.sakaiproject.jsf</groupId>
@@ -53,7 +48,11 @@
         </dependency>
         <dependency>
             <groupId>javax.servlet.jsp</groupId>
-            <artifactId>jsp-api</artifactId>
+            <artifactId>javax.servlet.jsp-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
         </dependency>
     </dependencies>
 </project>

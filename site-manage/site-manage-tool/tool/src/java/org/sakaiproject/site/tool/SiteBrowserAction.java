@@ -35,6 +35,8 @@ import java.util.Vector;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.commons.lang3.StringUtils;
+import org.apache.velocity.tools.generic.SortTool;
 import org.sakaiproject.announcement.cover.AnnouncementService;
 import org.sakaiproject.cheftool.Context;
 import org.sakaiproject.cheftool.JetspeedRunData;
@@ -42,7 +44,6 @@ import org.sakaiproject.cheftool.PagedResourceActionII;
 import org.sakaiproject.cheftool.RunData;
 import org.sakaiproject.cheftool.VelocityPortlet;
 import org.sakaiproject.cheftool.api.Menu;
-import org.sakaiproject.cheftool.menu.MenuImpl;
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.content.api.ContentHostingService;
@@ -64,16 +65,14 @@ import org.sakaiproject.tool.api.ToolSession;
 import org.sakaiproject.tool.cover.SessionManager;
 import org.sakaiproject.util.ResourceLoader;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.apache.velocity.tools.generic.SortTool;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * <p>
  * SiteBrowserAction is the Sakai site browser, showing a searchable list of the defined sites, and details including public resources of each when selected.
  * </p>
  */
+@Slf4j
 public class SiteBrowserAction extends PagedResourceActionII implements SiteHelper
 {
 	private static final String INTER_SIZE = "inter_size";
@@ -82,8 +81,6 @@ public class SiteBrowserAction extends PagedResourceActionII implements SiteHelp
 	.get(org.sakaiproject.coursemanagement.api.CourseManagementService.class);
 
 	private ContentHostingService contentHostingService;
-	
-	private static Logger log = LoggerFactory.getLogger(SiteBrowserAction.class); 
 
 	private static ResourceLoader rb = new ResourceLoader("sitebrowser");
 	
@@ -177,7 +174,9 @@ public class SiteBrowserAction extends PagedResourceActionII implements SiteHelp
 	{
 		super.initState(state, portlet, rundata);
 
-		state.setAttribute(STATE_PAGESIZE, Integer.valueOf(DEFAULT_PAGE_SIZE));
+		if (state.getAttribute(STATE_PAGESIZE) == null) {
+			state.setAttribute(STATE_PAGESIZE, DEFAULT_PAGE_SIZE);
+		}
 
 		// if site type which requires term search exists
 		// get all term-search related data from configuration,
@@ -241,14 +240,14 @@ public class SiteBrowserAction extends PagedResourceActionII implements SiteHelp
 		}
 		else if (mode.equals(LIST_VIEW))
 		{
-			template = buildListContext(state, context);
+			template = buildListContext(state, context, portlet, rundata);
 		}
 		else if ("visit".equals(mode))
 		{
 			template = buildVisitContext(state, context);
 		}
 		
-		// bjones86 - SAK-24423 - joinable site settings - join from site browser
+		// SAK-24423 - joinable site settings - join from site browser
 		else if( JoinableSiteSettings.SITE_BROWSER_JOIN_MODE.equalsIgnoreCase( mode ) )
 		{
 			if( JoinableSiteSettings.isJoinFromSiteBrowserEnabled() )
@@ -258,14 +257,14 @@ public class SiteBrowserAction extends PagedResourceActionII implements SiteHelp
 		else
 		{
 			 	log.warn("SiteBrowserAction: mode = {}, but site browser join is disabled globally", mode);
-				template = buildListContext( state, context );
+				template = buildListContext( state, context, portlet, rundata );
 			}
 		}
 		
 		else
 		{
 		 	log.warn("SiteBrowserAction: mode: {}", mode);
-			template = buildListContext(state, context);
+			template = buildListContext(state, context, portlet, rundata);
 		}
 
 		return (String) getContext(rundata).get("template") + template;
@@ -275,7 +274,7 @@ public class SiteBrowserAction extends PagedResourceActionII implements SiteHelp
 	/**
 	 * Build the context for the main list mode.
 	 */
-	private String buildListContext(SessionState state, Context context)
+	private String buildListContext(SessionState state, Context context, VelocityPortlet portlet, RunData data)
 	{
 		// put the service in the context (used for allow update calls on each site)
 		context.put("service", SiteService.getInstance());
@@ -288,66 +287,24 @@ public class SiteBrowserAction extends PagedResourceActionII implements SiteHelp
 		context.put("termSelection", (String) state.getAttribute(STATE_TERM_SELECTION));
 		context.put("siteBrowserTextEdit", new SiteTextEditUtil());
 
-		// String newPageSize = state.getAttribute(STATE_PAGESIZE).toString();
-		Integer newPageSize = (Integer) state.getAttribute(INTER_SIZE);
-		if (newPageSize != null)
-		{
-			context.put("pagesize", newPageSize);
-			state.setAttribute(STATE_PAGESIZE, newPageSize);
-		}
-		else
-		{
-			state.setAttribute(STATE_PAGESIZE, Integer.valueOf(DEFAULT_PAGE_SIZE));
-			context.put("pagesize", Integer.valueOf(DEFAULT_PAGE_SIZE));
-		}
-
 		// prepare the paging of realms
 		List sites = prepPage(state);
 		state.setAttribute(STATE_SITES, sites);
 		context.put("sites", sites);
 		
-		// bjones86 - SAK-24423 - joinable site settings - put the necessary info into the context for the list interface
+		// SAK-24423 - joinable site settings - put the necessary info into the context for the list interface
 		JoinableSiteSettings.putSiteMapInContextForSiteBrowser( context, sites );
         JoinableSiteSettings.putCurrentUserInContextForSiteBrowser( context );
         JoinableSiteSettings.putIsSiteBrowserJoinEnabledInContext( context );
 
-		if (state.getAttribute(STATE_NUM_MESSAGES) != null)
-			context.put("allMsgNumber", state.getAttribute(STATE_NUM_MESSAGES).toString());
-
-		// find the position of the message that is the top first on the page
-		if ((state.getAttribute(STATE_TOP_PAGE_MESSAGE) != null) && (state.getAttribute(STATE_PAGESIZE) != null))
-		{
-			int topMsgPos = ((Integer) state.getAttribute(STATE_TOP_PAGE_MESSAGE)).intValue() + 1;
-			context.put("topMsgPos", Integer.toString(topMsgPos));
-			int btmMsgPos = topMsgPos + ((Integer) state.getAttribute(STATE_PAGESIZE)).intValue() - 1;
-			if (state.getAttribute(STATE_NUM_MESSAGES) != null)
-			{
-				int allMsgNumber = ((Integer) state.getAttribute(STATE_NUM_MESSAGES)).intValue();
-				if (btmMsgPos > allMsgNumber) btmMsgPos = allMsgNumber;
-			}
-			context.put("btmMsgPos", Integer.toString(btmMsgPos));
-		}
-
 		// build the menu
-		Menu bar = new MenuImpl();
-
-		// add the search commands
-		// bar.add( new MenuField(FORM_SEARCH, "toolbar", "doSearch", (String) state.getAttribute(STATE_SEARCH)));
-		// bar.add( new MenuEntry("Search", null, true, MenuItem.CHECKED_NA, "doSearch", "toolbar"));
+		Menu menu = MenuBuilder.buildMenuForSiteBrowser(portlet, data, state, context, rb);
 
 		// add the refresh commands
 		// %%% we want manual only
-		addRefreshMenus(bar, state);
+		addRefreshMenus(menu, state);
 
-		if (bar.size() > 0)
-		{
-			context.put(Menu.CONTEXT_MENU, bar);
-		}
-
-		boolean goPPButton = state.getAttribute(STATE_PREV_PAGE_EXISTS) != null;
-		context.put("goPPButton", Boolean.toString(goPPButton));
-		boolean goNPButton = state.getAttribute(STATE_NEXT_PAGE_EXISTS) != null;
-		context.put("goNPButton", Boolean.toString(goNPButton));
+		MenuBuilder.addMenuToContext(menu, context);
 
 		// }
 		// inform the observing courier that we just updated the page...
@@ -378,6 +335,8 @@ public class SiteBrowserAction extends PagedResourceActionII implements SiteHelp
 
 			context.put("termsmap", smap );
 		}
+
+		pagingInfoToContext( state, context );
 
 		return "_list";
 	} // buildListContext
@@ -592,8 +551,7 @@ public class SiteBrowserAction extends PagedResourceActionII implements SiteHelp
 			}
 			catch (Exception reflectionEx)
 			{
-			 	log.error("Reflection exceptions in SiteBrowserAction for getting public syllabus {}", reflectionEx);
-				reflectionEx.printStackTrace();
+				log.error("Reflection exceptions in SiteBrowserAction for getting public syllabus {}", reflectionEx);
 			}
 
 			// get the public resources
@@ -614,7 +572,7 @@ public class SiteBrowserAction extends PagedResourceActionII implements SiteHelp
 
 			context.put("contentTypeImageService", ContentTypeImageService.getInstance());
 			
-			// bjones86 - SAK-24423 - joinable site settings - put info into the context for the visit UI
+			// SAK-24423 - joinable site settings - put info into the context for the visit UI
 			JoinableSiteSettings.putIsSiteBrowserJoinEnabledInContext( context );
 			JoinableSiteSettings.putIsCurrentUserAlreadyMemberInContextForSiteBrowser( context, siteId );
 			JoinableSiteSettings.putIsSiteExcludedFromPublic( context, siteId );
@@ -676,8 +634,6 @@ public class SiteBrowserAction extends PagedResourceActionII implements SiteHelp
 	
 	/**
 	 * Handle a request to join a site.
-	 * 
-	 * @author bjones86
 	 * 
 	 * @param data
 	 * 				the state to get the settings from
@@ -784,8 +740,10 @@ public class SiteBrowserAction extends PagedResourceActionII implements SiteHelp
 
 		state.setAttribute(MODE, LIST_VIEW);
 
-		state.setAttribute(STATE_PAGESIZE, Integer.valueOf(DEFAULT_PAGE_SIZE));
-		state.removeAttribute(INTER_SIZE);
+		if (state.getAttribute(STATE_PAGESIZE) == null) {
+			state.setAttribute(STATE_PAGESIZE, DEFAULT_PAGE_SIZE);
+			state.removeAttribute(INTER_SIZE);
+		}
 
 	} // doSearch
 	

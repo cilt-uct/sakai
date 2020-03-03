@@ -216,18 +216,25 @@ function setCheckBoxes(changeSettings, markAsRead, newForum, newResponse,  r2R, 
   }
   
 }
+
 $(function(){
     $(document.getElementById("revise:perm")).accordion({
         header: '.permissionCustomize',
         active: false,
         collapsible: true,
-        autoHeight: false,
+        heightStyle: "content",
         change: function(event, ui){
             resizeFrame('grow');
-        } 
+        },
+    	// Override accordion tabindex
+	activate: function( event, ui ) {
+   	    $('.permissionCustomize').attr('tabIndex','0');
+	} 
     });
-});
 
+    // Override accordion tabindex
+    $('.permissionCustomize').attr('tabindex','0');
+});
 
 function disableOrEnableModeratePerm() {
 	moderateSelection = getTheElement("revise:moderated");

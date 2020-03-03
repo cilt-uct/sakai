@@ -18,10 +18,12 @@
 package org.sakaiproject.tool.assessment.data.dao.assessment;
 
 import lombok.*;
-import org.apache.commons.lang.builder.EqualsBuilder;
-import org.apache.commons.lang.builder.HashCodeBuilder;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentBaseIfc;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.PublishedAssessmentIfc;
+import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentAccessControlIfc;
+
 
 import java.io.Serializable;
 import java.util.Date;
@@ -46,41 +48,69 @@ public class ExtendedTime implements Serializable {
     private                 Integer                 timeHours;
     private                 Integer                 timeMinutes;
 
-    public          ExtendedTime        (AssessmentBaseIfc ass) {
+    public ExtendedTime(AssessmentBaseIfc ass) {
         this.assessment = ass;
     }
 
-    public          ExtendedTime        (PublishedAssessmentIfc pub) {
+    public ExtendedTime(PublishedAssessmentIfc pub) {
         this.pubAssessment = pub;
     }
 
-    public          ExtendedTime        (ExtendedTime source) {
+    public ExtendedTime(ExtendedTime source) {
         this(source.id, source.assessment, source.pubAssessment, source.user, source.group, source.startDate, source.dueDate, source.retractDate, source.timeHours, source.timeMinutes);
     }
 
-    public Long     getAssessmentId     () {
+    public Long getAssessmentId() {
         if(assessment == null) {
             return null;
         }
         return assessment.getAssessmentBaseId();
     }
 
-    public Long     getPubAssessmentId  () {
+    public Long getPubAssessmentId() {
         if(pubAssessment == null) {
             return null;
         }
         return pubAssessment.getPublishedAssessmentId();
     }
 
+    /**
+     * Sync the dates up to the dates in AssessmentAccessControlIfc
+     */
+    public void syncDates(AssessmentAccessControlIfc control) {
+        AssessmentAccessControlIfc ac = null;
+        if (control != null) {
+            ac = control;
+        } else if (assessment != null) {
+            ac = assessment.getAssessmentAccessControl();
+        } else if (pubAssessment != null) {
+            ac = pubAssessment.getAssessmentAccessControl();
+        }
+
+        if (ac == null) {
+            return;
+        }
+
+        if (this.getDueDate() == null) {
+            this.setDueDate(ac.getDueDate());
+        }
+        if (this.getStartDate() == null) {
+            this.setStartDate(ac.getStartDate());
+        }
+        if (this.getRetractDate() == null && ac.getLateHandling() == AssessmentAccessControlIfc.ACCEPT_LATE_SUBMISSION) {
+            this.setRetractDate(ac.getRetractDate());
+        }
+    }
+
     @Override
-    public boolean  equals              (final Object obj) {
+    public boolean equals(final Object obj) {
         if(obj == this) return true;  // test for reference equality
         if(obj == null) return false; // test for null
         if(obj instanceof ExtendedTime) {
             final ExtendedTime other = (ExtendedTime) obj;
             return new EqualsBuilder()
-                    .append(assessment.getAssessmentBaseId(), other.assessment.getAssessmentBaseId())
-                    .append(pubAssessment.getPublishedAssessmentId(), other.getPubAssessmentId())
+                    .append(getAssessmentId(), other.getAssessmentId())
+                    .append(getPubAssessmentId(), other.getPubAssessmentId())
                     .append(user, other.user)
                     .append(group, other.group)
                     .append(startDate, other.startDate)
@@ -95,10 +125,10 @@ public class ExtendedTime implements Serializable {
     }
 
     @Override
-    public int      hashCode            () {
+    public int hashCode() {
         return new HashCodeBuilder()
-                .append(assessment.getAssessmentBaseId())
-                .append(pubAssessment.getPublishedAssessmentId())
+                .append(getAssessmentId())
+                .append(getPubAssessmentId())
                 .append(user)
                 .append(group)
                 .append(startDate)

@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.calendar.entityproviders;
 
 import org.sakaiproject.calendar.api.CalendarEvent;
@@ -17,6 +32,7 @@ public class CalendarEventSummary {
 	private String creator;
 	private Time firstTime;
 	private long duration;
+	private String description;
 	private RecurrenceRule recurrenceRule;
 
 	/**
@@ -28,6 +44,8 @@ public class CalendarEventSummary {
 	 * Set externally after object creation, signals the site the event came from (not part of CalendarEvent)
 	 */
 	private String siteId;
+	//icon used for specific eventType
+	private String eventIcon;
 
 	public CalendarEventSummary() {
 	}
@@ -42,6 +60,9 @@ public class CalendarEventSummary {
 		this.firstTime = event.getRange().firstTime();
 		this.duration = event.getRange().duration();
 		this.recurrenceRule = event.getRecurrenceRule();
+		this.duration = event.getRange().duration();
+		this.recurrenceRule = event.getRecurrenceRule();
+		this.description = event.getDescriptionFormatted();
 		this.assignmentId = event.getField(CalendarUtil.NEW_ASSIGNMENT_DUEDATE_CALENDAR_ASSIGNMENT_ID);
 	}
 

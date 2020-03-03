@@ -5,19 +5,17 @@
     <parent>
         <artifactId>portal</artifactId>
         <groupId>org.sakaiproject.portal</groupId>
-        <version>12-SNAPSHOT</version>
+        <version>21-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
     <name>sakai-portal-service-impl</name>
     <groupId>org.sakaiproject.portal</groupId>
     <artifactId>sakai-portal-service-impl</artifactId>
-    <organization>
-        <name>University of Michigan</name>
-        <url>http://sakaiproject.org/</url>
-    </organization>
-    <inceptionYear>2003</inceptionYear>
-    <packaging>jar</packaging>
+    <packaging>sakai-component</packaging>
+    <properties>
+        <deploy.target>components</deploy.target>
+    </properties>
 
     <dependencies>
         <dependency>
@@ -33,12 +31,17 @@
             <artifactId>sakai-kernel-util</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.sakaiproject.lessonbuilder</groupId>
+            <artifactId>lessonbuilder-api</artifactId>
+        </dependency>
+        <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>sakai-portal-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>castor</groupId>
-            <artifactId>castor</artifactId>
+            <groupId>org.sakaiproject.basiclti</groupId>
+            <artifactId>basiclti-api</artifactId>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>javax.portlet</groupId>
@@ -46,7 +49,11 @@
         </dependency>
         <dependency>
             <groupId>javax.servlet</groupId>
-            <artifactId>servlet-api</artifactId>
+            <artifactId>javax.servlet-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.pluto</groupId>
@@ -57,13 +64,25 @@
             <artifactId>pluto-descriptor-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-core</artifactId>
+        </dependency>
+		<dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-tx</artifactId>
+        </dependency>
+		<dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
         </dependency>
     </dependencies>
 

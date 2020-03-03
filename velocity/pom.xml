@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.sakaiproject</groupId>
         <artifactId>master</artifactId>
-        <version>12-SNAPSHOT</version>
+        <version>21-SNAPSHOT</version>
 		<relativePath>../master/pom.xml</relativePath>
     </parent>
 
@@ -19,13 +19,4 @@
         <module>tool-api</module>
         <module>util</module>
     </modules>
-    
-    
-    <distributionManagement>
-        <site>
-            <id>sakai-site</id>
-            <name>Sakai release Site</name>
-            <url>scpexe://source.sakaiproject.org/var/www/html/release/velocity/${project.version}</url>
-        </site>
-    </distributionManagement>
 </project>

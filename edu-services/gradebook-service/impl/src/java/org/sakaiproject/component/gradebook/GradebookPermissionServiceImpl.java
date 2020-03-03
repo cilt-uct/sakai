@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.component.gradebook;
 
 import java.util.ArrayList;
@@ -8,27 +23,28 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
+import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.section.api.SectionAwareness;
 import org.sakaiproject.section.api.coursemanagement.CourseSection;
 import org.sakaiproject.section.api.coursemanagement.EnrollmentRecord;
 import org.sakaiproject.section.api.facade.Role;
-import org.sakaiproject.service.gradebook.shared.CategoryDefinition;
 import org.sakaiproject.service.gradebook.shared.GradebookPermissionService;
 import org.sakaiproject.service.gradebook.shared.GradebookService;
 import org.sakaiproject.service.gradebook.shared.GraderPermission;
 import org.sakaiproject.service.gradebook.shared.PermissionDefinition;
-import org.sakaiproject.tool.gradebook.Assignment;
+import org.sakaiproject.tool.gradebook.GradebookAssignment;
 import org.sakaiproject.tool.gradebook.Category;
 import org.sakaiproject.tool.gradebook.Gradebook;
 import org.sakaiproject.tool.gradebook.Permission;
-import org.springframework.orm.hibernate3.HibernateCallback;
+import org.springframework.orm.hibernate4.HibernateCallback;
 
 public class GradebookPermissionServiceImpl extends BaseHibernateManager implements GradebookPermissionService
 {
 	private SectionAwareness sectionAwareness;
+	private GradebookService gradebookService;
 	
 	public List<Long> getCategoriesForUser(Long gradebookId, String userId, List<Long> categoryIdList) throws IllegalArgumentException
 	{
@@ -480,7 +496,7 @@ public class GradebookPermissionServiceImpl extends BaseHibernateManager impleme
 			{
 				for(Iterator iter = assignmentList.iterator(); iter.hasNext();)
 				{
-					Assignment assign = (Assignment) iter.next();
+					GradebookAssignment assign = (GradebookAssignment) iter.next();
 					if(grade && assign != null)
 						assignMap.put(assign.getId(), GradebookService.gradePermission);
 					else if(view && assign != null)
@@ -522,7 +538,7 @@ public class GradebookPermissionServiceImpl extends BaseHibernateManager impleme
 				}
 				for(Iterator iter = assignments.iterator(); iter.hasNext();)
 				{
-					Assignment as = (Assignment) iter.next();
+					GradebookAssignment as = (GradebookAssignment) iter.next();
 					if(grade == true && as != null)
 						assignMap.put(as.getId(), GradebookService.gradePermission);
 					else if(view == true && as != null)
@@ -566,7 +582,7 @@ public class GradebookPermissionServiceImpl extends BaseHibernateManager impleme
 									if (assignmentList != null) {
 										for(Iterator assignIter = assignmentList.iterator(); assignIter.hasNext();)
 										{
-											Assignment as = (Assignment)assignIter.next();
+											GradebookAssignment as = (GradebookAssignment)assignIter.next();
 											if(as != null)
 											{
 												Long assignId = as.getId();
@@ -696,18 +712,6 @@ public class GradebookPermissionServiceImpl extends BaseHibernateManager impleme
 
 	}
 
-	private List getAssignments(final Long gradebookId) throws HibernateException 
-	{
-		return (List)getHibernateTemplate().execute(new HibernateCallback() 
-		{
-			public Object doInHibernate(Session session) throws HibernateException 
-			{
-				List assignments = getAssignments(gradebookId, session);
-				return assignments;
-			}
-		});
-	}
-
 	private Map filterPermissionForGrader(List perms, String studentId, List assignmentList, Map sectionIdStudentIdsMap)
 	{
 		if(perms != null)
@@ -735,7 +739,7 @@ public class GradebookPermissionServiceImpl extends BaseHibernateManager impleme
 			{
 				for(Iterator iter = assignmentList.iterator(); iter.hasNext();)
 				{
-					Long assignId = ((Assignment)iter.next()).getId();
+					Long assignId = ((GradebookAssignment)iter.next()).getId();
 	                for(Iterator<Map.Entry<String, List>> groupIter = sectionIdStudentIdsMap.entrySet().iterator(); groupIter.hasNext();)
 	                {
 	                    Map.Entry<String, List> entry = groupIter.next();
@@ -781,7 +785,7 @@ public class GradebookPermissionServiceImpl extends BaseHibernateManager impleme
 							if (assignmentList != null) {
 								for(Iterator assignIter = assignmentList.iterator(); assignIter.hasNext();)
 								{
-									Assignment as = (Assignment)assignIter.next();
+									GradebookAssignment as = (GradebookAssignment)assignIter.next();
 									if(as != null && sectionIdStudentIdsMap != null)
 									{
 										Long assignId = as.getId();
@@ -1191,6 +1195,59 @@ public class GradebookPermissionServiceImpl extends BaseHibernateManager impleme
 		
 	}
 
+	/**
+	 * Get a list of permissions defined for the given user based on section and role or all sections if allowed. 
+	 * This method checks realms permissions for role/section and is independent of the 
+	 * gb_permissions_t permissions.
+	 *
+	 * note: If user has the grade privilege, they are given the GraderPermission.VIEW_COURSE_GRADE permission to match
+	 * GB classic functionality. This needs to be reviewed.
+	 *
+	 * @param userUuid
+	 * @param siteId
+	 * @param role user Role
+	 * @return list of {@link org.sakaiproject.service.gradebook.shared.PermissionDefinition PermissionDefinitions} or empty list if none
+	 */
+	public List<PermissionDefinition> getRealmsPermissionsForUser(String userUuid,String siteId, Role role){
+
+		List<PermissionDefinition> permissions = new ArrayList<PermissionDefinition>();
+
+		if( this.getGradebookService().isUserAllowedToGrade(siteId,userUuid)){
+			//FIXME:giving them view course grade (this needs to be reviewed!!), 
+			//it appears in GB classic, User can view course grades if they have the ability to grade in realms
+			PermissionDefinition permDef = new PermissionDefinition();
+			permDef.setFunction(GraderPermission.VIEW_COURSE_GRADE.toString());
+			permDef.setUserId(userUuid);
+			permissions.add(permDef);
+
+			if(this.getGradebookService().isUserAllowedToGradeAll(siteId,userUuid)){
+				permDef = new PermissionDefinition();
+				permDef.setFunction(GraderPermission.GRADE.toString());
+				permDef.setUserId(userUuid);
+				permissions.add(permDef);
+			}else{
+				//get list of sections belonging to user and set a PermissionDefinition for each one
+				//Didn't find a method that returned gradeable sections for a TA, only for the logged in user.
+				//grabbing list of sections for the site, if User is a member of the section and has privilege to
+				//grade their sections, they are given the grade permission. Seems straight forward??
+				List<CourseSection> sections = this.getSectionAwareness().getSections(siteId);
+
+				for(CourseSection section: sections){
+					if(this.getSectionAwareness().isSectionMemberInRole(section.getUuid(), userUuid,role)){
+						//realms have no categories defined for grading, just perms and group id
+						permDef = new PermissionDefinition();
+						permDef.setFunction(GraderPermission.GRADE.toString());
+						permDef.setUserId(userUuid);
+						permDef.setGroupReference(section.getUuid());
+						permissions.add(permDef);
+					}
+				}
+			}
+		}
+
+		return permissions;
+	}
+
 	public SectionAwareness getSectionAwareness()
 	{
 		return sectionAwareness;
@@ -1199,6 +1256,16 @@ public class GradebookPermissionServiceImpl extends BaseHibernateManager impleme
 	public void setSectionAwareness(SectionAwareness sectionAwareness)
 	{
 		this.sectionAwareness = sectionAwareness;
+	}
+
+	public GradebookService getGradebookService()
+	{
+		return (GradebookService) ComponentManager.get("org.sakaiproject.service.gradebook.GradebookService");
+	}
+
+	public void setGradebookService(GradebookService gradebookService)
+	{
+		this.gradebookService = gradebookService;
 	}
 	
 	private Map<String, List<String>> getSectionIdStudentIdsMap(Collection courseSections, Collection studentIds) {
@@ -1242,15 +1309,24 @@ public class GradebookPermissionServiceImpl extends BaseHibernateManager impleme
 	@Override
 	public void updatePermissionsForUser(final String gradebookUid, final String userId, List<PermissionDefinition> permissionDefinitions) {
 		Long gradebookId = getGradebook(gradebookUid).getId();
-		
+
+		if (permissionDefinitions.isEmpty()) {
+			PermissionDefinition noPermDef = new PermissionDefinition();
+			noPermDef.setFunction(GraderPermission.NONE.toString());
+			noPermDef.setUserId(userId);
+			permissionDefinitions.add(noPermDef);
+		}
+
 		//get the current list of permissions
 		final List<Permission> currentPermissions = getPermissionsForUser(gradebookId, userId);
 		
 		//convert PermissionDefinition to Permission
 		final List<Permission> newPermissions = new ArrayList<>();
 		for(PermissionDefinition def: permissionDefinitions) {
-			
-			if(!StringUtils.equalsIgnoreCase(def.getFunction(), GraderPermission.GRADE.toString()) && !StringUtils.equalsIgnoreCase(def.getFunction(), GraderPermission.VIEW.toString()) && !StringUtils.equalsIgnoreCase(def.getFunction(), GraderPermission.VIEW_COURSE_GRADE.toString())) {
+			if(!StringUtils.equalsIgnoreCase(def.getFunction(), GraderPermission.GRADE.toString())
+					&& !StringUtils.equalsIgnoreCase(def.getFunction(), GraderPermission.VIEW.toString())
+					&& !StringUtils.equalsIgnoreCase(def.getFunction(), GraderPermission.VIEW_COURSE_GRADE.toString())
+					&& !StringUtils.equalsIgnoreCase(def.getFunction(), GraderPermission.NONE.toString())) {
 				throw new IllegalArgumentException("Invalid function for permission definition: " + def.getFunction());
 			}
 			
@@ -1284,6 +1360,16 @@ public class GradebookPermissionServiceImpl extends BaseHibernateManager impleme
     	};
 
     	getHibernateTemplate().execute(hc);
+	}
+
+	public void clearPermissionsForUser(final String gradebookUid, final String userId) {
+		Long gradebookId = getGradebook(gradebookUid).getId();
+
+		// remove all current permissions for user
+		final List<Permission> currentPermissions = getPermissionsForUser(gradebookId, userId);
+		for (Permission currentPermission : currentPermissions) {
+			getHibernateTemplate().getSessionFactory().getCurrentSession().delete(currentPermission);
+		}
 	}
 
 	

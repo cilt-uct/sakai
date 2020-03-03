@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <script src="/library/js/headscripts.js" type="text/javascript"></script>
+    <script type="module" src="/rubrics-service/webcomponents/sakai-rubrics-manager.js"></script>
+  </head>
+  <body>
+    <div class="portletBody">
+      <script th:inline="javascript">
+          var sakaiSessionId = /*[[${sakaiSessionId}]]*/ null;
+      </script>
+      <sakai-rubrics-manager th:attr="token=${token}"></sakai-rubrics-manager>
+    </div>
+  </body>
+</html>

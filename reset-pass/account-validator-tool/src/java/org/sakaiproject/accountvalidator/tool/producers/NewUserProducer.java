@@ -19,14 +19,20 @@
  */
 package org.sakaiproject.accountvalidator.tool.producers;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+
+import lombok.extern.slf4j.Slf4j;
+
 import org.sakaiproject.accountvalidator.model.ValidationAccount;
 import org.sakaiproject.entitybroker.EntityReference;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserNotDefinedException;
+
 import uk.org.ponder.messageutil.TargettedMessage;
 import uk.org.ponder.rsf.components.*;
 import uk.org.ponder.rsf.flow.ActionResultInterceptor;
@@ -34,18 +40,13 @@ import uk.org.ponder.rsf.view.ComponentChecker;
 import uk.org.ponder.rsf.view.ViewComponentProducer;
 import uk.org.ponder.rsf.viewstate.ViewParameters;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-
 /**
  * Produces newUser.html - builds a form that allows the user to claim an account that has been created for them
  * @author bbailla2
  */
+@Slf4j
 public class NewUserProducer extends BaseValidationProducer implements ViewComponentProducer, ActionResultInterceptor {
-	
-	private static Logger log = LoggerFactory.getLogger(NewUserProducer.class);
+
 	public static final String VIEW_ID = "newUser";
 
 	public String getViewID() {
@@ -102,7 +103,7 @@ public class NewUserProducer extends BaseValidationProducer implements ViewCompo
 		if (u == null)
 		{
 			log.error("user ID does not exist for ValidationAccount with tokenId: " + va.getValidationToken());
-			tml.addMessage(new TargettedMessage("validate.userNotDefined", new Object[]{}, TargettedMessage.SEVERITY_ERROR));
+			tml.addMessage(new TargettedMessage("validate.userNotDefined", new Object[]{getUIService()}, TargettedMessage.SEVERITY_ERROR));
 			return;
 		}
 
@@ -127,7 +128,6 @@ public class NewUserProducer extends BaseValidationProducer implements ViewCompo
 		}
 		else {
 			UIMessage.make(tofill, "account-title", "activateAccount.title");
-			UIMessage.make(tofill, "welcome", "validate.welcome", args);
 			UIOutput.make(tofill, "eid", u.getDisplayId());
 			UIMessage.make(tofill, "wait.1", "validate.wait.newUser.1", args);
 			String linkText = messageLocator.getMessage("validate.wait.newUser.2", args);
@@ -155,21 +155,31 @@ public class NewUserProducer extends BaseValidationProducer implements ViewCompo
 					}
 					catch (IdUnusedException e)
 					{
-						e.printStackTrace();
+						log.error(e.getMessage(), e);
 					}
 				}
+			}
+
+			if (existingSites.size() >= 2)
+			{
+				UIMessage.make(tofill, "welcome", "validate.welcome.plural", args);
+			}
+			else
+			{
+				UIMessage.make(tofill, "welcome", "validate.welcome.single", args);
 			}
 		}
 		UIMessage.make(tofill, "welcome2", "validate.welcome2", args);
 
-		String otp = "accountValidationLocator." + va.getId();
+		String otp = "accountValidationLocator." + va.getValidationToken();
 		UIBranchContainer firstNameContainer = UIBranchContainer.make(detailsForm, "firstNameContainer:");
 		UIMessage.make(firstNameContainer, "lblFirstName", "firstname");
-		UIInput.make(detailsForm, "firstName", otp + ".firstName", u.getFirstName());
+		UIInput.make(detailsForm, "firstName", otp + ".firstName");
+
 		UIBranchContainer lastNameContainer = UIBranchContainer.make(detailsForm, "lastNameContainer:");
 		UIMessage.make(lastNameContainer, "lblLastName", "lastname");
-		UIInput.make(detailsForm, "surName", otp + ".surname", u.getLastName());
-		
+		UIInput.make(detailsForm, "surName", otp + ".surname");
+
 		// In terms of using UIVerbatim, we would gladly accept an alternate method of doing this, however
 		// this seems to be the only way to pass the enabled, disabled value from the server into the JavaScript
 		boolean passwordPolicyEnabled = (userDirectoryService.getPasswordPolicy() != null);
@@ -202,7 +212,5 @@ public class NewUserProducer extends BaseValidationProducer implements ViewCompo
 			});
 			UIVerbatim.make(termsRow, "termsLabel", terms);
 		}
-
-		detailsForm.parameters.add(new UIELBinding(otp + ".userId", va.getUserId()));
 	}
 }

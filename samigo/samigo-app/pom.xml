@@ -5,17 +5,12 @@
 	<parent>
 		<groupId>org.sakaiproject.samigo</groupId>
 		<artifactId>samigo</artifactId>
-		<version>12-SNAPSHOT</version>
+		<version>21-SNAPSHOT</version>
 	</parent>
     
 	<name>Sakai Samigo Tool (samigo-app)</name>
 	<groupId>org.sakaiproject.samigo</groupId>
 	<artifactId>samigo-app</artifactId>
-	<organization>
-		<name>Sakai Project</name>
-		<url>http://www.sakaiproject.org/</url>
-	</organization>
-	<inceptionYear>2005</inceptionYear>
 	<packaging>war</packaging>
     
 	<dependencies>
@@ -60,38 +55,18 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>org.sakaiproject.jsf</groupId>
-            <artifactId>jsf-tool</artifactId>
+            <groupId>org.sakaiproject.jsf2</groupId>
+            <artifactId>jsf2-tool</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.sakaiproject.jsf</groupId>
-            <artifactId>jsf-app</artifactId>
+            <groupId>org.sakaiproject.jsf2</groupId>
+            <artifactId>jsf2-app</artifactId>
         </dependency>
         <!-- remove the default api/imp 1.1_02 version from JSF prject with new 1.2 version  -->
         <dependency>
-            <groupId>org.sakaiproject.jsf</groupId>
-            <artifactId>jsf-widgets-sun-depend</artifactId>
-            <exclusions>
-	            <exclusion>
-	                    <groupId>javax.faces</groupId>
-	                    <artifactId>jsf-api</artifactId>
-	             </exclusion>
-	             <exclusion>
-	                    <groupId>javax.faces</groupId>
-	                    <artifactId>jsf-impl</artifactId>
-	             </exclusion>
-	        </exclusions>
+            <groupId>org.sakaiproject.jsf2</groupId>
+            <artifactId>jsf2-widgets-sun-depend</artifactId>
             <type>pom</type>
-        </dependency>
-        <dependency>
-            	<groupId>javax.faces</groupId>
-            	<artifactId>jsf-api</artifactId>
-            	<version>1.2_15</version>
-        </dependency>
-        <dependency>
-            	<groupId>javax.faces</groupId>
-            	<artifactId>jsf-impl</artifactId>
-               <version>1.2_15</version>
         </dependency>
 		<!-- end of JSF related version issue -->
         <dependency>
@@ -105,6 +80,21 @@
         <dependency>
             <groupId>org.sakaiproject.portal</groupId>
             <artifactId>sakai-portal-util</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.sakaiproject.search</groupId>
+            <artifactId>search-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.elasticsearch</groupId>
+            <artifactId>elasticsearch</artifactId>
+            <scope>provided</scope>
+            <version>${sakai.elasticsearch.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.htmlparser.jericho</groupId>
+            <artifactId>jericho-html</artifactId>
+            <version>3.1</version>
         </dependency>
         <dependency>
             <groupId>com.lowagie</groupId>
@@ -142,32 +132,26 @@
             <artifactId>commons-math3</artifactId>
         </dependency>
         <dependency>
-            <groupId>dom4j</groupId>
+            <groupId>org.dom4j</groupId>
             <artifactId>dom4j</artifactId>
-            <version>1.6.1</version>
         </dependency>
 		<dependency>
             <groupId>javax.activation</groupId>
-            <artifactId>activation</artifactId>
+            <artifactId>javax.activation-api</artifactId>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.sun.mail</groupId>
-            <artifactId>javax.mail</artifactId>
+            <artifactId>jakarta.mail</artifactId>
         </dependency>
-	<dependency>
+	    <dependency>
             <groupId>javax.servlet.jsp</groupId>
-            <artifactId>jsp-api</artifactId>
-	    <scope>provided</scope>
+            <artifactId>javax.servlet.jsp-api</artifactId>
+	        <scope>provided</scope>
         </dependency>
-	<dependency>
+	    <dependency>
             <groupId>javax.servlet</groupId>
-            <artifactId>jstl</artifactId>
-            <scope>compile</scope>
-        </dependency>
-		<dependency>
-            <groupId>javax.servlet</groupId>
-            <artifactId>servlet-api</artifactId>
+            <artifactId>javax.servlet-api</artifactId>
         </dependency>
         <dependency>
             <groupId>jdom</groupId>
@@ -190,7 +174,7 @@
         </dependency>
         <dependency>
             <groupId>org.apache.myfaces.tomahawk</groupId>
-            <artifactId>tomahawk12</artifactId>
+            <artifactId>tomahawk21</artifactId>
             <version>1.1.14</version>
         </dependency>
         <dependency>
@@ -211,11 +195,6 @@
             <groupId>org.springframework</groupId>
             <artifactId>spring-webmvc</artifactId>
 	    <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>struts</groupId>
-            <artifactId>struts</artifactId>
-            <version>1.1</version>
         </dependency>
         <dependency>
             <groupId>org.sakaiproject.rsf</groupId>
@@ -239,11 +218,17 @@
             <groupId>xml-apis</groupId>
             <artifactId>xml-apis</artifactId>
         </dependency>
-        <!-- test -->
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-context</artifactId>
-            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
         </dependency>
         <dependency>
         	<groupId>joda-time</groupId>
@@ -253,8 +238,28 @@
         	<scope>compile</scope>
         </dependency>
         <dependency>
-            <groupId>org.sakaiproject.samigo</groupId>
-            <artifactId>samigo-impl</artifactId>
+            <groupId>org.sakaiproject.tags</groupId>
+            <artifactId>tags-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.8.4</version>
+        </dependency>
+        <dependency>
+            <groupId>org.sakaiproject.rubrics</groupId>
+            <artifactId>rubrics-service-api</artifactId>
+        </dependency>
+
+        <!--JSF 2.3 dependencies-->
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>jstl</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.weld.servlet</groupId>
+            <artifactId>weld-servlet-shaded</artifactId>
+            <version>${sakai.weld.shaded.version}</version>
         </dependency>
     </dependencies>
     
@@ -263,7 +268,6 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-war-plugin</artifactId>
-				<version>2.6</version>
 			</plugin>
 		</plugins>
 		<resources>

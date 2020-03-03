@@ -17,9 +17,12 @@ package org.sakaiproject.contentreview.dao;
 
 import java.util.Calendar;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.hibernate.Criteria;
+import org.hibernate.criterion.Order;
 import org.hibernate.criterion.Projections;
 import org.hibernate.criterion.Restrictions;
 
@@ -56,7 +59,24 @@ public class ContentReviewItemDao extends HibernateCommonDao<ContentReviewItem> 
 
 		return c.list();
 	}
-	
+
+	@SuppressWarnings("unchecked")
+	public List<String> findByProviderGroupedBySite(Integer providerId) {
+
+		Criteria c = sessionFactory.getCurrentSession()
+				.createCriteria(ContentReviewItem.class)
+				.add(Restrictions.eq("providerId", providerId))
+				.setProjection( Projections.projectionList()
+							.add(Projections.groupProperty("siteId"))
+							.add(Projections.max("id").as("maxId"))
+						)
+				.addOrder(Order.desc("maxId"))
+				.setMaxResults(999);
+
+		List<Object[]> listOfObjects = c.list();
+		return listOfObjects.stream().map(o -> o[0]).map(Objects::toString).collect(Collectors.toList());
+	}
+
 	@SuppressWarnings("unchecked")
 	public List<ContentReviewItem> findByProviderAwaitingReports(Integer providerId) {
 
@@ -74,6 +94,16 @@ public class ContentReviewItemDao extends HibernateCommonDao<ContentReviewItem> 
 				.createCriteria(ContentReviewItem.class)
 				.add(Restrictions.eq("providerId", providerId))
 				.add(Restrictions.eq("contentId", contentId));
+		
+		return Optional.ofNullable((ContentReviewItem) c.uniqueResult());
+	}
+	
+	public Optional<ContentReviewItem> findByProviderAndExternalId(Integer providerId, String externalId) {
+
+		Criteria c = sessionFactory.getCurrentSession()
+				.createCriteria(ContentReviewItem.class)
+				.add(Restrictions.eq("providerId", providerId))
+				.add(Restrictions.eq("externalId", externalId));
 		
 		return Optional.ofNullable((ContentReviewItem) c.uniqueResult());
 	}

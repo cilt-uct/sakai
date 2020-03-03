@@ -1,7 +1,9 @@
-<?xml version="1.0"?>
-<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD//EN"
-   "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
-<hibernate-mapping default-cascade="none" package="org.sakaiproject.coursemanagement.impl" default-lazy="true">
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN" "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping package="org.sakaiproject.coursemanagement.impl"
+                   default-cascade="none"
+                   default-lazy="true">
+
 	<subclass name="org.sakaiproject.coursemanagement.impl.SectionCmImpl"
 			extends="org.sakaiproject.coursemanagement.impl.AbstractMembershipContainerCmImpl">
 
@@ -49,6 +51,15 @@
         select section.eid, mbr.role from SectionCmImpl as section, MembershipCmImpl as mbr
         	where mbr.userId=:userEid and
         	mbr.memberContainer=section
+        ]]>
+    </query>
+
+    <query name="findSectionRolesByAcademicSession">
+        <![CDATA[
+        select section.eid, mbr.role from SectionCmImpl as section, MembershipCmImpl as mbr
+            where mbr.userId=:userEid and
+            mbr.memberContainer=section and
+            section.courseOffering.academicSession.eid=:academicSessionEid
         ]]>
     </query>
 

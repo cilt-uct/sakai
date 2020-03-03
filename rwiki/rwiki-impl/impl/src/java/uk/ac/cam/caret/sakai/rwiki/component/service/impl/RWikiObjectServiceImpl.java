@@ -34,8 +34,7 @@ import java.util.Stack;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.sakaiproject.alias.api.AliasService;
 import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.component.api.ComponentManager;
@@ -61,8 +60,8 @@ import org.sakaiproject.thread_local.api.ThreadLocalManager;
 import org.sakaiproject.time.api.TimeService;
 import org.sakaiproject.tool.api.SessionManager;
 import org.sakaiproject.user.api.UserDirectoryService;
-import org.apache.commons.lang.StringUtils;
-import org.springframework.orm.hibernate3.HibernateOptimisticLockingFailureException;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.orm.hibernate4.HibernateOptimisticLockingFailureException;
 import org.hibernate.HibernateException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -100,10 +99,9 @@ import uk.ac.cam.caret.sakai.rwiki.utils.TimeLogger;
  */
 
 // FIXME: Component
+@Slf4j
 public class RWikiObjectServiceImpl implements RWikiObjectService
 {
-
-	private static Logger log = LoggerFactory.getLogger(RWikiObjectServiceImpl.class);
 
 	private RWikiCurrentObjectDao cdao;
 
@@ -189,7 +187,6 @@ public class RWikiObjectServiceImpl implements RWikiObjectService
 		renderService = (RenderService) load(cm, RenderService.class.getName());
 		preferenceService = (PreferenceService) load(cm,
 				PreferenceService.class.getName());
-
 		userDirectoryService = (UserDirectoryService) load(cm,UserDirectoryService.class.getName());
 		entityManager.registerEntityProducer(this,
 				RWikiObjectService.REFERENCE_ROOT);
@@ -203,7 +200,6 @@ public class RWikiObjectServiceImpl implements RWikiObjectService
 			// set functions
 			edit.setFunction(RWikiObjectService.EVENT_RESOURCE_ADD);
 			edit.addFunction(RWikiObjectService.EVENT_RESOURCE_WRITE);
-			edit.addFunction(RWikiObjectService.EVENT_RESOURCE_READ);
 
 			// set the filter to any site related resource
 			edit.setResourceFilter(RWikiObjectService.REFERENCE_ROOT);
@@ -585,7 +581,6 @@ public class RWikiObjectServiceImpl implements RWikiObjectService
 
 		if (content != null && !content.equals(rwo.getContent()))
 		{
-
 			// create a history instance
 			RWikiHistoryObject rwho = hdao.createRWikiHistoryObject(rwo);
 
@@ -998,7 +993,7 @@ public class RWikiObjectServiceImpl implements RWikiObjectService
 			}
 			catch (Exception any)
 			{
-				any.printStackTrace();
+				log.error(any.getMessage(), any);
 				results.append(Messages.getString("RWikiObjectServiceImpl.31") + siteId //$NON-NLS-1$
 						+ " " + any.toString() + "\n"); //$NON-NLS-1$ //$NON-NLS-2$
 			}
@@ -1220,15 +1215,13 @@ public class RWikiObjectServiceImpl implements RWikiObjectService
 	 * {@inheritDoc} Only the current version of a page is imported, history is
 	 * left behind.
 	 */
-	public void transferCopyEntities(String fromContext, String toContext,
-			List ids)
+	public Map<String, String> transferCopyEntities(String fromContext, String toContext, List<String> ids, List<String> transferOptions)
 	{
 		log.debug("==================Doing WIki transfer"); //$NON-NLS-1$
 		if (fromContext.equals(toContext))
 		{
-			log
-					.debug("===================Source and Target Context are identical, transfer ignored"); //$NON-NLS-1$
-			return;
+			log.debug("===================Source and Target Context are identical, transfer ignored"); //$NON-NLS-1$
+			return null;
 		}
 		
 		// FIXME this needs to be moved out to a method!
@@ -1325,6 +1318,7 @@ public class RWikiObjectServiceImpl implements RWikiObjectService
 			}
 		}
 
+		return null;
 	}
 
 	/**
@@ -1746,6 +1740,14 @@ public class RWikiObjectServiceImpl implements RWikiObjectService
 	/**
 	 * {@inheritDoc}
 	 */
+	public boolean checkCreate(RWikiObject rwo)
+	{
+		return wikiSecurityService.checkCreate((RWikiEntity) getEntity(rwo));
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
 	public boolean checkAdmin(RWikiObject rwo)
 	{
 		return wikiSecurityService.checkAdmin((RWikiEntity) getEntity(rwo));
@@ -1789,7 +1791,7 @@ public class RWikiObjectServiceImpl implements RWikiObjectService
 		this.aliasService = aliasService;
 	}
 	
-	public void transferCopyEntities(String fromContext, String toContext, List ids, boolean cleanup)
+	public Map<String, String> transferCopyEntities(String fromContext, String toContext, List<String> ids, List<String> transferOptions, boolean cleanup)
 	{	
 		try
 		{
@@ -1802,6 +1804,6 @@ public class RWikiObjectServiceImpl implements RWikiObjectService
 		{
 			log.info("Rwiki transferCopyEntities Error" + e);
 		}
-		transferCopyEntities(fromContext, toContext, ids);
+		return transferCopyEntities(fromContext, toContext, ids, transferOptions);
 	}
 }

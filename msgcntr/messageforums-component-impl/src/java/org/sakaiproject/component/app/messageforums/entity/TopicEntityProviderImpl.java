@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2005-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.component.app.messageforums.entity;
 
 import java.text.DateFormat;
@@ -6,11 +21,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
 import org.sakaiproject.api.app.messageforums.Area;
 import org.sakaiproject.api.app.messageforums.Attachment;
 import org.sakaiproject.api.app.messageforums.DiscussionForum;
@@ -32,10 +46,10 @@ import org.sakaiproject.component.app.messageforums.dao.hibernate.PrivateTopicIm
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.entity.api.Reference;
-import org.sakaiproject.entity.cover.EntityManager;
+import org.sakaiproject.entity.api.EntityManager;
+import org.sakaiproject.entitybroker.EntityBrokerManager;
 import org.sakaiproject.entitybroker.EntityReference;
 import org.sakaiproject.entitybroker.EntityView;
-import org.sakaiproject.entitybroker.EntityBrokerManager;
 import org.sakaiproject.entitybroker.entityprovider.annotations.EntityCustomAction;
 import org.sakaiproject.entitybroker.entityprovider.capabilities.ActionsExecutable;
 import org.sakaiproject.entitybroker.entityprovider.capabilities.AutoRegisterEntityProvider;
@@ -52,9 +66,10 @@ import org.sakaiproject.entitybroker.entityprovider.search.Search;
 import org.sakaiproject.service.gradebook.shared.Assignment;
 import org.sakaiproject.service.gradebook.shared.GradebookNotFoundException;
 import org.sakaiproject.service.gradebook.shared.GradebookService;
-import org.sakaiproject.user.cover.UserDirectoryService;
+import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.util.ResourceLoader;
 
+@Slf4j
 public class TopicEntityProviderImpl implements TopicEntityProvider,
 AutoRegisterEntityProvider, PropertyProvideable, RESTful, RequestStorable, RequestAware, ActionsExecutable {
 
@@ -64,8 +79,17 @@ AutoRegisterEntityProvider, PropertyProvideable, RESTful, RequestStorable, Reque
 	private MessageForumsTypeManager typeManager;
 	private PrivateMessageManager privateMessageManager;
 	private static final ResourceLoader rb = new ResourceLoader("org.sakaiproject.api.app.messagecenter.bundle.Messages");
-	private static final Logger LOG = LoggerFactory.getLogger(TopicEntityProviderImpl.class);
 	public static final String PVTMSG_MODE_DRAFT = "Drafts";
+	
+	private UserDirectoryService userDirectoryService;	
+	public void setUserDirectoryService(UserDirectoryService userDirectoryService) {
+		this.userDirectoryService = userDirectoryService;
+	}
+
+	private EntityManager entityManager;
+	public void setEntityManager(EntityManager entityManager) {
+		this.entityManager = entityManager;
+	}
 
 	private EntityBrokerManager entityBrokerManager;
 
@@ -93,7 +117,7 @@ AutoRegisterEntityProvider, PropertyProvideable, RESTful, RequestStorable, Reque
 			topic = forumManager.getTopicById(new Long(id));
 		}
 		catch (Exception e) {
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 		}
 		return (topic != null);
 	}
@@ -230,7 +254,7 @@ AutoRegisterEntityProvider, PropertyProvideable, RESTful, RequestStorable, Reque
             }
 		}		
 		
-		String userId = UserDirectoryService.getCurrentUser().getId();
+		String userId = userDirectoryService.getCurrentUser().getId();
 		if(userId == null || "".equals(userId)){
 			return null;
 		}
@@ -369,9 +393,9 @@ AutoRegisterEntityProvider, PropertyProvideable, RESTful, RequestStorable, Reque
 				        }
 				    }
 				} catch (GradebookNotFoundException gnfe) {
-				    LOG.debug("No gradebook exists for site " + siteId + ". No gb item ids will be included.", gnfe);
+				    log.debug("No gradebook exists for site " + siteId + ". No gb item ids will be included.", gnfe);
 				} catch (Exception e) {
-				    LOG.debug("Exception attempting to retrieve gradebook information for site " + siteId + ". ", e);
+				    log.debug("Exception attempting to retrieve gradebook information for site " + siteId + ". ", e);
 				}
 
 				for (DiscussionForum forum : forums) {
@@ -652,7 +676,7 @@ AutoRegisterEntityProvider, PropertyProvideable, RESTful, RequestStorable, Reque
             da.setId(attachment.getAttachmentId());
             da.setType(attachment.getAttachmentType());
 
-            Reference ref = EntityManager.newReference("/content" + attachment.getAttachmentId());
+            Reference ref = entityManager.newReference("/content" + attachment.getAttachmentId());
             String context = entityBrokerManager.getServletContext();
             String url = ServerConfigurationService.getServerUrl() + "/access/" +  ref.getEntity().getReference();
             da.setUrl(url);

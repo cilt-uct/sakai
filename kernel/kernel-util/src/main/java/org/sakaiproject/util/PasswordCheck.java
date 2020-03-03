@@ -24,10 +24,10 @@ package org.sakaiproject.util;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.math.IntRange;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.Range;
+import org.apache.commons.lang3.StringUtils;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * <p>
@@ -38,9 +38,8 @@ import org.slf4j.LoggerFactory;
  * </p>
  * @deprecated unused as of 12 Dec 2011, planned for removal after 2.9
  */
+@Slf4j
 public class PasswordCheck {
-	
-	
 	//return values
 	public static final int VERY_STRONG = 5;
 	public static final int STRONG = 4;
@@ -48,9 +47,7 @@ public class PasswordCheck {
 	public static final int WEAK = 2;
 	public static final int VERY_WEAK = 1;
 	public static final int NONE = 0;
-	
-	private static Logger log = LoggerFactory.getLogger(Resource.class);
-	
+
 	/**
 	 * Compute the strength of the given password and return it as one of the constant values.
 	 * 
@@ -245,9 +242,9 @@ public class PasswordCheck {
 		int length = passwd.length();
 		
 		//check range
-		IntRange range = new IntRange(min, max);
+		Range<Integer> range = Range.between(min, max);
 		
-		if(range.containsInteger(length))
+		if(range.contains(length))
 		{
 			log.debug("Range ok");
 			return true;
@@ -263,6 +260,7 @@ public class PasswordCheck {
 	 * capitals D, O, numbers 1, 0, and lower case o, and l.
 	 * 
 	 * @return generated password
+	 * @deprecated {@link org.sakaiproject.util.api.PasswordFactory#generatePassword()}
 	 */
 	public static String generatePassword()
 	{
@@ -277,6 +275,7 @@ public class PasswordCheck {
 	 * 
 	 * @param passwordLength the length of password desired
 	 * @return generated password
+	 * @deprecated {@link org.sakaiproject.util.api.PasswordFactory#generatePassword()}
 	 */
 	public static String generatePassword(int passwordLength)
 	{

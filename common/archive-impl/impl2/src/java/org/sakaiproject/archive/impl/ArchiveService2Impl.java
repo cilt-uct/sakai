@@ -18,20 +18,21 @@
 
 package org.sakaiproject.archive.impl;
 
+import java.io.File;
 import java.io.IOException;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
+
 import org.sakaiproject.archive.api.ArchiveService;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.entity.api.EntityManager;
 
+@Slf4j
 public class ArchiveService2Impl implements ArchiveService
 {
-	/** Our logger. */
-	private static Logger M_log = LoggerFactory.getLogger(ArchiveService2Impl.class);
-
 	/*******************************************************************************
 	* Dependencies and their setter methods
 	*******************************************************************************/
@@ -127,11 +128,18 @@ public class ArchiveService2Impl implements ArchiveService
             m_filteredSakaiRoles = filteredRoles;
         }
 		
-		M_log.info("init(): storage path: " + m_storagePath + ", unzip path: " + m_unzipPath + ", merge filter{services="+m_filterSakaiServices+", roles="+m_filterSakaiRoles+"}");
+		log.info("init(): storage path: " + m_storagePath + ", unzip path: " + m_unzipPath + ", merge filter{services="+m_filterSakaiServices+", roles="+m_filterSakaiRoles+"}");
+		if (!new File(m_storagePath).isDirectory()) {
+			log.warn("Failed to find directory {} please create or configure {}.", m_storagePath, "archive.storage.path");
+		}
+		if (!new File(m_unzipPath).isDirectory()) {
+			log.warn("Failed to find directory {} please create or configure {}.", m_unzipPath, "archive.unzip.path");
+		}
+
 	}
 
 	public void destroy() {
-		M_log.info("destroy()");
+		log.info("destroy()");
 	}
 
 	
@@ -148,7 +156,7 @@ public class ArchiveService2Impl implements ArchiveService
 	/**
 	* Process a merge for the file, or if it's a directory, for all contained files (one level deep).
 	* @param fileName The site name (for the archive file) to read from.
-	* @param mergeId The id string to use to make ids in the merge consistent and unique.
+	* @param siteId The site ID into which to merge the contents of the archive.
 	* @param creatorId The creator id
 	* If null or blank, the date/time string of the merge is used.
 	*/
@@ -160,11 +168,18 @@ public class ArchiveService2Impl implements ArchiveService
 	@Override
 	public String mergeFromZip(String zipFilePath, String siteId, String creatorId) {
 		try {
-			String fileName = m_siteZipper.unzipArchive(zipFilePath, m_unzipPath);
+			String folderName = m_siteZipper.unzipArchive(zipFilePath, m_unzipPath);
 			//not a lot we can do with the return value here since it always returns a string. would need a reimplementation/wrapper method to return a better value (boolean or some status)
-			return m_siteMerger.merge(fileName, siteId, creatorId, m_storagePath, m_filterSakaiServices, m_filteredSakaiServices, m_filterSakaiRoles, m_filteredSakaiRoles);
+			if (folderName == null || folderName.isEmpty()) {
+				return "Failed to find folder in zip archive";
+			}
+			try {
+				return m_siteMerger.merge(folderName, siteId, creatorId, m_unzipPath, m_filterSakaiServices, m_filteredSakaiServices, m_filterSakaiRoles, m_filteredSakaiRoles);
+			} finally {
+				FileUtils.deleteDirectory(new File(m_unzipPath,folderName));
+			}
 		} catch (IOException e) {
-			M_log.error("Error merging from zip: " + e.getClass() + ":" + e.getMessage());
+			log.error("Error merging from zip: " + e.getClass() + ":" + e.getMessage());
 			return "Error merging from zip: " + e.getClass() + ":" + e.getMessage();
 		}
 	}

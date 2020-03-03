@@ -21,6 +21,8 @@
 
 package org.sakaiproject.site.impl;
 
+import org.sakaiproject.site.api.SiteService.SelectionType.PublishedFilter;
+
 /**
  * methods for accessing site data in a database.
  */
@@ -322,6 +324,16 @@ public class SiteServiceSqlDefault implements SiteServiceSql
 		return "SAKAI_SITE.PUBLISHED = 1 and ";
 	}
 
+	public String getSitesWhere4Sql(PublishedFilter publishedFilter)
+	{
+		if (PublishedFilter.ALL == publishedFilter)
+		{
+			return "";
+		}
+		String filterValue = PublishedFilter.PUBLISHED_ONLY == publishedFilter ? "1 and " : "0 and ";
+		return "SAKAI_SITE.PUBLISHED = " + filterValue;
+	}
+
 	/**
 	 * returns the sql statement which is part of the where clause to retrieve sites.
 	 */
@@ -394,6 +406,11 @@ public class SiteServiceSqlDefault implements SiteServiceSql
 		return "SAKAI_SITE.SITE_ID in (select SITE_ID from SAKAI_SITE_PROPERTY where NAME = ? and UPPER(VALUE) like UPPER(?)) and ";
 	}
 
+	public String getSitesWhere13PrimeSql()
+	{
+		return "SAKAI_SITE.SITE_ID not in (select SITE_ID from SAKAI_SITE_PROPERTY where NAME = ? and UPPER(VALUE) like UPPER(?)) and ";
+	}
+
 	/**
 	 * returns the sql statement which is part of the where clause to retrieve sites.
 	 */
@@ -408,6 +425,21 @@ public class SiteServiceSqlDefault implements SiteServiceSql
 	public String getSitesWhere15Sql()
 	{
 		return "SAKAI_SITE.MODIFIEDBY = SAKAI_USER_ID_MAP.USER_ID and ";
+	}
+	
+	/**
+	 * returns the sql statement which is part of the where clause to retrieve sites.
+	 */
+	public String getSitesWhere16Sql(int size)
+	{
+		StringBuilder values = new StringBuilder();
+		for(int i=0; i < size; i++){
+			if(i>0){
+				values.append(",");
+			}
+			values.append("?");
+		}
+		return "SAKAI_SITE.SITE_ID not in ("+values.toString()+") and ";
 	}
 
 	/**
@@ -577,5 +609,27 @@ public class SiteServiceSqlDefault implements SiteServiceSql
 	 */
 	public String getUnpublishedSitesOnlySql() {
 		return "SAKAI_SITE.PUBLISHED = '0' and ";
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	@Override
+	public String getUpdateSitesUnpublishSql(String table, int toUpdateCount)
+	{
+		StringBuilder sb = new StringBuilder("update ")
+			.append(table)
+			.append(" set PUBLISHED = 0, MODIFIEDBY = ?, MODIFIEDON = ? where SITE_ID in (");
+
+		String delim = "";
+		for (int i = 0; i < toUpdateCount; i++)
+		{
+			sb.append(delim)
+				.append("?");
+			delim = ", ";
+		}
+
+		sb.append(")");
+		return sb.toString();
 	}
 }

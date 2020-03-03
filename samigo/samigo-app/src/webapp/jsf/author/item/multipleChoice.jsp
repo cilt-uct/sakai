@@ -3,7 +3,7 @@
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
 <%@ taglib uri="http://myfaces.apache.org/tomahawk" prefix="t" %>
 <%@ taglib uri="http://www.sakaiproject.org/samigo" prefix="samigo" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <!DOCTYPE html
      PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -35,7 +35,8 @@
       <head><%= request.getAttribute("html.head") %>
       <title><h:outputText value="#{authorMessages.item_display_author}"/></title>
       <!-- AUTHORING -->
-      <samigo:script path="/js/authoring.js"/>
+      <script type="text/javascript" src="/samigo-app/js/authoring.js"></script>
+
       </head>
 <body onload="<%= request.getAttribute("html.body.onload") %>;resetInsertAnswerSelectMenus();disablePartialCreditField();">
 
@@ -45,7 +46,7 @@
 <!-- HEADING -->
 <%@ include file="/jsf/author/item/itemHeadings.jsp" %>
 <h:form id="itemForm" onsubmit="return editorCheck();">
-
+<p class="act">
   <h:commandButton rendered="#{itemauthor.target=='assessment'}" value="#{commonMessages.action_save}" action="#{itemauthor.currentItem.getOutcome}" styleClass="active">
         <f:actionListener
            type="org.sakaiproject.tool.assessment.ui.listener.author.ItemAddListener" />
@@ -55,7 +56,6 @@
         <f:actionListener
            type="org.sakaiproject.tool.assessment.ui.listener.author.ItemAddListener" />
   </h:commandButton>
-
 
   <h:commandButton rendered="#{itemauthor.target=='assessment'}" value="#{commonMessages.cancel_action}" action="editAssessment" immediate="true">
         <f:actionListener
@@ -68,7 +68,7 @@
         <f:actionListener
            type="org.sakaiproject.tool.assessment.ui.listener.author.ResetItemAttachmentListener" />
  </h:commandButton>
- 
+</p>
   <!-- NOTE:  Had to call this.form.onsubmit(); when toggling between single  -->
   <!-- and multiple choice, or adding additional answer choices.  -->
   <!-- to invoke the onsubmit() function for htmlarea to save the htmlarea contents to bean -->
@@ -95,8 +95,8 @@
         <f:selectItem itemValue="false" itemLabel="#{authorMessages.no}" />
       </t:selectOneRadio>
       <ul class="show-item-score">
-        <li><t:radio for="itemScoreDisplay" index="0" /></li>
-        <li><t:radio for="itemScoreDisplay" index="1" /></li>
+        <li><t:radio renderLogicalId="true" for="itemScoreDisplay" index="0" /></li>
+        <li><t:radio renderLogicalId="true" for="itemScoreDisplay" index="1" /></li>
       </ul>
     </div>
   </div>
@@ -115,6 +115,9 @@
         </div>
     </div>
   </f:subview>
+
+    <!-- Extra Credit -->
+    <%@ include file="/jsf/author/inc/extraCreditSetting.jspf" %>
 
   <h2 class="answer-subsection">
     <h:outputText value="#{authorMessages.answer} " />  
@@ -230,7 +233,7 @@
           <!-- WYSIWYG -->
           <h:panelGrid>
               <samigo:wysiwyg rows="140" value="#{itemauthor.currentItem.itemText}" hasToggle="plain" mode="author">
-                  <f:validateLength minimum="1" maximum="60000"/>
+                  <f:validateLength maximum="60000"/>
               </samigo:wysiwyg>
           </h:panelGrid>
        </div>
@@ -250,15 +253,10 @@
           </div>
 
   <!-- if multiple correct, use checkboxes -->
-  <h:selectManyCheckbox value="#{itemauthor.currentItem.corrAnswers}" id="mccheckboxes"
+  <h:selectManyCheckbox onclick="updateHiddenMultipleChoice();" onkeypress="updateHiddenMultipleChoice();" value="#{itemauthor.currentItem.corrAnswers}" id="mccheckboxes"
 	rendered="#{itemauthor.currentItem.itemType == 2 || itemauthor.currentItem.itemType == 12}">
 	<f:selectItem itemValue="#{answer.label}" itemLabel="#{answer.label}"/>
   </h:selectManyCheckbox>
-
-  <h:commandLink title="#{authorMessages.t_removeC}" id="removelink" onfocus="document.forms[1].onsubmit();" action="#{itemauthor.currentItem.removeChoices}" rendered="#{itemauthor.currentItem.multipleCorrect}">
-    <h:outputText id="text" value="#{commonMessages.remove_action}"/>
-    <f:param name="answerid" value="#{answer.label}"/>
-  </h:commandLink>		 
 
   <!-- if single correct, use radiobuttons -->
   <h:selectOneRadio onclick="uncheckOthers(this);" onkeypress="uncheckOthers(this);" id="mcradiobtn"
@@ -268,9 +266,9 @@
     <f:selectItem itemValue="#{answer.label}" itemLabel="&#160; #{answer.label}" escape="false" />
   </h:selectOneRadio>
 
-  <h:commandLink title="#{authorMessages.t_removeC}" id="removelinkSingle" onfocus="document.forms[1].onsubmit();" action="#{itemauthor.currentItem.removeChoicesSingle}" rendered="#{!itemauthor.currentItem.multipleCorrect}">
-    <h:outputText id="textSingle" value="#{commonMessages.remove_action}"/>
-    <f:param name="answeridSingle" value="#{answer.label}"/>
+  <h:commandLink title="#{authorMessages.t_removeC}" id="removelink" onfocus="document.forms[1].onsubmit();" action="#{itemauthor.currentItem.removeChoices}" >
+    <h:outputText id="text" value="#{commonMessages.remove_action}"/>
+    <f:param name="answerid" value="#{answer.label}"/>
   </h:commandLink>
  </h:panelGroup>
 
@@ -318,11 +316,12 @@
 </h:dataTable>
 
 <h:inputHidden id="selectedRadioBtn" value="#{itemauthor.currentItem.corrAnswer}" />
+<h:inputHidden id="selectedCheckboxesAnswers" value="#{itemauthor.currentItem.corrAnswers}" />
 
   <div class="form-group row">
     <h:outputLabel styleClass="col-md-2" value="#{authorMessages.insert_additional_a}" />
     <div class="col-md-10">
-      <h:selectOneMenu  id="insertAdditionalAnswerSelectMenu"  onchange="this.form.onsubmit(); clickAddChoiceLink();" value="#{itemauthor.currentItem.additionalChoices}" >
+      <h:selectOneMenu id="insertAdditionalAnswerSelectMenu" onchange="clickAddChoiceLink();" value="#{itemauthor.currentItem.additionalChoices}" >
         <f:selectItem itemLabel="#{authorMessages.select_menu}" itemValue="0"/>
         <f:selectItem itemLabel="1" itemValue="1"/>
         <f:selectItem itemLabel="2" itemValue="2"/>
@@ -345,8 +344,8 @@
         <f:selectItem itemValue="false" itemLabel="#{authorMessages.no}" />
       </t:selectOneRadio>
       <ul class="question-randomize">
-        <li><t:radio for="question-randomize" index="0" /></li> 
-        <li><t:radio for="question-randomize" index="1" /></li> 
+        <li><t:radio renderLogicalId="true" for="question-randomize" index="0" /></li> 
+        <li><t:radio renderLogicalId="true" for="question-randomize" index="1" /></li> 
       </ul>
     </div>
   </div>
@@ -360,8 +359,8 @@
         <f:selectItem itemValue="false" itemLabel="#{authorMessages.no}" />
       </t:selectOneRadio>
       <ul class="question-rationale">
-        <li><t:radio for="question-rationale" index="0" /></li> 
-        <li><t:radio for="question-rationale" index="1" /></li> 
+        <li><t:radio renderLogicalId="true" for="question-rationale" index="0" /></li> 
+        <li><t:radio renderLogicalId="true" for="question-rationale" index="1" /></li> 
       </ul>
     </div>
   </div>
@@ -421,6 +420,8 @@
 </h:panelGrid>
 </h:panelGroup>
 
+    <%@ include file="/jsf/author/item/tags.jsp" %>
+
 <p class="act">
   <h:commandButton rendered="#{itemauthor.target=='assessment'}" value="#{commonMessages.action_save}" action="#{itemauthor.currentItem.getOutcome}" styleClass="active">
         <f:actionListener
@@ -451,7 +452,7 @@
 </div>
 
 <f:verbatim> 
-	<script type="text/javascript" defer='defer'>
+	<script defer='defer'>
 	$(document).ready(function(){
 		var itemType = "${itemauthor.currentItem.itemType}";
 		var prefixId='#itemForm\\:';

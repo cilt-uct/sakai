@@ -1,9 +1,56 @@
+/**
+ * Copyright (c) 2014-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.mailarchive;
 
+import static org.sakaiproject.mailarchive.api.MailArchiveService.APPLICATION_ID;
+import static org.sakaiproject.mailarchive.api.MailArchiveService.HEADER_CONTENT_TYPE;
+import static org.sakaiproject.mailarchive.api.MailArchiveService.HEADER_INNER_CONTENT_TYPE;
+import static org.sakaiproject.mailarchive.api.MailArchiveService.HEADER_OUTER_CONTENT_TYPE;
+import static org.sakaiproject.mailarchive.api.MailArchiveService.HEADER_SUBJECT;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Date;
+import java.util.Enumeration;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Properties;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import javax.mail.BodyPart;
+import javax.mail.Message;
+import javax.mail.MessagingException;
+import javax.mail.Multipart;
+import javax.mail.Part;
+import javax.mail.Session;
+import javax.mail.internet.ContentType;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeMessage;
+import javax.mail.internet.MimeUtility;
+import javax.mail.internet.ParseException;
+
 import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.alias.api.AliasService;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.content.api.ContentHostingService;
@@ -19,40 +66,27 @@ import org.sakaiproject.mailarchive.api.MailArchiveChannel;
 import org.sakaiproject.mailarchive.api.MailArchiveService;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.thread_local.api.ThreadLocalManager;
-import org.sakaiproject.time.api.TimeService;
-import org.sakaiproject.tool.api.*;
+import org.sakaiproject.tool.api.SessionManager;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserNotDefinedException;
 import org.sakaiproject.util.Validator;
 import org.sakaiproject.util.Web;
 import org.subethamail.smtp.MessageContext;
-import org.subethamail.smtp.*;
+import org.subethamail.smtp.MessageHandler;
+import org.subethamail.smtp.MessageHandlerFactory;
+import org.subethamail.smtp.RejectException;
 import org.subethamail.smtp.server.SMTPServer;
 
-import javax.mail.*;
-import javax.mail.Session;
-import javax.mail.internet.ContentType;
-import javax.mail.internet.InternetAddress;
-import javax.mail.internet.MimeMessage;
-import javax.mail.internet.MimeUtility;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URLEncoder;
-import java.util.*;
-import java.util.stream.Collectors;
-
-import static org.sakaiproject.mailarchive.api.MailArchiveService.*;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * This contains lots of the code from the original SakaiMailet.
  * It should do rejection at RCPT time rather than having to generate bounce messages itself.
  */
+@Slf4j
 public class SakaiMessageHandlerFactory implements MessageHandlerFactory {
-
-    private Logger log = LoggerFactory.getLogger(SakaiMessageHandlerFactory.class);
-
     /**
      * The user name of the postmaster user - the one who posts incoming mail.
      */
@@ -61,59 +95,18 @@ public class SakaiMessageHandlerFactory implements MessageHandlerFactory {
     private SMTPServer server;
 
     private InternationalizedMessages rb;
-    private ServerConfigurationService serverConfigurationService;
-    private EntityManager entityManager;
-    private AliasService aliasService;
-    private UserDirectoryService userDirectoryService;
-    private SiteService siteService;
-    private TimeService timeService;
-    private ThreadLocalManager threadLocalManager;
-    private ContentHostingService contentHostingService;
-    private MailArchiveService mailArchiveService;
-    private SessionManager sessionManager;
+    @Setter private ServerConfigurationService serverConfigurationService;
+    @Setter private EntityManager entityManager;
+    @Setter private AliasService aliasService;
+    @Setter private UserDirectoryService userDirectoryService;
+    @Setter private SiteService siteService;
+    @Setter private ThreadLocalManager threadLocalManager;
+    @Setter private ContentHostingService contentHostingService;
+    @Setter private MailArchiveService mailArchiveService;
+    @Setter private SessionManager sessionManager;
 
     public void setInternationalizedMessages(InternationalizedMessages rb) {
         this.rb = rb;
-    }
-
-    public void setThreadLocalManager(ThreadLocalManager threadLocalManager) {
-        this.threadLocalManager = threadLocalManager;
-    }
-
-    public void setContentHostingService(ContentHostingService contentHostingService) {
-        this.contentHostingService = contentHostingService;
-    }
-
-    public void setTimeService(TimeService timeService) {
-        this.timeService = timeService;
-    }
-
-    public void setSiteService(SiteService siteService) {
-        this.siteService = siteService;
-    }
-
-    public void setUserDirectoryService(UserDirectoryService userDirectoryService) {
-        this.userDirectoryService = userDirectoryService;
-    }
-
-    public void setAliasService(AliasService aliasService) {
-        this.aliasService = aliasService;
-    }
-
-    public void setEntityManager(EntityManager entityManager) {
-        this.entityManager = entityManager;
-    }
-
-    public void setServerConfigurationService(ServerConfigurationService serverConfigurationService) {
-        this.serverConfigurationService = serverConfigurationService;
-    }
-
-    public void setMailArchiveService(MailArchiveService mailArchiveService) {
-        this.mailArchiveService = mailArchiveService;
-    }
-
-    public void setSessionManager(SessionManager sessionManager) {
-        this.sessionManager = sessionManager;
     }
 
     // used when parsing email header parts
@@ -126,7 +119,6 @@ public class SakaiMessageHandlerFactory implements MessageHandlerFactory {
         Objects.requireNonNull(aliasService, "AliasService must be set");
         Objects.requireNonNull(userDirectoryService, "UserDirectoryService must be set");
         Objects.requireNonNull(siteService, "SiteService must be set");
-        Objects.requireNonNull(timeService, "TimeService must be set");
         Objects.requireNonNull(threadLocalManager, "ThreadLocalManager must be set");
         Objects.requireNonNull(contentHostingService, "ContentHostingService must be set");
         Objects.requireNonNull(mailArchiveService, "MailArchiveService must be set");
@@ -167,14 +159,20 @@ public class SakaiMessageHandlerFactory implements MessageHandlerFactory {
 
             @Override
             public void from(String from) throws RejectException {
-                this.from = from;
+                try {
+                    SplitEmailAddress address = SplitEmailAddress.parse(from);
+                    this.from = address.getLocal() + "@" + address.getDomain();
+                } catch (IllegalArgumentException iae) {
+                    log.debug("Not allowing return path of: {}", from);
+                    throw new RejectException("Not allowing return path of: "+ from);
+                }
             }
 
             @Override
             public void recipient(String to) throws RejectException {
                 SplitEmailAddress address = SplitEmailAddress.parse(to);
 
-                if (serverConfigurationService.getServerName().equals(address.getDomain())) {
+                if (serverConfigurationService.getServerName().equalsIgnoreCase(address.getDomain())) {
                     // || serverConfigurationService.getServerNameAliases().contains(address.getDomain())) {
                     Recipient recipient = new Recipient();
                     recipient.address = address;
@@ -245,7 +243,7 @@ public class SakaiMessageHandlerFactory implements MessageHandlerFactory {
                     }
 
                     if (log.isDebugEnabled()) {
-                        log.debug(id + " : mail: from:" + from + " sent: " + timeService.newTime(sent.getTime()).toStringLocalFull()
+                        log.debug(id + " : mail: from:" + from + " sent: " + sent.toInstant()
                                 + " subject: " + subject);
                     }
 
@@ -278,11 +276,9 @@ public class SakaiMessageHandlerFactory implements MessageHandlerFactory {
                                 }
                             } catch (MessagingException e) {
                                 // NOTE: if this happens it just means we don't get the extra header, not the end of the world
-                                //e.printStackTrace();
                                 log.warn("MessagingException: service(): msg.getContent() threw: " + e, e);
                             } catch (IOException e) {
                                 // NOTE: if this happens it just means we don't get the extra header, not the end of the world
-                                //e.printStackTrace();
                                 log.warn("IOException: service(): msg.getContent() threw: " + e, e);
                             }
 
@@ -311,7 +307,7 @@ public class SakaiMessageHandlerFactory implements MessageHandlerFactory {
 
                             try {
                                 // post the message to the group's channel
-                                channel.addMailArchiveMessage(subject, from, timeService.newTime(sent.getTime()),
+                                channel.addMailArchiveMessage(subject, from, sent.toInstant(),
                                     archiveHeaders, attachments, body);
                             } catch (PermissionException pe) {
                                 // INDICATES that the current user does not have permission to add or get the mail archive message from the current channel
@@ -683,7 +679,12 @@ public class SakaiMessageHandlerFactory implements MessageHandlerFactory {
                 name = decodedName;
             }
 
-            ContentType cType = new ContentType(type);
+            ContentType cType = null;
+            try {
+            	cType = new ContentType(type);
+            } catch (ParseException e) {
+            	cType = new ContentType("application/octet-stream");
+            }
 
             if (name == null) {
                 name = "unknown";
@@ -744,7 +745,7 @@ public class SakaiMessageHandlerFactory implements MessageHandlerFactory {
      */
     protected Optional<ContentResource> createAttachment(String siteId, List<Reference> attachments, String type, String fileName, InputStream in, String id) {
         // we just want the file name part - strip off any drive and path stuff
-        String name = FilenameUtils.getName(fileName);  //Validator.getFileName(fileName);
+        String name = FilenameUtils.getName(fileName);  //FilenameUtils.getName(fileName);
         String resourceName = Validator.escapeResourceName(fileName);
 
         // make a set of properties to add for the new resource

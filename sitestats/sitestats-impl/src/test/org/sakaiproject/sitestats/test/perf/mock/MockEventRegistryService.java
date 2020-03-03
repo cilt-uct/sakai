@@ -1,81 +1,29 @@
+/**
+ * Copyright (c) 2006-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.sitestats.test.perf.mock;
+
+import org.sakaiproject.sitestats.api.event.EventRegistryService;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
-import org.sakaiproject.sitestats.api.event.EventRegistryService;
-import org.sakaiproject.sitestats.api.event.ToolInfo;
-import org.sakaiproject.sitestats.api.parser.EventFactory;
-import org.sakaiproject.sitestats.api.parser.ToolFactory;
-
-public class MockEventRegistryService implements EventRegistryService {
-
-	@Override
-	public Set<String> getEventIds() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Set<String> getAnonymousEventIds() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public List<ToolInfo> getEventRegistry() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public List<ToolInfo> getEventRegistry(String siteId,
-			boolean onlyAvailableInSite) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public String getEventName(String eventId) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public String getToolName(String toolId) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public String getToolIcon(String toolId) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Map<String, ToolInfo> getEventIdToolMap() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public ToolFactory getToolFactory() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public EventFactory getEventFactory() {
-		// TODO Auto-generated method stub
-		return null;
-	}
+public abstract class MockEventRegistryService implements EventRegistryService {
 
 	@Override
 	public List<String> getServerEventIds() {
-		// TODO Auto-generated method stub
 		return Arrays.asList(new String[]{"site.add", "site.del", "user.add", "user.del", "user.login"});
 	}
 

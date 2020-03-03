@@ -32,8 +32,8 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
 import org.sakaiproject.event.api.UsageSession;
 import org.sakaiproject.event.cover.UsageSessionService;
 import org.sakaiproject.presence.cover.PresenceService;
@@ -49,18 +49,17 @@ import org.sakaiproject.user.cover.UserDirectoryService;
 import org.sakaiproject.util.PresenceObservingCourier;
 import org.sakaiproject.util.ResourceLoader;
 import org.sakaiproject.util.Web;
+import org.sakaiproject.util.RequestFilter;
 
 /**
  * <p>
  * Presence is an tool which presents an auto-updating user presence list.
  * </p>
  */
+@Slf4j
 public class PresenceTool extends HttpServlet
 {
 	private static final long serialVersionUID = 1L;
-
-	/** Our log (commons). */
-	private static Logger M_log = LoggerFactory.getLogger(PresenceTool.class);
 
 	/** Request parameter to generate a fragment only. */
 	protected static final String OUTPUT_FRAGMENT = "output_fragment";
@@ -85,7 +84,7 @@ public class PresenceTool extends HttpServlet
 	 */
 	public void destroy()
 	{
-		M_log.info("destroy()");
+		log.info("destroy()");
 
 		super.destroy();
 	}
@@ -209,7 +208,7 @@ public class PresenceTool extends HttpServlet
 	{
 		super.init(config);
 
-		M_log.info("init()");
+		log.info("init()");
 	}
 
 	/**
@@ -226,13 +225,13 @@ public class PresenceTool extends HttpServlet
 		int updateTime = PresenceService.getTimeout() / 2;
 
 		String userId = SessionManager.getCurrentSessionUserId();
-		StringBuilder url = new StringBuilder(Web.serverUrl(req));
+		StringBuilder url = new StringBuilder(RequestFilter.serverUrl(req));
 		url.append("/courier/");
 		url.append(placementId);
 		url.append("?userId=");
 		url.append(userId);
 
-		out.println("<script type=\"text/javascript\" language=\"JavaScript\">");
+		out.println("<script>");
 		out.println("updateTime = " + updateTime + "000;");
 		out.println("updateUrl = \"" + url.toString() + "\";");
 		out.println("scheduleUpdate();");
@@ -272,11 +271,11 @@ public class PresenceTool extends HttpServlet
 		{
 		}
 
-		out.println("<ul class=\"presenceList\">");
+		out.println("<div class=\"presenceList\">");
 		if (users == null)
 		{
 			out.println("<!-- Presence empty -->");
-			out.println("</ul>");
+			out.println("</div>");
 			return;
 		}
 
@@ -293,10 +292,10 @@ public class PresenceTool extends HttpServlet
 					displayName += " (" + asName + ")";
 				}
 
-				out.print("<li class=\"inChat\">");
+				out.print("<div class=\"listUser inChat\">");
 				out.print("<span title=\"" + msg + "\">");
 				out.print(Web.escapeHtml(displayName));
-				out.println("</span></li>");				
+				out.println("</span></div>");
 			}
 		}
 
@@ -318,13 +317,13 @@ public class PresenceTool extends HttpServlet
 				displayName += " (" + asName + ")";
 			}
 
-			out.print("<li>");
+			out.print("<div class=\"listUser\">");
 			out.print("<span title=\"" + msg + "\">");
 			out.print(Web.escapeHtml(displayName));
-			out.println("</span></li>");
+			out.println("</span></div>");
 		}
 
-		out.println("</ul>");
+		out.println("</div>");
 	}
 
 	/**

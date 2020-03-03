@@ -5,36 +5,38 @@
 		<input name="sakai_action" id="sakai_action" value="doRestore" type="hidden" />
 		<input name="flow" id="flow" value="save" type="hidden" />
 		#set($rootFolderId="")
-			<h3>
+		<div class="page-header">
+			<h1>
 				$tlang.getString("restore.title")
 				$rootFolderId
                 #*
                 #foreach ($item in $collectionPath)
 					#set($rootFolderId=$item.id)
-					$validator.escapeHtml("$item.name")
+					$formattedText.escapeHtml("$item.name")
 				#end
                 *#
-			</h3>
+			</h1>
+		</div>
 			## set the base collection ID
 			#set($currentFolderId=$rootFolderId)
 		
 		## display restore success message
 		#if ($!restoredResources)
-			<br /><div id="messageSuccessHolder" class="messageSuccess" style="display:block">$tlang.getFormattedMessage("restore.success", $restoredResources)</div>
+			<br /><div id="messageSuccessHolder" class="sak-banner-success">$tlang.getFormattedMessage("restore.success", $restoredResources)</div>
 		#end
 		## display remove success message
 		#if ($!removedResources)
-			<br /><div id="messageSuccessHolder" class="messageSuccess" style="display:block">$tlang.getFormattedMessage("remove.success", $removedResources)</div>
+			<br /><div id="messageSuccessHolder" class="sak-banner-success">$tlang.getFormattedMessage("remove.success", $removedResources)</div>
 		#end
 		#if ($alertMessage)
-			<br /><div class="messageValidation">$validator.escapeHtml($alertMessage)</div><div class="clear"></div>
+			<br /><div class="messageValidation">$formattedText.escapeHtml($alertMessage)</div><div class="clear"></div>
 		#end
 			<div class="navPanel">
-				<div class="navIntraToolLink viewNav">
+				<div class="navIntraToolLink viewNav act">
 						<span>
-								<input id="restore-button" type="button" value="$tlang.getString("restore.restore")"
+								<input id="restore-button" type="button" class="active" value="$tlang.getString("restore.restore")"
 									onclick="this.disabled = true; submitThis('restoreForm','restore')"
-									disabled="disabled" alt="$tlang.getString("restore.restore")" />
+									disabled="disabled" alt="$tlang.getString("restore.restore")" class="active"/>
 								<input id="remove-button" type="button" value="$tlang.getString("restore.remove")"
 									onclick="this.disabled = true; submitThis('restoreForm','remove')"
 									disabled="disabled" alt="$tlang.getString("restore.remove")" />
@@ -81,8 +83,9 @@
 						<td class="attach">
 						</td>
 						<td style="text-indent:$width">
-							<h4><img src = "#imageLink("sakai/dir_openroot.gif")" border="0" alt="$tlang.getString('gen.folder1')" />
-							$validator.escapeHtml($folderName)</h4>
+							<h4><span class="fa fa-folder" aria-hidden="true"></span>
+							<span class="sr-only">$tlang.getString('gen.folder1')</span>
+							$formattedText.escapeHtml($folderName)</h4>
 						</td>
 						<td colspan="2"></td>
 					</tr>
@@ -94,20 +97,21 @@
 					<tr>
 						<td headers="checkboxes">
 						#set($collectionId=$contentService.getContainingCollectionId($member.id))
-							<input type="checkbox" name="selectedMembers" id="root.members$num" value="$member.id" onclick="adjustCount(this)"/><label for="root.members$num" class="skip">$tlang.getString('att.select') $validator.escapeHtml($member.name)</label>
+							<input type="checkbox" name="selectedMembers" id="root.members$num" value="$member.id" onclick="adjustCount(this)"/><label for="root.members$num" class="skip">$tlang.getString('att.select') $formattedText.escapeHtml($member.name)</label>
 						</td>
 						<td headers="title" style="text-indent: $width" class="specialLink">
 							<h5>
 								#if($member.isFolder())
-									<img src="#imageLink($contentTypeImageService.getContentTypeImage("folder"))" border="0" alt="$tlang.getString('gen.folder1')">
+									<span class="$contentTypeImageService.getContentTypeImageClass("folder")" aria-hidden="true"></span>
+									<span class="sr-only">$tlang.getString('gen.folder1')</span>
 								#else
-									<img src="#imageLink($contentTypeImageService.getContentTypeImage("$member.type"))" border="0" alt="">
+									<span class="$contentTypeImageService.getContentTypeImageClass("$member.type")" aria-hidden="true"></span>
 								#end
-								$validator.escapeHtml($member.name)
+								$formattedText.escapeHtml($member.name)
 							</h5>	
 						</td>
 						<td headers="creator">
-							$validator.escapeHtml($member.modifiedBy)
+							$formattedText.escapeHtml($member.modifiedBy)
 						</td>
 						<td headers="modified">
 							$member.ModifiedTime
@@ -119,7 +123,7 @@
 			</tbody>
 		</table>
 		#else
-			<div class="messageInformation">$tlang.get("restore.empty")</div>
+			<div class="sak-banner-info">$tlang.get("restore.empty")</div>
 		#end
 		
 		<input type="hidden" id="selectAll-count" value="0" />

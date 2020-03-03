@@ -45,7 +45,8 @@ public interface SitePage extends Edit, Serializable
 
 	/** flag custom page title (excluded from localization) */
 	public static final String PAGE_CUSTOM_TITLE_PROP = "sitePage.customTitle";
-	
+
+	/** String that contains a list of tools IDs on the home page that have custom titles. */
 	public static final String PAGE_HOME_TOOLS_CUSTOM_TITLE_PROP = "sitePage.homeToolsCustomTitle";
    
 	/** boolean page property for site home page **/
@@ -83,6 +84,8 @@ public interface SitePage extends Edit, Serializable
 	 *         site on this page that are of this tool id (may be empty).
 	 */
 	Collection<ToolConfiguration> getTools(String[] toolIds);
+
+	public void setTools(List tools);
 
 	/** @return the skin to use for this page. */
 	public String getSkin();
@@ -230,4 +233,10 @@ public interface SitePage extends Edit, Serializable
 	public int getPosition();
 
 	public void setupPageCategory(String toolId);
+	
+	/**
+	 * Is this an exception to the tool titles (Based on a default value)
+	 */
+	public boolean isTitleToolException(String toolId);
+	
 }

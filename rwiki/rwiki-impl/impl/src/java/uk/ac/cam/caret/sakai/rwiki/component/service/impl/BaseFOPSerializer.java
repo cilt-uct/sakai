@@ -34,23 +34,20 @@ import javax.xml.transform.TransformerException;
 import javax.xml.transform.URIResolver;
 import javax.xml.transform.stream.StreamSource;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.avalon.framework.configuration.Configuration;
 import org.apache.avalon.framework.configuration.DefaultConfigurationBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.apache.fop.apps.FOPException;
 import org.apache.fop.apps.FOUserAgent;
 import org.apache.fop.apps.Fop;
 import org.apache.fop.apps.FopFactory;
 import org.apache.fop.apps.MimeConstants;
+import org.apache.fop.fonts.substitute.FontQualifier;
+import org.apache.fop.fonts.substitute.FontSubstitution;
+import org.apache.fop.fonts.substitute.FontSubstitutions;
 import org.apache.xml.serializer.DOMSerializer;
 import org.apache.xml.serializer.ToXMLSAXHandler;
 import org.apache.xml.serializer.ToSAXHandler;
-import org.sakaiproject.component.cover.ServerConfigurationService;
-import org.sakaiproject.content.api.ContentResource;
-import org.sakaiproject.content.cover.ContentHostingService;
-import org.sakaiproject.entity.api.Reference;
-import org.sakaiproject.entity.cover.EntityManager;
 import org.w3c.dom.Node;
 import org.xml.sax.Attributes;
 import org.xml.sax.ContentHandler;
@@ -58,10 +55,15 @@ import org.xml.sax.Locator;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
+import org.sakaiproject.component.cover.ServerConfigurationService;
+import org.sakaiproject.content.api.ContentResource;
+import org.sakaiproject.content.cover.ContentHostingService;
+import org.sakaiproject.entity.api.Reference;
+import org.sakaiproject.entity.cover.EntityManager;
+
+@Slf4j
 public class BaseFOPSerializer extends ToSAXHandler implements ContentHandler
 {
-
-	private static final Logger logger = LoggerFactory.getLogger(BaseFOPSerializer.class);
 
 	private static final String configfile = "/uk/ac/cam/caret/sakai/rwiki/component/service/impl/fop.cfg.xml";
 
@@ -128,6 +130,20 @@ public class BaseFOPSerializer extends ToSAXHandler implements ContentHandler
 	}
 
 	/**
+	 * If a font is set in global properties, then replace the default font.
+	 */
+	private FontSubstitutions getFontSubstitutions()
+	{
+		FontQualifier fromQualifier = new FontQualifier();
+		fromQualifier.setFontFamily("DEFAULT_FONT");
+		FontQualifier toQualifier = new FontQualifier();
+		toQualifier.setFontFamily(ServerConfigurationService.getString("pdf.default.font", "Helvetica"));
+		FontSubstitutions result = new FontSubstitutions();
+		result.add(new FontSubstitution(fromQualifier, toQualifier));
+		return result;
+	}
+	
+	/**
 	 * {@inheritDoc}
 	 */
 	public ContentHandler asContentHandler() throws IOException
@@ -143,6 +159,8 @@ public class BaseFOPSerializer extends ToSAXHandler implements ContentHandler
 				Configuration cfg = cfgBuild.build(stream);
 				final FopFactory ff = FopFactory.newInstance();
 				ff.setUserConfig(cfg);
+				ff.getFontManager().setFontBaseURL("classpath:///fonts");
+				ff.getFontManager().setFontSubstitutions(getFontSubstitutions());
 				FOUserAgent userAgent = ff.newFOUserAgent();
 
 				userAgent.setURIResolver(new URIResolver()
@@ -154,7 +172,7 @@ public class BaseFOPSerializer extends ToSAXHandler implements ContentHandler
 						Source source = null;
 						try
 						{
-							logger.info("Resolving " + href + " from " + base);
+							log.info("Resolving " + href + " from " + base);
 							HttpServletRequest request = XSLTEntityHandler
 									.getCurrentRequest();
 							if (request != null && href.startsWith("/access"))
@@ -212,7 +230,7 @@ public class BaseFOPSerializer extends ToSAXHandler implements ContentHandler
 			}
 			catch (Exception e)
 			{
-				logger.error("Failed to create Handler ",e);
+				log.error("Failed to create Handler ",e);
 				throw new IOException("Failed to create " + mimeType
 						+ " Serializer: " + e.getMessage());
 			}
@@ -231,7 +249,7 @@ public class BaseFOPSerializer extends ToSAXHandler implements ContentHandler
 		}
 		catch (FOPException e)
 		{
-			logger.error("Failed to get FOP Handler ",e);
+			log.error("Failed to get FOP Handler ",e);
 			throw new RuntimeException("Failed to get FOP Handler ", e);
 		}
 
@@ -350,7 +368,7 @@ public class BaseFOPSerializer extends ToSAXHandler implements ContentHandler
 		}
 		catch (SAXException e)
 		{
-			logger.error(e.getMessage(), e);
+			log.error(e.getMessage(), e);
 		}
 		contentHandler.setDocumentLocator(locator);
 		
@@ -457,7 +475,7 @@ public class BaseFOPSerializer extends ToSAXHandler implements ContentHandler
 		try {
 			initContentHandler();
 		} catch (SAXException e) {
-			logger.error(e.getMessage(), e);
+			log.error(e.getMessage(), e);
 		}
 		sax.serialize(arg0);
 	}

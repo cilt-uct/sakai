@@ -5,13 +5,17 @@
     <parent>
         <artifactId>hierarchy</artifactId>
         <groupId>org.sakaiproject</groupId>
-        <version>12-SNAPSHOT</version>
+        <version>21-SNAPSHOT</version>
     </parent>
 
     <name>Sakai Hierarchy Implementation</name>
     <groupId>org.sakaiproject.hierarchy</groupId>
     <artifactId>hierarchy-impl</artifactId>
-    <packaging>jar</packaging>
+    <packaging>sakai-component</packaging>
+    <properties>
+        <deploy.target>components</deploy.target>
+    </properties>
+
 
     <profiles>
         <profile>
@@ -108,15 +112,13 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>dom4j</groupId>
+            <groupId>org.dom4j</groupId>
             <artifactId>dom4j</artifactId>
-            <version>1.6.1</version>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>jta</groupId>
+            <groupId>javax.transaction</groupId>
             <artifactId>jta</artifactId>
-            <version>h2.1.8</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -138,14 +140,13 @@
         <!-- testing dependencies -->
         <dependency>
             <groupId>org.springframework</groupId>
-            <artifactId>spring-mock</artifactId>
-            <version>2.0.6</version>
+            <artifactId>spring-test</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>easymock</groupId>
+            <groupId>org.easymock</groupId>
             <artifactId>easymock</artifactId>
-            <version>1.2_Java1.3</version>
+            <version>3.4</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -153,7 +154,6 @@
             <artifactId>commons-lang</artifactId>
             <scope>test</scope>
         </dependency>
-
     </dependencies>
 
     <build>
@@ -169,6 +169,7 @@
                 <directory>${basedir}/src/java</directory>
                 <includes>
                     <include>**/*.xml</include>
+                    <include>**/*.xslt</include>
                 </includes>
                 <filtering>false</filtering>
             </resource>
@@ -187,12 +188,11 @@
                 -->
             </plugin>
         </plugins>
-        <testResources>
+       <testResources>
             <testResource>
-                <directory>${basedir}/../pack/src/webapp/WEB-INF</directory>
+                <directory>${basedir}/src/webapp/WEB-INF</directory>
                 <includes>
                     <include>spring-hibernate.xml</include>
-                    <include>logic-support.xml</include>
                 </includes>
             </testResource>
             <testResource>

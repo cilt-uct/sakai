@@ -22,13 +22,15 @@
 package org.sakaiproject.util;
 
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.net.URLEncoder;
 import java.util.Enumeration;
 
 import javax.servlet.http.HttpServletRequest;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+
 import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.exception.IdInvalidException;
 
@@ -39,11 +41,9 @@ import org.sakaiproject.exception.IdInvalidException;
  * @deprecated use apache commons utils or {@link org.sakaiproject.util.api.FormattedText}, this will be removed after 2.9 - Dec 2011
  */
 @Deprecated 
+@Slf4j
 public class Validator
 {
-	/** Our logger. */
-	private static Logger M_log = LoggerFactory.getLogger(Validator.class);
-
 	/** These characters are not allowed in a resource id */
 	public static final String INVALID_CHARS_IN_RESOURCE_ID = "^/\\{}[]()%*?#&=\n\r\t\b\f";
 
@@ -98,13 +98,15 @@ public class Validator
 	/** Valid special email local id characters (- those that are invalid resource ids) */
 	protected static final String VALID_EMAIL = "abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ!#$&'*+-=?^_`{|}~.";
 
+	protected static final String INVALID_CHARS_IN_FILENAME = "[\\/:\"*?<>|]+";
+
 	/**
 	 * Escape a plaintext string so that it can be output as part of an HTML document. Amperstand, greater-than, less-than, newlines, etc, will be escaped so that they display (instead of being interpreted as formatting).
 	 * 
 	 * @param value
 	 *        The string to escape.
 	 * @return value fully escaped for HTML.
-     * @deprecated this is a passthrough for {@link FormattedText#escapeHtml(String, boolean)} so use that instead
+     * @deprecated this is a passthrough for {@link org.sakaiproject.util.api.FormattedText#escapeHtml(String, boolean)} so use that instead
 	 */
 	public static String escapeHtml(String value)
 	{
@@ -113,7 +115,7 @@ public class Validator
 
 	/**
 	 * Escape plaintext for display inside a plain textarea.
-     * @deprecated this is a passthrough for {@link FormattedText#escapeHtml(String, boolean)} so use that instead
+     * @deprecated this is a passthrough for {@link org.sakaiproject.util.api.FormattedText#escapeHtml(String, boolean)} so use that instead
 	 */
 	public static String escapeHtmlTextarea(String value)
 	{
@@ -122,7 +124,7 @@ public class Validator
 
 	/**
 	 * Escape HTML-formatted text in preparation to include it in an HTML document.
-     * @deprecated this is a passthrough for {@link FormattedText#escapeHtmlFormattedText(String)} so use that instead
+     * @deprecated this is a passthrough for {@link org.sakaiproject.util.api.FormattedText#escapeHtmlFormattedText(String)} so use that instead
 	 */
 	public static String escapeHtmlFormattedText(String value)
 	{
@@ -135,7 +137,7 @@ public class Validator
 	 * @param value
 	 *        The formatted text to escape
 	 * @return The string to use as the value of the formatted textarea widget
-     * @deprecated this is a passthrough for {@link FormattedText#escapeHtmlFormattedTextarea(String)} so use that instead
+     * @deprecated this is a passthrough for {@link org.sakaiproject.util.api.FormattedText#escapeHtmlFormattedTextarea(String)} so use that instead
 	 */
 	public static String escapeHtmlFormattedTextarea(String value)
 	{
@@ -148,11 +150,11 @@ public class Validator
      * @param value
      *        The string to escape.
      * @return value fully escaped using javascript / html identifier rules.
-     * @deprecated use commons-lang StringEscapeUtils
+     * @deprecated use commons-text {@link org.apache.commons.text.StringEscapeUtils}
      */
     public static String escapeJavascript(String value)
     {
-        if (value == null || "".equals(value)) return "";
+        if (StringUtils.isEmpty(value)) return StringUtils.EMPTY;
         try
         {
             StringBuilder buf = new StringBuilder();
@@ -182,7 +184,7 @@ public class Validator
         }
         catch (Exception e)
         {
-            M_log.warn("Validator.escapeJavascript: ", e);
+            log.warn("Validator.escapeJavascript: ", e);
             return "";
         }
 
@@ -194,13 +196,13 @@ public class Validator
 	 * One reason for this existing is that the standard URLEncoder in Java will encode slashes ('/') but this method doesn't.
 	 * Also watch out as it trims trailing spaces, and other character get lost here too.
 	 * 
-	 * Note: java.net.URLEncode.encode() provides a more standard option
-	 *       FormattedText.decodeNumericCharacterReferences() undoes this op
+	 * Note: {@link java.net.URLEncode#encode(String, String)} provides a more standard option
+	 *       {@link FormattedText#decodeNumericCharacterReferences(String)} undoes this op
 	 * 
 	 * @param id
 	 *        The string to escape.
 	 * @return id fully escaped using URL rules.
-	 * @deprecated use java.net.URLEncode.encode()
+	 * @deprecated use {@link java.net.URLEncoder#encode(String, String)}
 	 */
 	public static String escapeUrl(String id)
 	{
@@ -209,7 +211,7 @@ public class Validator
 		try
 		{
 			// convert the string to bytes in UTF-8
-			byte[] bytes = id.getBytes("UTF-8");
+			byte[] bytes = id.getBytes(StandardCharsets.UTF_8.name());
 
 			StringBuilder buf = new StringBuilder();
 			for (int i = 0; i < bytes.length; i++)
@@ -241,7 +243,7 @@ public class Validator
 		}
 		catch (UnsupportedEncodingException e)
 		{
-			M_log.warn("Validator.escapeUrl: ", e);
+			log.warn("Validator.escapeUrl: ", e);
 			return "";
 		}
 
@@ -249,7 +251,7 @@ public class Validator
     
     /**
      * Is this a valid local part of an email id?
-     * @deprecated use commons-validator EmailValidator
+     * @deprecated use commons-validator {@link org.apache.commons.validator.routines.EmailValidator}
      */
     public static boolean checkEmailLocal(String id)
     {
@@ -344,7 +346,7 @@ public class Validator
 		}
 		catch (Exception e)
 		{
-			M_log.warn("Validator.escapeResourceName: ", e);
+			log.warn("Validator.escapeResourceName: ", e);
 			return "";
 		}
 
@@ -381,7 +383,7 @@ public class Validator
 		}
 		catch (Exception e)
 		{
-			M_log.warn("Validator.escapeQuestionMark: ", e);
+			log.warn("Validator.escapeQuestionMark: ", e);
 			return "";
 		}
 
@@ -418,7 +420,7 @@ public class Validator
 		}
 		catch (Exception e)
 		{
-			M_log.warn("Validator.escapeZipEntry: ", e);
+			log.warn("Validator.escapeZipEntry: ", e);
 			return "";
 		}
 
@@ -532,7 +534,7 @@ public class Validator
 	 * @param fullName
 	 *        The full file name from a local os file system (mac, unix, windoze)
 	 * @return Just the name (and extension) of the file, without the drive or path.
-	 * @deprecated use commons-io FilenameUtils.getName() instead
+	 * @deprecated use commons-io: {@link org.apache.commons.io.FilenameUtils#getName(String)} instead
 	 */
 	public static String getFileName(String fullName)
 	{
@@ -920,9 +922,35 @@ public class Validator
 			}
 		}
 		} catch ( UnsupportedEncodingException ex) {
-			M_log.error("No UTF-8 Encoding on this JVM, !!!!");
+			log.error("No UTF-8 Encoding on this JVM, !!!!");
 		}
 		if ( sb.length() < 1 ) return null;
 		return sb.substring(0, sb.length()-1);
+	}
+
+	/**
+	 * Return a safe filename by replacing all whitespace and invalid characters
+	 *
+	 * @param filename
+	 *        The string to clean
+	 * @return safe filename string
+	 */
+	public static String cleanFilename(String filename) {
+		// replace all whitespace
+		String cleanFilename = filename.replaceAll("\\s", "_");
+
+		// replace all invalid characters
+		final int len = cleanFilename.length();
+		StringBuilder buf = new StringBuilder();
+		for (int i = 0; i < len; i++) {
+			char c = cleanFilename.charAt(i);
+			if (INVALID_CHARS_IN_FILENAME.indexOf(c) != -1) {
+				buf.append("_");
+			} else {
+				buf.append(c);
+			}
+		}
+
+		return buf.toString();
 	}
 }

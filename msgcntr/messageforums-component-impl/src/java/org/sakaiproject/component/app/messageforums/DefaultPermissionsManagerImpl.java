@@ -24,30 +24,33 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
 import org.sakaiproject.api.app.messageforums.DefaultPermissionsManager;
 import org.sakaiproject.authz.api.AuthzGroup;
 import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.authz.api.FunctionManager;
-import org.sakaiproject.tool.cover.ToolManager;
+import org.sakaiproject.tool.api.ToolManager;
 
 /**
  * @author <a href="mailto:rshastri@iupui.edu">Rashmi Shastri</a>
  *
  */
+@Slf4j
 public class DefaultPermissionsManagerImpl 
     implements DefaultPermissionsManager 
 {
-  private static final Logger LOG = LoggerFactory.getLogger(DefaultPermissionsManagerImpl.class);
   //Dependency injected
   private FunctionManager functionManager;
   private AuthzGroupService authzGroupService;
+  private ToolManager toolManager;
 
   
-  public void init()
+  
+
+public void init()
   {
-     LOG.info("init()");
+     log.info("init()");
      
      
      Collection registered = functionManager.getRegisteredFunctions(DefaultPermissionsManager.MESSAGE_FUNCTION_PREFIX);
@@ -74,6 +77,9 @@ public class DefaultPermissionsManagerImpl
      }
      if (!registered.contains(DefaultPermissionsManager.MESSAGE_FUNCTION_VIEW_HIDDEN_GROUPS)) {
          functionManager.registerFunction(DefaultPermissionsManager.MESSAGE_FUNCTION_VIEW_HIDDEN_GROUPS);
+     }
+     if (!registered.contains(DefaultPermissionsManager.MESSAGE_FUNCTION_ALLOW_TO_FIELD_MYGROUPROLES)) {
+    	 functionManager.registerFunction(DefaultPermissionsManager.MESSAGE_FUNCTION_ALLOW_TO_FIELD_MYGROUPROLES);
      }
      
 /*    functionManager.registerFunction(DefaultPermissionsManager.FUNCTION_NEW_FORUM);
@@ -104,6 +110,10 @@ public class DefaultPermissionsManagerImpl
   public void setAuthzGroupService(AuthzGroupService authzGroupService)
   {
     this.authzGroupService = authzGroupService;
+  }
+  
+  public void setToolManager(ToolManager toolManager) {
+	this.toolManager = toolManager;
   }
   /* (non-Javadoc)
    * @see org.sakaiproject.api.app.messageforums.DefaultPermissionsManager#isNewForum(java.lang.String)
@@ -225,7 +235,7 @@ public class DefaultPermissionsManagerImpl
     }
     catch (Exception e)
     {
-     LOG.info("No site helper template found");
+     log.info("No site helper template found");
     }    
     if(authzGroup!=null)
     {
@@ -239,7 +249,7 @@ public class DefaultPermissionsManagerImpl
    */
   private String getContextSiteId()
   {
-    LOG.debug("getContextSiteId()");
-    return ("/site/" + ToolManager.getCurrentPlacement().getContext());
+    log.debug("getContextSiteId()");
+    return ("/site/" + toolManager.getCurrentPlacement().getContext());
   }
 }

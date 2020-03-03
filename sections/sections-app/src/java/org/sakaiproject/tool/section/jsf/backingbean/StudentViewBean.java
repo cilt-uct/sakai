@@ -23,22 +23,18 @@ package org.sakaiproject.tool.section.jsf.backingbean;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import javax.faces.context.FacesContext;
-import javax.faces.event.ActionEvent;
-import javax.faces.component.UIViewRoot;
 import javax.faces.application.Application;
 import javax.faces.application.ViewHandler;
+import javax.faces.component.UIViewRoot;
+import javax.faces.context.FacesContext;
+import javax.faces.event.ActionEvent;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.section.api.coursemanagement.CourseSection;
-import org.sakaiproject.section.api.coursemanagement.EnrollmentRecord;
 import org.sakaiproject.section.api.exception.RoleConfigurationException;
 import org.sakaiproject.section.api.exception.SectionFullException;
 import org.sakaiproject.section.api.facade.Role;
@@ -46,17 +42,18 @@ import org.sakaiproject.tool.section.decorator.SectionDecorator;
 import org.sakaiproject.tool.section.decorator.StudentSectionDecorator;
 import org.sakaiproject.tool.section.jsf.JsfUtil;
 
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * Controls the student view page.
  *
  * @author <a href="mailto:jholtzman@berkeley.edu">Josh Holtzman</a>
  *
  */
+@Slf4j
 public class StudentViewBean extends EditStudentSectionsBean implements Serializable {
 
 	private static final long serialVersionUID = 1L;
-
-	private static final Logger log = LoggerFactory.getLogger(StudentViewBean.class);
 
 	private boolean externallyManaged;
 	private boolean joinAllowed;

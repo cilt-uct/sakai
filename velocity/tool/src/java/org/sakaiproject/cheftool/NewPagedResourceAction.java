@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.Vector;
 
 import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.cheftool.api.Menu;
 import org.sakaiproject.cheftool.api.MenuItem;
 import org.sakaiproject.cheftool.menu.MenuEntry;
@@ -32,7 +34,7 @@ import org.sakaiproject.cheftool.menu.MenuField;
 import org.sakaiproject.courier.api.ObservingCourier;
 import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.event.api.SessionState;
-import org.sakaiproject.util.StringUtil;
+
 
 /**
  * <p>
@@ -42,6 +44,9 @@ import org.sakaiproject.util.StringUtil;
 @Slf4j
 public abstract class NewPagedResourceAction extends VelocityPortletPaneledAction
 {
+
+	private static final long serialVersionUID = 1L;
+
 	/** The default number of items per page. */
 	protected static final int DEFAULT_PAGE_SIZE = 15;
 
@@ -558,7 +563,7 @@ public abstract class NewPagedResourceAction extends VelocityPortletPaneledActio
 		SessionState state = ((JetspeedRunData) runData).getPortletSessionState(peid);
 
 		// read the search form field into the state object
-		String search = StringUtil.trimToNull(runData.getParameters().getString(FORM_SEARCH));
+		String search = StringUtils.trimToNull(runData.getParameters().getString(FORM_SEARCH));
 
 		// set the flag to go to the prev page on the next list
 		if (search == null)

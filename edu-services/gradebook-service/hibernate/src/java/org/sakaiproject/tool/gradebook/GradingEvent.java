@@ -1,24 +1,18 @@
-/**********************************************************************************
-*
-* $Id$
-*
-***********************************************************************************
-*
- * Copyright (c) 2005, 2006, 2008 The Sakai Foundation, The MIT Corporation
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
  *
  * Licensed under the Educational Community License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *       http://www.opensource.org/licenses/ECL-2.0
+ *             http://opensource.org/licenses/ecl2
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*
-**********************************************************************************/
+ */
 
 package org.sakaiproject.tool.gradebook;
 
@@ -33,8 +27,11 @@ import java.util.Date;
  *
  * @author <a href="mailto:jholtzman@berkeley.edu">Josh Holtzman</a>
  */
-public class GradingEvent implements Comparable, Serializable {
-    private Long id;
+public class GradingEvent implements Comparable<Object>, Serializable {
+    
+	private static final long serialVersionUID = 1L;
+	
+	private Long id;
     private String graderId;
     private String studentId;
     private GradableObject gradableObject;
@@ -55,75 +52,50 @@ public class GradingEvent implements Comparable, Serializable {
         this.dateGraded = new Date();
     }
 
-	/**
-	 * @return Returns the dateGraded.
-	 */
 	public Date getDateGraded() {
 		return dateGraded;
 	}
-	/**
-	 * @param dateGraded The dateGraded to set.
-	 */
+	
 	public void setDateGraded(Date dateGraded) {
 		this.dateGraded = dateGraded;
 	}
-	/**
-	 * @return Returns the gradableObject.
-	 */
+	
 	public GradableObject getGradableObject() {
 		return gradableObject;
 	}
-	/**
-	 * @param gradableObject The gradableObject to set.
-	 */
+	
 	public void setGradableObject(GradableObject gradableObject) {
 		this.gradableObject = gradableObject;
 	}
-	/**
-	 * @return Returns the grade.
-	 */
+	
 	public String getGrade() {
 		return grade;
 	}
-	/**
-	 * @param grade The grade to set.
-	 */
+	
 	public void setGrade(String grade) {
 		this.grade = grade;
 	}
-	/**
-	 * @return Returns the graderId.
-	 */
+	
 	public String getGraderId() {
 		return graderId;
 	}
-	/**
-	 * @param graderId The graderId to set.
-	 */
+	
 	public void setGraderId(String graderId) {
 		this.graderId = graderId;
 	}
-	/**
-	 * @return Returns the id.
-	 */
+	
 	public Long getId() {
 		return id;
 	}
-	/**
-	 * @param id The id to set.
-	 */
+	
 	public void setId(Long id) {
 		this.id = id;
 	}
-	/**
-	 * @return Returns the studentId.
-	 */
+	
 	public String getStudentId() {
 		return studentId;
 	}
-	/**
-	 * @param studentId The studentId to set.
-	 */
+	
 	public void setStudentId(String studentId) {
 		this.studentId = studentId;
 	}
@@ -131,7 +103,8 @@ public class GradingEvent implements Comparable, Serializable {
     /**
      * @see java.lang.Comparable#compareTo(java.lang.Object)
      */
-    public int compareTo(Object o) {
+    @Override
+	public int compareTo(Object o) {
         return dateGraded.compareTo(((GradingEvent)o).dateGraded);
     }
 }

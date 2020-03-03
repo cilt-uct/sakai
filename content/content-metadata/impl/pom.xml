@@ -7,16 +7,13 @@
   <parent>
     <artifactId>content</artifactId>
     <groupId>org.sakaiproject.content</groupId>
-    <version>12-SNAPSHOT</version>
+    <version>21-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
   <name>content-metadata-impl</name>
   <groupId>org.sakaiproject.content</groupId>
   <artifactId>content-metadata-impl</artifactId>
-  <packaging>jar</packaging>
-  <properties>
-    <deploy.target/>
-  </properties>
+  <packaging>sakai-component</packaging>
   <dependencies>
     <dependency>
       <groupId>org.sakaiproject.kernel</groupId>
@@ -39,8 +36,8 @@
       <artifactId>jackson-mapper-asl</artifactId>
     </dependency>
 	  <dependency>
-		  <groupId>commons-lang</groupId>
-		  <artifactId>commons-lang</artifactId>
+		  <groupId>org.apache.commons</groupId>
+		  <artifactId>commons-lang3</artifactId>
 	  </dependency>
   </dependencies>
 </project>

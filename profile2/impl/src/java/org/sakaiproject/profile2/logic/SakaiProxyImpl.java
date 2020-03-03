@@ -23,8 +23,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.lang.StringEscapeUtils;
-import org.apache.commons.lang.StringUtils;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.text.StringEscapeUtils;
+import org.apache.commons.lang3.StringUtils;
+
 import org.sakaiproject.api.common.edu.person.SakaiPerson;
 import org.sakaiproject.api.common.edu.person.SakaiPersonManager;
 import org.sakaiproject.authz.api.SecurityAdvisor;
@@ -61,10 +64,6 @@ import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserEdit;
 import org.sakaiproject.user.api.UserNotDefinedException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import lombok.Setter;
 
 /**
  * Implementation of SakaiProxy for Profile2.
@@ -72,9 +71,8 @@ import lombok.Setter;
  * @author Steve Swinsburg (s.swinsburg@lancaster.ac.uk)
  *
  */
+@Slf4j
 public class SakaiProxyImpl implements SakaiProxy {
-
-	private static final Logger log = LoggerFactory.getLogger(SakaiProxyImpl.class);
 
 	/**
 	 * {@inheritDoc}
@@ -251,7 +249,7 @@ public class SakaiProxyImpl implements SakaiProxy {
 		try {
 			type = this.userDirectoryService.getUser(userId).getType();
 		} catch (final UserNotDefinedException e) {
-			log.info("User with eid: " + userId + " does not exist : " + e.getClass() + " : " + e.getMessage());
+			log.debug("User with eid: " + userId + " does not exist : " + e.getClass() + " : " + e.getMessage());
 		}
 		return type;
 	}
@@ -265,7 +263,7 @@ public class SakaiProxyImpl implements SakaiProxy {
 		try {
 			u = this.userDirectoryService.getUser(userId);
 		} catch (final UserNotDefinedException e) {
-			log.info("User with id: " + userId + " does not exist : " + e.getClass() + " : " + e.getMessage());
+			log.debug("User with id: " + userId + " does not exist : " + e.getClass() + " : " + e.getMessage());
 		}
 
 		return u;
@@ -446,7 +444,6 @@ public class SakaiProxyImpl implements SakaiProxy {
 			return true;
 		} catch (final Exception e) {
 			log.error("SakaiProxy.updateSakaiPerson(): Couldn't update SakaiPerson: " + e.getClass() + " : " + e.getMessage());
-			e.printStackTrace();
 		}
 		return false;
 	}
@@ -595,10 +592,10 @@ public class SakaiProxyImpl implements SakaiProxy {
 				mtba.setMimeType(resource.getContentType());
 				return mtba;
 			} catch (final Exception e) {
-				log.error("SakaiProxy.getResource() failed for resourceId: " + resourceId + " : " + e.getClass() + " : " + e.getMessage());
+				log.debug("SakaiProxy.getResource() failed for resourceId: {} : {} : {}", resourceId, e.getClass(), e.getMessage());
 			}
 		} catch (final Exception e) {
-			log.error("SakaiProxy.getResource():" + e.getClass() + ":" + e.getMessage());
+			log.debug("SakaiProxy.getResource(): {} : {}", e.getClass(), e.getMessage());
 		} finally {
 			disableSecurityAdvisor();
 		}
@@ -611,24 +608,16 @@ public class SakaiProxyImpl implements SakaiProxy {
 	 */
 	@Override
 	public boolean removeResource(final String resourceId) {
-
-		boolean result = false;
-
 		try {
 			enableSecurityAdvisor();
-
 			this.contentHostingService.removeResource(resourceId);
-
-			result = true;
-		} catch (final Exception e) {
-			log.error("SakaiProxy.removeResource() failed for resourceId "
-					+ resourceId + ": " + e.getMessage());
+			return true;
+		} catch (Exception e) {
+			log.debug("Could not retrieve resource {}, {}", resourceId, e.getMessage());
 			return false;
 		} finally {
 			disableSecurityAdvisor();
 		}
-
-		return result;
 	}
 
 	/**
@@ -708,7 +697,7 @@ public class SakaiProxyImpl implements SakaiProxy {
 				sb.append(this.MIME_ADVISORY);
 				sb.append(this.BOUNDARY_LINE);
 				sb.append(this.PLAIN_TEXT_HEADERS);
-				sb.append(StringEscapeUtils.escapeHtml(message));
+				sb.append(StringEscapeUtils.escapeHtml4(message));
 				sb.append(this.BOUNDARY_LINE);
 				sb.append(this.HTML_HEADERS);
 				sb.append(htmlPreamble(subject));
@@ -972,15 +961,24 @@ public class SakaiProxyImpl implements SakaiProxy {
 	 */
 	@Override
 	public String getDirectUrlToProfileComponent(final String userId, final String component, final Map<String, String> extraParams) {
+	    return getDirectUrlToProfileComponent(getCurrentUserId(), userId, component, extraParams);
+	}
+
+    /**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getDirectUrlToProfileComponent(final String viewerUuid, final String viewedUuid, final String component, final Map<String, String> extraParams) {
+
 		final String portalUrl = getFullPortalUrl();
 
-		// this is for current user
-		final String siteId = getUserMyWorkspace(getCurrentUserId());
+		// this is for the viewer
+		final String siteId = getUserMyWorkspace(viewerUuid);
 		final ToolConfiguration toolConfig = getFirstInstanceOfTool(siteId, ProfileConstants.TOOL_ID);
 		if (toolConfig == null) {
 			// if the user doesn't have the Profile2 tool installed in their My Workspace,
 			log.warn("SakaiProxy.getDirectUrlToProfileComponent() failed to find " + ProfileConstants.TOOL_ID
-					+ " installed in My Workspace for userId: " + userId);
+					+ " installed in My Workspace for userId: " + viewerUuid);
 
 			// just return a link to their My Workspace
 			final StringBuilder url = new StringBuilder();
@@ -988,7 +986,6 @@ public class SakaiProxyImpl implements SakaiProxy {
 			url.append("/site/");
 			url.append(siteId);
 			return url.toString();
-
 		}
 
 		final String placementId = toolConfig.getId();
@@ -1008,7 +1005,7 @@ public class SakaiProxyImpl implements SakaiProxy {
 				}
 				case "viewprofile": {
 					url.append("/viewprofile/");
-					url.append(userId);
+					url.append(viewedUuid);
 					break;
 				}
 			}
@@ -1018,7 +1015,6 @@ public class SakaiProxyImpl implements SakaiProxy {
 			log.error("SakaiProxy.getDirectUrlToProfileComponent():" + e.getClass() + ":" + e.getMessage());
 			return null;
 		}
-
 	}
 
 	/**
@@ -1084,6 +1080,16 @@ public class SakaiProxyImpl implements SakaiProxy {
 		return this.serverConfigurationService.getBoolean(
 				"profile2.profile.student.enabled",
 				ProfileConstants.SAKAI_PROP_PROFILE2_PROFILE_STUDENT_ENABLED);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public boolean isNamePronunciationProfileEnabled() {
+		return this.serverConfigurationService.getBoolean(
+				"profile2.profile.name.pronunciation.enabled",
+				ProfileConstants.SAKAI_PROP_PROFILE2_PROFILE_PRONUNCIATION_ENABLED);
 	}
 
 	/**
@@ -1578,11 +1584,11 @@ public class SakaiProxyImpl implements SakaiProxy {
 		try {
 			site = this.siteService.addSite(id, type);
 		} catch (final IdInvalidException e) {
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 		} catch (final IdUsedException e) {
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 		} catch (final PermissionException e) {
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 		}
 
 		return site;
@@ -1596,10 +1602,10 @@ public class SakaiProxyImpl implements SakaiProxy {
 		try {
 			this.siteService.save(site);
 		} catch (final IdUnusedException e) {
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 			return false;
 		} catch (final PermissionException e) {
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 			return false;
 		}
 		return true;
@@ -1613,7 +1619,7 @@ public class SakaiProxyImpl implements SakaiProxy {
 		try {
 			return this.siteService.getSite(siteId);
 		} catch (final IdUnusedException e) {
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 			return null;
 		}
 	}
@@ -1769,6 +1775,14 @@ public class SakaiProxyImpl implements SakaiProxy {
 				ProfileConstants.SAKAI_PROP_PROFILE2_ONLINE_STATUS_ENABLED);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public SiteService.SiteTitleValidationStatus validateSiteTitle(String orig, String stripped) {
+		return this.siteService.validateSiteTitle(orig, stripped);
+	}
+
 	// PRIVATE METHODS FOR SAKAIPROXY
 
 	/**
@@ -1814,6 +1828,22 @@ public class SakaiProxyImpl implements SakaiProxy {
 			log.error("SakaiProxy.getFirstInstanceOfTool() failed for siteId: " + siteId + " and toolId: " + toolId);
 			return null;
 		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getNamePronunciationExamplesLink() {
+		return this.serverConfigurationService.getString("profile2.profile.name.pronunciation.examples.link", "");
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public int getNamePronunciationDuration() {
+		return this.serverConfigurationService.getInt("profile2.profile.name.pronunciation.duration", 10);
 	}
 
 	/**

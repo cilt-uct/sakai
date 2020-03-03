@@ -1,13 +1,19 @@
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.component.app.scheduler.events.hibernate;
-
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Test;
-import org.quartz.JobKey;
-import org.quartz.TriggerKey;
-import org.sakaiproject.api.app.scheduler.events.TriggerEvent;
-import org.sakaiproject.scheduler.events.hibernate.TriggerEventHibernateImpl;
-import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 import java.util.Calendar;
 import java.util.Date;
@@ -16,21 +22,28 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Created by IntelliJ IDEA.
- * User: duffy
- * Date: Oct 7, 2010
- * Time: 2:32:11 PM
- * To change this template use File | Settings | File Templates.
- */
-public class TestTriggerEventManagerHibernateImpl
+import org.hibernate.PropertyValueException;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.quartz.JobKey;
+import org.quartz.TriggerKey;
+import org.sakaiproject.api.app.scheduler.events.TriggerEvent;
+import org.sakaiproject.api.app.scheduler.events.TriggerEventManager;
+import org.sakaiproject.scheduler.events.hibernate.TriggerEventHibernateImpl;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit4.AbstractTransactionalJUnit4SpringContextTests;
+
+@ContextConfiguration(locations={"/testApplicationContext.xml"})
+public class TestTriggerEventManagerHibernateImpl extends AbstractTransactionalJUnit4SpringContextTests
 {
-    private ClassPathXmlApplicationContext
-        context = null;
-    private TriggerEventManagerHibernateImpl
-        temhi = null;
-    private static final Date
-        TEST_DATE;
+    @Autowired
+    private TriggerEventManager mgr;
+
+    private static final Date TEST_DATE;
 
     static
     {
@@ -41,19 +54,6 @@ public class TestTriggerEventManagerHibernateImpl
         cal.set(Calendar.MILLISECOND, 0);
 
         TEST_DATE = new Date(cal.getTimeInMillis());
-    }
-
-    public TestTriggerEventManagerHibernateImpl()
-    {
-        context = new ClassPathXmlApplicationContext("testApplicationContext.xml");
-
-        temhi = (TriggerEventManagerHibernateImpl)
-            context.getBean("org.sakaiproject.component.app.scheduler.events.hibernate.TriggerEventManagerHibernateImpl");
-    }
-
-    private TriggerEventManagerHibernateImpl getEventManager()
-    {
-        return temhi;
     }
 
     private TriggerEventHibernateImpl getTestTriggerEvent()
@@ -83,15 +83,9 @@ public class TestTriggerEventManagerHibernateImpl
     private final void generateEvents (int count)
         throws Exception
     {
-        final TriggerEventManagerHibernateImpl
-            mgr = getEventManager();
-        TriggerEventHibernateImpl
-            evt = null;
-        int
-            eventTypeCount = TriggerEvent.TRIGGER_EVENT_TYPE.values().length;
+        int eventTypeCount = TriggerEvent.TRIGGER_EVENT_TYPE.values().length;
 
-        Calendar
-            cal = Calendar.getInstance();
+        Calendar cal = Calendar.getInstance();
 
         cal.setTimeInMillis(TEST_DATE.getTime());
 
@@ -113,9 +107,6 @@ public class TestTriggerEventManagerHibernateImpl
     public final void cleanUp()
         throws Exception
     {
-        final TriggerEventManagerHibernateImpl
-            mgr = getEventManager();
-
         mgr.purgeEvents(new Date());
     }
 
@@ -123,9 +114,6 @@ public class TestTriggerEventManagerHibernateImpl
     public void testPurgeEventsBeforeDate()
         throws Exception
     {
-        final TriggerEventManagerHibernateImpl
-            mgr = getEventManager();
-
         generateEvents(5);
 
         Calendar
@@ -169,9 +157,6 @@ public class TestTriggerEventManagerHibernateImpl
     public void testPurgeEventsWithNullArgumentHasNoEffect()
         throws Exception
     {
-        final TriggerEventManagerHibernateImpl
-            mgr = getEventManager();
-
         generateEvents(5);
 
         mgr.purgeEvents(null);
@@ -187,8 +172,6 @@ public class TestTriggerEventManagerHibernateImpl
     public void testCreateTriggerEventSucceds()
         throws Exception
     {
-        final TriggerEventManagerHibernateImpl
-            mgr = getEventManager();
         final TriggerEventHibernateImpl
             evt = getTestTriggerEvent();
 
@@ -207,69 +190,38 @@ public class TestTriggerEventManagerHibernateImpl
     }
 
     @Test
-    public void testCreateTriggerEventFailsOnInvalidInput()
-        throws Exception
+    public void testCreateTriggerEventFailsOnInvalidInput() throws Exception
     {
-        final TriggerEventManagerHibernateImpl
-            mgr = getEventManager();
-        final TriggerEventHibernateImpl
-            evt = getTestTriggerEvent();
-
-        boolean
-            fail = true;
+        final TriggerEventHibernateImpl evt = getTestTriggerEvent();
 
         try
         {
             mgr.createTriggerEvent(null, JobKey.jobKey(evt.getJobName()), TriggerKey.triggerKey(evt.getTriggerName()), evt.getTime(), evt.getMessage(), "server1");
+            Assert.fail("createTriggerEvent accepted null TriggerEventType");
         }
         catch (Exception e)
         {
-            fail = false;
-        }
-
-        if (fail)
-        {
-            Assert.fail("createTriggerEvent accepted null TriggerEventType");
-        }
-        else
-        {
-            fail = true;
+            Assert.assertTrue(e instanceof PropertyValueException);
         }
 
         try
         {
             mgr.createTriggerEvent(evt.getEventType(), null, TriggerKey.triggerKey(evt.getTriggerName()), evt.getTime(), evt.getMessage(), "server1");
+            Assert.fail("createTriggerEvent accepted null Job name");
         }
         catch (Exception e)
         {
-            fail = false;
+            Assert.assertTrue(e instanceof NullPointerException);
         }
 
-        if (fail)
-        {
-            Assert.fail("createTriggerEvent accepted null Job name");
-        }
-        else
-        {
-            fail = true;
-        }
-        
         try
         {
             mgr.createTriggerEvent(evt.getEventType(), JobKey.jobKey(evt.getJobName()), TriggerKey.triggerKey(evt.getTriggerName()), null, evt.getMessage(), "server1");
+            Assert.fail("createTriggerEvent accepted null time");
         }
         catch (Exception e)
         {
-            fail = false;
-        }
-
-        if (fail)
-        {
-            Assert.fail("createTriggerEvent accepted null time");
-        }
-        else
-        {
-            fail = true;
+            Assert.assertTrue(e instanceof PropertyValueException);
         }
     }
 
@@ -277,9 +229,6 @@ public class TestTriggerEventManagerHibernateImpl
     public void testGetTriggerEventsReturnsEmptyListWhenAppropriate()
         throws Exception
     {
-        final TriggerEventManagerHibernateImpl
-            mgr = getEventManager();
-
         final List<TriggerEvent>
             results = mgr.getTriggerEvents();
 
@@ -291,9 +240,6 @@ public class TestTriggerEventManagerHibernateImpl
     public void testGetTriggerEventsReturnsCompleteResults()
         throws Exception
     {
-        final TriggerEventManagerHibernateImpl
-            mgr = getEventManager();
-
         generateEvents(100);
 
         List<TriggerEvent>
@@ -307,9 +253,6 @@ public class TestTriggerEventManagerHibernateImpl
     public void testGetTriggerEventsNullArgsMatchesNoArgMethodResults ()
         throws Exception
     {
-        final TriggerEventManagerHibernateImpl
-            mgr = getEventManager();
-
         generateEvents(5);
 
         List<TriggerEvent>
@@ -337,9 +280,6 @@ public class TestTriggerEventManagerHibernateImpl
     public void testGetTriggerEventsAfterDateBoundaryConditions()
         throws Exception
     {
-        final TriggerEventManagerHibernateImpl
-            mgr = getEventManager();
-
         generateEvents(5);
 
         Calendar
@@ -368,9 +308,6 @@ public class TestTriggerEventManagerHibernateImpl
     public void testGetTriggerEventsBeforeDateBoundaryConditions()
         throws Exception
     {
-        final TriggerEventManagerHibernateImpl
-            mgr = getEventManager();
-
         generateEvents(5);
 
         Calendar
@@ -399,9 +336,6 @@ public class TestTriggerEventManagerHibernateImpl
     public void testGetTriggerEventsBetweenDates()
         throws Exception
     {
-        final TriggerEventManagerHibernateImpl
-            mgr = getEventManager();
-
         generateEvents(5);
 
         Calendar
@@ -460,9 +394,6 @@ public class TestTriggerEventManagerHibernateImpl
     public void testGetTriggerEventsByJobList()
         throws Exception
     {
-        final TriggerEventManagerHibernateImpl
-            mgr = getEventManager();
-
         generateEvents(5);
 
         List<TriggerEvent>
@@ -530,9 +461,6 @@ public class TestTriggerEventManagerHibernateImpl
     public void testGetTriggerEventsByTriggerName()
         throws Exception
     {
-        final TriggerEventManagerHibernateImpl
-            mgr = getEventManager();
-
         generateEvents(5);
 
         List<TriggerEvent>
@@ -574,8 +502,6 @@ public class TestTriggerEventManagerHibernateImpl
     public void testGetTriggerEventsByEventType()
         throws Exception
     {
-        final TriggerEventManagerHibernateImpl
-            mgr = getEventManager();
         TriggerEvent.TRIGGER_EVENT_TYPE[]
             values = TriggerEvent.TRIGGER_EVENT_TYPE.values(),
             searchValue = new TriggerEvent.TRIGGER_EVENT_TYPE[1];

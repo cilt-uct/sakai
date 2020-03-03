@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
-	"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN" "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping package="org.sakaiproject.signup.model"
+				   default-lazy="false">
 
-<hibernate-mapping  package="org.sakaiproject.signup.model" default-lazy="false">
 	<class name="org.sakaiproject.signup.model.SignupTimeslot"
 			table="signup_ts" optimistic-lock="version">
 
@@ -23,7 +23,7 @@
 		<property name="groupId" column="group_id" length="99" type="string" not-null="false" />
 		<property name="uuid" column="vevent_uuid" length="36" type="string" not-null="false" />
 				
-		<list name="attendees" cascade="save-update,delete" table="signup_ts_attendees" fetch="join">
+		<list name="attendees" cascade="all" table="signup_ts_attendees" fetch="join">
 			<key column="timeslot_id" not-null="true"/>
 			<list-index column="list_index" />
 			<composite-element class="org.sakaiproject.signup.model.SignupAttendee" >
@@ -36,9 +36,10 @@
 					<column name="attended" default="0"/>
 				</property>
 				<!-- <property name="attended" column="attended" type="boolean" not-null="false" /> -->
+				<property name="inscriptionTime" column="inscription_time" type="org.sakaiproject.springframework.orm.hibernate.type.InstantType" not-null="false" />
 			</composite-element>	
 		</list>
-		<list name="waitingList" cascade="save-update,delete" table="signup_ts_waitinglist" fetch="join">
+		<list name="waitingList" cascade="all" table="signup_ts_waitinglist" fetch="join">
 			<key column="timeslot_id" not-null="true"/>
 			<list-index column="list_index" />
 			<composite-element class="org.sakaiproject.signup.model.SignupAttendee" >
@@ -51,6 +52,7 @@
 				<property name="attended"  type="boolean" >
 					<column name="attended" default="0"/>
 				</property>
+				<property name="inscriptionTime" column="inscription_time" type="org.sakaiproject.springframework.orm.hibernate.type.InstantType" not-null="false" />
 			</composite-element>	
 		</list>
 	</class>

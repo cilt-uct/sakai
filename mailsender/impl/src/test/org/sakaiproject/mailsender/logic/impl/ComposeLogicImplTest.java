@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2007-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.mailsender.logic.impl;
 
 import static junit.framework.Assert.assertEquals;
@@ -33,6 +48,7 @@ import org.sakaiproject.user.api.UserDirectoryService;
 @RunWith(MockitoJUnitRunner.class)
 public class ComposeLogicImplTest {
 	static final String REALM_ID = "composeLogicTest";
+	static final String SITE_ID = "testSiteId";
 
 	@Mock SiteService siteService;
 	@Mock Site site;
@@ -70,6 +86,7 @@ public class ComposeLogicImplTest {
 		when(toolManager.getCurrentPlacement().getPlacementConfig()).thenReturn(props);
 
 		// setup site service
+		when(externalLogic.getSiteID()).thenReturn(SITE_ID);
 		when(siteService.getSite(anyString())).thenReturn(site);
 
 		// setup site

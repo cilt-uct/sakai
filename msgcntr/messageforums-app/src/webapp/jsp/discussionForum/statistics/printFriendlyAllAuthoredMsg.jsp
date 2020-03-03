@@ -1,6 +1,6 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://sakaiproject.org/jsf/messageforums" prefix="mf" %>
 <jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
    <jsp:setProperty name="msgs" property="baseName" value="org.sakaiproject.api.app.messagecenter.bundle.Messages"/>
@@ -29,24 +29,25 @@
 			  	  <f:verbatim><div class="breadCrumb indnt2"><h3></f:verbatim>
 			  	  
 			  	  <h:outputText value="#{msgs.cdfm_discussion_forums}" />			 
-			      <f:verbatim><h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " /></f:verbatim>
+			      <h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " />
 			      <h:outputText value="#{msgs.stat_list}" />
-			      <f:verbatim><h:outputText value="" /><h:outputText value=" / " /><h:outputText value=" " /></f:verbatim>
+			      <h:outputText value="" /><h:outputText value=" / " /><h:outputText value=" " />
 			      <h:outputText value="#{mfStatisticsBean.selectedSiteUser}"/>
-			       <f:verbatim><h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " /></f:verbatim>
+			       <h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " />
 			       <h:outputText value="#{msgs.stat_authored}" />
 			    <f:verbatim></h3></div></f:verbatim>
   		
-  		<div class="table-responsive">
+  		<div>
   		<h:dataTable id="staticAllMessages" value="#{mfStatisticsBean.userAuthoredStatistics2}" var="stat" styleClass="table table-hover table-striped table-bordered" cellpadding="0" cellspacing="0" width="100%" columnClasses="bogus">	
-   			<h:column rendered="#{!stat.msgDeleted}">
+   			<h:column>
+				<h:panelGroup rendered="#{!stat.msgDeleted}" layout="block">
 				<f:verbatim><div  class="printBlock" style="margin:0"></f:verbatim>
 					<f:verbatim><p style="border-bottom:1px solid #ccc;padding-bottom:5px;margin:0;font-size:110%;color:#000;font-weight:bold"></f:verbatim>
                                   		
 					<h:outputText value="#{stat.forumTitle}" />
-					 <f:verbatim><h:outputText value="/" /></f:verbatim>
+					 <h:outputText value="/" />
 					<h:outputText value="#{stat.topicTitle}" />
-					 <f:verbatim><h:outputText value="/" /></f:verbatim>
+					 <h:outputText value="/" />
 					<h:outputText  value= "#{stat.forumSubject} " />
 			
 					<h:outputText value="#{stat.forumDate}">
@@ -55,6 +56,7 @@
 					<f:verbatim></p></f:verbatim>
 					<mf:htmlShowArea value="#{stat.message}" hideBorder="true" />
 				<f:verbatim></div></f:verbatim>
+				</h:panelGroup>
   			</h:column>
 			<%--  			
   			<h:column rendered="#{stat.msgDeleted}">

@@ -24,7 +24,6 @@ package org.sakaiproject.content.cover;
 import java.util.Collection;
 import java.util.Set;
 
-import org.sakaiproject.antivirus.api.VirusFoundException;
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.content.api.ContentResource;
 import org.sakaiproject.exception.IdInvalidException;
@@ -33,7 +32,6 @@ import org.sakaiproject.exception.IdUsedException;
 import org.sakaiproject.exception.InUseException;
 import org.sakaiproject.exception.InconsistentException;
 import org.sakaiproject.exception.OverQuotaException;
-import org.sakaiproject.content.api.ContentResourceFilter;
 import org.sakaiproject.content.api.GroupAwareEdit;
 import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.exception.PermissionException;
@@ -1067,8 +1065,28 @@ public class ContentHostingService
 		return service.addCollection(collectionId, name);
 	}
 
+	/**
+	 * @param collectionId
+	 * @param name
+	 * @param limit
+	 * @return
+	 * @throws org.sakaiproject.exception.IdLengthException
+	 * @throws org.sakaiproject.exception.IdUnusedException
+	 * @throws org.sakaiproject.exception.TypeException
+	 */
+	public static org.sakaiproject.content.api.ContentCollectionEdit addCollection(java.lang.String collectionId, java.lang.String name, int limit)
+		throws org.sakaiproject.exception.IdUsedException, org.sakaiproject.exception.IdInvalidException,
+		org.sakaiproject.exception.PermissionException, org.sakaiproject.exception.IdUnusedException,
+		org.sakaiproject.exception.IdLengthException, org.sakaiproject.exception.TypeException, org.sakaiproject.exception.IdUniquenessException
+	{
+		org.sakaiproject.content.api.ContentHostingService service = getInstance();
+		if (service == null) return null;
+
+		return service.addCollection(collectionId, name, limit);
+	}
+
    /**
-    * gets the quota for a site collection or for a user's my workspace collection
+    * gets the quota for a site collection or for a user's Home collection
     *
     * @param collection the collection on which to test for a quota.  this can be the collection for a site
     * or a user's workspace collection

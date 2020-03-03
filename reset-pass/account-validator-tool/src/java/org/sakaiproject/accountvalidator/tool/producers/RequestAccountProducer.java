@@ -1,11 +1,27 @@
+/**
+ * Copyright (c) 2007-2016 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.accountvalidator.tool.producers;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
 import org.sakaiproject.accountvalidator.model.ValidationAccount;
 import org.sakaiproject.entitybroker.EntityReference;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserNotDefinedException;
+
 import uk.org.ponder.messageutil.TargettedMessage;
 import uk.org.ponder.rsf.components.*;
 import uk.org.ponder.rsf.flow.ActionResultInterceptor;
@@ -18,9 +34,9 @@ import uk.org.ponder.rsf.viewstate.ViewParameters;
  * Produces requestAccount.html - builds a form that allows the user to claim an account that has been created for them
  * @author bbailla2
  */
+@Slf4j
 public class RequestAccountProducer extends BaseValidationProducer implements ViewComponentProducer, ActionResultInterceptor
 {
-    private static final Logger log = LoggerFactory.getLogger(RequestAccountProducer.class);
     public static final String VIEW_ID = "requestAccount";
 
     public String getViewID()
@@ -35,7 +51,7 @@ public class RequestAccountProducer extends BaseValidationProducer implements Vi
 
     public void fillComponents(UIContainer tofill, ViewParameters viewparams, ComponentChecker checker)
     {
-        Object[] args = new Object[]{serverConfigurationService.getString("ui.service", "Sakai")};
+        Object[] args = new Object[]{getUIService()};
         UIMessage.make(tofill, "welcome1", "validate.welcome1", args);
         UIMessage.make(tofill, "welcome2", "validate.welcome.request", args);
 
@@ -72,7 +88,7 @@ public class RequestAccountProducer extends BaseValidationProducer implements Vi
         catch (UserNotDefinedException e)
         {
             log.error("user ID does not exist for ValidationAccount with tokenId: " + va.getValidationToken());
-            tml.addMessage(new TargettedMessage("validate.userNotDefined", new Object[]{}, TargettedMessage.SEVERITY_ERROR));
+            tml.addMessage(new TargettedMessage("validate.userNotDefined", new Object[]{getUIService()}, TargettedMessage.SEVERITY_ERROR));
         }
 
         if (u != null)
@@ -89,7 +105,7 @@ public class RequestAccountProducer extends BaseValidationProducer implements Vi
 
             UICommand.make(detailsForm, "addDetailsSub", UIMessage.make("submit.new.account"), "accountValidationLocator.validateAccount");
 
-            String otp = "accountValidationLocator." + va.getId();
+            String otp = "accountValidationLocator." + va.getValidationToken();
             UIMessage.make(detailsForm, "username.new", "username.new", args);
             UIOutput.make(detailsForm, "eid", u.getDisplayId());
 
@@ -121,8 +137,6 @@ public class RequestAccountProducer extends BaseValidationProducer implements Vi
                 });
                 UIVerbatim.make(termsRow, "termsLabel", terms);
             }
-
-            detailsForm.parameters.add(new UIELBinding(otp + ".userId", va.getUserId()));
         }
     }
 }

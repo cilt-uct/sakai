@@ -30,11 +30,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Vector;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.lang3.StringUtils;
+
+import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.db.api.SqlReader;
 import org.sakaiproject.db.api.SqlService;
 import org.sakaiproject.entity.api.Edit;
@@ -42,12 +43,10 @@ import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.entity.api.ResourceProperties;
 import org.sakaiproject.entity.api.ResourcePropertiesEdit;
 import org.sakaiproject.event.cover.UsageSessionService;
-import org.sakaiproject.time.cover.TimeService;
-import org.sakaiproject.component.cover.ServerConfigurationService;
-
 import org.sakaiproject.memory.api.Cache;
 import org.sakaiproject.memory.api.MemoryService;
 import org.sakaiproject.memory.cover.MemoryServiceLocator;
+import org.sakaiproject.time.cover.TimeService;
 
 /**
  * <p>
@@ -70,12 +69,10 @@ import org.sakaiproject.memory.cover.MemoryServiceLocator;
  * rather, Unicode values should be inserted as fields in a PreparedStatement. Databases handle Unicode better in fields.
  * </p>
  */
+@Slf4j
 public class BaseDbFlatStorage
 {
 	private static final String CACHE_NAME_PREFIX = "org.sakaiproject.db.BaseDbFlatStorage.";
-
-   /** Our logger. */
-	private static Logger M_log = LoggerFactory.getLogger(BaseDbFlatStorage.class);
 
 	/** Table name for resource records. */
 	protected String m_resourceTableName = null;
@@ -284,7 +281,7 @@ public class BaseDbFlatStorage
 	{
 		if (!m_locks.isEmpty())
 		{
-			M_log.warn("close(): locks remain!");
+			log.warn("close(): locks remain!");
 			// %%%
 		}
 		m_locks.clear();
@@ -770,7 +767,7 @@ public class BaseDbFlatStorage
 		Edit edit = editResource(conn, id);
 		if (edit == null)
 		{
-			M_log.warn("putResource(): didn't get a lock!");
+			log.warn("putResource(): didn't get a lock!");
 			return null;
 		}
 
@@ -947,7 +944,7 @@ public class BaseDbFlatStorage
 				boolean ok = m_sql.dbWrite(statement, lockFields);
 				if (!ok)
 				{
-					M_log.warn("commit: missing lock for table: " + lockFields[0] + " key: " + lockFields[1]);
+					log.warn("commit: missing lock for table: " + lockFields[0] + " key: " + lockFields[1]);
 				}
 			}
 			else
@@ -980,7 +977,7 @@ public class BaseDbFlatStorage
 				boolean ok = m_sql.dbWrite(statement, lockFields);
 				if (!ok)
 				{
-					M_log.warn("cancel: missing lock for table: " + lockFields[0] + " key: " + lockFields[1]);
+					log.warn("cancel: missing lock for table: " + lockFields[0] + " key: " + lockFields[1]);
 				}
 			}
 			else
@@ -1052,7 +1049,7 @@ public class BaseDbFlatStorage
 				boolean ok = m_sql.dbWrite(statement, lockFields);
 				if (!ok)
 				{
-					M_log.warn("remove: missing lock for table: " + lockFields[0] + " key: " + lockFields[1]);
+					log.warn("remove: missing lock for table: " + lockFields[0] + " key: " + lockFields[1]);
 				}
 			}
 
@@ -1138,15 +1135,14 @@ public class BaseDbFlatStorage
 
 		if ( myCache != null )
 		{
-			// System.out.println("CHECKING CACHE cacheKey="+cacheKey);
+			log.debug("CHECKING CACHE cacheKey={}", cacheKey);
 			Object obj = myCache.get(cacheKey);
 			if ( obj != null && obj instanceof ResourcePropertiesEdit ) 
 			{
 				// Clone the properties - do not return the real value
 				ResourcePropertiesEdit re = (ResourcePropertiesEdit) obj;
 				props.addAll(re);
-				// System.out.println("CACHE HIT cacheKey="+cacheKey);
-				M_log.debug("CACHE HIT cacheKey="+cacheKey);
+				log.debug("CACHE HIT cacheKey={}", cacheKey);
 				return;
 			}
 		}
@@ -1177,7 +1173,7 @@ public class BaseDbFlatStorage
 				}
 				catch (SQLException e)
 				{
-					M_log.warn("readProperties: " + e);
+					log.warn("readProperties: " + e);
 					return null;
 				}
 			}
@@ -1237,7 +1233,7 @@ public class BaseDbFlatStorage
 				}
 				catch (SQLException e)
 				{
-					M_log.warn("readProperties: " + e);
+					log.warn("readProperties: " + e);
 					return null;
 				}
 			}
@@ -1306,7 +1302,7 @@ public class BaseDbFlatStorage
 		String cacheKey = table + ":" + idField + ":" + id;
 		if ( myCache != null )
 		{
-			// System.out.println("CACHE REMOVE cacheKey="+cacheKey+" cache="+myCache);
+			log.debug("CACHE REMOVE cacheKey={} cache={}", cacheKey, myCache);
 			myCache.remove(cacheKey);
 		}
 
@@ -1407,6 +1403,73 @@ public class BaseDbFlatStorage
 			}
 		}, "writeProperties:" + id);
 
+	}
+
+	/**
+	 * Insert a uniform property on multiple resources. NB: this will not check for duplicates; calling method must prevent unique constraint violations
+	 */
+	public void writePropertyOnResources(final String table, final String idField, final Object[] ids, final String extraIdField, final String[] extraIds,
+			final String propName, final String propValue)
+	{
+		if (extraIdField != null && ids.length != extraIds.length)
+		{
+			throw new IllegalArgumentException("writePropertyOnResources: extraIdField exists, but ids and extraIds arrays differ in length");
+		}
+		if (table == null || StringUtils.isBlank(propName) || StringUtils.isBlank(propValue))
+		{
+			return;
+		}
+
+		StringBuilder tagName = new StringBuilder("writePropertiesOnResource");
+		String delim = "";
+
+		Cache myCache = getCache(table);
+		if (myCache != null)
+		{
+			for (Object id : ids)
+			{
+				tagName.append(delim).append(id.toString());
+				String cacheKey = table + ":" + idField + ":" + id;
+				myCache.remove(cacheKey);
+
+				// optimized away by compiler
+				delim = ",";
+			}
+		}
+
+		// do it all in the same transaction
+		m_sql.transact(()->
+		{
+			for (int i = 0; i < ids.length; i++)
+			{
+				String extraId = extraIdField == null ? null : extraIds[i];
+				writePropertyTx(table, idField, ids[i], extraIdField, extraId, propName, propValue);
+			}
+		}, tagName.toString());
+	}
+
+	/**
+	 * The transaction code that writes the properties
+	 */
+	protected void writePropertyTx(String table, String idField, Object id, String extraIdField, String extraId, String propName, String propValue)
+	{
+		String statement = flatStorageSql.getInsertSql(table, idField, extraIdField);
+		boolean useExtraId = extraIdField != null;
+		Object fields[] = new Object[(useExtraId ? 4 : 3)];
+		fields[0] = id;
+
+		fields[1] = propName;
+		fields[2] = propValue;
+
+		if (useExtraId)
+		{
+			fields[3] = extraId;
+		}
+
+		if (propValue.length() > 0)
+		{
+			m_sql.dbWrite(statement, fields);
+		}
 	}
 
 	/**
@@ -1613,7 +1676,8 @@ public class BaseDbFlatStorage
 	protected String qualifyField(String field, String table)
 	{
 		// if it's not a field but a sub-select, don't qualify
-		if (field.startsWith("("))
+		// if its hsqldb don't qualify, change from 1.8 to 2.x
+		if (field.startsWith("(") || "hsqldb".equals(m_sql.getVendor()))
 		{
 			return field;
 		}

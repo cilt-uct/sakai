@@ -24,11 +24,12 @@ import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreeNode;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.MarkupContainer;
-import org.apache.wicket.ResourceReference;
+import org.apache.wicket.request.resource.PackageResourceReference;
+import org.apache.wicket.request.resource.ResourceReference;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.ajax.markup.html.form.AjaxButton;
 import org.apache.wicket.behavior.AttributeAppender;
@@ -39,7 +40,8 @@ import org.apache.wicket.extensions.markup.html.tree.table.ColumnLocation.Unit;
 import org.apache.wicket.extensions.markup.html.tree.table.IColumn;
 import org.apache.wicket.extensions.markup.html.tree.table.PropertyTreeColumn;
 import org.apache.wicket.extensions.markup.html.tree.table.TreeTable;
-import org.apache.wicket.markup.html.WebMarkupContainer;
+import org.apache.wicket.markup.head.IHeaderResponse;
+import org.apache.wicket.markup.head.JavaScriptHeaderItem;
 import org.apache.wicket.markup.html.basic.Label;
 import org.apache.wicket.markup.html.form.Button;
 import org.apache.wicket.markup.html.form.ChoiceRenderer;
@@ -48,12 +50,11 @@ import org.apache.wicket.markup.html.form.Form;
 import org.apache.wicket.markup.html.form.TextField;
 import org.apache.wicket.markup.html.image.Image;
 import org.apache.wicket.markup.html.link.Link;
-import org.apache.wicket.markup.html.resources.CompressedResourceReference;
-import org.apache.wicket.markup.html.tree.AbstractTree;
 import org.apache.wicket.model.Model;
 import org.apache.wicket.model.PropertyModel;
 import org.apache.wicket.model.ResourceModel;
 import org.apache.wicket.model.StringResourceModel;
+
 import org.sakaiproject.delegatedaccess.model.ListOptionSerialized;
 import org.sakaiproject.delegatedaccess.model.NodeModel;
 import org.sakaiproject.delegatedaccess.model.SelectOption;
@@ -70,18 +71,26 @@ import org.sakaiproject.delegatedaccess.utils.PropertyEditableColumnList;
  * @author Bryan Holladay (holladay@longsight.com)
  *
  */
+@Slf4j
 public class ShoppingEditPage extends BaseTreePage{
 	private TreeTable tree;
-	private static final Logger log = LoggerFactory.getLogger(ShoppingEditPage.class);
 	private String[] defaultRole = null;
 	private SelectOption filterHierarchy;
 	private String filterSearch = "";
 	private List<ListOptionSerialized> blankRestrictedTools;
 	private boolean modifiedAlert = false;
 
+	public static final String SCRIPT_DATEPICKER = "javascript/init-datepicker.js";
+
 	@Override
-	protected AbstractTree getTree() {
+	protected DefaultAbstractTree getTree() {
 		return  tree;
+	}
+
+	@Override
+	public void renderHead(IHeaderResponse response) {
+		super.renderHead(response);
+		response.render(JavaScriptHeaderItem.forUrl(SCRIPT_DATEPICKER));
 	}
 
 	public ShoppingEditPage(){
@@ -150,14 +159,14 @@ public class ShoppingEditPage extends BaseTreePage{
 				if(!modifiedAlert && anyNodesModified(rootNode)){
 					formFeedback.setDefaultModel(new ResourceModel("modificationsPending"));
 					formFeedback.add(new AttributeModifier("class", true, new Model("alertMessage")));
-					target.addComponent(formFeedback);
+					target.add(formFeedback);
 					formFeedback2.setDefaultModel(new ResourceModel("modificationsPending"));
 					formFeedback2.add(new AttributeModifier("class", true, new Model("alertMessage")));
-					target.addComponent(formFeedback2);
+					target.add(formFeedback2);
 					modifiedAlert = true;
 					//call a js function to hide the message in 5 seconds
-					target.appendJavascript("hideFeedbackTimer('" + formFeedbackId + "');");
-					target.appendJavascript("hideFeedbackTimer('" + formFeedback2Id + "');");
+					target.appendJavaScript("hideFeedbackTimer('" + formFeedbackId + "');");
+					target.appendJavaScript("hideFeedbackTimer('" + formFeedback2Id + "');");
 				}else{
 					//now go through the tree and make sure its been loaded at every level:
 					Integer depth = null;
@@ -185,19 +194,19 @@ public class ShoppingEditPage extends BaseTreePage{
 				if(!modifiedAlert && anyNodesModified(rootNode)){
 					formFeedback.setDefaultModel(new ResourceModel("modificationsPending"));
 					formFeedback.add(new AttributeModifier("class", true, new Model("alertMessage")));
-					target.addComponent(formFeedback);
+					target.add(formFeedback);
 					formFeedback2.setDefaultModel(new ResourceModel("modificationsPending"));
 					formFeedback2.add(new AttributeModifier("class", true, new Model("alertMessage")));
-					target.addComponent(formFeedback2);
+					target.add(formFeedback2);
 					modifiedAlert = true;
 					//call a js function to hide the message in 5 seconds
-					target.appendJavascript("hideFeedbackTimer('" + formFeedbackId + "');");
-					target.appendJavascript("hideFeedbackTimer('" + formFeedback2Id + "');");
+					target.appendJavaScript("hideFeedbackTimer('" + formFeedbackId + "');");
+					target.appendJavaScript("hideFeedbackTimer('" + formFeedback2Id + "');");
 				}else{
 					filterSearch = "";
 					filterHierarchy = null;
-					target.addComponent(filterSearchTextField);
-					target.addComponent(filterHierarchyDropDown);
+					target.add(filterSearchTextField);
+					target.add(filterHierarchyDropDown);
 
 					((NodeModel) rootNode.getUserObject()).setAddedDirectChildrenFlag(false);
 					rootNode.removeAllChildren();
@@ -253,8 +262,8 @@ public class ShoppingEditPage extends BaseTreePage{
 		IColumn columns[] = columnsList.toArray(new IColumn[columnsList.size()]);
 
 		final boolean activeSiteFlagEnabled = sakaiProxy.isActiveSiteFlagEnabled();
-		final ResourceReference inactiveWarningIcon = new CompressedResourceReference(ShoppingEditPage.class, "images/bullet_error.png");
-		final ResourceReference instructorEditedIcon = new CompressedResourceReference(ShoppingEditPage.class, "images/bullet_red.png");
+		final ResourceReference inactiveWarningIcon = new PackageResourceReference(ShoppingEditPage.class, "images/bullet_error.png");
+		final ResourceReference instructorEditedIcon = new PackageResourceReference(ShoppingEditPage.class, "images/bullet_red.png");
 		//a null model means the tree is empty
 		tree = new TreeTable("treeTable", treeModel, columns){
 			@Override
@@ -295,7 +304,7 @@ public class ShoppingEditPage extends BaseTreePage{
 				return true;
 			};
 			
-			protected org.apache.wicket.ResourceReference getNodeIcon(TreeNode node) {
+			protected ResourceReference getNodeIcon(TreeNode node) {
 				if(activeSiteFlagEnabled && !((NodeModel) ((DefaultMutableTreeNode) node).getUserObject()).isActive()){
 					return inactiveWarningIcon;
 				}else if(((NodeModel) ((DefaultMutableTreeNode) node).getUserObject()).isInstructorEdited()){
@@ -331,22 +340,22 @@ public class ShoppingEditPage extends BaseTreePage{
 					//display a "saved" message
 					formFeedback.setDefaultModel(new ResourceModel("success.save"));
 					formFeedback.add(new AttributeModifier("class", true, new Model("success")));
-					target.addComponent(formFeedback);
+					target.add(formFeedback);
 					formFeedback2.setDefaultModel(new ResourceModel("success.save"));
 					formFeedback2.add(new AttributeModifier("class", true, new Model("success")));
-					target.addComponent(formFeedback2);
+					target.add(formFeedback2);
 				}catch (Exception e) {
 					log.error(e.getMessage(), e);
 					formFeedback.setDefaultModel(new ResourceModel("failed.save"));
 					formFeedback.add(new AttributeModifier("class", true, new Model("alertMessage")));
-					target.addComponent(formFeedback);
+					target.add(formFeedback);
 					formFeedback2.setDefaultModel(new ResourceModel("failed.save"));
 					formFeedback2.add(new AttributeModifier("class", true, new Model("alertMessage")));
-					target.addComponent(formFeedback2);
+					target.add(formFeedback2);
 				}
 				//call a js function to hide the message in 5 seconds
-				target.appendJavascript("hideFeedbackTimer('" + formFeedbackId + "');");
-				target.appendJavascript("hideFeedbackTimer('" + formFeedback2Id + "');");
+				target.appendJavaScript("hideFeedbackTimer('" + formFeedbackId + "');");
+				target.appendJavaScript("hideFeedbackTimer('" + formFeedback2Id + "');");
 				modifiedAlert = false;
 			}
 			@Override
@@ -389,8 +398,8 @@ public class ShoppingEditPage extends BaseTreePage{
 		});
 		
 		//setup legend:
-		final ResourceReference nodeIcon = new CompressedResourceReference(DefaultAbstractTree.class, "res/folder-closed.gif");
-		final ResourceReference siteIcon = new CompressedResourceReference(DefaultAbstractTree.class, "res/item.gif");
+		final ResourceReference nodeIcon = new PackageResourceReference(DefaultAbstractTree.class, "res/folder-closed.gif");
+		final ResourceReference siteIcon = new PackageResourceReference(DefaultAbstractTree.class, "res/item.gif");
 		add(new Label("legend", new StringResourceModel("legend", null)));
 		add(new Image("legendNode", nodeIcon));
 		add(new Label("legendNodeDesc", new StringResourceModel("legendNodeDesc", null)));

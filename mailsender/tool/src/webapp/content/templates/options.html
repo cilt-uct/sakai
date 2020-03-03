@@ -6,7 +6,7 @@
 	<link href="/library/skin/default/tool.css" rsf:id="scr=portal-matter" type="text/css" rel="stylesheet" media="all" />
 	<link href="../css/MailSender.css" type="text/css" rel="stylesheet" media="all" />
 	<script type="text/javascript" language="JavaScript" src="/library/js/headscripts.js"></script>
-	<script type="text/javascript" language="JavaScript" src="/library/webjars/jquery/1.11.3/jquery.min.js"></script>
+	<script type="text/javascript" language="JavaScript" src="/library/webjars/jquery/1.12.4/jquery.min.js"></script>
 </head>
 <body>
 <div class="portletBody container-fluid">
@@ -16,7 +16,9 @@
 	<div rsf:id="message-for:*">Messages for the user show here</div>
 
 	<form rsf:id="optionsForm" method="post" class="form-horizontal">
-		<h3 rsf:id="msg=options_toolbar" class="insColor insBak insBorder">Options</h3>
+		<div class="page-header">
+			<h1 rsf:id="msg=options_toolbar">Options</h1>
+		</div>
 		<div rsf:id="msg=options_instruction" class="instruction section">
 			You are currently choosing options for Email. Settings chosen on this page will become the default settings for this site.
 		</div>
@@ -30,7 +32,7 @@
 					<input rsf:id="sendMeACopy" id="sendMeACopy" name="sendMeACopy" type="checkbox" />
 					<label rsf:id="msg=sendmeacopy" for="sendMeACopy">Send me a copy</label>
 				</div>
-				<div rsf:id="addToArchiveDiv" class="checkbox col-sm-8">
+				<div rsf:id="addToArchiveDiv" class="option-checkbox">
 					<input rsf:id="addToArchive" id="addToArchive" name="addToArchive" type="checkbox" />
 					<label rsf:id="msg=addtoemailarchive" for="addToArchive">Add to Email Archive, visible to all site participants</label>
 				</div>

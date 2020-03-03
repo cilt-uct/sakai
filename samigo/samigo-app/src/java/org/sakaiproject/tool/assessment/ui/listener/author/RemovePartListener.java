@@ -19,17 +19,21 @@
  *
  **********************************************************************************/
 
-
-
 package org.sakaiproject.tool.assessment.ui.listener.author;
+
+import java.util.Iterator;
+import java.util.Set;
 
 import javax.faces.event.AbortProcessingException;
 import javax.faces.event.ActionEvent;
 import javax.faces.event.ActionListener;
 
 import org.sakaiproject.event.cover.EventTrackingService;
+import org.sakaiproject.samigo.util.SamigoConstants;
 import org.sakaiproject.tool.assessment.facade.AgentFacade;
 import org.sakaiproject.tool.assessment.facade.AssessmentFacade;
+import org.sakaiproject.tool.assessment.facade.ItemFacade;
+import org.sakaiproject.tool.assessment.facade.SectionFacade;
 import org.sakaiproject.tool.assessment.services.assessment.AssessmentService;
 import org.sakaiproject.tool.assessment.ui.bean.author.AssessmentBean;
 import org.sakaiproject.tool.assessment.ui.bean.author.SectionBean;
@@ -44,7 +48,6 @@ import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 
 public class RemovePartListener implements ActionListener
 {
-  //private static Logger log = LoggerFactory.getLogger(RemovePartListener.class);
 
   public RemovePartListener()
   {
@@ -65,7 +68,9 @@ public class RemovePartListener implements ActionListener
     // #2 - check if we are removing all question or we
     // need to move question to another part
     AssessmentService assessmentService = new AssessmentService();
-    //log.info("** removeAll Question="+removeAllQuestions);
+    SectionFacade sectionFacade = assessmentService.getSection(sectionId);
+    Set<ItemFacade> itemList = sectionFacade.getItemFacadeSet();
+
     if (!("1").equals(removeAllQuestions)){
       // move questions to destinated Section when removing a section
       if (destSectionId == null || ("").equals(destSectionId)){
@@ -74,10 +79,15 @@ public class RemovePartListener implements ActionListener
       assessmentService.moveAllItems(sectionId,destSectionId);
     }
     assessmentService.removeSection(sectionId);
-    EventTrackingService.post(EventTrackingService.newEvent("sam.assessment.revise", "siteId=" + AgentFacade.getCurrentSiteId() + ", removed sectionId=" + sectionId, true));
-    
+    EventTrackingService.post(EventTrackingService.newEvent(SamigoConstants.EVENT_ASSESSMENT_REVISE, "siteId=" + AgentFacade.getCurrentSiteId() + ", removed sectionId=" + sectionId, true));
+    if (("1").equals(removeAllQuestions)){
+      Iterator<ItemFacade> iterator = itemList.iterator();
+      while (iterator.hasNext()){
+        ItemFacade item = iterator.next();
+        EventTrackingService.post(EventTrackingService.newEvent(SamigoConstants.EVENT_ASSESSMENT_UNINDEXITEM, "/sam/" + AgentFacade.getCurrentSiteId() + "/unindexed, itemId=" + item.getItemIdString(), true));
+      }
+    }
     // #2 - goto editAssessment.jsp, so reset assessmentBean
-    //log.info("** assessmentId in RemovePartListener ="+assessmentBean.getAssessmentId());
     AssessmentFacade assessment = assessmentService.getAssessment(
         assessmentBean.getAssessmentId());
     assessmentBean.setAssessment(assessment);

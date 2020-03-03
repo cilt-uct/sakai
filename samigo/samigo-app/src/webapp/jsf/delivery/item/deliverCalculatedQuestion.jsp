@@ -27,10 +27,16 @@ should be included in file importing DeliveryMessages
   <!-- ATTACHMENTS -->
 <%@ include file="/jsf/delivery/item/attachment.jsp" %>
 
-<samigo:dataLine value="#{question.finArray}" var="answer"
-  separator=" " first="0" rows="100">
+<div class="sr-only">
+  <h:outputFormat value="#{deliveryMessages.calcq_sr_explanation}" escape="false">
+    <f:param value="#{question.finArray.size()-1}" />
+  </h:outputFormat>
+</div>
+
+<samigo:dataLine value="#{question.finArray}" var="answer" separator=" " first="0" rows="100">
   <h:column>
-      <h:outputText value="#{answer.text} " escape="false" />
+      <h:outputText id="calcq-question-text" styleClass="calcq-question-text" value="#{answer.text} " escape="false" />
+      <f:verbatim>&nbsp;</f:verbatim>
       <h:panelGroup styleClass="icon-sakai--check feedBackCheck" id="image"
         rendered="#{delivery.feedback eq 'true' &&
                     delivery.feedbackComponent.showCorrectResponse &&
@@ -41,15 +47,12 @@ should be included in file importing DeliveryMessages
                     delivery.feedbackComponent.showCorrectResponse &&
                     answer.isCorrect != null && !answer.isCorrect && answer.hasInput && !delivery.noFeedback=='true'}" >
       </h:panelGroup>      
-	  <h:inputText size="10" rendered="#{answer.hasInput 
-		&& delivery.actionString !='gradeAssessment' 
-		&& delivery.actionString !='reviewAssessment'}"
-        disabled="#{delivery.actionString=='previewAssessment'}" value="#{answer.response}" onkeypress="return noenter()"/>
-      <h:outputText style="text-decoration: underline" 
-		rendered="#{delivery.actionString=='gradeAssessment' 
-			|| delivery.actionString=='reviewAssessment'}"
-             value="#{answer.response}"/>
-
+      <h:panelGroup rendered="#{answer.hasInput && delivery.actionString !='gradeAssessment' && delivery.actionString !='reviewAssessment'}">
+        <h:outputLabel styleClass="sr-only" for="calcq" value="#{deliveryMessages.calcq_sr_answer_label_part1} #{question.answerCounter}. #{deliveryMessages.calcq_sr_answer_label_part2}" />
+        <h:inputText size="20" value="#{answer.response}" onkeypress="return noenter()" id="calcq" />
+      </h:panelGroup>
+      <h:outputText style="text-decoration: underline" rendered="#{delivery.actionString=='gradeAssessment' || delivery.actionString=='reviewAssessment'}"
+         value="#{answer.response}"/>
   </h:column>
 </samigo:dataLine>
 
@@ -61,12 +64,12 @@ should be included in file importing DeliveryMessages
              && delivery.navigation ne '1' && delivery.displayMardForReview }">
 <h:selectBooleanCheckbox value="#{question.review}" id="mark_for_review" />
 	<h:outputLabel for="mark_for_review" value="#{deliveryMessages.mark}" />
-	<h:outputLink title="#{assessmentSettingsMessages.whats_this_link}" value="#" onclick="javascript:window.open('../author/markForReviewPopUp.faces','MarkForReview','width=300,height=220,scrollbars=yes, resizable=yes');">
+	<h:outputLink title="#{assessmentSettingsMessages.whats_this_link}" value="#" onclick="javascript:window.open('/samigo-app/jsf/author/markForReviewPopUp.faces','MarkForReview','width=350,height=280,scrollbars=yes, resizable=yes');event.preventDefault();">
 		<h:outputText  value=" #{assessmentSettingsMessages.whats_this_link}"/>
 	</h:outputLink>
 </h:panelGroup>
 
-<h:panelGroup rendered="#{delivery.feedback eq 'true' || delivery.actionString=='previewAssessment'}">
+<h:panelGroup rendered="#{delivery.feedback eq 'true'}">
   <f:verbatim><br /></f:verbatim>
   <h:panelGroup rendered="#{delivery.feedbackComponent.showCorrectResponse && !delivery.noFeedback=='true'}" >
     <f:verbatim><b></f:verbatim>

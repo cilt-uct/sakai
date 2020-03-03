@@ -1,54 +1,50 @@
+/**
+ * Copyright (c) 2005-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.tool.assessment.services;
-
-
 
 import java.util.Date;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.lang3.StringUtils;
+import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
-import org.quartz.StatefulJob;
+
 import org.sakaiproject.authz.api.AuthzGroupService;
-import org.sakaiproject.component.cover.ServerConfigurationService;
+import org.sakaiproject.component.api.ServerConfigurationService;
+import org.sakaiproject.event.api.EventTrackingService;
 import org.sakaiproject.event.api.UsageSession;
-import org.sakaiproject.event.cover.EventTrackingService;
-import org.sakaiproject.event.cover.UsageSessionService;
+import org.sakaiproject.event.api.UsageSessionService;
 import org.sakaiproject.samigo.api.SamigoETSProvider;
+import org.sakaiproject.samigo.util.SamigoConstants;
 import org.sakaiproject.tool.api.Session;
-import org.sakaiproject.tool.cover.SessionManager;
+import org.sakaiproject.tool.api.SessionManager;
 
+@Slf4j
+public class AutoSubmitAssessmentsJob implements Job {
 
-public class AutoSubmitAssessmentsJob implements StatefulJob {
-	
-	private static final Logger LOG = LoggerFactory.getLogger(AutoSubmitAssessmentsJob.class);	
-	protected String serverName = "unknown";
+	@Setter private AuthzGroupService authzGroupService;
+	@Setter private EventTrackingService eventTrackingService;
+	@Setter private SamigoETSProvider samigoETSProvider;
+	@Setter private ServerConfigurationService serverConfigurationService;
+	@Setter private SessionManager sessionManager;
+	@Setter private UsageSessionService usageSessionService;
 
-	private AuthzGroupService authzGroupService;
-	private SamigoETSProvider etsProvider;
-
-	public void setAuthzGroupService(AuthzGroupService authzGroupService) {
-		this.authzGroupService = authzGroupService;
-	}
-	
-	public void setSamigoETSProvider(SamigoETSProvider value)
-	{
-		etsProvider = value;
-	}
-
-	public void init() {
-		LOG.debug("AutoSubmitAssessmentsJob init()  ");
-	}
-
-	public void destroy() {
-		LOG.debug("AutoSubmitAssessmentsJob destroy()");
-	}
-
-	
-	public AutoSubmitAssessmentsJob() {
-		super();
-	}
- 
 	/*
 	 * Quartz job to check for assessment attempts that should be autosubmitted
 	 * 
@@ -57,7 +53,7 @@ public class AutoSubmitAssessmentsJob implements StatefulJob {
 	public void execute(JobExecutionContext jobInfo) throws JobExecutionException {
 		loginToSakai("admin");
 
-		String jobName = jobInfo.getJobDetail().getKey().getName(); 
+		String jobName = jobInfo.getJobDetail().getKey().getName();
 		String triggerName = jobInfo.getTrigger().getKey().getName();
  		Date requestedFire = jobInfo.getScheduledFireTime();
 		Date actualfire = jobInfo.getFireTime();
@@ -78,20 +74,19 @@ public class AutoSubmitAssessmentsJob implements StatefulJob {
 			whoAmI.append(actualfire.toString());
 		}
 		
-		EventTrackingService.post(EventTrackingService.newEvent("sam.auto-submit.job", 
-				safeEventLength(whoAmI.toString()), true));			
+		eventTrackingService.post(eventTrackingService.newEvent(SamigoConstants.EVENT_AUTO_SUBMIT_JOB, safeEventLength(whoAmI.toString()), true));
 
-		LOG.info("Start Job: " + whoAmI.toString());
+		log.info("Start Job: {}", whoAmI);
 		
 		GradingService gradingService = new GradingService();
 		int failures = gradingService.autoSubmitAssessments();
 		
 		if (failures > 0)
 		{
-			etsProvider.notifyAutoSubmitFailures(failures);
+			samigoETSProvider.notifyAutoSubmitFailures(failures);
 		}
 		
-		LOG.info("End Job: " + whoAmI.toString() + " (" + failures + " failures)");
+		log.info("End Job: {} ({} failures)", whoAmI, failures);
 		
 		logoutFromSakai();
 	}
@@ -106,17 +101,17 @@ public class AutoSubmitAssessmentsJob implements StatefulJob {
 	 */
 	protected void loginToSakai(String whoAs) {
 		
-		serverName = ServerConfigurationService.getServerName();
-		LOG.debug(" AutoSubmitAssessmentsJob Logging into Sakai on " + serverName + " as " + whoAs);
+		String serverName = serverConfigurationService.getServerName();
+		log.debug("AutoSubmitAssessmentsJob Logging into Sakai on {} as {}", serverName, whoAs);
 
-		UsageSession session = UsageSessionService.startSession(whoAs, serverName, "AutoSubmitAssessmentsJob");
+		UsageSession session = usageSessionService.startSession(whoAs, serverName, "AutoSubmitAssessmentsJob");
         if (session == null)
         {
-    		EventTrackingService.post(EventTrackingService.newEvent("sam.auto-submit.job.error", whoAs + " unable to log into " + serverName, true));
+    		eventTrackingService.post(eventTrackingService.newEvent(SamigoConstants.EVENT_AUTO_SUBMIT_JOB_ERROR, whoAs + " unable to log into " + serverName, true));
     		return;
         }
 		
-		Session sakaiSession = SessionManager.getCurrentSession();
+		Session sakaiSession = sessionManager.getCurrentSession();
 		sakaiSession.setUserId(whoAs);
 		sakaiSession.setUserEid(whoAs);
 
@@ -124,16 +119,15 @@ public class AutoSubmitAssessmentsJob implements StatefulJob {
 		authzGroupService.refreshUser(whoAs);
 
 		// post the login events
-		EventTrackingService.post(EventTrackingService.newEvent(UsageSessionService.EVENT_LOGIN, whoAs + " running " + serverName, true));
+		eventTrackingService.post(eventTrackingService.newEvent(UsageSessionService.EVENT_LOGIN, whoAs + " running " + serverName, true));
 
 	}
 
 
 	protected void logoutFromSakai() {
-		String serverName = ServerConfigurationService.getServerName();
-		LOG.debug(" AutoSubmitAssessmentsJob Logging out of Sakai on " + serverName);
-		EventTrackingService.post(EventTrackingService.newEvent(UsageSessionService.EVENT_LOGOUT, null, true));
-		UsageSessionService.logout(); // safe to logout? what if other jobs are running?
+		log.debug("Logging out of Sakai on {}", serverConfigurationService.getServerName());
+		eventTrackingService.post(eventTrackingService.newEvent(UsageSessionService.EVENT_LOGOUT, null, true));
+		usageSessionService.logout(); // safe to logout? what if other jobs are running?
 	}
 	
 	/**
@@ -151,6 +145,6 @@ public class AutoSubmitAssessmentsJob implements StatefulJob {
 	 */
 	static final public String safeEventLength(final String target) 
 	{
-		return (target.length() > 255 ? target.substring(0, 255) : target);
-	}	
+		return StringUtils.abbreviate(target, 255);
+	}
 }

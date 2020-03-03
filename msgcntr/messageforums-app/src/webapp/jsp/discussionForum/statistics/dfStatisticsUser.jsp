@@ -1,6 +1,6 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://sakaiproject.org/jsf/messageforums" prefix="mf" %>
 <jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
 	<jsp:setProperty name="msgs" property="baseName" value="org.sakaiproject.api.app.messagecenter.bundle.Messages"/>
@@ -19,7 +19,7 @@
   <sakai:view>
   	<h:form id="dfStatisticsForm" rendered="#{ForumTool.instructor}">
 		<!--discussionForum/statistics/dfStatisticsUser.jsp-->
-		<script type="text/javascript">
+		<script>
 
 	
 			var iframeId = '<%= org.sakaiproject.util.Web.escapeJavascript(thisId)%>';
@@ -93,14 +93,14 @@
 			
 		</script>
 		
-  	    <script type="text/javascript">includeLatestJQuery("msgcntr");</script>
-		<sakai:script contextBase="/messageforums-tool" path="/js/dialog.js"/>
-		<sakai:script contextBase="/messageforums-tool" path="/js/forum.js"/>
+  	    <script>includeLatestJQuery("msgcntr");</script>
+		<script src="/messageforums-tool/js/dialog.js"></script>
+		<script src="/messageforums-tool/js/forum.js"></script>
 		<link rel="stylesheet" type="text/css" href="/messageforums-tool/css/dialog.css" />
 		<link rel="stylesheet" type="text/css" href="/messageforums-tool/css/msgcntr_statistics.css" />
        	
   	
-  		<script type="text/javascript">
+  		<script>
   			$(document).ready(function() {
 				$(".messageBody").each(function(index){
 					var msgBody = $(this).html();
@@ -116,11 +116,12 @@
 				dialogutil.openDialog('dialogDiv', 'dialogFrame', position.top);
 			}
 		</script>
-  		<f:verbatim>
-			<div id="dialogDiv" title="Grade Messages" style="display:none">
-		       <iframe id="dialogFrame" name="dialogFrame" width="100%" height="100%" frameborder="0"></iframe>
-		    </div>
-		</f:verbatim>
+
+		<div id="dialogDiv" title="Grade Messages" style="display:none">
+			<h:commandButton type="button" styleClass="closeDialogFrame" onclick="dialogutil.closeDialog($(this).parent().attr('id'), $('#dialogFrame').attr('id'));" value="#{msgs.close_window}"/>
+			<iframe id="dialogFrame" name="dialogFrame" width="100%" height="100%" frameborder="0"></iframe>
+		</div>
+
   		<h:panelGrid columns="2" width="100%" styleClass="navPanel  specialLink">
           <h:panelGroup>
           	 <f:verbatim><h3></f:verbatim>

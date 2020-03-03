@@ -2,7 +2,7 @@
                  javax.faces.el.*, org.sakaiproject.tool.messageforums.ui.*"%>
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 
 <jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
    <jsp:setProperty name="msgs" property="baseName" value="org.sakaiproject.api.app.messagecenter.bundle.Messages"/>
@@ -19,13 +19,13 @@
 <html>
 
 <head>
-<script type="text/javascript" src="/library/js/headscripts.js"></script>
-<script src="js/frameAdjust.js" type="text/javascript"></script>
-<script type="text/javascript">includeLatestJQuery("msgcntr");</script>
+<script src="/library/js/headscripts.js"></script>
+<script src="js/frameAdjust.js"></script>
+<script>includeLatestJQuery("msgcntr");</script>
 
 
 
-<script type="text/javascript"><!--
+<script><!--
 	/*
 	 *	To use this, call this page with a GET parameter of "url"
 	 *	with the urlencoded destination page that takes a while to load
@@ -173,10 +173,10 @@
 
 <f:view>
   <sakai:view>
-  	  <script type="text/javascript" src="/library/js/jquery/tablesorter/2.0.3/jquery.tablesorter-2.0.3.min.js"></script>
-	  <sakai:script contextBase="/messageforums-tool" path="/js/synopticLite.js"/>
-  	  <sakai:script contextBase="/messageforums-tool" path="/js/popupscripts.js"/>
-  	  <script type="text/javascript">
+	  <script>includeWebjarLibrary('jquery.tablesorter');</script>
+	  <script src="/messageforums-tool/js/synopticLite.js"></script>
+  	  <script src="/messageforums-tool/js/popupscripts.js"></script>
+  	  <script>
 
 //this function (setupTableParsers) setting has to be in the jsp page b/c of the msgs.syn_no_messages string.
 var SynMainLite = SynMainLite || {};
@@ -370,7 +370,7 @@ function mySetMainFrameHeightViewCell(id)
 	}else{
 %>
 	
-	<script type="text/javascript"> 
+	<script> 
 	// Call javascript function to grab actual long loading page
 	load();
 	</script>

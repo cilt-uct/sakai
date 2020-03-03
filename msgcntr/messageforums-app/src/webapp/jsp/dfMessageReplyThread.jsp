@@ -1,7 +1,7 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
 <%@ taglib uri="http://myfaces.apache.org/tomahawk" prefix="t"%>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://sakaiproject.org/jsf/messageforums" prefix="mf" %>
 <jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
    <jsp:setProperty name="msgs" property="baseName" value="org.sakaiproject.api.app.messagecenter.bundle.Messages"/>
@@ -14,12 +14,12 @@
 		<f:verbatim><input type="hidden" id="currentMessageId" name="currentMessageId" value="</f:verbatim><h:outputText value="#{ForumTool.selectedMessage.message.id}"/><f:verbatim>"/></f:verbatim>
 		<f:verbatim><input type="hidden" id="currentTopicId" name="currentTopicId" value="</f:verbatim><h:outputText value="#{ForumTool.selectedTopic.topic.id}"/><f:verbatim>"/></f:verbatim>
 		<f:verbatim><input type="hidden" id="currentForumId" name="currentForumId" value="</f:verbatim><h:outputText value="#{ForumTool.selectedForum.forum.id}"/><f:verbatim>"/></f:verbatim>
-             <script type="text/javascript">includeLatestJQuery("msgcntr");</script>
-       		<sakai:script contextBase="/messageforums-tool" path="/js/sak-10625.js"/>
-       		<sakai:script contextBase="/messageforums-tool" path="/js/forum.js"/>
-       		<sakai:script contextBase="/messageforums-tool" path="/js/messages.js"/>
+             <script>includeLatestJQuery("msgcntr");</script>
+       		<script src="/messageforums-tool/js/sak-10625.js"></script>
+       		<script src="/messageforums-tool/js/forum.js"></script>
+       		<script src="/messageforums-tool/js/messages.js"></script>
         <h:outputText styleClass="alertMessage" value="#{msgs.cdfm_reply_deleted}" rendered="#{ForumTool.errorSynch}" />
-		<script type="text/javascript">
+		<script>
 				$(document).ready(function() {
 					$('#openLinkBlock').hide();
 					jQuery('.toggle').click(function(e) { 
@@ -133,10 +133,10 @@
 		</div>
             <sakai:inputRichText textareaOnly="#{PrivateMessagesTool.mobileSession}" value="#{ForumTool.composeBody}" id="df_compose_body" rows="#{ForumTool.editorRows}" cols="132">
 			</sakai:inputRichText>
-			<%-- pre-morpheus would need this: script type="text/javascript">
+			<%-- pre-morpheus would need this: script>
 				CKEDITOR.on('instanceReady', function() {resizeFrame('grow')});
 			</script --%>
-		<script language="javascript" type="text/javascript">
+		<script>
 			var textareas = document.getElementsByTagName("textarea");
 			var rteId = textareas.item(1).id;
 			
@@ -197,9 +197,9 @@
 			  </h:column>
 			</h:dataTable>   
 		<p style="padding:0" class="act">
-			<sakai:button_bar_item action="#{ForumTool.processAddAttachmentRedirect}" value="#{msgs.cdfm_button_bar_add_attachment_redirect}" 
+			<h:commandButton action="#{ForumTool.processAddAttachmentRedirect}" value="#{msgs.cdfm_button_bar_add_attachment_redirect}" 
 				rendered="#{empty ForumTool.attachments}" style="font-size:95%"/>
-			<sakai:button_bar_item action="#{ForumTool.processAddAttachmentRedirect}" value="#{msgs.cdfm_button_bar_add_attachment_more_redirect}" 
+			<h:commandButton action="#{ForumTool.processAddAttachmentRedirect}" value="#{msgs.cdfm_button_bar_add_attachment_more_redirect}" 
 				rendered="#{!empty ForumTool.attachments}" style="font-size:95%"/>
 		</p>
 		</div>
@@ -237,13 +237,12 @@
 						<h:outputText value="#{msgs.cdfm_reply_message_note} " styleClass="highlight" rendered="#{ForumTool.selectedTopic.moderated == 'true' }" /><h:outputText value="#{msgs.cdfm_reply_message_mod_inst}" styleClass="instruction" rendered="#{ForumTool.selectedTopic.moderated == 'true' }" />
 	  
 		<div style="padding:0" class="act">
-        <sakai:button_bar_item id="post" action="#{ForumTool.processDfReplyMsgPost}" value="#{msgs.cdfm_button_bar_post_message}" accesskey="s" styleClass="blockMeOnClick"/>
-    <%--    <sakai:button_bar_item action="#{ForumTool.processDfReplyMsgSaveDraft}" value="#{msgs.cdfm_button_bar_save_draft}" /> --%>
-        <sakai:button_bar_item action="#{ForumTool.processDfReplyThreadCancel}" value="#{msgs.cdfm_button_bar_cancel}" accesskey="x" />
-         <h:outputText styleClass="messageProgress" style="display:none" value="#{msgs.cdfm_processing_submit_message}" />
+        <h:commandButton id="post" action="#{ForumTool.processDfReplyMsgPost}" value="#{msgs.cdfm_button_bar_post_message}" accesskey="s" styleClass="blockMeOnClick"/>
+        <h:commandButton action="#{ForumTool.processDfReplyThreadCancel}" value="#{msgs.cdfm_button_bar_cancel}" accesskey="x" />
+         <h:outputText styleClass="sak-banner-info" style="display:none" value="#{msgs.cdfm_processing_submit_message}" />
 		</div>
 
-<script type="text/javascript">
+<script>
 setTimeout(function(){ 
   var _div = document.getElementsByTagName('div');
   for(i=0;i<_div.length; i++)

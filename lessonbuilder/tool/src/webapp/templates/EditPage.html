@@ -12,7 +12,7 @@
 <title rsf:id="msg=simplepage.edit-page"></title>
 </head>
 <body rsf:id="scr=sakai-body">
-<script type="text/javascript" src="$context/js/jquery-1.9.1.min.js"></script>
+<script>includeLatestJQuery('EditPage.html');</script>
 
 	<div class="portletBody">
 	
@@ -32,7 +32,7 @@
             <input type="checkbox" id="question-prerequisite" rsf:id="question-prerequisite"/><label rsf:id="msg=simplepage.prerequisites_label" for="question-prerequisite"></label>
 	 </div>
 			
-<span style="display:none;" id="confirmDeleteLangSupp" rsf:id="msg=simplepage.delete_page_confirm"></span>
+<span style="display:none;" id="deleteButtonLangSupp" rsf:id="msg=simplepage.delete_page_confirm"></span>
 <script type="text/javascript">
 
 $(function() {
@@ -47,8 +47,8 @@ $(function() {
 });
 
 jQuery(document).ready(function($) {
-	var confirmMsg = document.getElementById('confirmDeleteLangSupp').innerHTML;
-    $('.ConfirmDelete').click(function() {
+	var confirmMsg = document.getElementById('deleteButtonLangSupp').innerHTML;
+    $('.deleteButton').click(function() {
         return confirm(confirmMsg);
     });
 });

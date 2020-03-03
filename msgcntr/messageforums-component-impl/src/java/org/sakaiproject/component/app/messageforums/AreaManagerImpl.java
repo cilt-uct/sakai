@@ -20,27 +20,25 @@
  **********************************************************************************/
 package org.sakaiproject.component.app.messageforums;
 
-import java.sql.SQLException;
 import java.util.Date;
 import java.util.Iterator;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.hibernate.Hibernate;
+import lombok.extern.slf4j.Slf4j;
 import org.hibernate.HibernateException;
 import org.hibernate.Query;
 import org.hibernate.Session;
-import org.hibernate.collection.PersistentSet;
+import org.hibernate.collection.internal.PersistentSet;
+import org.hibernate.type.StringType;
+import org.springframework.orm.hibernate4.HibernateCallback;
+import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
+
 import org.sakaiproject.api.app.messageforums.Area;
 import org.sakaiproject.api.app.messageforums.AreaManager;
 import org.sakaiproject.api.app.messageforums.BaseForum;
 import org.sakaiproject.api.app.messageforums.DiscussionForum;
 import org.sakaiproject.api.app.messageforums.DiscussionTopic;
-import org.sakaiproject.api.app.messageforums.ForumScheduleNotification;
 import org.sakaiproject.api.app.messageforums.MessageForumsForumManager;
 import org.sakaiproject.api.app.messageforums.MessageForumsTypeManager;
-import org.sakaiproject.api.app.messageforums.cover.ForumScheduleNotificationCover;
-import org.sakaiproject.api.app.messageforums.cover.SynopticMsgcntrManagerCover;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.component.app.messageforums.dao.hibernate.AreaImpl;
 import org.sakaiproject.exception.IdUnusedException;
@@ -49,13 +47,11 @@ import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.tool.api.Placement;
 import org.sakaiproject.tool.api.SessionManager;
-import org.sakaiproject.tool.cover.ToolManager;
+import org.sakaiproject.tool.api.ToolManager;
 import org.sakaiproject.util.ResourceLoader;
-import org.springframework.orm.hibernate3.HibernateCallback;
-import org.springframework.orm.hibernate3.support.HibernateDaoSupport;
 
+@Slf4j
 public class AreaManagerImpl extends HibernateDaoSupport implements AreaManager {
-    private static final Logger LOG = LoggerFactory.getLogger(AreaManagerImpl.class);
 
     private static final String QUERY_AREA_BY_CONTEXT_AND_TYPE_ID = "findAreaByContextIdAndTypeId";
     private static final String QUERY_AREA_BY_TYPE = "findAreaByType";
@@ -77,6 +73,7 @@ public class AreaManagerImpl extends HibernateDaoSupport implements AreaManager 
     private Boolean DEFAULT_AUTO_MARK_READ = false;    
 
     private SiteService siteService;
+    private ToolManager toolManager;
     
     /**
      * sakai.property for setting the default Messages tool option for sending a copy of a message
@@ -94,8 +91,12 @@ public class AreaManagerImpl extends HibernateDaoSupport implements AreaManager 
 		this.siteService = siteService;
 	}
 
+	public void setToolManager(ToolManager toolManager) {
+		this.toolManager = toolManager;
+	}
+
 	public void init() {
-       LOG.info("init()");
+       log.info("init()");
        DEFAULT_AUTO_MARK_READ = serverConfigurationService.getBoolean("msgcntr.forums.default.auto.mark.threads.read", false);
     }
 
@@ -146,7 +147,7 @@ public class AreaManagerImpl extends HibernateDaoSupport implements AreaManager 
             area.setPostFirst(Boolean.FALSE);
 	    area.setAutoMarkThreadsRead(DEFAULT_AUTO_MARK_READ);
             area.setSendToEmail(serverConfigurationService.getInt(DEFAULT_SEND_TO_EMAIL_PROP, Area.EMAIL_COPY_OPTIONAL));
-            saveArea(area);
+            area = saveArea(area);
         }
 
         return area;
@@ -161,14 +162,14 @@ public class AreaManagerImpl extends HibernateDaoSupport implements AreaManager 
     }
     
     public Area getDiscussionArea(String contextId, boolean createDefaultForum) {
-    	LOG.debug("getDiscussionArea(" + contextId +")");
+    	log.debug("getDiscussionArea(" + contextId +")");
     	if (contextId == null) {
     		return getDiscusionArea();
     	}
     	Area area = this.getAreaByContextIdAndTypeId(contextId, typeManager.getDiscussionForumType());
     	
     	if (area == null) {
-    		LOG.info("setting up a new Discussion Area for " + contextId);
+    		log.info("setting up a new Discussion Area for " + contextId);
     		area = createArea(typeManager.getDiscussionForumType(), contextId);
     		area.setName(getResourceBundleString(FORUMS_TITLE));
             area.setEnabled(Boolean.TRUE);
@@ -180,7 +181,7 @@ public class AreaManagerImpl extends HibernateDaoSupport implements AreaManager 
             // this is a Messages tool option
 	    area.setSendToEmail(serverConfigurationService.getInt(DEFAULT_SEND_TO_EMAIL_PROP, Area.EMAIL_COPY_OPTIONAL));
 	    area.setAvailabilityRestricted(Boolean.FALSE);
-            saveArea(area);
+            area = saveArea(area);
             //if set populate the default Forum and topic
             if  (createDefaultForum && serverConfigurationService.getBoolean("forums.setDefault.forum", true)) {
             	setAreaDefaultElements(area);
@@ -191,7 +192,7 @@ public class AreaManagerImpl extends HibernateDaoSupport implements AreaManager 
     	return area;
 	}
     private void setAreaDefaultElements(Area area) {
-    	LOG.info("setAreaDefaultElements(" + area.getId() + ")");
+    	log.info("setAreaDefaultElements(" + area.getId() + ")");
     	DiscussionForum forum = forumManager.createDiscussionForum();
     	forum.setArea(area);
     	String siteTitle = null;
@@ -199,8 +200,7 @@ public class AreaManagerImpl extends HibernateDaoSupport implements AreaManager 
 			Site site = siteService.getSite(area.getContextId());
 			siteTitle = site.getTitle();
 		} catch (IdUnusedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 		}
 		//MSGCNTR-453
     	forum.setCreatedBy("admin");
@@ -208,7 +208,7 @@ public class AreaManagerImpl extends HibernateDaoSupport implements AreaManager 
     	forum.setDraft(false);
     	forum.setModerated(area.getModerated());
     	forum.setPostFirst(area.getPostFirst());
-        forumManager.saveDiscussionForum(forum);
+        forum = forumManager.saveDiscussionForum(forum);
     	DiscussionTopic topic = forumManager.createDiscussionForumTopic(forum);
     	topic.setTitle(getResourceBundleString("default_topic"));
     	//MSGCNTR-453
@@ -223,9 +223,9 @@ public class AreaManagerImpl extends HibernateDaoSupport implements AreaManager 
 
     public Area createArea(String typeId, String contextParam) {
     	
-    	  if (LOG.isDebugEnabled())
+    	  if (log.isDebugEnabled())
         {
-          LOG.debug("createArea(" + typeId + "," + contextParam + ")");
+          log.debug("createArea(" + typeId + "," + contextParam + ")");
         }
     	      	      	  
         Area area = new AreaImpl();
@@ -246,7 +246,7 @@ public class AreaManagerImpl extends HibernateDaoSupport implements AreaManager 
         	area.setContextId(contextParam);
         }                      
                                                                          
-        LOG.debug("createArea executed with areaId: " + area.getUuid());
+        log.debug("createArea executed with areaId: " + area.getUuid());
         return area;
     }
 
@@ -255,17 +255,15 @@ public class AreaManagerImpl extends HibernateDaoSupport implements AreaManager 
      * sort index of 0.  (if a sort index on a forum is 0 then it is new). If there is a 
      * zero sort index then it increments all the sort indices by one so the new sort index
      * becomes the first without having to rely on the creation date for the sorting.
-     * 
+     *
      * @param area Area to save
      */
-    public void saveArea(Area area) {
+    public Area saveArea(Area area) {
     	String currentUser = getCurrentUser();
-    	saveArea( area, currentUser);
+    	return saveArea( area, currentUser);
     }
     
-    public void saveArea(Area area, String currentUser){
-        boolean isNew = area.getId() == null;
-
+    public Area saveArea(Area area, String currentUser){
         area.setModified(new Date());
         area.setModifiedBy(currentUser);
         
@@ -274,7 +272,7 @@ public class AreaManagerImpl extends HibernateDaoSupport implements AreaManager 
         // If the open forums were not loaded then there is no need to redo the sort index
         //     thus if it's a hibernate persistentset and initialized
         if( area.getOpenForumsSet() != null &&
-              ((area.getOpenForumsSet() instanceof PersistentSet && 
+              ((area.getOpenForumsSet() instanceof PersistentSet &&
               ((PersistentSet)area.getOpenForumsSet()).wasInitialized()) || !(area.getOpenForumsSet() instanceof PersistentSet) )) {
            for(Iterator i = area.getOpenForums().iterator(); i.hasNext(); ) {
               BaseForum forum = (BaseForum)i.next();
@@ -295,14 +293,16 @@ public class AreaManagerImpl extends HibernateDaoSupport implements AreaManager 
         // the area will always be available. 
         area.setAvailability(true); 
         
-        getHibernateTemplate().saveOrUpdate(area);
+        area = getHibernateTemplate().merge(area);
 
-        LOG.debug("saveArea executed with areaId: " + area.getId());
+        log.debug("saveArea executed with areaId: {}", area.getId());
+
+        return area;
     }
 
     public void deleteArea(Area area) {
         getHibernateTemplate().delete(area);
-        LOG.debug("deleteArea executed with areaId: " + area.getId());
+        log.debug("deleteArea executed with areaId: " + area.getId());
     }
 
     /**
@@ -312,23 +312,23 @@ public class AreaManagerImpl extends HibernateDaoSupport implements AreaManager 
         if (TestUtil.isRunningTests()) {
             return "test-context";
         }
-        Placement placement = ToolManager.getCurrentPlacement();
+        Placement placement = toolManager.getCurrentPlacement();
         String presentSiteId = placement.getContext();
         return presentSiteId;
     }
 
     public Area getAreaByContextIdAndTypeId(final String typeId) {
-        LOG.debug("getAreaByContextIdAndTypeId executing for current user: " + getCurrentUser());
+        log.debug("getAreaByContextIdAndTypeId executing for current user: " + getCurrentUser());
         return this.getAreaByContextIdAndTypeId(getContextId(), typeId);
     }
     
     public Area getAreaByContextIdAndTypeId(final String contextId, final String typeId) {
-        LOG.debug("getAreaByContextIdAndTypeId executing for current user: " + getCurrentUser());
+        log.debug("getAreaByContextIdAndTypeId executing for current user: " + getCurrentUser());
         HibernateCallback hcb = new HibernateCallback() {
-            public Object doInHibernate(Session session) throws HibernateException, SQLException {
+            public Object doInHibernate(Session session) throws HibernateException {
                 Query q = session.getNamedQuery(QUERY_AREA_BY_CONTEXT_AND_TYPE_ID);
-                q.setParameter("contextId", contextId, Hibernate.STRING);
-                q.setParameter("typeId", typeId, Hibernate.STRING);
+                q.setParameter("contextId", contextId, StringType.INSTANCE);
+                q.setParameter("typeId", typeId, StringType.INSTANCE);
                 return q.uniqueResult();
             }
         };
@@ -340,11 +340,11 @@ public class AreaManagerImpl extends HibernateDaoSupport implements AreaManager 
 
     public Area getAreaByType(final String typeId) {
       final String currentUser = getCurrentUser();
-      LOG.debug("getAreaByType executing for current user: " + currentUser);
+      log.debug("getAreaByType executing for current user: " + currentUser);
       HibernateCallback hcb = new HibernateCallback() {
-          public Object doInHibernate(Session session) throws HibernateException, SQLException {
+          public Object doInHibernate(Session session) throws HibernateException {
               Query q = session.getNamedQuery(QUERY_AREA_BY_TYPE);              
-              q.setParameter("typeId", typeId, Hibernate.STRING);              
+              q.setParameter("typeId", typeId, StringType.INSTANCE);
               return q.uniqueResult();
           }
       };        

@@ -21,7 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.memory.api.Cache;
 import org.sakaiproject.profile2.cache.CacheManager;
 import org.sakaiproject.profile2.dao.ProfileDao;
@@ -32,10 +32,9 @@ import org.sakaiproject.profile2.types.EmailType;
 import org.sakaiproject.profile2.types.PrivacyType;
 import org.sakaiproject.profile2.util.ProfileConstants;
 import org.sakaiproject.user.api.User;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Implementation of ProfileConnectionsLogic for Profile2.
@@ -43,9 +42,8 @@ import lombok.Setter;
  * @author Steve Swinsburg (s.swinsburg@gmail.com)
  *
  */
+@Slf4j
 public class ProfileConnectionsLogicImpl implements ProfileConnectionsLogic {
-
-	private static final Logger log = LoggerFactory.getLogger(ProfileConnectionsLogicImpl.class);
 
 	private Cache cache;
 	private final String CACHE_NAME = "org.sakaiproject.profile2.cache.connections";
@@ -68,6 +66,14 @@ public class ProfileConnectionsLogicImpl implements ProfileConnectionsLogic {
 		List<User> users = getConnectedUsers(userUuid);
 		return profileLogic.getPersons(users);
 	}
+
+	/**
+ 	 * {@inheritDoc}
+ 	 */
+	@Override
+	public List<User> getConnectedUsersForUserInsecurely(final String userUuid) {
+		return getConnectedUsersInsecurely(userUuid);
+	}
 	
 	
 	/**
@@ -84,6 +90,15 @@ public class ProfileConnectionsLogicImpl implements ProfileConnectionsLogic {
 	@Override
 	public List<Person> getConnectionRequestsForUser(final String userId) {
 		List<User> users = sakaiProxy.getUsers(dao.getRequestedConnectionUserIdsForUser(userId));
+		return profileLogic.getPersons(users);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public List<Person> getOutgoingConnectionRequestsForUser(final String userId) {
+
+		List<User> users = sakaiProxy.getUsers(dao.getOutgoingConnectionUserIdsForUser(userId));
 		return profileLogic.getPersons(users);
 	}
 	
@@ -408,21 +423,30 @@ public class ProfileConnectionsLogicImpl implements ProfileConnectionsLogic {
  	 */
 	@Override
 	public List<BasicConnection> getBasicConnections(List<User> users) {
+
+		String currentUserUuid = sakaiProxy.getCurrentUserId();
+		if (currentUserUuid == null) {
+			throw new SecurityException("You must be logged in to get a connection list.");
+		}
 		
-		List<BasicConnection> list = new ArrayList<BasicConnection>();
+		List<BasicConnection> list = new ArrayList<>();
 		
 		//get online status
 		Map<String,Integer> onlineStatus = getOnlineStatus(sakaiProxy.getUuids(users));
 		
 		//this is created manually so that we can use the bulk retrieval of the online status method.
 		for(User u:users){
-			BasicConnection p = new BasicConnection();
-			p.setUuid(u.getId());
-			p.setDisplayName(u.getDisplayName());
-			p.setType(u.getType());
-			p.setOnlineStatus(onlineStatus.get(u.getId()));
-			
-			list.add(p);
+			BasicConnection bc = new BasicConnection();
+			bc.setUuid(u.getId());
+			bc.setDisplayName(u.getDisplayName());
+			bc.setEmail(u.getEmail());
+			bc.setProfileUrl(linkLogic.getInternalDirectUrlToUserProfile(u.getId()));
+			bc.setType(u.getType());
+			bc.setOnlineStatus(onlineStatus.get(u.getId()));
+			if (privacyLogic.isActionAllowed(u.getId(), currentUserUuid, PrivacyType.PRIVACY_OPTION_SOCIALINFO)) {
+				bc.setSocialNetworkingInfo(profileLogic.getSocialNetworkingInfo(u.getId()));
+			}
+			list.add(bc);
 		}
 		return list;
 	}
@@ -510,15 +534,24 @@ public class ProfileConnectionsLogicImpl implements ProfileConnectionsLogic {
 			throw new SecurityException("You must be logged in to get a connection list.");
 		}
 		
-		List<User> users = new ArrayList<User>();
+		List<User> users = new ArrayList<>();
 		
 		//check privacy
 		if(!privacyLogic.isActionAllowed(userUuid, currentUserUuid, PrivacyType.PRIVACY_OPTION_MYFRIENDS)) {
 			return users;
 		}
-		
+
 		users = sakaiProxy.getUsers(getConfirmedConnectionUserIdsForUser(userUuid));
 		return users;
+	}
+
+	/**
+	 * Check auth, privacy and get the list of users that are connected to this user.
+	 * @param userUuid
+	 * @return List<User>, will be empty if none or not allowed.
+	 */
+	private List<User> getConnectedUsersInsecurely(final String userUuid) {
+		return sakaiProxy.getUsers(getConfirmedConnectionUserIdsForUser(userUuid));
 	}
 	
 

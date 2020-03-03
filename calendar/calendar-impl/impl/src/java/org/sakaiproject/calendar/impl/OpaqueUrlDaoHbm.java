@@ -1,36 +1,43 @@
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.calendar.impl;
 
 import java.io.Serializable;
-import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.hibernate.HibernateException;
-import org.hibernate.Session;
+import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
+
 import org.sakaiproject.calendar.api.OpaqueUrl;
 import org.sakaiproject.calendar.api.OpaqueUrlDao;
 import org.sakaiproject.calendar.dao.hbm.OpaqueUrlHbm;
-import org.springframework.orm.hibernate3.HibernateCallback;
-import org.springframework.orm.hibernate3.support.HibernateDaoSupport;
 
+@Slf4j
 public class OpaqueUrlDaoHbm extends HibernateDaoSupport implements OpaqueUrlDao {
-
-	private static Logger log = LoggerFactory.getLogger(OpaqueUrlDaoHbm.class);
 	
 	public OpaqueUrl newOpaqueUrl(String userUUID, String calendarRef) {
 		final OpaqueUrlHbm opaqueUrl = new OpaqueUrlHbm(userUUID, calendarRef, UUID.randomUUID().toString());
-		getHibernateTemplate().execute(new HibernateCallback() {
-			public Object doInHibernate(Session session)
-					throws HibernateException, SQLException {
-				Serializable opaqueUUID = session.save(opaqueUrl);
-				// We look for the opaque URL later on in the request so flush.
-				session.flush();
-				return opaqueUUID;
-			}
-			
-		});
+		getHibernateTemplate().execute(session -> {
+            Serializable opaqueUUID = session.save(opaqueUrl);
+            // We look for the opaque URL later on in the request so flush.
+            session.flush();
+            return opaqueUUID;
+        });
 		return opaqueUrl;
 	}
 

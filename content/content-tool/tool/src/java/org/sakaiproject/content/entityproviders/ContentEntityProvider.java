@@ -1,18 +1,41 @@
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.content.entityproviders;
 
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
+import java.net.URISyntaxException;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
-import java.io.UnsupportedEncodingException;
-import java.net.URISyntaxException;
 
-import lombok.Getter;
-import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import javax.servlet.http.HttpServletResponse;
+
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.content.api.ContentCollection;
@@ -21,13 +44,14 @@ import org.sakaiproject.content.api.ContentHostingService;
 import org.sakaiproject.content.api.ContentResource;
 import org.sakaiproject.content.api.ResourceTypeRegistry;
 import org.sakaiproject.content.tool.ListItem;
+import org.sakaiproject.entitybroker.exception.EntityException;
+import org.sakaiproject.entity.api.EntityManager;
+import org.sakaiproject.entity.api.EntityPermissionException;
+import org.sakaiproject.entity.api.Reference;
 import org.sakaiproject.entity.api.ResourceProperties;
 import org.sakaiproject.entitybroker.EntityView;
 import org.sakaiproject.entitybroker.entityprovider.EntityProvider;
 import org.sakaiproject.entitybroker.entityprovider.annotations.EntityCustomAction;
-import org.sakaiproject.entitybroker.entityprovider.annotations.EntityId;
-import org.sakaiproject.entitybroker.entityprovider.annotations.EntityOwner;
-import org.sakaiproject.entitybroker.entityprovider.annotations.EntityTitle;
 import org.sakaiproject.entitybroker.entityprovider.capabilities.ActionsExecutable;
 import org.sakaiproject.entitybroker.entityprovider.capabilities.AutoRegisterEntityProvider;
 import org.sakaiproject.entitybroker.entityprovider.capabilities.Describeable;
@@ -35,6 +59,8 @@ import org.sakaiproject.entitybroker.entityprovider.capabilities.Outputable;
 import org.sakaiproject.entitybroker.entityprovider.extension.Formats;
 import org.sakaiproject.entitybroker.exception.EntityNotFoundException;
 import org.sakaiproject.entitybroker.util.AbstractEntityProvider;
+import org.sakaiproject.entitybroker.util.EntityDataUtils;
+import org.sakaiproject.entitybroker.util.model.EntityContent;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.exception.ServerOverloadException;
@@ -42,23 +68,37 @@ import org.sakaiproject.exception.TypeException;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.site.api.ToolConfiguration;
+import org.sakaiproject.time.api.Time;
+import org.sakaiproject.time.cover.TimeService;
 import org.sakaiproject.tool.api.ToolManager;
-import org.sakaiproject.tool.api.Session;
-import org.sakaiproject.tool.cover.SessionManager;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserNotDefinedException;
+
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Entity provider for the Content / Resources tool
  */
 @Slf4j
+@Setter
 public class ContentEntityProvider extends AbstractEntityProvider implements EntityProvider, AutoRegisterEntityProvider, ActionsExecutable, Outputable, Describeable {
 
 	public final static String ENTITY_PREFIX = "content";
 	public static final String PREFIX = "resources.";
 	public static final String SYS = "sys.";
 	private static final String STATE_RESOURCES_TYPE_REGISTRY = PREFIX + SYS + "type_registry";
+	private static final String PARAMETER_DEPTH = "depth";
+	private static final String PARAMETER_TIMESTAMP = "timestamp";
+
+	private ContentHostingService contentHostingService;
+	private SiteService siteService;
+	private ToolManager toolManager;
+	private SecurityService securityService;
+	private UserDirectoryService userDirectoryService;
+	private EntityManager entityManager;
 
 	@Override
 	public String getEntityPrefix() {
@@ -138,21 +178,200 @@ public class ContentEntityProvider extends AbstractEntityProvider implements Ent
 		// get siteId
 		String siteId = view.getPathSegment(2);
 
-
-		if(log.isDebugEnabled()) {
-			log.debug("Content for site: " + siteId);
-		}
+		log.debug("Content for site: {}", siteId);
 
 		// check siteId supplied
 		if (StringUtils.isBlank(siteId)) {
 			throw new IllegalArgumentException("siteId a must be set in order to get the resources for a site, via the URL /content/site/siteId");
 		}
-		
+
 		// return the ListItem list for the site
 		return getSiteListItems(siteId);
-		
 	}
 
+	@EntityCustomAction(action="resources", viewKey=EntityView.VIEW_LIST)
+	public List<EntityContent> getResources(EntityView view, Map<String, Object> params)
+			throws EntityPermissionException {
+		Map<String, Object> parameters = getQueryMap((String)params.get("queryString"));
+		Time timeStamp = getTime((String)parameters.get(PARAMETER_TIMESTAMP));
+
+		int requestedDepth = 1;
+		int currentDepth = 0;
+		if (parameters.containsKey(PARAMETER_DEPTH)) {
+			if ("all".equals((String)parameters.get(PARAMETER_DEPTH))) {
+				requestedDepth = Integer.MAX_VALUE;
+			} else {
+				requestedDepth = Integer.parseInt((String)parameters.get(PARAMETER_DEPTH));
+			}
+		}
+
+		String[] segments = view.getPathSegments();
+
+		StringBuffer resourceId = new StringBuffer();
+		for (int i=2; i<segments.length; i++) {
+			resourceId.append("/"+segments[i]);
+		}
+		resourceId.append("/");
+
+		Reference reference = entityManager.newReference(
+				ContentHostingService.REFERENCE_ROOT+resourceId.toString());
+
+		// We could have used contentHostingService.getAllEntities(id) bit it doesn't do
+		// permission checks on any contained resources (documentation wrong).
+		// contentHostingService.getAllResources(String id) does do permission checks
+		// but it doesn't include collections in it's returned list.
+		// Also doing the recursion ourselves means that we don't loads lots of entities
+		// when the depth of recursion is low.
+		ContentCollection collection= null;
+		try {
+			collection = contentHostingService.getCollection(reference.getId());
+
+		} catch (IdUnusedException e) {
+			throw new IllegalArgumentException("IdUnusedException in Resource Entity Provider");
+
+		} catch (TypeException e) {
+			throw new IllegalArgumentException("TypeException in Resource Entity Provider");
+
+		} catch (PermissionException e) {
+			throw new SecurityException("PermissionException in Resource Entity Provider");
+		}
+
+		List<EntityContent> resourceDetails = new ArrayList<EntityContent>();
+		if (collection!=null) {
+			EntityContent resourceDetail = getResourceDetails(collection, currentDepth, requestedDepth, timeStamp);
+			if (resourceDetail != null) {
+				resourceDetails.add(resourceDetail);
+			} else {
+				log.error("Initial permission check passed but subsequent permission check failed on "+ reference.getId());
+			}
+		}
+		return resourceDetails;
+	}
+
+	@EntityCustomAction(action="htmlForRef", viewKey=EntityView.VIEW_SHOW)
+	public String getHtmlForRef(EntityView view, Map<String, Object> params) throws EntityPermissionException {
+
+		String ref = (String) params.get("ref");
+
+		if (StringUtils.isBlank(ref)) {
+			throw new EntityException("You need to supply the ref parameter.", null, HttpServletResponse.SC_BAD_REQUEST);
+		}
+
+		return contentHostingService.getHtmlForRef(ref).orElse("");
+	}
+
+	/**
+	 *
+	 * @param entity The entity to load details of.
+	 * @param currentDepth How many collections we have already processed
+	 * @param requestedDepth The maximum number depth of the tree to scan.
+	 * @param timeStamp All returned details must be newer than this timestamp.
+	 * @return EntityContent containing details of all resources the user can access.
+	 * <code>null</code> is returned if the current user isn't allowed to access the resource.
+	 */
+	private EntityContent getResourceDetails(
+			ContentEntity entity, int currentDepth, int requestedDepth, Time timeStamp) {
+		boolean allowed = (entity.isCollection()) ?
+				contentHostingService.allowGetCollection(entity.getId()) :
+				contentHostingService.allowGetResource(entity.getId());
+		if (!allowed) {
+			// If the user isn't allowed to see this we return null.
+			return null;
+		}
+		EntityContent tempRd = EntityDataUtils.getResourceDetails(entity);
+
+		// If it's a collection recurse down into it.
+		if ((requestedDepth > currentDepth) && entity.isCollection()) {
+
+			ContentCollection collection = (ContentCollection)entity;
+			// This is all members, no permission check has been done yet.
+			List<ContentEntity> contents = collection.getMemberResources();
+
+			Comparator comparator = getComparator(entity);
+			if (null != comparator) {
+				Collections.sort(contents, comparator);
+			}
+
+			for (Iterator<ContentEntity> i = contents.iterator(); i.hasNext();) {
+				ContentEntity content = i.next();
+				EntityContent resource = getResourceDetails(content, currentDepth+1, requestedDepth, timeStamp);
+
+				if (resource != null && resource.after(timeStamp)) {
+					tempRd.addResourceChild(resource);
+				}
+			}
+		}
+
+		return tempRd;
+	}
+
+	/**
+	 *
+	 * @param entity
+	 * @return
+	 */
+	private Comparator getComparator(ContentEntity entity) {
+
+		boolean hasCustomSort = false;
+		try	{
+			hasCustomSort = entity.getProperties().getBooleanProperty(
+					ResourceProperties.PROP_HAS_CUSTOM_SORT);
+
+		} catch(Exception e) {
+			// ignore -- let value of hasCustomSort stay false
+		}
+
+		if(hasCustomSort) {
+			return contentHostingService.newContentHostingComparator(
+					ResourceProperties.PROP_CONTENT_PRIORITY, true);
+		} else {
+			return contentHostingService.newContentHostingComparator(
+					ResourceProperties.PROP_DISPLAY_NAME, true);
+		}
+	}
+
+	/**
+	 *
+	 * @param queryString
+	 * @return
+	 */
+	private Map<String, Object> getQueryMap(String queryString) {
+
+		Map<String, Object> params = new HashMap<String, Object>();
+		if (null != queryString && !queryString.isEmpty()) {
+			String[] strings = queryString.split("&");
+			for (int i=0; i<strings.length; i++) {
+				String parameter = strings[i];
+				int j = parameter.indexOf("=");
+				params.put(parameter.substring(0, j), parameter.substring(j+1));
+			}
+		}
+		return params;
+	}
+
+	/**
+	 *
+	 * @param timestamp  use formatter A: yyyyMMddHHmmssSSS
+	 * @return
+	 */
+	private Time getTime(String timestamp) {
+
+		try {
+
+			if (null != timestamp) {
+				DateFormat format = new SimpleDateFormat("yyyyMMddHHmmssSSS");
+				Date date = format.parse(timestamp);
+				Calendar c = Calendar.getInstance();
+				c.setTime(date);
+
+				return TimeService.newTimeGmt(format.format(date));
+			}
+
+		} catch (ParseException e) {
+			return TimeService.newTimeGmt("20201231235959999");
+		}
+		return null;
+	}
 	private List<ContentItem> getSiteListItems(String siteId) {
 		List<ContentItem> rv = new ArrayList<ContentItem>();
 		String wsCollectionId = contentHostingService.getSiteCollection(siteId);
@@ -504,30 +723,10 @@ public class ContentEntityProvider extends AbstractEntityProvider implements Ent
 		return items;
 	}
 	
-	
 	@Override
 	public String[] getHandledOutputFormats() {
-		return new String[] { Formats.XML, Formats.JSON};
+		return new String[] { Formats.XML, Formats.JSON, Formats.HTML};
 	}
-
-	@Setter
-	private ContentHostingService contentHostingService;
-
-	@Setter
-	private SiteService siteService;
-	
-	@Setter
-	private ToolManager toolManager;
-	
-	@Setter
-	private SecurityService securityService;
-	
-	@Setter
-	private UserDirectoryService userDirectoryService;
-	
-	
-	
-
 	
 	/**
 	 * Simplified helper class to represent an individual content item
@@ -606,6 +805,4 @@ public class ContentEntityProvider extends AbstractEntityProvider implements Ent
 			return null;
 		}
 	}
-	
-	
 }

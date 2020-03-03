@@ -5,17 +5,12 @@
 	<parent>
 		<groupId>org.sakaiproject.samigo</groupId>
 		<artifactId>samigo</artifactId>
-		<version>12-SNAPSHOT</version>
+		<version>21-SNAPSHOT</version>
 	</parent>
     
 	<name>Sakai Samigo Component Package (samigo-pack)</name>
 	<groupId>org.sakaiproject.samigo</groupId>
 	<artifactId>samigo-pack</artifactId>
-	<organization>
-		<name>Sakai Project</name>
-		<url>http://sakaiproject.org/</url>
-	</organization>
-	<inceptionYear>2004</inceptionYear>
 	<packaging>sakai-component</packaging>
     
 	<properties>
@@ -31,6 +26,12 @@
 			<groupId>org.sakaiproject.kernel</groupId>
 			<artifactId>sakai-component-manager</artifactId>
 		</dependency>
+        <dependency>
+            <groupId>org.elasticsearch</groupId>
+            <artifactId>elasticsearch</artifactId>
+            <scope>provided</scope>
+            <version>${sakai.elasticsearch.version}</version>
+        </dependency>
 		<!-- Samigo Lite -->
 		<dependency>
 			<groupId>${project.groupId}</groupId>

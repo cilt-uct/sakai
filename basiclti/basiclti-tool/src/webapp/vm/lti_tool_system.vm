@@ -4,20 +4,13 @@
 	<!-- jQuery -->
 ${includeLatestJQuery}
 
-<script type="text/javascript" src="/library/webjars/jquery-ui/1.11.3/jquery-ui.min.js"></script>
-<link type="text/css" href="/library/webjars/jquery-ui/1.11.3/jquery-ui.min.css" rel="stylesheet" media="screen" />
+<script type="text/javascript" src="/library/webjars/jquery-ui/1.12.1/jquery-ui.min.js"></script>
+<link type="text/css" href="/library/webjars/jquery-ui/1.12.1/jquery-ui.min.css" rel="stylesheet" media="screen" />
 
-	<!-- Tablesorter: required -->
-	<link rel="stylesheet" href="/basiclti-admin-tool/css/blue/style.css">
-	<script src="/basiclti-admin-tool/js/jquery.tablesorter.js"></script>
+    <!-- Tablesorter: required -->
+    <script type="text/javascript">includeWebjarLibrary('jquery.tablesorter/2.27.7/dist/css/theme.blue.min.css');</script>
+    <script type="text/javascript">includeWebjarLibrary('jquery.tablesorter');</script>
 
-	<!-- Tablesorter: pager optional -->
-	<link rel="stylesheet" href="/basiclti-admin-tool/addons/pager/jquery.tablesorter.pager.css">
-	<script src="/basiclti-admin-tool/addons/pager/jquery.tablesorter.pager.js"></script>
-
-	<!-- Tablesorter: search -->
-	<script src="/basiclti-admin-tool/js/jquery.tablesorter.widgets.js"></script>
-	
 	<script id="js">$(function(){
 
 	// **********************************
@@ -64,6 +57,7 @@ ${includeLatestJQuery}
 	// initialize the tablersorter for the system external tool table
 	$("#tools_system")
 		.tablesorter({
+            theme: 'blue',
 			widthFixed: true,
 			widgets: ['zebra', "filter"],
 			widgetOptions : { 
@@ -90,9 +84,11 @@ ${includeLatestJQuery}
 		      filter_functions : {} 
 		 
 		    },
+		    //Default sort
+		    sortList : [ [ 4,0] ],
 			headers: { 
-	            // assign the fourth column (we start counting zero) 
-	            4: { 
+	            // special configuration for this column (we start counting zero) 
+	            5: { 
 	                // disable it by setting the property sorter to false 
 	                sorter: false
 	            }
@@ -109,21 +105,21 @@ ${includeLatestJQuery}
 	<ul class="navIntraTool actionToolBar">
 		<li class="firstToolBarItem"><span class="current">$tlang.getString("tool.in.system")</span></li>
 		<li><span><a href="" title="$tlang.getString("tool.in.site")" onclick="location = '$sakai_ActionURL.setPanel("ToolSite")';return false;"> $tlang.getString("tool.in.site")</a></span></li>
-		#if ( $isAdmin)<li><span><a href="" title="$tlang.getString("deploy.in.system")" onclick="location = '$sakai_ActionURL.setPanel("DeploySystem")';return false;"> $tlang.getString("deploy.in.system")</a></span></li>#end
 	</ul>
-	#if ($messageSuccess)<div class="messageSuccess">$tlang.getString("gen.success") $validator.escapeHtml($messageSuccess)</div><div class="clear"></div>#end
-	#if ($alertMessage)<div class="alertMessage">$tlang.getString("gen.alert") $validator.escapeHtml($alertMessage)</div><div class="clear"></div>#end
+	#if ($messageSuccess)<div class="sak-banner-success">$tlang.getString("gen.success") $formattedText.escapeHtml($messageSuccess)</div>#end
+	#if ($alertMessage)<div class="sak-banner-error">$tlang.getString("gen.alert") $formattedText.escapeHtml($alertMessage)</div>#end
+        #if ($configMessage)<div class="sak-banner-error">$tlang.getString("gen.alert") $formattedText.escapeHtml($configMessage)</div>#end
 	#if ($isAdmin || $allowMaintainerAddSystemTool)<div align="right"><a href="" title="$tlang.getString("add.to.system")" onclick="location = '$sakai_ActionURL.setPanel("ToolInsert")';return false;"> $tlang.getString("add.to.system")</a></a></div>#end
 	<br/>
 	#if ($!ltiTools && $ltiTools.size() > 0 )
 		$tlang.getString("tool.description.system")
 		<br/>
 		<div id="tools_system_pager" class="pager">
-			<img src="/basiclti-admin-tool/addons/pager/icons/first.png" class="first" alt="First" />
-			<img src="/basiclti-admin-tool/addons/pager/icons/prev.png" class="prev" alt="Prev" />
+			<img src="/basiclti-admin-tool/icons/first.png" class="first" alt="First" />
+			<img src="/basiclti-admin-tool/icons/prev.png" class="prev" alt="Prev" />
 			<span class="pagedisplay"></span> <!-- this can be any element, including an input -->
-			<img src="/basiclti-admin-tool/addons/pager/icons/next.png" class="next" alt="Next" />
-			<img src="/basiclti-admin-tool/addons/pager/icons/last.png" class="last" alt="Last" />
+			<img src="/basiclti-admin-tool/icons/next.png" class="next" alt="Next" />
+			<img src="/basiclti-admin-tool/icons/last.png" class="last" alt="Last" />
 			<select class="pagesize">
 				<option value="10">10</option>
 				<option selected="selected" value="50">50</option>
@@ -138,6 +134,7 @@ ${includeLatestJQuery}
                 <th id="launch" data-placeholder="$tlang.getString('search.url')">$tlang.getString("bl_launch")</th>
                 <th id="site_id" data-placeholder="$tlang.getString('search.siteid')">$tlang.getString("bl_site")</th>
                 #if ($isAdmin) <th id="use" data-placeholder="$tlang.getString('search.uses')">$tlang.getString("bl_use")</th> #end
+                #if ($isAdmin) <th id="toolorder" class="filter-false">$tlang.getString("bl_toolorder")</th> #end
                 #if ($isAdmin || $allowMaintainerAddSystemTool) <th id="action" class="filter-false">$tlang.getString("bl_action")</th>#end
 	        </tr>
 	        </thead>
@@ -145,7 +142,7 @@ ${includeLatestJQuery}
             #foreach($tool in $ltiTools)
             	
 				<tr>
-	                <td headers="title"><a href="$sakai_ActionURL.setPanel("ToolView")&id=$tool.get("id")">$validator.escapeHtml($tool.get("title"))</td>
+	                <td headers="title"><a href="$sakai_ActionURL.setPanel("ToolView")&id=$tool.get("id")">$formattedText.escapeHtml($tool.get("title"))</td>
 	                <td headers="launch">
 						#set($launch="")
 						#set($launch=$tool.get("launch"))
@@ -153,10 +150,11 @@ ${includeLatestJQuery}
 	                </td>
 	                <td headers="site_id">
 	                	#set($siteId="<span style='display:none;'>zzzz</span>")
-	                	#set($siteId=$tool.get("site_id"))
+	                	#set($siteId=$tool.get("SITE_ID"))
 	                	$!siteId
 	                </td>
 	                #if ($isAdmin) <td headers="use"><a href="$sakai_ActionURL.setPanel("ToolSite").setParameter("sakai_action","doFilter").setQueryString("id=$tool.get('id')")">$tool.get("lti_content_count")</a></td> #end
+	                #if ($isAdmin) <td headers="toolorder">$!tool.get("toolorder")</a></td> #end
 	                #if ( $isAdmin || $allowMaintainerAddSystemTool) 
 		                <td headers="action">
 		                	#if ( $isAdmin || ($allowMaintainerAddSystemTool && $getContext == $tool.get("SITE_ID")))

@@ -19,8 +19,6 @@ package org.sakaiproject.tool.assessment.util;
 
 import java.util.*;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.sakaiproject.authz.api.AuthzGroup;
 import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.component.cover.ComponentManager;
@@ -39,7 +37,6 @@ import org.sakaiproject.tool.assessment.services.assessment.PublishedAssessmentS
  *
  */
 public class ExtendedTimeDeliveryService {
-	private static final Logger log = LoggerFactory.getLogger(ExtendedTimeDeliveryService.class);
 	private static int MINS_IN_HOUR = 60;
 	private static int SECONDS_IN_MIN = 60;
 
@@ -58,7 +55,6 @@ public class ExtendedTimeDeliveryService {
 	 */
 	public ExtendedTimeDeliveryService(PublishedAssessmentFacade publishedAssessment) {
 		this(publishedAssessment, AgentFacade.getAgentString());
-
 	}
 
 	/**
@@ -85,7 +81,7 @@ public class ExtendedTimeDeliveryService {
 		ExtendedTimeFacade extendedTimeFacade = PersistenceService.getInstance().getExtendedTimeFacade();
 		List<ExtendedTime> extendedTimes = extendedTimeFacade.getEntriesForPub(pubData);
 		List<String> groups = getGroups(extendedTimes);
-		String group = isUserInGroups(groups);
+		String group = isUserInGroups(groups, agentId);
 
 		ExtendedTime extendedTime = extendedTimeFacade.getEntryForPubAndUser(pubData, agentId);
 		ExtendedTime groupExtendedTime = null;
@@ -143,11 +139,11 @@ public class ExtendedTimeDeliveryService {
 		return publishedAssessment.getTimeLimit() != null;
 	}
 
-	private String isUserInGroups(List<String> groups) {
+	private String isUserInGroups(List<String> groups, String agentId) {
 		String returnString = "";
 		if(groups != null && !groups.isEmpty()) {
 			for(String group : groups) {
-				if(isUserInGroup(group)) {
+				if(isUserInGroup(group, agentId)) {
 					returnString = group;
 				}
 			}
@@ -156,12 +152,12 @@ public class ExtendedTimeDeliveryService {
 		return returnString;
 	}
 
-	private boolean isUserInGroup(String groupId) {
+	private boolean isUserInGroup(String groupId, String agentId) {
 		String realmId = "/site/" + siteId + "/group/" + groupId;
 		boolean isMember = false;
 		try {
 			AuthzGroup group = authzGroupService.getAuthzGroup(realmId);
-			if (group.getUserRole(AgentFacade.getAgentString()) != null)
+			if (group.getUserRole(agentId) != null)
 				isMember = true;
 		} catch (Exception e) {
 			return false; // this isn't a group

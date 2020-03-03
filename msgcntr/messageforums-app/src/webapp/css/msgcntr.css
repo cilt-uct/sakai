@@ -46,9 +46,10 @@
 }
 .topicBloc{
 	/*inner container topic metadata in forum list view, or single topic view*/
-	margin: 0 0 0 1em;
 	border-left: 2px solid #fc6;
-	width: calc(100% - 1em);
+	width: 80%;
+	padding: 0 .5em;
+	margin: 0;
 }
 .topicBloc td{
 	padding-left: .5em;
@@ -81,12 +82,14 @@
 	margin-right: 5px;
 	/*	display:none; - uncomment to hide the "new" message */
 }
+.childrenNewNumber{
+	margin-left: 5px;
+}
 .childrenNew{
 	color: #e90;
 	font-size:87%;
 	font-weight:bold;
 	padding: 1px 2px;
-	margin-left: 5px;
 	/*	display:none; - uncomment to hide the message associated with parents of new messages*/
 }
 
@@ -144,27 +147,39 @@
 	padding: 1px 2px;
 	margin-right: 5px;
 }
-a.markAsReadIcon{
+
+.Mrphs-sakai-forums #msgForum a.button.markAsReadIcon{
 	cursor: pointer;
 	margin-left:.5em;
-	background: #fff url(../images/silk/email.png) 5px 5px no-repeat;
+	position:relative;
 }
-a.markAsReadIcon:hover{
-	background: #fff url(../images/silk/email_open.png) 5px 3px no-repeat
+
+.Mrphs-sakai-forums #msgForum a.button.markAsReadIcon::before{
+	content: "";
+	position:absolute;
+	background: url('../images/silk/email.png') 0 center no-repeat;
+	width: 20px;
+	height: 16px;
+	top: 50%;
+	left: 5px;
+	transform: translateY(-50%);
+}
+
+.Mrphs-sakai-forums #msgForum a.markAsReadIcon:hover::before{
+	background-image: url('../images/silk/email_open.png');
 }
 .messagesFlat,.messagesThreaded{
-	width: 98% !important;
-	margin: 1em 0 !important;
-/*	border-spacing: .5em;*/
+	margin: 10px 0;
+	table-layout: fixed;
+	width: 100%;
 }
 .messagesFlat  tbody tr div,.messagesThreaded tbody tr div{
 	border: none
 }
 .messagesFlat tbody tr td div.hierItemBlock,.messagesThreaded tbody tr td div.hierItemBlock{
-	padding: 0 0 0 .5em !important;
+	padding: 0 10px;
 	border-left: 2px solid #cd5 !important;
-	width: 95%;
-	margin: .5em !important;
+	margin: 10px;
 }
 .messagesThreaded tbody tr td{
 	padding-top: 0;
@@ -172,8 +187,10 @@ a.markAsReadIcon:hover{
 }
 .messagesThreaded tbody tr td div.hierItemBlock .textPanel{
 	clear: both;
-    -ms-word-break: break-word;
-     word-break: break-word;
+	overflow-x: auto;
+}
+.messagesFlat div.textPanel {
+	overflow-x: auto;
 }
 .titleBarBorder{
 	/*create an underline under message title + metadata in view body thread view*/
@@ -181,7 +198,7 @@ a.markAsReadIcon:hover{
 	margin: 2px 0 0 0;
 }
 .messagesThreaded tbody tr.hierItemBlock td.bogus:first-child{
-	padding: 0 !important;
+	/*first message in thread in visible body view*/
 	border-left: 2px solid #69d;
 	width: 100%;
 }
@@ -192,42 +209,8 @@ a.markAsReadIcon:hover{
 .messagesFlat tbody .title,.messagesThreaded tbody .title{
 	font-weight: bold;
 	font-size: 1.1em;
-}
-.messagesThreaded tbody tr.hierItemBlock td.bogus:first-child .title{
-	font-weight: bold;
-	font-size: 1.2em;
-}
-.messagesThreaded tbody tr.hierItemBlock td.bogus:first-child{
-	/*first message in thread in visible body view*/
-	padding: 0;
-	border-left: 2px solid #69d;
-	width: 100%;
-}
-.messagesThreaded tbody tr.hierItemBlock td.bogus:first-child > div{
-	margin: 0;
-}
-.messagesThreaded tbody tr.hierItemBlock td.bogus:first-child .title{
-	/*message title of first message in thread + body view*/
-	font-weight: bold;
-	font-size: 1.2em;
-}
-.itemToolBar{
-	/*	parent of all links associated with an item in thread + body view*/
-	padding-left: .5em;
-	font-size: .9em;
-}
+}	
 
-.otherActions{
-	/*parent of all links in the "other actions" link list*/
-	padding: 0 !important;
-	color:#ccc;
-	text-align: left;
-	white-space: nowrap;
-	font-size: .95em;
-}
-.otherActions a{
-	
-	}
 .allMessages .messageTitle .firstChild{
 	/*first post in a thread in topic listing (no body)*/
 }
@@ -249,10 +232,14 @@ a.markAsReadIcon:hover{
 /*PART 3 - SINGLE MESSAGE DISPLAY*/
 .singleMessage{
 	/*title + metadata block of a single message display*/
-	border-left: 2px solid #ccc;
-	background:#fff;
+	border-left: 2px solid #69d;
+	background:#f9f9f9;
 	margin-top: 1em;
 	padding:.3em  .5em;
+}
+.singleMessage .textPanel {
+	/* so non-breaking wide message content doesn't stretch the page */
+	overflow-x: auto;
 }
 .singleMessageReply{
 	/*title + metadata block of a single message display*/
@@ -278,7 +265,11 @@ table.messageActions td{
 	background: #fff;
 	padding: 2px 5px;
 	vertical-align: middle;
-	margin: 0 .3em 0 0;
+	margin: 0 .3em .3em 0;
+	display: inline-block;
+}
+.messageActions a span{
+	white-space: nowrap;
 }
 .messageActions a:hover{
 	border: 1px solid #555  !important;
@@ -358,8 +349,7 @@ td div.title{
 .selChanged{
 	/*flag an item as changed in organize view*/
 	border: 1px solid #aaa;
-	background: #fc6;
-	padding: 1px;
+	background-color: #fc6;
 }
 .attachPanel{
 /*panel listing attachmetns when in edit mode for forum/topic/message*/
@@ -533,7 +523,7 @@ form{margin-bottom:0;}
 	padding-right: .25em;
 	padding-bottom: .3em;
 }
-.listHier .authorImage img{	
+.authorImage img{	
 	max-width: 8em;
 	max-height: 5em;
 }
@@ -591,6 +581,13 @@ div.msgcntr-profile-qtip {
     margin-top: 0.3em;
     display: block;
 }
+
+.createForumsForGroupsPanel {
+    margin-left: 3em;
+    margin-top: 0.3em;
+    display: block;
+}
+
 .navIntraTool li span a img,.navIntraTool li {
     vertical-align: middle;
 }
@@ -673,4 +670,20 @@ div.msgcntr-profile-qtip {
 
 #synopticForm\:myWorkspaceUnread\:myWorkspaceTable .siteHeader{
 	width:60%;
+}
+
+/* Styles for modal */
+.close-button {
+	float: right;
+	cursor: pointer;
+	font-size: 20px !important;
+}
+
+#revise\:closeDateSpan #revise\:closeDate, #revise\:openDateSpan #revise\:openDate {
+	width: auto;
+	margin-left: 10px;
+}
+
+.openDateSpan {
+	display: block;
 }

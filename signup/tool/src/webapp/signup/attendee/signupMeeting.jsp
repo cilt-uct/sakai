@@ -16,9 +16,9 @@
 				@import url("/sakai-signup-tool/css/print.css");
 		</style>
 <h:outputText value="#{Portal.latestJQuery}" escape="false"/>
-		<script TYPE="text/javascript" LANGUAGE="JavaScript" src="/sakai-signup-tool/js/signupScript.js"></script>
+		<script src="/sakai-signup-tool/js/signupScript.js"></script>
 		
-		<script type="text/javascript">
+		<script>
 			var hiddenInputCollapeMInfo;
 			var showMInfoTitleTag;
 			jQuery(document).ready(function() {
@@ -78,8 +78,6 @@
 				
 				<f:verbatim><li role="menuitem" ><span></f:verbatim>
 					<h:outputLink id="print" value="javascript:window.print();">
-							<h:graphicImage url="/images/printer.png"
-								alt="#{msgs.print_friendly}" title="#{msgs.print_friendly}" styleClass="openCloseImageIcon"/>
 							<h:outputText value="#{msgs.print_event}" escape="false"/>
 					</h:outputLink>				
 				<f:verbatim></span></li>
@@ -94,7 +92,9 @@
 				rendered="#{messageUIBean.error}" />
 
 			<h:form id="meeting">
-				<sakai:view_title value="#{msgs.event_participant_view_page_title}" />
+				<div class="page-header">
+					<sakai:view_title value="#{msgs.event_participant_view_page_title}" />
+				</div>
 
 				<%-- show title only when collapsed --%>
 				<h:panelGrid id="showMeetingTitleOnly" columns="2" columnClasses="titleColumn,valueColumn" styleClass="orgShowTitleOnly">
@@ -144,14 +144,14 @@
 							<h:outputText value="#{msgs.event_time_period}" styleClass="titleText" escape="false"/>
 							<h:panelGroup>
 								<h:outputText value="#{AttendeeSignupMBean.meetingWrapper.meeting.startTime}">
-									<f:convertDateTime pattern="h:mm a" timeZone="#{UserTimeZone.userTimeZone}"/>
+									<f:convertDateTime pattern="#{UserLocale.localizedTimeFormat}" timeZone="#{UserTimeZone.userTimeZone}"/>
 								</h:outputText>
 								<h:outputText value="#{AttendeeSignupMBean.meetingWrapper.meeting.startTime}" rendered="#{AttendeeSignupMBean.meetingWrapper.meeting.meetingCrossDays}">
 										<f:convertDateTime pattern=", EEEEEEEE" timeZone="#{UserTimeZone.userTimeZone}"/>
 								</h:outputText>	
 								<h:outputText value="#{msgs.timeperiod_divider}" escape="false"/>
 								<h:outputText value="#{AttendeeSignupMBean.meetingWrapper.meeting.endTime}">
-									<f:convertDateTime pattern="h:mm a" timeZone="#{UserTimeZone.userTimeZone}"/>
+									<f:convertDateTime pattern="#{UserLocale.localizedTimeFormat}" timeZone="#{UserTimeZone.userTimeZone}"/>
 								</h:outputText>
 								<h:outputText value="#{AttendeeSignupMBean.meetingWrapper.meeting.endTime}" rendered="#{AttendeeSignupMBean.meetingWrapper.meeting.meetingCrossDays}" >
 										<f:convertDateTime pattern=", EEEEEEEE, " timeZone="#{UserTimeZone.userTimeZone}"/>
@@ -164,7 +164,7 @@
 							<!-- iCalendar link, only rendered for attendees if it is a 'no signup required/announcement' meeting -->
 							<h:outputText value="#{msgs.event_icalendar_link}" styleClass="titleText" escape="false" rendered="#{AttendeeSignupMBean.icsEnabled && AttendeeSignupMBean.meetingWrapper.meeting.meetingType =='announcement'}"/>
 							<h:commandLink id="mICS" action="#{AttendeeSignupMBean.downloadICSForMeeting}" rendered="#{AttendeeSignupMBean.icsEnabled && AttendeeSignupMBean.meetingWrapper.meeting.meetingType =='announcement'}">
-								<h:graphicImage value="/images/calendar_add.png" alt="#{msgs.label_ics}" title="#{msgs.label_download_ics_meeting}" style="margin-right: 5px;" />
+								<h:graphicImage value="/images/calendar_add.png" alt="#{msgs.label_download_ics_meeting}" title="#{msgs.label_download_ics_meeting}" style="margin-right: 5px;" />
 								<h:outputText value="#{msgs.event_icalendar_label}"/>
 							</h:commandLink>
 		
@@ -287,12 +287,12 @@
 							<h:outputText value="#{msgs.tab_time_slot}" />
 						</f:facet>
 						<h:panelGroup>
-							<h:graphicImage value="/images/spacer.gif" width="15" height="13" alt="spacer" style="border:none" rendered="#{!timeSlotWrapper.timeSlot.locked && !timeSlotWrapper.timeSlot.canceled && AttendeeSignupMBean.meetingWrapper.atleastOneTimeslotLockedOrCanceled}"/>
+							<h:graphicImage value="/images/spacer.gif" width="15" height="13" alt="" style="border:none" rendered="#{!timeSlotWrapper.timeSlot.locked && !timeSlotWrapper.timeSlot.canceled && AttendeeSignupMBean.meetingWrapper.atleastOneTimeslotLockedOrCanceled}"/>
 							<h:graphicImage value="/images/lock.gif"  alt="#{msgs.event_tool_tip_ts_locked}" title="#{msgs.event_tool_tip_ts_locked}" style="border:none" rendered="#{timeSlotWrapper.timeSlot.locked && !timeSlotWrapper.timeSlot.canceled}"/>
 							<h:graphicImage value="/images/cancelled.gif"  alt="#{msgs.event_tool_tip_ts_cancelled}" title="#{msgs.event_tool_tip_ts_cancelled}" style="border:none" rendered="#{timeSlotWrapper.timeSlot.canceled}"/>							
 							<h:outputText value="#{timeSlotWrapper.timeSlot.startTime}"
 								styleClass="longtext">
-								<f:convertDateTime pattern="h:mm a" timeZone="#{UserTimeZone.userTimeZone}"/>
+								<f:convertDateTime pattern="#{UserLocale.localizedTimeFormat}" timeZone="#{UserTimeZone.userTimeZone}"/>
 							</h:outputText>
 							<h:outputText value="#{timeSlotWrapper.timeSlot.startTime}" rendered="#{AttendeeSignupMBean.meetingWrapper.meeting.meetingCrossDays}">
 								<f:convertDateTime pattern=", EEE" timeZone="#{UserTimeZone.userTimeZone}"/>
@@ -301,13 +301,13 @@
 								styleClass="longtext" />
 							<h:outputText value="#{timeSlotWrapper.timeSlot.endTime}"
 								styleClass="longtext">
-								<f:convertDateTime pattern="h:mm a" timeZone="#{UserTimeZone.userTimeZone}"/>
+								<f:convertDateTime pattern="#{UserLocale.localizedTimeFormat}" timeZone="#{UserTimeZone.userTimeZone}"/>
 							</h:outputText>
 							<h:outputText value="#{timeSlotWrapper.timeSlot.endTime}" rendered="#{AttendeeSignupMBean.meetingWrapper.meeting.meetingCrossDays}">
 								<f:convertDateTime pattern=", EEE," timeZone="#{UserTimeZone.userTimeZone}"/>
 							</h:outputText>
 							<h:outputText value="#{timeSlotWrapper.timeSlot.endTime}" rendered="#{AttendeeSignupMBean.meetingWrapper.meeting.meetingCrossDays}">
-								<f:convertDateTime  dateStyle="short" pattern="#{UserLocale.dateFormat}" timeZone="#{UserTimeZone.userTimeZone}"/>
+								<f:convertDateTime dateStyle="short" pattern="#{UserLocale.dateFormat}" timeZone="#{UserTimeZone.userTimeZone}"/>
 							</h:outputText>	
 						</h:panelGroup>
 					</h:column>

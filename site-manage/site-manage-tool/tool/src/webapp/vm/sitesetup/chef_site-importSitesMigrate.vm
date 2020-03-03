@@ -1,5 +1,6 @@
 ##<!-- $Header: /cvs/sakai2/legacy/tools/src/webapp/vm/sitesetup/chef_site-importSitesMigrate.vm,v 1.3 2007/11/05 10:36:30 tnguyen.iupui.edu Exp $ -->
 <div class="portletBody">
+	#if($menu)#toolbar($menu)#end
 	<h3>
 		$tlang.getString("import.reuse")
 	</h3>
@@ -7,8 +8,7 @@
 		$tlang.getString("import.reuse2")
 	</p>
 	#if ($alertMessage)
-		<div class="alertMessage">$tlang.getString("gen.alert") $alertMessage</div>
-		<div class="clear"></div>
+		<div class="sak-banner-error">$tlang.getString("gen.alert") $alertMessage</div>
 	#end
 	<p class="instruction">
 	$tlang.getString("sitinfimp.choose")
@@ -24,7 +24,7 @@
 						<th>
 							<label>
 								<input type="checkbox" class="import-sites-tool-toggle"/>
-								$validator.escapeHtml($site.getTitle())
+								$formattedText.escapeHtml($site.getTitle())
 							</label>
 						</th>
 					#end
@@ -37,7 +37,6 @@
 						<tr>
 							<td>
 								#set($toolTitle = "")
-								#set($alternateToolTitles = "")
 
 								#foreach($t in $toolRegistrationList)
 									#if ($t.getId() == $toolId)
@@ -47,15 +46,9 @@
 								#if($toolId == "sakai.iframe.site")
 									#set($toolTitle = $siteInfoToolTitle)
 								#end
-							
-								#set($alternateToolTitles = $!alternateToolTitlesMap.get($toolId))
-							
+
 								<h5>$toolTitle
-								
-									#if ($alternateToolTitles != "")
-										<span class="instruction">($alternateToolTitles)</span>
-									#end
-								
+
 									#if ($addMissingTools)
 										## if the tool doesnt exist in the selected site, output icon
 										#if(!$toolsInDestinationSite.contains($toolId))
@@ -85,8 +78,35 @@
 									#end
 								
 									#if ($toolFound)
-										<input type="checkbox" id="toolSite$toolCount$siteCount" name="$toolId" value="$site.Id" #if($!selectedSites.contains($site.Id))checked="checked"#end />
-										<label  class="skip" for="toolSite$toolCount$siteCount">$tlang.getString('import.choose.label1')  $toolTitle $tlang.getString('import.choose.label2') $validator.escapeHtml($site.getTitle())</label>
+										<input type="checkbox" id="toolSite$toolCount$siteCount"
+											class="siteimport-tool-checkbox" name="$toolId" value="$site.Id"
+											#if ($importOptions.get(${toolId}).isPresent())
+											data-options-id="${toolCount}-${siteCount}-options"
+											#end
+											#if ($!selectedSites.contains($site.Id))
+											checked="checked"
+											#end />
+										<label	class="skip" for="toolSite$toolCount$siteCount">
+											$tlang.getString('import.choose.label1') $toolTitle $tlang.getString('import.choose.label2') $formattedText.escapeHtml($site.getTitle())
+										</label>
+										#if ($importOptions.get(${toolId}).isPresent())
+										<a id="toolSite${toolCount}${siteCount}-options-link" style="display: none;" href="javascript:;" class="siteimport-options-link" data-options-id="${toolCount}-${siteCount}-options" title="$tlang.getString('import.options.title')">
+											<span title="$tlang.getString('import.options.help')">$tlang.getString('import.options.title').toLowerCase()</span>
+										</a>
+										<div id="${toolCount}-${siteCount}-options" class="siteimport-options">
+											#foreach ($option in $importOptions.get(${toolId}).get())
+											#set ($optionPropKey = "import.options." + ${option})
+											#set ($optionPropHelpKey = $optionPropKey + ".help")
+											<div>
+												<label>
+													<input type="checkbox" class="siteimport-option" name="import-option-${option}-tool-${toolId}" title="$tlang.getString(${optionPropHelpKey})" value="true"/>
+													$tlang.getString(${optionPropKey})
+												</label>
+												<span class="import-option-help fa fa-question-circle" data-toggle="popover" data-content="$tlang.getString(${optionPropHelpKey})"/>
+											</div>
+											#end
+										</div>
+										#end
 										#if ($toolId.indexOf("sakai.rwiki") != -1) $tlang.getString("sitinfimp.wikinote") #end
 									#else
 										<input type="checkbox" id="toolSite$toolCount$siteCount"  name="$toolId" value="$site.Id" disabled="disabled" />
@@ -100,7 +120,7 @@
 		</div>
 		
 		#if ($addMissingTools)
-			<p class="messageConfirmation">$tlang.getString("import.newtool")</p>
+			<p class="sak-banner-warn">$tlang.getString("import.newtool")</p>
 		#end
 		
 		<input type="hidden" name="back" value="59" />

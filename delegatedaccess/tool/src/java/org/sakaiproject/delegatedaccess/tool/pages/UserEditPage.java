@@ -26,38 +26,36 @@ import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreeNode;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
 import org.apache.wicket.AttributeModifier;
-import org.apache.wicket.Component;
 import org.apache.wicket.MarkupContainer;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.ajax.markup.html.form.AjaxButton;
 import org.apache.wicket.behavior.AttributeAppender;
+import org.apache.wicket.extensions.markup.html.tree.DefaultAbstractTree;
 import org.apache.wicket.extensions.markup.html.tree.table.ColumnLocation;
 import org.apache.wicket.extensions.markup.html.tree.table.ColumnLocation.Alignment;
 import org.apache.wicket.extensions.markup.html.tree.table.ColumnLocation.Unit;
 import org.apache.wicket.extensions.markup.html.tree.table.IColumn;
 import org.apache.wicket.extensions.markup.html.tree.table.PropertyTreeColumn;
 import org.apache.wicket.extensions.markup.html.tree.table.TreeTable;
-import org.apache.wicket.markup.html.WebMarkupContainer;
 import org.apache.wicket.markup.html.basic.Label;
 import org.apache.wicket.markup.html.form.Button;
 import org.apache.wicket.markup.html.form.ChoiceRenderer;
 import org.apache.wicket.markup.html.form.DropDownChoice;
 import org.apache.wicket.markup.html.form.Form;
 import org.apache.wicket.markup.html.form.TextField;
-import org.apache.wicket.markup.html.tree.AbstractTree;
 import org.apache.wicket.model.Model;
 import org.apache.wicket.model.PropertyModel;
 import org.apache.wicket.model.ResourceModel;
 import org.apache.wicket.model.StringResourceModel;
+
 import org.sakaiproject.delegatedaccess.model.HierarchyNodeSerialized;
 import org.sakaiproject.delegatedaccess.model.ListOptionSerialized;
 import org.sakaiproject.delegatedaccess.model.NodeModel;
 import org.sakaiproject.delegatedaccess.model.SelectOption;
 import org.sakaiproject.delegatedaccess.util.DelegatedAccessConstants;
-import org.sakaiproject.delegatedaccess.util.DelegatedAccessMutableTreeNode;
 import org.sakaiproject.delegatedaccess.utils.PropertyEditableColumnAdvancedUserOptions;
 import org.sakaiproject.delegatedaccess.utils.PropertyEditableColumnCheckbox;
 import org.sakaiproject.delegatedaccess.utils.PropertyEditableColumnDropdown;
@@ -69,11 +67,10 @@ import org.sakaiproject.delegatedaccess.utils.PropertyEditableColumnList;
  * @author Bryan Holladay (holladay@longsight.com)
  *
  */
-
+@Slf4j
 public class UserEditPage  extends BaseTreePage{
 
 	private TreeTable tree;
-	private static final Logger log = LoggerFactory.getLogger(UserEditPage.class);
 	private String[] defaultRole = null;
 	List<String> accessAdminNodeIds = null;
 	private SelectOption filterHierarchy;
@@ -82,7 +79,7 @@ public class UserEditPage  extends BaseTreePage{
 	private boolean modifiedAlert = false;
 	
 	@Override
-	protected AbstractTree getTree() {
+	protected DefaultAbstractTree getTree() {
 		return  tree;
 	}
 
@@ -102,6 +99,26 @@ public class UserEditPage  extends BaseTreePage{
 
 		//USER NAME & IMAGE:
 		add(new Label("userName", displayName));
+		// INSTRUCTIONS
+		add(new Label("editUsersInstructions", new ResourceModel("editUsersInstructions")));
+		add(new Label("editUsersInstructions_accessAdmin", new ResourceModel("editUsersInstructions_accessAdmin")) {
+			@Override
+			public boolean isVisible() {
+				return sakaiProxy.isSuperUser();
+			}
+		});
+		add(new Label("editUsersInstructions_shoppingAdmin", new ResourceModel("editUsersInstructions_shoppingAdmin")) {
+			@Override
+			public boolean isVisible() {
+				return sakaiProxy.isSuperUser() && sakaiProxy.getShoppingUIEnabled();
+			}
+		});
+		add(new Label("editUsersInstructions_siteAccess", new ResourceModel("editUsersInstructions_siteAccess")) {
+			@Override
+			public boolean isVisible() {
+				return sakaiProxy.isSuperUser() || sakaiProxy.getToolsListUIEnabled();
+			}
+		});
 		//FORM:
 		Form form = new Form("form");
 		add(form);
@@ -143,14 +160,14 @@ public class UserEditPage  extends BaseTreePage{
 				if(!modifiedAlert && anyNodesModified(rootNode)){
 					formFeedback.setDefaultModel(new ResourceModel("modificationsPending"));
 					formFeedback.add(new AttributeModifier("class", true, new Model("alertMessage")));
-					target.addComponent(formFeedback);
+					target.add(formFeedback);
 					formFeedback2.setDefaultModel(new ResourceModel("modificationsPending"));
 					formFeedback2.add(new AttributeModifier("class", true, new Model("alertMessage")));
-					target.addComponent(formFeedback2);
+					target.add(formFeedback2);
 					modifiedAlert = true;
 					//call a js function to hide the message in 5 seconds
-					target.appendJavascript("hideFeedbackTimer('" + formFeedbackId + "');");
-					target.appendJavascript("hideFeedbackTimer('" + formFeedback2Id + "');");
+					target.appendJavaScript("hideFeedbackTimer('" + formFeedbackId + "');");
+					target.appendJavaScript("hideFeedbackTimer('" + formFeedback2Id + "');");
 				}else{
 					//now go through the tree and make sure its been loaded at every level:
 					Integer depth = null;
@@ -178,19 +195,19 @@ public class UserEditPage  extends BaseTreePage{
 				if(!modifiedAlert && anyNodesModified(rootNode)){
 					formFeedback.setDefaultModel(new ResourceModel("modificationsPending"));
 					formFeedback.add(new AttributeModifier("class", true, new Model("alertMessage")));
-					target.addComponent(formFeedback);
+					target.add(formFeedback);
 					formFeedback2.setDefaultModel(new ResourceModel("modificationsPending"));
 					formFeedback2.add(new AttributeModifier("class", true, new Model("alertMessage")));
-					target.addComponent(formFeedback2);
+					target.add(formFeedback2);
 					modifiedAlert = true;
 					//call a js function to hide the message in 5 seconds
-					target.appendJavascript("hideFeedbackTimer('" + formFeedbackId + "');");
-					target.appendJavascript("hideFeedbackTimer('" + formFeedback2Id + "');");
+					target.appendJavaScript("hideFeedbackTimer('" + formFeedbackId + "');");
+					target.appendJavaScript("hideFeedbackTimer('" + formFeedback2Id + "');");
 				}else{
 					filterSearch = "";
 					filterHierarchy = null;
-					target.addComponent(filterSearchTextField);
-					target.addComponent(filterHierarchyDropDown);
+					target.add(filterSearchTextField);
+					target.add(filterHierarchyDropDown);
 
 					((NodeModel) rootNode.getUserObject()).setAddedDirectChildrenFlag(false);
 					rootNode.removeAllChildren();				
@@ -233,19 +250,26 @@ public class UserEditPage  extends BaseTreePage{
 		columnsList.add(new PropertyTreeColumn(new ColumnLocation(Alignment.MIDDLE, 100, Unit.PROPORTIONAL),	"", "userObject.node.description"));
 		if(sakaiProxy.isSuperUser()){
 			columnsList.add(new PropertyEditableColumnCheckbox(new ColumnLocation(Alignment.RIGHT, 70, Unit.PX), new StringResourceModel("accessAdmin", null).getString(), "userObject.accessAdmin", DelegatedAccessConstants.TYPE_ACCESS_ADMIN));
-			columnsList.add(new PropertyEditableColumnCheckbox(new ColumnLocation(Alignment.RIGHT, 90, Unit.PX), new StringResourceModel("shoppingPeriodAdmin", null).getString(), "userObject.shoppingPeriodAdmin", DelegatedAccessConstants.TYPE_SHOPPING_PERIOD_ADMIN));
+			if(sakaiProxy.getShoppingUIEnabled()) {
+				columnsList.add(new PropertyEditableColumnCheckbox(new ColumnLocation(Alignment.RIGHT, 90, Unit.PX), new StringResourceModel("shoppingPeriodAdmin", null).getString(), "userObject.shoppingPeriodAdmin", DelegatedAccessConstants.TYPE_SHOPPING_PERIOD_ADMIN));
+			}
 		}
 		columnsList.add(new PropertyEditableColumnCheckbox(new ColumnLocation(Alignment.RIGHT, 68, Unit.PX), new StringResourceModel("siteAccess", null).getString(), "userObject.directAccess", DelegatedAccessConstants.TYPE_ACCESS));
 		if(!singleRoleOptions){
 			columnsList.add(new PropertyEditableColumnDropdown(new ColumnLocation(Alignment.RIGHT, roleColumnSize, Unit.PX), new StringResourceModel("userBecomes", null).getString(),
 					"userObject.roleOption", roleMap, DelegatedAccessConstants.TYPE_ACCESS, sakaiProxy.isSuperUser() ? null : sakaiProxy.getSubAdminOrderedRealmRoles()));
 		}
-		columnsList.add(new PropertyEditableColumnList(new ColumnLocation(Alignment.RIGHT, 134, Unit.PX), new StringResourceModel("restrictedToolsHeader", null).getString(),
+		if(sakaiProxy.isSuperUser() || sakaiProxy.getToolsListUIEnabled()) {
+			columnsList.add(new PropertyEditableColumnList(new ColumnLocation(Alignment.RIGHT, 134, Unit.PX), new StringResourceModel("restrictedToolsHeader", null).getString(),
 				"userObject.restrictedAuthTools", DelegatedAccessConstants.TYPE_ACCESS, DelegatedAccessConstants.TYPE_LISTFIELD_TOOLS));
+		}
 		//setup advanced options settings:
 		Map<String, Object> advSettings = new HashMap<String, Object>();
-		advSettings.put(PropertyEditableColumnAdvancedUserOptions.SETTINGS_ALLOW_SET_BECOME_USER, sakaiProxy.isSuperUser() || sakaiProxy.allowAccessAdminsSetBecomeUserPerm());
-		columnsList.add(new PropertyEditableColumnAdvancedUserOptions(new ColumnLocation(Alignment.RIGHT, 92, Unit.PX), new StringResourceModel("advanced", null).getString(), "", advSettings));
+		boolean permitBecomeUser = sakaiProxy.isSuperUser() || sakaiProxy.allowAccessAdminsSetBecomeUserPerm();
+		if(permitBecomeUser) {
+			advSettings.put(PropertyEditableColumnAdvancedUserOptions.SETTINGS_ALLOW_SET_BECOME_USER, permitBecomeUser);
+			columnsList.add(new PropertyEditableColumnAdvancedUserOptions(new ColumnLocation(Alignment.RIGHT, 92, Unit.PX), new StringResourceModel("advanced", null).getString(), "", advSettings));
+		}
 		IColumn columns[] = columnsList.toArray(new IColumn[columnsList.size()]);
 
 		//if the user isn't a super user, they should only be able to edit the nodes they 
@@ -329,22 +353,22 @@ public class UserEditPage  extends BaseTreePage{
 					//display a "saved" message
 					formFeedback.setDefaultModel(new ResourceModel("success.save"));
 					formFeedback.add(new AttributeModifier("class", true, new Model("success")));
-					target.addComponent(formFeedback);
+					target.add(formFeedback);
 					formFeedback2.setDefaultModel(new ResourceModel("success.save"));
 					formFeedback2.add(new AttributeModifier("class", true, new Model("success")));
-					target.addComponent(formFeedback2);
+					target.add(formFeedback2);
 				}catch (Exception e) {
 					log.error(e.getMessage(), e);
 					formFeedback.setDefaultModel(new ResourceModel("failed.save"));
 					formFeedback.add(new AttributeModifier("class", true, new Model("alertMessage")));
-					target.addComponent(formFeedback);
+					target.add(formFeedback);
 					formFeedback2.setDefaultModel(new ResourceModel("failed.save"));
 					formFeedback2.add(new AttributeModifier("class", true, new Model("alertMessage")));
-					target.addComponent(formFeedback2);
+					target.add(formFeedback2);
 				}
 				//call a js function to hide the message in 5 seconds
-				target.appendJavascript("hideFeedbackTimer('" + formFeedbackId + "');");
-				target.appendJavascript("hideFeedbackTimer('" + formFeedback2Id + "');");
+				target.appendJavaScript("hideFeedbackTimer('" + formFeedbackId + "');");
+				target.appendJavaScript("hideFeedbackTimer('" + formFeedback2Id + "');");
 				modifiedAlert = false;
 			}
 		};

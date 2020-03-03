@@ -25,18 +25,18 @@ import java.io.InputStream;
 import java.io.Reader;
 import java.io.StringReader;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.apache.poi.POITextExtractor;
-import org.apache.poi.extractor.ExtractorFactory;
+import lombok.extern.slf4j.Slf4j;
+
+import org.apache.poi.extractor.POITextExtractor;
+import org.apache.poi.ooxml.extractor.ExtractorFactory;
 import org.sakaiproject.content.api.ContentResource;
 
 /**
  * @author ieb
  */
+@Slf4j
 public class PoiContentDigester extends BaseContentDigester
 {
-	private static Logger log = LoggerFactory.getLogger(PoiContentDigester.class);
 
 	static
 	{

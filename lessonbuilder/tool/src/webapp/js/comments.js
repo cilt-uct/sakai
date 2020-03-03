@@ -66,19 +66,21 @@ $(function() {
 		width: 400,
 		modal: false,
 		resizable: false,
-		buttons: {
-			"Cancel": function() {
+		buttons:[{
+			text: msg("simplepage.cancel_message"),
+			click: function() {
 				if(originalDeleteDialogText !== null) {
 					$("#delete-comment-confirm").text(originalDeleteDialogText);
 				}
-				
-				$(this).dialog("close");
-			},
 			
-			"Delete Comment": function() {
-				confirmDelete();
+				$(this).dialog("close");
 			}
-		}
+		},{
+			text: msg("simplepage.delete_comment"),
+			click: function() {
+				deleteButton();
+			}
+		}]
 	});
 });
 
@@ -158,14 +160,9 @@ function replyToComment(link, replytext) {
 	}else {
 	    CKEDITOR.instances[evolved.children("textarea").attr("name")].setData(replytext + '<div style="border-left: 2px solid black; padding-left:6px">' + $(link).parent().children(".commentBody").html() + '</div>\n<p></p>', function() {
 		    // this function is called after the insert happens. The goal is to move the cursor to the end
-		    var sel = this.getSelection(); // current selection will be at the start
-		    // get the whole body around it
-		    var parent = sel.getStartElement().getParent();
-		    // find the last element, which is the final <p></p>
-		    var last = parent.getLast();
-		    // select it
-		    sel.selectElement(last);
-		    this.focus();
+		    var range = this.createRange();
+		    range.moveToElementEditEnd( range.root );
+		    this.getSelection().selectRanges( [ range ] );
 		});
 	    evolved.focus();
 
@@ -296,7 +293,7 @@ function deleteComment(link) {
 	//setMainFrameHeight(window.name);
 }
 
-function confirmDelete() {
+function deleteButton() {
 	$(commentToReload).load(deleteDialogCommentURL, commentsLoaded);
 	//$("#delete-dialog").parents(".replaceWithComments").load($(dialog).children(".delete-dialog-comment-url").text());
 	setMainFrameHeight(window.name);

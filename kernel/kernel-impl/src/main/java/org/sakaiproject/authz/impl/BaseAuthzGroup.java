@@ -21,10 +21,29 @@
 
 package org.sakaiproject.authz.impl;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.sakaiproject.authz.api.*;
+
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.Stack;
+import java.util.stream.Collectors;
+
+import lombok.ToString;
+import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.lang3.StringUtils;
+
+import org.sakaiproject.authz.api.AuthzGroup;
+import org.sakaiproject.authz.api.AuthzGroupService;
+import org.sakaiproject.authz.api.Member;
+import org.sakaiproject.authz.api.Role;
+import org.sakaiproject.authz.api.RoleAlreadyDefinedException;
+import org.sakaiproject.authz.impl.DbAuthzGroupService.DbStorage.RealmLock;
 import org.sakaiproject.entity.api.Reference;
 import org.sakaiproject.entity.api.ResourceProperties;
 import org.sakaiproject.entity.api.ResourcePropertiesEdit;
@@ -40,21 +59,15 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import java.util.*;
-
-import lombok.ToString;
-
 /**
  * <p>
  * BaseAuthzGroup is an implementation of the AuthGroup API AuthzGroup.
  * </p>
  */
 @ToString(exclude = {"m_properties", "m_userGrants", "m_roles", "m_lastChangedRlFn", "baseAuthzGroupService", "userDirectoryService"})
+@Slf4j
 public class BaseAuthzGroup implements AuthzGroup
 {
-	/** Our log (commons). */
-	private static Logger M_log = LoggerFactory.getLogger(BaseAuthzGroup.class);
-
 	/** A fixed class serian number. */
 	private static final long serialVersionUID = 1L;
 
@@ -72,6 +85,8 @@ public class BaseAuthzGroup implements AuthzGroup
 
 	/** Map of Role id to a Role defined in this AuthzGroup. */
 	protected Map m_roles = null;
+
+	protected Set<RealmLock> m_realmLocks;
 
 	/** The external azGroup id, or null if not defined. */
 	protected String m_providerRealmId = null;
@@ -107,8 +122,8 @@ public class BaseAuthzGroup implements AuthzGroup
 
 	private UserDirectoryService userDirectoryService;
 
-    /** The most recently changed set of role/functions - ONLY valid during the save event processing on the same server */
-    public Set<DbAuthzGroupService.DbStorage.RoleAndFunction> m_lastChangedRlFn;
+	/** The most recently changed set of role/functions - ONLY valid during the save event processing on the same server */
+	public Set<DbAuthzGroupService.DbStorage.RoleAndFunction> m_lastChangedRlFn;
 
 	/**
 	 * Construct.
@@ -128,6 +143,7 @@ public class BaseAuthzGroup implements AuthzGroup
 
 		m_userGrants = new HashMap();
 		m_roles = new HashMap();
+		m_realmLocks = new HashSet<>();
 
 		// if the id is not null (a new azGroup, rather than a reconstruction)
 		// add the automatic (live) properties
@@ -178,6 +194,7 @@ public class BaseAuthzGroup implements AuthzGroup
 
 		m_userGrants = new HashMap();
 		m_roles = new HashMap();
+		m_realmLocks = new HashSet<>();
 
 		m_key = dbid;
 		m_id = id;
@@ -208,6 +225,7 @@ public class BaseAuthzGroup implements AuthzGroup
 		TimeService timeService = baseAuthzGroupService.timeService();
 		m_userGrants = new HashMap();
 		m_roles = new HashMap();
+		m_realmLocks = new HashSet<>();
 
 		// setup for properties
 		m_properties = new BaseResourcePropertiesEdit();
@@ -272,13 +290,13 @@ public class BaseAuthzGroup implements AuthzGroup
 					{
 						if (role.m_locks.size() > ((BaseRole) grant.role).m_locks.size())
 						{
-							M_log.warn("(el): additional lesser user grant ignored: " + m_id + " " + userId + " "
+							log.warn("(el): additional lesser user grant ignored: " + m_id + " " + userId + " "
 									+ grant.role.getId() + " keeping: " + roleId);
 							grant.role = role;
 						}
 						else
 						{
-							M_log.warn("(el): additional lesser user grant ignored: " + m_id + " " + userId + " " + roleId
+							log.warn("(el): additional lesser user grant ignored: " + m_id + " " + userId + " " + roleId
 									+ " keeping: " + grant.role.getId());
 						}
 					}
@@ -291,7 +309,7 @@ public class BaseAuthzGroup implements AuthzGroup
 				}
 				else
 				{
-					M_log.warn("(el): role null: " + roleId);
+					log.warn("(el): role null: " + roleId);
 				}
 			}
 
@@ -313,7 +331,7 @@ public class BaseAuthzGroup implements AuthzGroup
 						// the old pubview was done this way, we handle it so no need for warning
 						if (!("pubview".equals(roleId)))
 						{
-							M_log.warn("(el) role for anon: " + m_id + " " + roleId);
+							log.warn("(el) role for anon: " + m_id + " " + roleId);
 						}
 					}
 
@@ -338,7 +356,7 @@ public class BaseAuthzGroup implements AuthzGroup
 						// the old pubview was done this way, we handle it so no need for warning
 						if (!("pubview".equals(roleId)))
 						{
-							M_log.warn("(el) role for auth: " + m_id + " " + roleId);
+							log.warn("(el) role for auth: " + m_id + " " + roleId);
 						}
 					}
 
@@ -365,13 +383,13 @@ public class BaseAuthzGroup implements AuthzGroup
 						{
 							if (role.m_locks.size() > ((BaseRole) grant.role).m_locks.size())
 							{
-								M_log.warn("(el): additional lesser user grant ignored: " + m_id + " " + userId + " "
+								log.warn("(el): additional lesser user grant ignored: " + m_id + " " + userId + " "
 										+ grant.role.getId() + " keeping: " + roleId);
 								grant.role = role;
 							}
 							else
 							{
-								M_log.warn("(el): additional lesser user grant ignored: " + m_id + " " + userId + " " + roleId
+								log.warn("(el): additional lesser user grant ignored: " + m_id + " " + userId + " " + roleId
 										+ " keeping: " + grant.role.getId());
 							}
 						}
@@ -383,7 +401,7 @@ public class BaseAuthzGroup implements AuthzGroup
 					}
 					else
 					{
-						M_log.warn("(el): role null: " + roleId);
+						log.warn("(el): role null: " + roleId);
 					}
 				}
 			}
@@ -484,7 +502,7 @@ public class BaseAuthzGroup implements AuthzGroup
 
 		else if (getId().equals("!site.user"))
 		{
-			return "My Workspace AuthzGroup Template";
+			return "Home AuthzGroup Template";
 		}
 
 		else if (getId().startsWith("!user.template"))
@@ -560,6 +578,9 @@ public class BaseAuthzGroup implements AuthzGroup
 			m_userGrants.put(id, new BaseMember((Role) m_roles.get(grant.role.getId()), grant.active, grant.provided, grant.userId,
 					userDirectoryService));
 		}
+
+		m_realmLocks = new HashSet<>();
+		azGroup.getRealmLocks().forEach(a -> setLockForReference(a[0], RealmLockMode.valueOf(a[1])));
 
 		m_properties = new BaseResourcePropertiesEdit();
 		m_properties.addAll(azGroup.getProperties());
@@ -1016,8 +1037,9 @@ public class BaseAuthzGroup implements AuthzGroup
 		Role role = (Role) m_roles.get(roleId);
 		if (role == null)
 		{
-			M_log.warn(".addUserRole: role undefined: " + roleId);
-			throw new IllegalArgumentException("addMember called with null role!");
+			log.warn(".addUserRole: role undefined: " + roleId);
+			throw new IllegalArgumentException("addMember user: "+ user+ "called with roleId: "+ roleId +
+					" that isn't found on authzGroupId: "+ m_id);
 		}
 
 		BaseMember grant = (BaseMember) m_userGrants.get(user);
@@ -1222,6 +1244,81 @@ public class BaseAuthzGroup implements AuthzGroup
 		}
 
 		return rv;
+	}
+
+	@Override
+	public RealmLockMode getRealmLock() {
+		RealmLockMode highestLockMode = RealmLockMode.NONE;
+		if (m_lazy) {
+			baseAuthzGroupService.m_storage.completeGet(this);
+		}
+
+		for (RealmLock realmLock : m_realmLocks) {
+			RealmLockMode lockMode = realmLock.getLockMode();
+			switch (lockMode) {
+				case ALL:
+					highestLockMode = RealmLockMode.ALL;
+					break;
+				case MODIFY:
+					if (highestLockMode.equals(RealmLockMode.DELETE)) {
+						highestLockMode = RealmLockMode.ALL;
+					} else {
+						highestLockMode = RealmLockMode.MODIFY;
+					}
+					break;
+				case DELETE:
+					if (highestLockMode.equals(RealmLockMode.MODIFY)) {
+						highestLockMode = RealmLockMode.ALL;
+					} else {
+						highestLockMode = RealmLockMode.DELETE;
+					}
+					break;
+				default:
+					break;
+			}
+			if (RealmLockMode.ALL.equals(highestLockMode)) {
+				break;
+			}
+		}
+		return highestLockMode;
+	}
+
+	@Override
+	public RealmLockMode getLockForReference(String reference) {
+		if (StringUtils.isNotBlank(reference)) {
+			if (m_lazy) {
+				baseAuthzGroupService.m_storage.completeGet(this);
+			}
+			Optional<RealmLock> lock = m_realmLocks.stream().filter(l -> reference.equals(l.getReference())).findAny();
+			if (lock.isPresent()) {
+				return lock.get().getLockMode();
+			}
+		}
+		return RealmLockMode.NONE;
+	}
+
+	@Override
+	public void setLockForReference(String reference, RealmLockMode type) {
+		if (StringUtils.isNotBlank(reference)) {
+			if (m_lazy) {
+				baseAuthzGroupService.m_storage.completeGet(this);
+			}
+
+			RealmLock realmLock = baseAuthzGroupService.m_storage.newRealmLock(getKey(), reference, type);
+			if (RealmLockMode.NONE.equals(type)) {
+				m_realmLocks.remove(realmLock);
+			} else {
+				m_realmLocks.add(realmLock);
+			}
+		}
+	}
+
+	@Override
+	public List<String[]> getRealmLocks() {
+		if (m_lazy) {
+			baseAuthzGroupService.m_storage.completeGet(this);
+		}
+		return m_realmLocks.stream().map(l -> new String[] {l.getReference(), l.getLockMode().toString()}).collect(Collectors.toList());
 	}
 
 	/**

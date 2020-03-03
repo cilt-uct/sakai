@@ -62,7 +62,6 @@ import org.sakaiproject.mailsender.MailsenderException;
 import org.sakaiproject.mailsender.logic.ExternalLogic;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
-import org.sakaiproject.time.api.TimeService;
 import org.sakaiproject.tool.api.SessionManager;
 import org.sakaiproject.tool.api.ToolManager;
 import org.sakaiproject.user.api.User;
@@ -81,8 +80,6 @@ public class ExternalLogicImplTest {
 
 	@Mock
 	FunctionManager functionManager;
-	@Mock
-	TimeService timeService;
 	@Mock
 	MailArchiveService mailArchiveService;
 	@Mock
@@ -132,7 +129,6 @@ public class ExternalLogicImplTest {
 
 		impl = new ExternalLogicImpl();
         impl.setEmailService(emailService);
-		impl.setTimeService(timeService);
 		impl.setFunctionManager(functionManager);
 		impl.setMailArchiveService(mailArchiveService);
 		impl.setSecurityService(securityService);
@@ -308,8 +304,6 @@ public class ExternalLogicImplTest {
 
 	@Test
 	public void emailArchiveIsNotAddedToSite() throws Exception {
-		when(site.getTools("sakai.mailbox")).thenReturn(Collections.EMPTY_SET);
-
 		MailArchiveChannel channel = mock(MailArchiveChannel.class);
 		MailArchiveMessageEdit msg = mock(MailArchiveMessageEdit.class);
 		MailArchiveMessageHeaderEdit header = mock(MailArchiveMessageHeaderEdit.class);
@@ -356,7 +350,7 @@ public class ExternalLogicImplTest {
 
 		when(contentHostingService.newResourceProperties()).thenReturn(attachmentProperties);
 		when(contentHostingService.addAttachmentResource(
-				anyString(), anyString(), anyString(), anyString(), any(InputStream.class), any(ResourceProperties.class)
+				anyString(), anyString(), eq(null), anyString(), any(InputStream.class), any(ResourceProperties.class)
 		)).thenReturn(resource);
 		when(resource.getReference()).thenReturn("attachmentReference");
 

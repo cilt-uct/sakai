@@ -24,46 +24,29 @@
 package org.sakaiproject.lessonbuildertool.service;
 
 import java.io.IOException;
+import java.net.URLEncoder;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
-import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
-import java.util.Comparator;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
-import java.util.Iterator;
 import java.util.Properties;
 
-import java.net.URLEncoder;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.sakaiproject.lessonbuildertool.service.LessonSubmission;
-import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean;
-import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean.UrlItem;
-
-import org.sakaiproject.tool.api.Session;
-import org.sakaiproject.tool.cover.ToolManager;
-import org.sakaiproject.tool.api.SessionManager;
-import org.sakaiproject.site.api.Site;
-import org.sakaiproject.site.cover.SiteService;
-import org.sakaiproject.site.api.ToolConfiguration;
-
-import org.sakaiproject.component.cover.ServerConfigurationService;
-import org.sakaiproject.component.cover.ComponentManager;
-
-import org.sakaiproject.memory.api.Cache;
-import org.sakaiproject.memory.api.CacheRefresher;
-import org.sakaiproject.memory.api.MemoryService;
+import lombok.extern.slf4j.Slf4j;
 
 import uk.org.ponder.messageutil.MessageLocator;
 
+import org.sakaiproject.component.cover.ComponentManager;
+import org.sakaiproject.component.cover.ServerConfigurationService;
+import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean;
+import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean.UrlItem;
 import org.sakaiproject.lti.api.LTIService;
-// import org.sakaiproject.lti.impl.DBLTIService; // HACK
+import org.sakaiproject.memory.api.Cache;
+import org.sakaiproject.memory.api.MemoryService;
+import org.sakaiproject.site.api.Site;
+import org.sakaiproject.site.api.ToolConfiguration;
+import org.sakaiproject.site.api.SiteService;
+import org.sakaiproject.tool.api.ToolManager;
 
 /**
  * Interface to Assignment
@@ -81,11 +64,8 @@ import org.sakaiproject.lti.api.LTIService;
 // variables lessonEntity because the same module will probably have an
 // injected class to handle tests and quizes as well. That will eventually
 // be converted to be a LessonEntity.
-
+@Slf4j
 public class BltiEntity implements LessonEntity, BltiInterface {
-
-    private static Logger log = LoggerFactory.getLogger(BltiEntity.class);
-
     private static Cache bltiCache = null;
     protected static final int DEFAULT_EXPIRATION = 10 * 60;
     // 2.8 doesn't define this, so put it here
@@ -112,7 +92,17 @@ public class BltiEntity implements LessonEntity, BltiInterface {
 	memoryService = m;
     }
 
-    static MessageLocator messageLocator = null;
+    private static ToolManager toolManager;
+    public void setToolManager(ToolManager tm) {
+		if (toolManager == null ) toolManager = tm;
+	}
+    
+    private static SiteService siteService;
+	public void setSiteService(SiteService sm) {
+		if (siteService == null ) siteService = sm;
+	}
+
+	static MessageLocator messageLocator = null;
     public void setMessageLocator(MessageLocator m) {
 	messageLocator = m;
     }
@@ -125,7 +115,7 @@ public class BltiEntity implements LessonEntity, BltiInterface {
     public void init () {
 	log.info("init()");
 	bltiCache = memoryService
-	    .newCache("org.sakaiproject.lessonbuildertool.service.BltiEntity.cache");
+	    .getCache("org.sakaiproject.lessonbuildertool.service.BltiEntity.cache");
 
         /* Hack to avoid a restart to get a new version of DBLTIService 
 	if ( ltiService == null ) { 
@@ -240,12 +230,13 @@ public class BltiEntity implements LessonEntity, BltiInterface {
 	String search = null;
 	if (bltiToolId != null)
 	    search = "tool_id=" + bltiToolId;
-	List<Map<String,Object>> contents = ltiService.getContents(search,null,0,0);
+	List<Map<String,Object>> contents = ltiService.getContents(search,null,0,0, bean.getCurrentSiteId());
 	for (Map<String, Object> content : contents ) {
 	    Long id = getLong(content.get(LTIService.LTI_ID));
 	    if ( id == -1 ) continue;
 	    BltiEntity entity = new BltiEntity(TYPE_BLTI, id.toString());
 	    entity.content = content;
+	    entity.setSimplePageBean(bean);
 	    ret.add(entity);
 	}
 	return ret;
@@ -281,10 +272,10 @@ public class BltiEntity implements LessonEntity, BltiInterface {
 	if ( id == null ) return; // Likely a failure
 	if ( ltiService == null) return;  // not basiclti or old
 	Long key = getLong(id);
-	content = ltiService.getContent(key);
+	content = ltiService.getContent(key, toolManager.getCurrentPlacement().getContext());
 	if ( content == null ) return;
 	Long toolKey = getLongNull(content.get("tool_id"));
-	if (toolKey != null ) tool = ltiService.getTool(toolKey);
+	if (toolKey != null ) tool = ltiService.getTool(toolKey, toolManager.getCurrentPlacement().getContext());
     }	
 
     // properties of entities
@@ -292,6 +283,14 @@ public class BltiEntity implements LessonEntity, BltiInterface {
 	loadContent();
 	if ( content == null ) return null;
 	return (String) content.get(LTIService.LTI_TITLE);
+    }
+
+    public String getDescription() {
+        if(tool != null){
+            return (String) tool.get(LTIService.LTI_DESCRIPTION);
+        }
+        loadContent();
+        return tool == null ? null : (String) tool.get(LTIService.LTI_DESCRIPTION);
     }
 
     private String getErrorUrl() {
@@ -304,7 +303,7 @@ public class BltiEntity implements LessonEntity, BltiInterface {
 	// If I return null here, it appears that I cause an NPE in LB
 	if ( content == null ) return getErrorUrl();
 	String ret = (String) content.get("launch_url");
-	if ( ltiService != null && tool != null && ltiService.isMaintain()
+	if ( ltiService != null && tool != null && ltiService.isMaintain(getSiteId())
 	    	&& LTIService.LTI_SECRET_INCOMPLETE.equals((String) tool.get(LTIService.LTI_SECRET)) 
 		&& LTIService.LTI_SECRET_INCOMPLETE.equals((String) tool.get(LTIService.LTI_CONSUMERKEY)) ) {
 		String toolId = getCurrentTool("sakai.siteinfo");
@@ -363,21 +362,32 @@ public class BltiEntity implements LessonEntity, BltiInterface {
     }
 
     public List<UrlItem> createNewUrls(SimplePageBean bean, Integer bltiToolId) {
+        return createNewUrls(bean, bltiToolId, false);
+    }
+
+    public List<UrlItem> createNewUrls(SimplePageBean bean, Integer bltiToolId, boolean appStoresOnly) {
 	ArrayList<UrlItem> list = new ArrayList<UrlItem>();
 	String toolId = bean.getCurrentTool("sakai.siteinfo");
 	if ( ltiService == null || toolId == null || returnUrl == null ) return list;
 
         // Retrieve all tools
 	String search = null;
-	if (bltiToolId != null)
+	if (bltiToolId != null) {
 	    search = "lti_tools.id=" + bltiToolId;
-	List<Map<String,Object>> tools = ltiService.getTools(search,null,0,0);
+	} else if (appStoresOnly) {
+		search = LTIService.LTI_PL_LINKSELECTION + "=1";
+	} else {
+		search = LTIService.LTI_PL_LINKSELECTION + "=0 OR " + LTIService.LTI_PL_LINKSELECTION + " IS NULL";
+	}
+	List<Map<String,Object>> tools = ltiService.getTools(search,null,0,0, bean.getCurrentSiteId());
 	for ( Map<String,Object> tool : tools ) {
 		String url = ServerConfigurationService.getToolUrl() + "/" + toolId + "/sakai.basiclti.admin.helper.helper?panel=ContentConfig&tool_id=" 
 			+ tool.get(LTIService.LTI_ID) + "&returnUrl=" + URLEncoder.encode(returnUrl);
 		String fa_icon = (String) tool.get(LTIService.LTI_FA_ICON);
+		Long ls = getLong(tool.get(LTIService.LTI_PL_LINKSELECTION));
+		Boolean selector = (new Long(1)).equals(ls);
 
-		list.add(new UrlItem(url, (String) tool.get(LTIService.LTI_TITLE), fa_icon));
+		list.add(new UrlItem(url, (String) tool.get(LTIService.LTI_TITLE), (String) tool.get(LTIService.LTI_DESCRIPTION), fa_icon, selector));
 	}
 
 	String url = ServerConfigurationService.getToolUrl() + "/" + toolId + "/sakai.basiclti.admin.helper.helper?panel=Main" + 
@@ -469,7 +479,7 @@ public class BltiEntity implements LessonEntity, BltiInterface {
 	//
 	Map<String,Object> theTool = null;
 	Map<String,Object> theBaseTool = null;
-	List<Map<String,Object>> tools = ltiService.getTools(null,null,0,0);
+	List<Map<String,Object>> tools = ltiService.getTools(null,null,0,0, simplePageBean.getCurrentSiteId());
 	for ( Map<String,Object> tool : tools ) {
 		String toolLaunch = (String) tool.get(LTIService.LTI_LAUNCH);
 		if ( toolLaunch.equals(launchUrl) ) {
@@ -504,11 +514,11 @@ public class BltiEntity implements LessonEntity, BltiInterface {
 		props.setProperty(LTIService.LTI_XMLIMPORT,strXml);
 		if (custom != null)
 		    props.setProperty(LTIService.LTI_CUSTOM, custom);
-		Object result = ltiService.insertTool(props);
+		Object result = ltiService.insertTool(props, simplePageBean.getCurrentSiteId());
 		if ( result instanceof String ) {
 			log.info("Could not insert tool - "+result);
 		}
-		if ( result instanceof Long ) theTool = ltiService.getTool((Long) result);
+		if ( result instanceof Long ) theTool = ltiService.getTool((Long) result, simplePageBean.getCurrentSiteId());
 	}
 
 	Map<String,Object> theContent = null;
@@ -521,11 +531,11 @@ public class BltiEntity implements LessonEntity, BltiInterface {
 		props.setProperty(LTIService.LTI_LAUNCH,launchUrl);
 		props.setProperty(LTIService.LTI_XMLIMPORT,strXml);
 		if ( custom != null ) props.setProperty(LTIService.LTI_CUSTOM,custom);
-		Object result = ltiService.insertContent(props);
+		Object result = ltiService.insertContent(props, simplePageBean.getCurrentSiteId());
 		if ( result instanceof String ) {
 			log.info("Could not insert content - "+result);
 		}
-		if ( result instanceof Long ) theContent = ltiService.getContent((Long) result);
+		if ( result instanceof Long ) theContent = ltiService.getContent((Long) result, simplePageBean.getCurrentSiteId());
 	}
 
 	String sakaiId = null;
@@ -540,8 +550,8 @@ public class BltiEntity implements LessonEntity, BltiInterface {
 	// TODO: Could we get simplePageBean populated here and not build out own get
         public String getCurrentTool(String commonToolId) {
 		try {
-			String currentSiteId = ToolManager.getCurrentPlacement().getContext();
-			Site site = SiteService.getSite(currentSiteId);
+			String currentSiteId = toolManager.getCurrentPlacement().getContext();
+			Site site = siteService.getSite(currentSiteId);
 			ToolConfiguration toolConfig = site.getToolForCommonId(commonToolId);
 			if (toolConfig == null) return null;
 			return toolConfig.getId();

@@ -10,30 +10,11 @@
   	<parent>
 		<groupId>org.sakaiproject</groupId>
 		<artifactId>master</artifactId>
-		<version>12-SNAPSHOT</version>
+		<version>21-SNAPSHOT</version>
 		<relativePath>../master/pom.xml</relativePath>
 	</parent>
+
   	
-  	<organization>
-    	<name>Sakai Foundation</name>
-    	<url>http://sakaiproject.org/</url>
-  	</organization>
-  	
-  	<inceptionYear>2005</inceptionYear>
-  	
-	<licenses>
-        <license>
-            <name>Educational Community License, Version 2.0</name>
-            <url>http://www.opensource.org/licenses/ecl2.txt</url>
-            <distribution>repo</distribution>
-        </license>
-    </licenses>
-    
-    <issueManagement>
-        <system>JIRA</system>
-        <url>http://jira.sakaiproject.org/jira/browse/SAK</url>
-    </issueManagement>
-    
     <developers>
         <developer>
             <name>Steve Swinsburg</name>
@@ -45,14 +26,5 @@
     <modules>
         <module>cxf</module>
     </modules>
-    
-    
-    <distributionManagement>
-        <site>
-            <id>sakai-site</id>
-            <name>Sakai release Site</name>
-            <url>scpexe://source.sakaiproject.org/var/www/html/release/webservices/${project.version}</url>
-        </site>
-    </distributionManagement>
-    
+
 </project>

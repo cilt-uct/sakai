@@ -10,20 +10,23 @@
 	<sakai:view_container title="#{msgs.title_edit}">
 		<sakai:view_content>
 			<h:form id="redirectForm">
-				<h3>
-					<h:outputText value="#{msgs.redirect_sylla}" />
-				</h3>
-				<h:messages styleClass="alertMessage" rendered="#{!empty facesContext.maximumSeverity}" />
+
+				<div class="page-header">
+					<h1><h:outputText value="#{msgs.redirect_sylla}" /></h1>
+				</div>
+
+				<h:messages styleClass="sak-banner-error" rendered="#{!empty facesContext.maximumSeverity}" />
 				<h:panelGrid styleClass="jsfFormTable" columns="1">
+					<h:panelGroup styleClass="instruction">
+						<h:outputText value="#{msgs.redirect_sylla_delete}" />
+					</h:panelGroup>
 					<h:panelGroup styleClass="shorttext required">
-						<h:outputText value="*" styleClass="reqStar"/>
-						<h:outputLabel for="urlValue"><h:outputText value="#{msgs.syllabus_url}"/></h:outputLabel>
+						<h:panelGroup styleClass="syllabusLabel">
+							<h:outputText value="*" styleClass="reqStar"/>
+							<h:outputLabel for="urlValue"><h:outputText value="#{msgs.syllabus_url}"/></h:outputLabel>
+						</h:panelGroup>
 						<h:inputText id="urlValue" value="#{SyllabusTool.currentRediredUrl}" size="65"/>
 					</h:panelGroup>
-                    <h:panelGroup styleClass="shorttext required">
-                        <h:outputLabel for="openInNewWindow"><h:outputText value="#{msgs.openLinkNewWindow}"/></h:outputLabel>
-                        <h:selectBooleanCheckbox id="openInNewWindow" value="#{SyllabusTool.openInNewWindow}"/>
-                    </h:panelGroup>
 				</h:panelGrid>
 				<sakai:button_bar>
 					<h:commandButton

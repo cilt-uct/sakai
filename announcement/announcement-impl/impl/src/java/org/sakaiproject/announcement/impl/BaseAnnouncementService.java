@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.util.Vector;
 import java.util.Collection;
 import java.util.Collections;
@@ -34,9 +35,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Stack;
 import java.util.Set;
 
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.xml.parsers.DocumentBuilder;
@@ -46,9 +49,11 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.lang3.StringUtils;
+
 import org.sakaiproject.alias.api.Alias;
 import org.sakaiproject.alias.api.AliasService;
 import org.sakaiproject.announcement.api.AnnouncementChannel;
@@ -69,7 +74,6 @@ import org.sakaiproject.entity.api.EntityPermissionException;
 import org.sakaiproject.entity.api.EntityPropertyNotDefinedException;
 import org.sakaiproject.entity.api.EntityPropertyTypeException;
 import org.sakaiproject.entity.api.EntityTransferrer;
-import org.sakaiproject.entity.api.EntityTransferrerRefMigrator;
 import org.sakaiproject.entity.api.HttpAccess;
 import org.sakaiproject.entity.api.Reference;
 import org.sakaiproject.entity.api.ResourceProperties;
@@ -93,6 +97,8 @@ import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.site.api.ToolConfiguration;
 import org.sakaiproject.time.api.Time;
 import org.sakaiproject.tool.api.ToolManager;
+import org.sakaiproject.util.api.FormattedText;
+import org.sakaiproject.util.api.LinkMigrationHelper;
 import org.sakaiproject.util.MergedList;
 import org.sakaiproject.util.ResourceLoader;
 import org.sakaiproject.util.StringUtil;
@@ -105,13 +111,10 @@ import org.w3c.dom.Element;
  * BaseAnnouncementService extends the BaseMessage for the specifics of Announcement.
  * </p>
  */
-
+@Slf4j
 public abstract class BaseAnnouncementService extends BaseMessage implements AnnouncementService, ContextObserver,
-		EntityTransferrer, EntityTransferrerRefMigrator
+		EntityTransferrer
 {
-	/** Our logger. */
-	private static Logger M_log = LoggerFactory.getLogger(BaseAnnouncementService.class);
-
 	/** private constants definitions */
 	private final static String SAKAI_ANNOUNCEMENT_TOOL_ID = "sakai.announcements";
 	private static final String PORTLET_CONFIG_PARM_MERGED_CHANNELS = "mergedAnnouncementChannels";
@@ -124,44 +127,19 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 	private DocumentBuilder docBuilder = null;
 	private Transformer docTransformer = null;
 	
-	private ContentHostingService contentHostingService;
-	private SiteEmailNotificationAnnc siteEmailNotificationAnnc;
+	@Setter private ContentHostingService contentHostingService;
+	@Setter private SiteEmailNotificationAnnc siteEmailNotificationAnnc;
+	@Setter private FunctionManager functionManager;
+	@Setter private AliasService aliasService;
+	@Setter private ToolManager toolManager;
+	@Setter private FormattedText formattedText;
+	@Resource(name="org.sakaiproject.util.api.LinkMigrationHelper")
+	private LinkMigrationHelper linkMigrationHelper;
 
-	/**
-	 * Dependency: contentHostingService.
-	 * 
-	 * @param service
-	 *        The NotificationService.
-	 */
-	public void setContentHostingService(ContentHostingService service)
-	{
-		contentHostingService = service;
-	}
 
-	public void setSiteEmailNotificationAnnc(SiteEmailNotificationAnnc siteEmailNotificationAnnc) {
-		this.siteEmailNotificationAnnc = siteEmailNotificationAnnc;
-	}
-
-	private FunctionManager functionManager;
-	public void setFunctionManager(FunctionManager functionManager) {
-		this.functionManager = functionManager;
-	}
-	
-	private AliasService aliasService;	
-	public void setAliasService(AliasService aliasService) {
-		this.aliasService = aliasService;
-	}
-
-	private ToolManager toolManager;
-	public void setToolManager(ToolManager toolManager) {
-		this.toolManager = toolManager;
-		
-	}
 	/**********************************************************************************************************************************************************************************************************************************************************
 	 * Constructors, Dependencies and their setter methods
 	 *********************************************************************************************************************************************************************************************************************************************************/
-
-	
 
 
 	/** Dependency: NotificationService. */
@@ -231,11 +209,11 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 			TransformerFactory tFactory = TransformerFactory.newInstance();
 			docTransformer = tFactory.newTransformer();
 			
-			M_log.info("init()");
+			log.info("init()");
 		}
 		catch (Throwable t)
 		{
-			M_log.warn("init(): ", t);
+			log.warn("init(): ", t);
 		}
 
 	} // init
@@ -549,7 +527,7 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 		        throw new IllegalArgumentException("anouncement eventId() input cannot be null or blank");
 		    } catch (Exception e) {
 		        secure = "INVALID_KEY";
-		        M_log.error("Bad call to BaseAnnouncementService.eventId(String) - input string is blank, generating '"+secure+"' event name and logging trace", e);
+		        log.error("Bad call to BaseAnnouncementService.eventId(String) - input string is blank, generating '{}' event name and logging trace", secure, e);
 		    }
 		}
 		return SECURE_ANNC_ROOT + secure;
@@ -616,7 +594,7 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 						context = parts[3];
 				}
 				else
-					M_log.warn("parse(): unknown message subtype: " + subType + " in ref: " + reference);
+					log.warn("parse(): unknown message subtype: {} in ref: {}", subType, reference);
 			}
 
 			// Translate context alias into site id (only for rss) if necessary
@@ -636,7 +614,7 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 					}
 					catch (Exception e)
 					{
-						M_log.debug(this+".parseEntityReference(): "+e.toString());
+						log.debug(this+".parseEntityReference(): {}", e.toString());
 						return false;
 					}
 				}
@@ -644,7 +622,7 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 				// if context still isn't valid, then no valid alias or site was specified
 				if (!m_siteService.siteExists(context))
 				{
-					M_log.warn(this+".parseEntityReference() no valid site or alias: " + context);
+					log.warn(this+".parseEntityReference() no valid site or alias: {}", context);
 					return false;
 				}
 			}
@@ -689,7 +667,7 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 			}
 		} catch (IdUnusedException e) {
 		    // ignore the error, continue with the default method
-		    M_log.debug("Could not find channelRef in channel property, falling back to default method...");
+		    log.debug("Could not find channelRef in channel property, falling back to default method...");
 		}
 		
 		if (channelRef == null || channelRef.trim().length() == 0) {
@@ -732,12 +710,12 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 	{
 		final ResourceProperties messageProps = message.getProperties();
 
-		final Time now = m_timeService.newTime();
+		final Instant now =  Instant.now();
 		try 
 		{
-			final Time releaseDate = message.getProperties().getTimeProperty(RELEASE_DATE);
+			final Instant releaseDate = message.getProperties().getInstantProperty(RELEASE_DATE);
 
-			if (now.before(releaseDate)) 
+			if (now.isBefore(releaseDate)) 
 			{
 				return false;
 			}
@@ -749,9 +727,9 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 
 		try 
 		{
-			final Time retractDate = message.getProperties().getTimeProperty(RETRACT_DATE);
+			final Instant retractDate = message.getProperties().getInstantProperty(RETRACT_DATE);
 			
-			if (now.after(retractDate)) 
+			if (now.isAfter(retractDate)) 
 			{
 				return false;
 			}
@@ -899,7 +877,7 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 			AnnouncementChannel anncChan = (AnnouncementChannel)getChannelPublic( channelReference(rssRef.getContext(), SiteService.MAIN_CONTAINER) );
 			if ( anncChan == null )
 			{
-				M_log.warn(this+".printAnnouncementRss invalid request "+rssRef.getContext());
+				log.warn(this+".printAnnouncementRss invalid request {}", rssRef.getContext());
 				return;
 			}
 			List anncList = anncChan.getMessagesPublic(null,false);
@@ -919,7 +897,7 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 		}
 		catch (Exception e)
 		{
-			M_log.warn(this+"printAnnouncementRss ", e);
+			log.warn(this+"printAnnouncementRss ", e);
 		}
 	}
 
@@ -948,20 +926,20 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 							+ "<title>"
 							+ rb.getString("announcement")
 							+ ": "
-							+ Validator.escapeHtml(hdr.getSubject())
+							+ formattedText.escapeHtml(hdr.getSubject())
 							+ "</title>" + "</head>\n<body>");
 
 			out.println("<h1>" + rb.getString("announcement") + "</h1>");
 
 			// header
 			out.println("<table><tr><td><b>" + rb.getString("from_colon") + "</b></td><td>"
-					+ Validator.escapeHtml(hdr.getFrom().getDisplayName()) + "</td></tr>");
-			out.println("<tr><td><b>" + rb.getString("date_colon") + "</b></td><td>" + Validator.escapeHtml(hdr.getDate().toStringLocalFull())
+					+ formattedText.escapeHtml(hdr.getFrom().getDisplayName()) + "</td></tr>");
+			out.println("<tr><td><b>" + rb.getString("date_colon") + "</b></td><td>" + formattedText.escapeHtml(hdr.getDate().toStringLocalFull())
 					+ "</td></tr>");
-			out.println("<tr><td><b>" + rb.getString("subject_colon") + "</b></td><td>" + Validator.escapeHtml(hdr.getSubject()) + "</td></tr></table>");
+			out.println("<tr><td><b>" + rb.getString("subject_colon") + "</b></td><td>" + formattedText.escapeHtml(hdr.getSubject()) + "</td></tr></table>");
 
 			// body
-			out.println("<p>" + Validator.escapeHtmlFormattedText(msg.getBody()) + "</p>");
+			out.println("<p>" + formattedText.escapeHtmlFormattedText(msg.getBody()) + "</p>");
 
 			// attachments
 			List attachments = hdr.getAttachments();
@@ -971,8 +949,8 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 				for (Iterator iAttachments = attachments.iterator(); iAttachments.hasNext();)
 				{
 					Reference attachment = (Reference) iAttachments.next();
-					out.println("<a href=\"" + Validator.escapeHtml(attachment.getUrl()) + "\">"
-							+ Validator.escapeHtml(attachment.getUrl()) + "</a><br />");
+					out.println("<a href=\"" + formattedText.escapeHtml(attachment.getUrl()) + "\">"
+							+ formattedText.escapeHtml(attachment.getUrl()) + "</a><br />");
 				}
 				out.println("</p>");
 			}
@@ -1076,7 +1054,7 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 	 * 		  flag to include merged channel messages, true returns ALL messages including merged sites/channels
 	 * @return a list of Message objects or specializations of Message objects (may be empty).
 	 * @exception IdUnusedException
-	 *            If this name is not defined for a announcement channel.
+	 *            If this name is not defined for a announcement channel, or the channel references a site that does not exist.
 	 * @exception PermissionException
 	 *            if the user does not have read permission to the channel.
 	 * @exception NullPointerException
@@ -1124,14 +1102,9 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 			{
 				Collections.reverse(messageList);
 			}			
-		} catch (IdUnusedException e) {
-			M_log.warn(e.getMessage());
-		}
-		catch (PermissionException e) {
-			M_log.warn(e.getMessage());
 		}
 		catch (NullPointerException e) {
-			M_log.warn(e.getMessage());
+			log.warn(e.getMessage());
 		}
 		return messageList;
 
@@ -1150,34 +1123,25 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 		return "announcement";
 	}
 
-        /**********************************************************************************************************************************************************************************************************************************************************
-         * getSummaryFromHeader implementation
-         *********************************************************************************************************************************************************************************************************************************************************/
-         protected String getSummaryFromHeader(Message item, MessageHeader header)
-         {
-            String newText;
-	    if ( header instanceof AnnouncementMessageHeader) {
-		AnnouncementMessageHeader hdr = (AnnouncementMessageHeader) header;
-		newText = hdr.getSubject();
-	    } else {
-       	      newText = item.getBody();
-              if ( newText.length() > 50 ) newText = newText.substring(1,49);
-            }
-            newText = newText + ", " + header.getFrom().getDisplayName() + ", " + header.getDate().toStringLocalFull();
-            return newText;
-        }
+	protected String getSummaryFromHeader(Message item, MessageHeader header) {
+
+		String newText;
+		if (header instanceof AnnouncementMessageHeader) {
+			AnnouncementMessageHeader hdr = (AnnouncementMessageHeader) header;
+			newText = hdr.getSubject();
+		} else {
+			newText = item.getBody();
+			if (newText.length() > 50) newText = newText.substring(1, 49);
+		}
+		newText = newText + ", " + header.getFrom().getDisplayName() + ", " + header.getDate().toStringLocalFull();
+		return newText;
+	}
 
 	/**
 	 * {@inheritDoc}
 	 */
-	public void transferCopyEntities(String fromContext, String toContext, List resourceIds)
-	{
-		transferCopyEntitiesRefMigrator(fromContext, toContext, resourceIds);
-	}
+	public Map<String, String> transferCopyEntities(String fromContext, String toContext, List<String> resourceIds, List<String> options) {
 
-	public Map<String, String> transferCopyEntitiesRefMigrator(String fromContext, String toContext, List resourceIds)
-	{
-	//	Map<String, String> transversalMap = new HashMap<String, String>();
 		// get the channel associated with this site
 		String oChannelRef = channelReference(fromContext, SiteService.MAIN_CONTAINER);
 		AnnouncementChannel oChannel = null;
@@ -1239,7 +1203,7 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 					}
 					
 					// not to import any assignment-generated announcement
-					String assignmentReference = StringUtil.trimToNull(oMessage.getProperties().getProperty(AnnouncementService.ASSIGNMENT_REFERENCE));
+					String assignmentReference = StringUtils.trimToNull(oMessage.getProperties().getProperty(AnnouncementService.ASSIGNMENT_REFERENCE));
 					if (toBeImported && assignmentReference != null)
 					{
 						toBeImported = false;
@@ -1258,7 +1222,7 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 						nMessageHeader.setDate(oMessageHeader.getDate());
 						nMessageHeader.setMessage_order(oMessageHeader.getMessage_order());
 						// when importing, refer to property to determine draft status
-						if ("false".equalsIgnoreCase(m_serverConfigurationService.getString("import.importAsDraft")))
+						if (!m_serverConfigurationService.getBoolean("import.importAsDraft", true))
 						{
 							nMessageHeader.setDraft(oMessageHeader.getDraft());
 						}
@@ -1325,18 +1289,18 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 										catch (Exception eeAny)
 										{
 											// if the new resource cannot be added
-											M_log.warn(" cannot add new attachment with id=" + nAttachmentId);
+											log.warn(" cannot add new attachment with id={}", nAttachmentId);
 										}
 									}
 									catch (Exception eAny)
 									{
 										// if cannot find the original attachment, do nothing.
-										M_log.warn(" cannot find the original attachment with id=" + oAttachmentId);
+										log.warn(" cannot find the original attachment with id={}", oAttachmentId);
 									}
 								}
 								catch (Exception any)
 								{
-									M_log.info(any.getMessage());
+									log.info(any.getMessage());
 								}
 							}
 							else
@@ -1363,11 +1327,11 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 		}
 		catch (IdUnusedException e)
 		{
-			M_log.warn(" MessageChannel " + fromContext + " cannot be found. ");
+			log.warn(" MessageChannel {} cannot be found. ", fromContext);
 		}
 		catch (Exception any)
 		{
-			M_log.warn(".importResources(): exception in handling " + serviceName() + " : ", any);
+			log.warn(".importResources(): exception in handling {} : {}", serviceName(), any);
 		}
 		
 		return null;
@@ -1405,10 +1369,11 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 							while(entryItr.hasNext()) {
 								Entry<String, String> entry = (Entry<String, String>) entryItr.next();
 								String fromContextRef = entry.getKey();
-								if(msgBody.contains(fromContextRef)){									
-									msgBody = msgBody.replace(fromContextRef, entry.getValue());
+								String targetContextRef = entry.getValue();
+								if(msgBody.contains(fromContextRef)){
 									updated = true;
-								}								
+								}
+								msgBody = linkMigrationHelper.migrateOneLink(fromContextRef, targetContextRef, msgBody);
 							}	
 							if(updated){
 								AnnouncementMessageEdit editMsg = aChannel.editAnnouncementMessage(msg.getId());
@@ -1419,14 +1384,14 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 					}
 					catch(Exception e)
 					{
-						M_log.debug("Unable to remove Announcements " + e);
+						log.debug("Unable to remove Announcements ", e.getMessage(), e);
 					}
 				}
 
 			}
 			catch (Exception e)
 			{
-				M_log.debug("transferCopyEntities: End removing Announcement data");
+				log.debug("transferCopyEntities: End removing Announcement data");
 			}
 		}
 	}
@@ -1435,7 +1400,7 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 	 * AnnouncementChannel implementation
 	 *********************************************************************************************************************************************************************************************************************************************************/
 
-	public class BaseAnnouncementChannelEdit extends BaseMessageChannelEdit implements AnnouncementChannelEdit
+	public class BaseAnnouncementChannelEdit extends BaseMessageChannelEdit<AnnouncementMessageEdit> implements AnnouncementChannelEdit
 	{
 		/**
 		 * Construct with a reference.
@@ -1632,20 +1597,20 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 					try {
 						releaseDate = me.getProperties().getDateProperty(AnnouncementService.RELEASE_DATE);
 					} catch (EntityPropertyNotDefinedException e) {
-						if (M_log.isDebugEnabled()) {
-							M_log.debug("Exception moving an unreleased item.",e);
+						if (log.isDebugEnabled()) {
+							log.debug("Exception moving an unreleased item.",e);
 						}
 						continue;
 					} catch (EntityPropertyTypeException e) {
-						if (M_log.isDebugEnabled()) {
-							M_log.debug("Exception moving an unreleased item.",e);
+						if (log.isDebugEnabled()) {
+							log.debug("Exception moving an unreleased item.",e);
 						}
 						continue;
 					}
 					//releaseDate of this item is after current date, so set it later than max
 					if (releaseDate.compareTo(new Date()) > 0) {
-						if (M_log.isDebugEnabled()) {
-							M_log.debug("Placing unreleased announcement to top of list " + me.getId());
+						if (log.isDebugEnabled()) {
+							log.debug("Placing unreleased announcement to top of list {}", me.getId());
 						}
 						//Try to set the current max of these other messages
 						try {
@@ -1653,14 +1618,14 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 							em.getHeaderEdit().setMessage_order(++currentMax);
 							super.commitMessage(em, NotificationService.NOTI_IGNORE, "");
 						} catch (InUseException e) {
-							if (M_log.isDebugEnabled()) {
-								M_log.debug("Exception moving an unreleased item.",e);
+							if (log.isDebugEnabled()) {
+								log.debug("Exception moving an unreleased item.",e);
 							}
 							continue;
 						}
 						catch (IdUnusedException e) {
-							if (M_log.isDebugEnabled()) {
-								M_log.debug("Exception moving an unreleased item.",e);
+							if (log.isDebugEnabled()) {
+								log.debug("Exception moving an unreleased item.",e);
 							}
 							continue;
 						}
@@ -1668,7 +1633,7 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 					}
 				}
 			} catch (PermissionException ex) {
-				M_log.error(ex.getMessage());
+				log.error(ex.getMessage());
 			}
 		}
 		
@@ -1689,7 +1654,7 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 				}
 				msg.getHeaderEdit().setMessage_order(++currentMax);
 			} catch (PermissionException ex) {
-				M_log.error(ex.getMessage());
+				log.error(ex.getMessage());
 			}
 			return currentMax;
 		}
@@ -1846,6 +1811,7 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 
 		} // setSubject
 
+
 		/**
 		 * Serialize the resource into XML, adding an element to the doc under the top of the stack element.
 		 * 
@@ -1938,14 +1904,8 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 		}
 	}
 
-	public void transferCopyEntities(String fromContext, String toContext, List ids, boolean cleanup)
-	{
-		transferCopyEntitiesRefMigrator(fromContext, toContext, ids, cleanup);
-	}
+	public Map<String, String> transferCopyEntities(String fromContext, String toContext, List<String> ids, List<String> options, boolean cleanup) {
 
-	public Map<String, String> transferCopyEntitiesRefMigrator(String fromContext, String toContext, List ids, boolean cleanup)
-	{
-//		Map<String, String> transversalMap = new HashMap<String, String>();
 		try
 		{
 			if(cleanup == true)
@@ -1972,20 +1932,47 @@ public abstract class BaseAnnouncementService extends BaseMessage implements Ann
 					}
 					catch(Exception e)
 					{
-						M_log.debug("Unable to remove Announcements " + e);
+						log.debug("Unable to remove Announcements {}", e.getMessage(), e);
 					}
 				}
 			}
 		}
 		catch (Exception e)
 		{
-			M_log.debug("transferCopyEntities: End removing Announcement data");
+			log.debug("transferCopyEntities: End removing Announcement data");
 		}
-		transferCopyEntitiesRefMigrator(fromContext, toContext, ids);
+		transferCopyEntities(fromContext, toContext, ids, null);
 		return null;
 	} 
 
 	public void clearMessagesCache(String channelRef){
 		m_threadLocalManager.set(channelRef + ".msgs", null);
+	}
+
+	public Optional<String> getEntityUrl(Reference r, Entity.UrlType urlType) {
+
+		//Reference r = getReference(ref);
+		if (Entity.UrlType.PORTAL == urlType) {
+			if (r != null) {
+				String siteId = r.getContext();
+				Site site;
+				try {
+					site = m_siteService.getSite(siteId);
+					ToolConfiguration tc = site.getToolForCommonId("sakai.announcements");
+					if (tc != null) {
+						return Optional.of(m_serverConfigurationService.getPortalUrl() + "/directtool/" + tc.getId()
+							+ "?itemReference=" + r.getReference() + "&sakai_action=doShowmetadata");
+					} else {
+						log.error("No announcements tool in site {}", siteId);
+					}
+				} catch (IdUnusedException iue) {
+					log.error("Failed to get site site for id {}", siteId);
+				}
+			} else {
+				log.error("Failed to get reference for {}", r.getReference());
+			}
+		}
+
+		return Optional.of(super.getEntityUrl(r));
 	}
 }

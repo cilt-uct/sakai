@@ -1,27 +1,52 @@
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.search.elasticsearch;
 
+import java.io.IOException;
+import java.io.StringReader;
+import java.io.UnsupportedEncodingException;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.lang.StringEscapeUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.text.StringEscapeUtils;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.core.StopAnalyzer;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.core.StopAnalyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.highlight.*;
+import org.apache.lucene.search.highlight.Highlighter;
+import org.apache.lucene.search.highlight.InvalidTokenOffsetsException;
+import org.apache.lucene.search.highlight.QueryScorer;
+import org.apache.lucene.search.highlight.Scorer;
+import org.apache.lucene.search.highlight.SimpleHTMLEncoder;
+import org.apache.lucene.search.highlight.SimpleHTMLFormatter;
 import org.apache.lucene.util.Version;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHitField;
 import org.elasticsearch.search.facet.terms.InternalTermsFacet;
 import org.elasticsearch.search.facet.terms.TermsFacet;
-import org.sakaiproject.search.api.*;
+import org.sakaiproject.search.api.EntityContentProducer;
+import org.sakaiproject.search.api.PortalUrlEnabledProducer;
+import org.sakaiproject.search.api.SearchResult;
+import org.sakaiproject.search.api.SearchService;
+import org.sakaiproject.search.api.TermFrequency;
 
-import java.io.IOException;
-import java.io.StringReader;
-import java.io.UnsupportedEncodingException;
-import java.util.*;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Created by IntelliJ IDEA.
@@ -30,17 +55,17 @@ import java.util.*;
  * Time: 2:19 PM
  * To change this template use File | Settings | File Templates.
  */
+@Slf4j
 public class ElasticSearchResult implements SearchResult {
-    private static final Logger log = LoggerFactory.getLogger(ElasticSearchResult.class);
     private int index;
     private SearchHit hit;
     private String newUrl;
     private InternalTermsFacet facet;
-    private SearchIndexBuilder searchIndexBuilder;
+    private ElasticSearchIndexBuilder searchIndexBuilder;
     private static Analyzer analyzer = new StandardAnalyzer(Version.LUCENE_36, StopAnalyzer.ENGLISH_STOP_WORDS_SET);
     private String searchTerms;
 
-    public ElasticSearchResult(SearchHit hit, InternalTermsFacet facet, SearchIndexBuilder searchIndexBuilder, String searchTerms) {
+    public ElasticSearchResult(SearchHit hit, InternalTermsFacet facet, ElasticSearchIndexBuilder searchIndexBuilder, String searchTerms) {
         this.hit = hit;
         this.facet = facet;
         this.searchIndexBuilder = searchIndexBuilder;
@@ -163,7 +188,7 @@ public class ElasticSearchResult implements SearchResult {
     }
 
     protected String getFieldFromSearchHit(String field) {
-        return ElasticSearchIndexBuilder.getFieldFromSearchHit(field, hit);
+        return searchIndexBuilder.getFieldFromSearchHit(field, hit);
     }
 
     @Override
@@ -176,16 +201,16 @@ public class ElasticSearchResult implements SearchResult {
         sb.append("<result");
         sb.append(" index=\"").append(getIndex()).append("\" ");
         sb.append(" score=\"").append(getScore()).append("\" ");
-        sb.append(" sid=\"").append(StringEscapeUtils.escapeXml(getId())).append("\" ");
-        sb.append(" site=\"").append(StringEscapeUtils.escapeXml(getSiteId())).append("\" ");
-        sb.append(" reference=\"").append(StringEscapeUtils.escapeXml(getReference())).append("\" ");
+        sb.append(" sid=\"").append(StringEscapeUtils.escapeXml11(getId())).append("\" ");
+        sb.append(" site=\"").append(StringEscapeUtils.escapeXml11(getSiteId())).append("\" ");
+        sb.append(" reference=\"").append(StringEscapeUtils.escapeXml11(getReference())).append("\" ");
         try {
             sb.append(" title=\"").append(new String(Base64.encodeBase64(getTitle().getBytes("UTF-8")), "UTF-8")).append("\" ");
         } catch (UnsupportedEncodingException e) {
-            sb.append(" title=\"").append(StringEscapeUtils.escapeXml(getTitle())).append("\" ");
+            sb.append(" title=\"").append(StringEscapeUtils.escapeXml11(getTitle())).append("\" ");
         }
-        sb.append(" tool=\"").append(StringEscapeUtils.escapeXml(getTool())).append("\" ");
-        sb.append(" url=\"").append(StringEscapeUtils.escapeXml(getUrl())).append("\" />");
+        sb.append(" tool=\"").append(StringEscapeUtils.escapeXml11(getTool())).append("\" ");
+        sb.append(" url=\"").append(StringEscapeUtils.escapeXml11(getUrl())).append("\" />");
     }
 
     @Override

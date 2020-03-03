@@ -345,6 +345,14 @@ public class EntitySitePage implements SitePage {
         }
         throw new UnsupportedOperationException();
     }
+
+    @Override
+    public void setTools(List tools){
+        if(sitePage != null){
+            sitePage.setTools(tools);
+        }
+        throw new UnsupportedOperationException();
+    }
     @Override
     public void moveUp() {
         if (sitePage != null) {
@@ -363,6 +371,13 @@ public class EntitySitePage implements SitePage {
     public void setupPageCategory(String toolId) {
         if (sitePage != null) {
             sitePage.setupPageCategory(toolId);
+        }
+        throw new UnsupportedOperationException();
+    }
+    @Override
+    public boolean isTitleToolException(String toolId) {
+        if (sitePage != null) {
+            return sitePage.isTitleToolException(toolId);
         }
         throw new UnsupportedOperationException();
     }

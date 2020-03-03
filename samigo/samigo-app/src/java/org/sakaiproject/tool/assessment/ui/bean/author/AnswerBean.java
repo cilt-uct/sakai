@@ -31,9 +31,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import org.apache.commons.lang.ArrayUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.ArrayUtils;
+import lombok.extern.slf4j.Slf4j;
+import lombok.Getter;
+import lombok.Setter;
+import org.sakaiproject.tool.assessment.facade.ItemFacade;
+
 import org.sakaiproject.util.ResourceLoader;
 
 import org.sakaiproject.content.api.ContentResource;
@@ -62,9 +65,12 @@ import javax.faces.context.ExternalContext;
 import org.sakaiproject.tool.assessment.jsf.convert.AnswerSurveyConverter;
 
 @SuppressWarnings("deprecation")
+@Slf4j
 public class AnswerBean implements Serializable, Comparable{
   private static final long serialVersionUID = 7526471155622776147L;
 
+  @Getter @Setter
+  private Long id;
   private String text;
   private Long sequence;
   private String label;
@@ -83,8 +89,10 @@ public class AnswerBean implements Serializable, Comparable{
   private List attachmentList;
   //for navigation
   private String outcome;
+
+  @Getter @Setter
+  private Long answerFeedbackId;
   
-  private static Logger log = LoggerFactory.getLogger(AnswerBean.class);
   private String partialCredit = "0";  //to incorporate partial credit
   private static ResourceLoader rb = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AuthorMessages");
 
@@ -344,36 +352,46 @@ public class AnswerBean implements Serializable, Comparable{
  	      return getOutcome();
 	  }
 
+
+	private ItemService loadItemService(boolean isEditPendingAssessmentFlow) {
+		if (isEditPendingAssessmentFlow) {
+			return new ItemService();
+		}
+		else {
+			return new PublishedItemService();
+		}
+	}
+
+	private ItemTextIfc loadItemText(boolean isEditPendingAssessmentFlow) {
+		ItemService service = loadItemService(isEditPendingAssessmentFlow);
+		ItemFacade itemData = null;
+		ItemTextIfc itemText = null;
+		ItemAuthorBean itemauthorbean = (ItemAuthorBean) ContextUtil.lookupBean("itemauthor");
+		if (itemauthorbean.getItemId()!=null){
+			try{
+				itemData = service.getItem(itemauthorbean.getItemId());
+				itemText =itemData.getItemTextBySequence(getSequence());
+			}
+			catch(Exception e){
+				log.warn(e.getMessage());
+			}
+		}
+		return itemText;
+	}
+
+
 	    // For EMI Item Attachments
 	    /* called by SamigoJsfTool.java on exit from file picker */
 	    public void setItemTextAttachment(){
 	    	AuthorBean author = (AuthorBean) ContextUtil.lookupBean("author");
 	    	boolean isEditPendingAssessmentFlow =  author.getIsEditPendingAssessmentFlow();
-	    	ItemService service = null;
-	    	if (isEditPendingAssessmentFlow) {
-	    		service = new ItemService();
-	    	}
-	    	else {
-	    		service = new PublishedItemService();
-	    	}
-	        ItemDataIfc itemData = null;
-	        ItemTextIfc itemText = null;
-		    ItemAuthorBean itemauthorbean = (ItemAuthorBean) ContextUtil.lookupBean("itemauthor");
-	        // itemId == null => new questiion
-	        if (itemauthorbean.getItemId()!=null){
-	          try{
-	            itemData = service.getItem(itemauthorbean.getItemId());
-	            itemText =itemData.getItemTextBySequence(getSequence());
-	          }
-	          catch(Exception e){
-	            log.warn(e.getMessage());
-	          }
-	        }
+
+
 
 	    // list returns contains modified list of attachments, i.e. new 
 	    // and old attachments. This list will be 
 	    // persisted to DB if user hit Save on the Item Modifying page.
-	    List list = prepareItemTextAttachment(itemText, isEditPendingAssessmentFlow);
+	    List list = prepareItemTextAttachment(loadItemText(isEditPendingAssessmentFlow), isEditPendingAssessmentFlow);
 	    setAttachmentList(list);
 	  }
 
@@ -383,9 +401,14 @@ public class AnswerBean implements Serializable, Comparable{
 	        if (attachmentList == null){
 	          return list;
 	        }
-	        for (int i=0; i<attachmentList.size(); i++){
+
+			AuthorBean author = (AuthorBean) ContextUtil.lookupBean("author");
+			final ItemTextIfc item = loadItemText(author.getIsEditPendingAssessmentFlow());
+			boolean itemEdited = false;
+			Iterator<ItemTextAttachmentIfc> i = attachmentList.iterator();
+			while ( i.hasNext() ) {
 	          ContentResource cr = null;
-	          AttachmentIfc attach = (AttachmentIfc) attachmentList.get(i);
+	          ItemTextAttachmentIfc attach = (ItemTextAttachmentIfc) i.next();
 	          try{
 	            log.debug("*** resourceId="+attach.getResourceId());
 	            cr = AssessmentService.getContentHostingService().getResource(attach.getResourceId());
@@ -399,8 +422,9 @@ public class AnswerBean implements Serializable, Comparable{
 	              // use case: user remove resource in file picker, then exit modification without
 	              // proper cancellation by clicking at the left nav instead of "cancel".
 	              // Also in this use case, any added resource would be left orphan.
-	              AssessmentService assessmentService = new AssessmentService();
-	              assessmentService.removeItemTextAttachment(attach.getAttachmentId().toString());
+				  item.removeItemTextAttachmentById(attach.getAttachmentId());
+				  i.remove();
+				  itemEdited = true;
 	          }
 	          catch (TypeException e) {
 	        	  log.warn("ContentHostingService.getResource() throws TypeException="+e.getMessage());

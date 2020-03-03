@@ -8,11 +8,13 @@
         <%@ include file="/inc/navMenu.jspf"%>
     </t:aliasBean>
 
-	<h3>
-	    <h:outputFormat value="#{msgs.overview_page_header}">
-	        <f:param value="#{overviewBean.siteRole}"/>
-	    </h:outputFormat>
-	</h3>
+    <div class="page-header">
+        <h1>
+            <h:outputFormat value="#{msgs.overview_page_header}">
+                <f:param value="#{overviewBean.siteRole}"/>
+            </h:outputFormat>
+        </h1>
+    </div>
 	<div class="instructions">
 		<h:outputText value="#{overviewBean.instructions}"/>
 	</div>
@@ -146,7 +148,7 @@
             <f:facet name="header">
                 <h:outputText value="#{msgs.overview_table_header_remove}" />
             </f:facet>
-            <h:selectBooleanCheckbox id="remove" value="#{section.flaggedForRemoval}" rendered="#{ ! section.readOnly }"/>
+            <h:selectBooleanCheckbox id="remove" value="#{section.flaggedForRemoval}" rendered="#{ ! section.readOnly && ! section.lockedForDeletion }"/>
         </h:column>
     </sec:rowGroupTable>
 

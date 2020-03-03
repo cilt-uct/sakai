@@ -27,9 +27,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Locale;
 
-import org.apache.commons.lang.ArrayUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.ArrayUtils;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,13 +35,13 @@ import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.component.api.ServerConfigurationService.ConfigData;
 import org.sakaiproject.util.BasicConfigItem;
 
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * Used for testing protected methods in the BasicConfigurationService
  */
+@Slf4j
 public class BasicConfigurationServiceTest {
-
-    private static Logger log = LoggerFactory.getLogger(BasicConfigurationServiceTest.class);
-
     private BasicConfigurationService basicConfigurationService;
     private String SOURCE = "TEST";
 

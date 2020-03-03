@@ -26,21 +26,19 @@ package org.radeox.macro;
 import java.io.IOException;
 import java.io.Writer;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.radeox.Messages;
 import org.radeox.api.macro.MacroParameter;
+import org.radeox.util.Encoder;
 
 /*
  * Displays a mail to link. @author stephan @team sonicteam
  * 
  * @version $Id$
  */
-
+@Slf4j
 public class MailToMacro extends LocalePreserved
 {
-	private static Logger log = LoggerFactory.getLogger(MailToMacro.class);
-
 	private String[] paramDescription = { Messages.getString("MailToMacro.0") }; //$NON-NLS-1$
 
 	public String getLocaleKey()
@@ -59,7 +57,7 @@ public class MailToMacro extends LocalePreserved
 
 		if (params.getLength() == 1)
 		{
-			String mail = params.get("0"); //$NON-NLS-1$
+			String mail = Encoder.escape(params.get("0")); //$NON-NLS-1$
 			writer.write("<a href=\"mailto:" + mail + "\">" + mail + "</a>"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 		}
 		return;

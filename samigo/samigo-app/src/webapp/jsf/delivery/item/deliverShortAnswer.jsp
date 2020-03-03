@@ -24,6 +24,7 @@ should be included in file importing DeliveryMessages
 **********************************************************************************/
 --%>
 -->
+
 <h:outputText value="#{question.text}"  escape="false"/>
 
 <!-- ATTACHMENTS -->
@@ -34,7 +35,7 @@ should be included in file importing DeliveryMessages
 <h:outputText value="#{deliveryMessages.maxSAText}"/>
 </h:panelGrid>
 
-<h:outputText value="#{deliveryMessages.sa_invalid_length_error} " escape="false" rendered="#{question.isInvalidSALengthInput}" styleClass="messageSamigo3"/>
+<h:outputText value="#{deliveryMessages.sa_invalid_length_error} " escape="false" rendered="#{question.isInvalidSALengthInput}" styleClass="sak-banner-error"/>
 
 <%-- If studentRichText is true, show the rich text answer option --%>
 <h:panelGrid rendered="#{delivery.actionString!='reviewAssessment'
@@ -61,26 +62,27 @@ should be included in file importing DeliveryMessages
              && delivery.navigation ne '1' && delivery.displayMardForReview }">
 <h:selectBooleanCheckbox value="#{question.review}" id="mark_for_review" />
 	<h:outputLabel for="mark_for_review" value="#{deliveryMessages.mark}" />
-	<h:outputLink title="#{assessmentSettingsMessages.whats_this_link}" value="#" onclick="javascript:window.open('../author/markForReviewPopUp.faces','MarkForReview','width=300,height=220,scrollbars=yes, resizable=yes');" >
-		<h:outputText  value=" #{assessmentSettingsMessages.whats_this_link}"/>
+	<h:outputLink title="#{assessmentSettingsMessages.whats_this_link}" value="#" onclick="javascript:window.open('/samigo-app/jsf/author/markForReviewPopUp.faces','MarkForReview','width=350,height=280,scrollbars=yes, resizable=yes');event.preventDefault();" >
+		<h:outputText value=" #{assessmentSettingsMessages.whats_this_link}"/>
 	</h:outputLink>
 </h:panelGroup>
 
 <f:verbatim><br /></f:verbatim>
 
+
 <h:panelGroup rendered="#{delivery.feedback eq 'true'}">
   <h:panelGrid rendered="#{delivery.feedbackComponent.showCorrectResponse && !delivery.noFeedback=='true'&& question.modelAnswerIsNotEmpty}" >
     <h:panelGroup> 
-      <h:outputLabel for="answerKeyMC" styleClass="answerkeyFeedbackCommentLabel" value="#{deliveryMessages.model} " />
-      <h:outputText  value="#{question.key}" escape="false"/>
+      <h:outputLabel for="modelSC" styleClass="answerkeyFeedbackCommentLabel" value="#{deliveryMessages.model}" />
+      <h:outputText id="modelSC" value=" #{question.key} " escape="false"/>
     </h:panelGroup> 
     <h:outputText value=" "/>
   </h:panelGrid>
   
   <h:panelGrid rendered="#{delivery.feedbackComponent.showItemLevel && !delivery.noFeedback=='true' && question.feedbackIsNotEmpty}">
     <h:panelGroup> 
-      <h:outputLabel for="feedSC" styleClass="answerkeyFeedbackCommentLabel" value="#{commonMessages.feedback}#{deliveryMessages.column} " />
-      <h:outputText id="feedSC" value="#{question.feedback}" escape="false" />
+      <h:outputLabel for="feedSC" styleClass="answerkeyFeedbackCommentLabel" value="#{commonMessages.feedback}#{deliveryMessages.column}" />
+      <h:outputText id="feedSC" value=" #{question.feedback} " escape="false" />
     </h:panelGroup> 
     <h:outputText value=" "/>
   </h:panelGrid>

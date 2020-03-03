@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2007-2014 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 /*
 * Licensed to The Apereo Foundation under one or more contributor license
 * agreements. See the NOTICE file distributed with this work for
@@ -19,7 +34,8 @@
 
 package org.sakaiproject.signup.tool.downloadEvents;
 
-import org.sakaiproject.util.FormattedText;
+import org.sakaiproject.component.cover.ComponentManager;
+import org.sakaiproject.util.api.FormattedText;
 
 /**
  * <P>
@@ -56,7 +72,7 @@ public class ExcelPlainTextFormat {
 		htmlText = htmlText.replaceAll("</p>", BreakMark);
 		htmlText = htmlText.replaceAll("<p />", BreakMark);
 		htmlText = htmlText.replaceAll("<br />", BreakMark);
-		htmlText = FormattedText.convertFormattedTextToPlaintext(htmlText);
+		htmlText = ComponentManager.get(FormattedText.class).convertFormattedTextToPlaintext(htmlText);
 		StringBuilder sb = new StringBuilder();
 		int begin_pos = 0;
 		int find_pos= 0;

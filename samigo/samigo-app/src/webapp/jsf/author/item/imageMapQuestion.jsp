@@ -2,7 +2,7 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
 <%@ taglib uri="http://www.sakaiproject.org/samigo" prefix="samigo" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://java.sun.com/upload" prefix="corejsf" %>
 <!DOCTYPE html
      PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
@@ -35,20 +35,20 @@
       <head><%= request.getAttribute("html.head") %>
       <title><h:outputText value="#{authorMessages.item_display_author}"/></title>
 	  
-	  <script type="text/javascript" src="/library/webjars/jquery/1.11.3/jquery.min.js"></script>
-	  <script language='javascript' src='/samigo-app/js/jquery.dynamiclist.author.js'></script>
-	  <script language='javascript' src='/samigo-app/js/selection.author.js'></script>
+	  <script src="/library/webjars/jquery/1.12.4/jquery.min.js"></script>
+	  <script src="/samigo-app/js/jquery.dynamiclist.author.js"></script>
+	  <script src="/samigo-app/js/selection.author.js"></script>
 	  
-	  <link href="/samigo-app/css/imageQuestion.author.css" type="text/css" rel="stylesheet" media="all" />
+	  <link rel="stylesheet" type="text/css" href="/samigo-app/css/imageQuestion.author.css">
 <%--
-<script type="text/JavaScript">
+<script>
 <!--
 <%@ include file="/js/authoring.js" %>
 //-->
 </script>
 --%>
 
-<script type="text/JavaScript">
+<script>
 
 	var dynamicList = new DynamicList('itemForm\\:serialized', 'template', {selectionClass: 'selectiondiv', textClass: 'textContainer'}, 'imageContainer');
 			
@@ -172,6 +172,9 @@
         </div>
     </div>    
 
+    <!-- Extra Credit -->
+    <%@ include file="/jsf/author/inc/extraCreditSetting.jspf" %>
+
     <!-- 2 TEXT -->
     <div class="form-group row">
         <h:outputLabel value="#{authorMessages.q_text_image_map}" styleClass="col-md-12 form-control-label"/> 
@@ -200,6 +203,10 @@
                 valueChangeListener="#{itemauthor.addImageToQuestion}" />
             <h:commandButton id="upl" action="imageMapItem" value="#{deliveryMessages.upload}" onclick='resetList()'/>
         </div>
+        <h:outputLabel value="#{authorMessages.image_map_alt}" styleClass="col-md-2 form-control-label"/>
+         <div class="col-md-10">
+            <h:inputText id="imageMapAltText" value="#{itemauthor.currentItem.imageMapAltText}" styleClass="form-control"/>
+        </div>
     </div>
   
     <!-- 3 ANSWER -->
@@ -227,7 +234,7 @@
   
  
     <div onmousedown="return false" id="imageContainer" class='authorImageContainer'>
-        <img id='img' src='<h:outputText value="#{itemauthor.currentItem.imageMapSrc}" />' style='visibility:hidden' />
+        <img id='img' src='<h:outputText value="#{itemauthor.currentItem.imageMapSrc}" />' alt='<h:outputText value="#{itemauthor.currentItem.imageMapAltText}" />'/>
     </div>
 
     <!-- Match FEEDBACK -->
@@ -316,7 +323,7 @@
         </div>
     </h:panelGroup>
 
-
+    <%@ include file="/jsf/author/item/tags.jsp" %>
 
 
 <p class="act">
@@ -346,9 +353,6 @@
 <!-- end content -->
 </div>
 
-<script type="text/javascript">
-applyMenuListener("controllingSequence");
-</script>
     </body>
   </html>
 </f:view>

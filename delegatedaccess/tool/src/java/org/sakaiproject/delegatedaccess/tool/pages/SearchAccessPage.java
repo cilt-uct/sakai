@@ -26,11 +26,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.ajax.AjaxEventBehavior;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.ajax.form.AjaxFormComponentUpdatingBehavior;
 import org.apache.wicket.behavior.AttributeAppender;
-import org.apache.wicket.behavior.SimpleAttributeModifier;
 import org.apache.wicket.markup.ComponentTag;
 import org.apache.wicket.markup.html.WebMarkupContainer;
 import org.apache.wicket.markup.html.basic.Label;
@@ -218,8 +218,11 @@ public class SearchAccessPage extends BasePage implements Serializable {
 			}
 
 			@Override
-			public Iterator<? extends String> iterator(int first, int count) {
-				return nodeSelectOrder.subList(first, first + count).iterator();
+			public Iterator<? extends String> iterator(long first, long count) {
+				//should really check bounds here 
+				int f = (int) first;
+				int c = (int) count;
+				return nodeSelectOrder.subList(f, f + c).iterator();
 			}
 
 			@Override
@@ -235,7 +238,7 @@ public class SearchAccessPage extends BasePage implements Serializable {
 			}
 
 			@Override
-			public int size() {
+			public long size() {
 				return nodeSelectOrder.size();
 			}
 			
@@ -280,7 +283,7 @@ public class SearchAccessPage extends BasePage implements Serializable {
 						}
 						nodeSelectOrder = newOrder;
 						//refresh everything:
-						target.addComponent(form);
+						target.add(form);
 					}
 				});
 				item.add(choice);
@@ -371,17 +374,23 @@ public class SearchAccessPage extends BasePage implements Serializable {
 			}
 		};
 		add(levelSort);
+		Map<String, String> realmRoleDisplay = projectLogic.getRealmRoleDisplay(false);
 		Link<Void> accessSort = new Link<Void>("accessSortLink"){
 			private static final long serialVersionUID = 1L;
 			public void onClick() {
 				changeOrder(DelegatedAccessConstants.SEARCH_COMPARE_ACCESS);
+			}
+
+			@Override
+			public boolean isVisible() {
+				return !realmRoleDisplay.isEmpty();
 			}
 		};
 		add(accessSort);
 		Label restrictedToolsHeader = new Label("restrictedToolsHeader", new StringResourceModel("restrictedToolsHeader", null)){
 			@Override
 			public boolean isVisible() {
-				return provider.size() > 0;
+				return provider.size() > 0 && (sakaiProxy.isSuperUser() || sakaiProxy.getToolsListUIEnabled());
 			}
 		};
 		add(restrictedToolsHeader);
@@ -439,7 +448,7 @@ public class SearchAccessPage extends BasePage implements Serializable {
 			}
 		};
 		String confirm = new StringResourceModel("confirmRemoveAll", null).getObject();
-		removeAllPermsLink.add( new SimpleAttributeModifier("onclick", "return confirm('" + confirm + "');"));
+		removeAllPermsLink.add( new AttributeModifier("onclick", "return confirm('" + confirm + "');"));
 		add(removeAllPermsLink);
 		
 		//tool id=>title map:
@@ -475,7 +484,7 @@ public class SearchAccessPage extends BasePage implements Serializable {
 				item.add(new Label("type", new StringResourceModel("accessType" + searchResult.getType(), null)));
 				String level = "";
 				if(hierarchy != null && searchResult.getLevel() < hierarchy.length){
-					level = hierarchy[searchResult.getLevel()];
+					level = sakaiProxy.getHierarchySearchLabel(hierarchy[searchResult.getLevel()]);
 				}else{
 					level = new StringResourceModel("site", null).getObject();
 				}
@@ -493,7 +502,13 @@ public class SearchAccessPage extends BasePage implements Serializable {
 						return returnVal;
 					}
 				};
-				item.add(new Label("access", accessModel));
+				item.add(
+				new Label("access", accessModel) {
+					@Override
+					public boolean isVisible() {
+						return !realmRoleDisplay.isEmpty();
+					}
+				});
 				item.add(new ListView<String>("restrictedTools", searchResult.getRestrictedTools()){
 
 					@Override
@@ -503,6 +518,11 @@ public class SearchAccessPage extends BasePage implements Serializable {
 							toolTitle = toolTitleMap.get(toolTitle);
 						}
 						arg0.add(new Label("restrictedTool", toolTitle));
+					}
+
+					@Override
+					public boolean isVisible() {
+						return sakaiProxy.isSuperUser() || sakaiProxy.getToolsListUIEnabled();
 					}
 				});
 				item.add(new ListView<String>("hierarchy", searchResult.getHierarchyNodes()) {
@@ -558,7 +578,7 @@ public class SearchAccessPage extends BasePage implements Serializable {
 					}
 				};
 				String confirm = new StringResourceModel("confirmRemove", null).getObject();
-				removeLink.add( new SimpleAttributeModifier("onclick", "return confirm('" + confirm + "');"));
+				removeLink.add( new AttributeModifier("onclick", "return confirm('" + confirm + "');"));
 				item.add(removeLink);
 				
 				
@@ -684,8 +704,11 @@ public class SearchAccessPage extends BasePage implements Serializable {
 		public void detachManually(){
 			this.list = null;
 		}
-		public Iterator<? extends AccessSearchResult> iterator(int first, int count) {
-			return getData().subList(first, first + count).iterator();
+		public Iterator<? extends AccessSearchResult> iterator(long first, long count) {
+			//should really check bounds here 
+			int f = (int) first;
+			int c = (int) count;
+			return getData().subList(f, f + c).iterator();
 		}
 
 		public IModel<AccessSearchResult> model(final AccessSearchResult object) {
@@ -699,7 +722,7 @@ public class SearchAccessPage extends BasePage implements Serializable {
 			};
 		}
 
-		public int size() {
+		public long size() {
 			return getData().size();
 		}
 

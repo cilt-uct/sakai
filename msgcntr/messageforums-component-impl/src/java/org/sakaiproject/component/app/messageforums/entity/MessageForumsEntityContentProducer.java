@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2005-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.component.app.messageforums.entity;
 
 import java.io.Reader;
@@ -8,15 +23,14 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+
 import org.sakaiproject.api.app.messageforums.DiscussionForum;
 import org.sakaiproject.api.app.messageforums.DiscussionTopic;
 import org.sakaiproject.api.app.messageforums.Message;
 import org.sakaiproject.api.app.messageforums.MessageForumsMessageManager;
-
 import org.sakaiproject.api.app.messageforums.Topic;
-
 import org.sakaiproject.api.app.messageforums.ui.DiscussionForumManager;
 import org.sakaiproject.api.app.messageforums.ui.UIPermissionsManager;
 import org.sakaiproject.component.api.ServerConfigurationService;
@@ -29,19 +43,33 @@ import org.sakaiproject.search.api.PortalUrlEnabledProducer;
 import org.sakaiproject.search.api.SearchIndexBuilder;
 import org.sakaiproject.search.api.SearchService;
 import org.sakaiproject.search.model.SearchBuilderItem;
-import org.sakaiproject.util.FormattedText;
+import org.sakaiproject.util.api.FormattedText;
 
+
+@Slf4j
 public class MessageForumsEntityContentProducer implements
 		EntityContentProducer, PortalUrlEnabledProducer {
 
-	
-	private static Logger log = LoggerFactory.getLogger(MessageForumsEntityContentProducer.class);
-	
 	// runtime dependency
 	private List addEvents = null;
 
 	// runtime dependency
 	private List removeEvents = null;
+	
+	@Setter private FormattedText formattedText;
+	@Setter private DeveloperHelperService developerHelperService;
+	@Setter private ServerConfigurationService serverConfigurationService;
+	@Setter private SearchService searchService;
+	@Setter private EntityBroker entityBroker;
+	@Setter private String toolName = null;
+	@Setter private SearchIndexBuilder searchIndexBuilder = null;
+	/**
+	 * Forums Services
+	 */
+	@Setter private MessageForumsMessageManager messageForumsMessageManager;
+	@Setter private DiscussionForumManager discussionForumManager;
+	@Setter private UIPermissionsManager uIPermissionManager; 
+	
 	
 	/**
 	 * @param addEvents
@@ -57,81 +85,7 @@ public class MessageForumsEntityContentProducer implements
 		this.removeEvents = removeEvents;
 	}
 	
-	// runtime dependency
-	private String toolName = null;
-	/**
-	 * @param toolName
-	 *        The toolName to set.
-	 */
-	public void setToolName(String toolName)
-	{
-		this.toolName = toolName;
-	}
-	
-	
-	private DeveloperHelperService developerHelperService;
-	public void setDeveloperHelperService(
-			DeveloperHelperService developerHelperService) {
-		this.developerHelperService = developerHelperService;
-	}
 
-	private ServerConfigurationService serverConfigurationService;
-	public void setServerConfigurationService(
-			ServerConfigurationService serverConfigurationService)
-	{
-		this.serverConfigurationService = serverConfigurationService;
-	}
-	
-
-	// injected dependency
-	private SearchService searchService = null;
-	/**
-	 * @param searchService the searchService to set
-	 */
-	public void setSearchService(SearchService searchService)
-	{
-		this.searchService = searchService;
-	}
-	
-	// injected dependency
-	private SearchIndexBuilder searchIndexBuilder = null;
-
-	/**
-	 * @param searchIndexBuilder the searchIndexBuilder to set
-	 */
-	public void setSearchIndexBuilder(SearchIndexBuilder searchIndexBuilder)
-	{
-		this.searchIndexBuilder = searchIndexBuilder;
-	}
-	
-	/**
-	 * Forums Services
-	 */
-	private MessageForumsMessageManager messageForumsMessageManager;
-	public void setMessageForumsMessageManager(
-			MessageForumsMessageManager messageForumsMessageManager) {
-		this.messageForumsMessageManager = messageForumsMessageManager;
-	}
-
-	private DiscussionForumManager discussionForumManager;
-	
-	public void setDiscussionForumManager(
-			DiscussionForumManager discussionForumManager) {
-		this.discussionForumManager = discussionForumManager;
-	}
-
-
-	public void setUIPermissionManager(UIPermissionsManager permissionManager) {
-		uIPermissionManager = permissionManager;
-	}
-
-	private UIPermissionsManager uIPermissionManager; 
-	
-	private EntityBroker entityBroker;
-	public void setEntityBroker(EntityBroker eb) {
-		this.entityBroker = eb;
-	}
-	
 	public void init()
 	{
 
@@ -203,7 +157,7 @@ public class MessageForumsEntityContentProducer implements
 		if (m != null) {
 			sb.append("author: " + m.getAuthor());
 			sb.append(" title: " + m.getTitle());
-			sb.append(" body: " + FormattedText.convertFormattedTextToPlaintext(m.getBody()));
+			sb.append(" body: " + formattedText.convertFormattedTextToPlaintext(m.getBody()));
 			/* causes hibernate lazy init error
 			List attachments = m.getAttachments();
 			if (attachments != null && attachments.size() > 0) {
@@ -370,7 +324,6 @@ public class MessageForumsEntityContentProducer implements
 	}
 
 	public boolean matches(Event event) {
-		// TODO Auto-generated method stub
 		return matches(event.getResource());
 	}
 
