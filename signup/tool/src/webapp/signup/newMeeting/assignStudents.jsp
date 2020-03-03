@@ -11,9 +11,9 @@
 		<style type="text/css">
 			@import url("/sakai-signup-tool/css/signupStyle.css");
 		</style>
-<h:outputText value="#{Portal.latestJQuery}" escape="false"/>
-		<script TYPE="text/javascript" src="/sakai-signup-tool/js/signupScript.js"></script>		
-		<script TYPE="text/javascript">			
+		<h:outputText value="#{Portal.latestJQuery}" escape="false"/>
+		<script src="/sakai-signup-tool/js/signupScript.js"></script>
+		<script>
 			var lastActivePanel;
 			var lastClickedAddImage;
 			var lastUserInputEid;
@@ -54,19 +54,15 @@
 						
 		<sakai:view_content>
 			<h:form id="meeting">
-			 	<sakai:view_title value="#{msgs.event_assign_attendee_page_title}"/>
+				<div class="page-header">
+			 		<sakai:view_title value="#{msgs.event_assign_attendee_page_title}"/>
+				</div>
 
 				<h:panelGrid columns="2" style="margin-top:20px;margin-bottom:20px;" columnClasses="titleColumn,valueColumn">
 					<h:outputText value="#{msgs.event_date}" styleClass="titleText" escape="false"/>
 					<h:panelGroup>
-						<h:outputText value="#{NewSignupMeetingBean.signupMeeting.startTime}" styleClass="longtext">
-							<f:convertDateTime pattern="EEEEEEEE, " timeZone="#{UserTimeZone.userTimeZone}"/>
-				 		</h:outputText>
-						<h:outputText value="#{NewSignupMeetingBean.signupMeeting.startTime}" styleClass="longtext">
-							<f:convertDateTime dateStyle="long" timeZone="#{UserTimeZone.userTimeZone}"/>
-				 		</h:outputText>
 				 		<h:outputText value="#{NewSignupMeetingBean.signupMeeting.startTime}" styleClass="longtext">
-							<f:convertDateTime pattern=", h:mm a" timeZone="#{UserTimeZone.userTimeZone}"/>
+							<f:convertDateTime pattern="#{UserLocale.fullDateTimeFormat}" timeZone="#{UserTimeZone.userTimeZone}"/>
 				 		</h:outputText>
 				 	</h:panelGroup>
 				 	
@@ -104,20 +100,20 @@
 						</f:facet>
 						<h:panelGroup>
 				   			<h:outputText value="#{timeSlot.timeSlot.startTime}" styleClass="longtext">
-								<f:convertDateTime pattern="h:mm a" timeZone="#{UserTimeZone.userTimeZone}"/>
+								<f:convertDateTime pattern="#{UserLocale.localizedTimeFormat}" timeZone="#{UserTimeZone.userTimeZone}"/>
 							</h:outputText>
 							<h:outputText value="#{timeSlot.timeSlot.startTime}" rendered="#{NewSignupMeetingBean.signupMeeting.meetingCrossDays}">
 									<f:convertDateTime pattern=", EEE" timeZone="#{UserTimeZone.userTimeZone}"/>
 							</h:outputText>
 							<h:outputText value="#{msgs.timeperiod_divider}" escape="false"/>
 							<h:outputText value="#{timeSlot.timeSlot.endTime}" styleClass="longtext">
-								<f:convertDateTime pattern="h:mm a" timeZone="#{UserTimeZone.userTimeZone}"/>
+								<f:convertDateTime pattern="#{UserLocale.localizedTimeFormat}" timeZone="#{UserTimeZone.userTimeZone}"/>
 							</h:outputText>
 							<h:outputText value="#{timeSlot.timeSlot.endTime}" rendered="#{NewSignupMeetingBean.signupMeeting.meetingCrossDays}">
 									<f:convertDateTime pattern=", EEE, " timeZone="#{UserTimeZone.userTimeZone}"/>
 							</h:outputText>
 							<h:outputText value="#{timeSlot.timeSlot.endTime}" rendered="#{NewSignupMeetingBean.signupMeeting.meetingCrossDays}">
-									<f:convertDateTime  dateStyle="short" pattern="#{UserLocale.dateFormat}" timeZone="#{UserTimeZone.userTimeZone}"/>
+									<f:convertDateTime dateStyle="short" pattern="#{UserLocale.dateFormat}" timeZone="#{UserTimeZone.userTimeZone}"/>
 							</h:outputText>
 						</h:panelGroup>		
 			   		</h:column>
@@ -151,10 +147,10 @@
 								</h:column>
 							</h:dataTable>
 							<h:panelGroup id="addAttendee">
-								<h:outputLabel onclick="showHideAddPanel('#{timeSlot.positionInTSlist}');" styleClass="addAttendee">
-						   			<h:graphicImage value="/images/add.png"  alt="add an attendee" title="#{msgs.event_tool_tips_add}" styleClass="addButton" style="border:none" />
+								<h:outputLink value="javascript:showHideAddPanel('#{timeSlot.positionInTSlist}');" styleClass="addAttendee" title="#{msgs.event_tool_tips_add}">
+									<span class="fa fa-plus" aria-hidden="true"></span>
 						   			<h:outputText value="#{msgs.event_add_attendee}" escape="false"/>
-						   		</h:outputLabel>
+						   		</h:outputLink>
 						   	</h:panelGroup>
 						   	
 				   			<h:panelGroup id="addPanel" style="display: none;" >
@@ -193,12 +189,11 @@
 			   
 				<h:inputHidden value="assignAttendee" binding="#{NewSignupMeetingBean.currentStepHiddenInfo}"/>
 				<sakai:button_bar>
-					<h:commandButton id="publish" action="#{NewSignupMeetingBean.processAssignStudentsAndPublish}" value="#{msgs.publish_button}" onclick='displayProcessingIndicator(this);'/>
+					<h:commandButton id="publish" styleClass="active" action="#{NewSignupMeetingBean.processAssignStudentsAndPublish}" value="#{msgs.publish_button}" onclick='displayProcessingIndicator(this);'/>
 				 	<h:commandButton id="goBack" action="#{NewSignupMeetingBean.goBack}" value="#{msgs.goback_button}"/>
 					<h:commandButton id="cancel" action="#{NewSignupMeetingBean.processCancel}" value="#{msgs.cancel_button}"  immediate="true"/>  
-					<h:outputText styleClass="messageProgress" style="display:none" value="#{msgs.publish_processing_submit_message}" />
-                </sakai:button_bar>
-
+                                </sakai:button_bar>
+                                <h:outputText styleClass="sak-banner-info" style="display:none" value="#{msgs.publish_processing_submit_message}" />
 			 </h:form>
   		</sakai:view_content>	
 	</sakai:view_container>

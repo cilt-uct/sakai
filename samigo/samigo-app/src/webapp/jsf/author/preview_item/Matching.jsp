@@ -2,6 +2,7 @@
 include file for delivering matching questions
 should be included in file importing DeliveryMessages
 --%>
+<%@ taglib uri="http://myfaces.apache.org/tomahawk" prefix="t"%>
 <!--
 <%--
 ***********************************************************************************
@@ -28,19 +29,10 @@ should be included in file importing DeliveryMessages
 
   <h:outputText escape="false" value="#{question.instruction}" />
   <!-- 1. print out the matching choices -->
-  <h:dataTable value="#{question.itemData.itemTextArraySorted}" var="itemText">
-    <h:column>
-      <h:dataTable value="#{itemText.answerArraySorted}" var="answer"
-         rendered="#{itemText.sequence==1}">
-        <h:column>
-            <h:panelGrid columns="2">
-              <h:outputText escape="false" value="#{answer.label}. "/>
-              <h:outputText escape="false" value="#{answer.text}" />
-            </h:panelGrid>
-        </h:column>
-      </h:dataTable>
-    </h:column>
-  </h:dataTable>
+  <t:dataList layout="orderedList" styleClass="noListStyle" value="#{question.itemData.itemTextArraySorted[0].answerArrayWithDistractorSorted}" var="answer" rendered="#{question.itemData.itemTextArraySorted[0].sequence==1}">
+    <h:outputText escape="false" value="#{answer.label}." styleClass="author_mcLabelText" />
+    <h:outputText escape="false" value="#{answer.text}" styleClass="mcAnswerText" />
+  </t:dataList>
 
   <!-- 2. print out the matching text -->
   <h:dataTable value="#{question.itemData.itemTextArraySorted}" var="itemText">
@@ -52,7 +44,7 @@ should be included in file importing DeliveryMessages
           <f:selectItem itemValue="" itemLabel="B"/>
           <f:selectItem itemValue="" itemLabel="C"/>
         </h:selectOneMenu>
-        <h:outputText escape="false" value="#{itemText.sequence}. #{itemText.text}" />
+        <h:outputText escape="false" value="#{itemText.sequence}. #{itemText.text}" styleClass="mcAnswerText" />
 
         <h:outputText value="" />
 
@@ -117,3 +109,4 @@ should be included in file importing DeliveryMessages
       <h:outputText value="#{question.itemData.inCorrectItemFeedback}" escape="false" />
 </h:panelGroup>
 
+<%@ include file="/jsf/author/preview_item/tags.jsp" %>

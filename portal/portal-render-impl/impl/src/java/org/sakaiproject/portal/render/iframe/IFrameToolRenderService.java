@@ -23,12 +23,18 @@ package org.sakaiproject.portal.render.iframe;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Optional;
 
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.sakaiproject.component.cover.ServerConfigurationService;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.lang3.StringUtils;
+
+import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.portal.api.Portal;
 import org.sakaiproject.portal.api.PortalService;
 import org.sakaiproject.portal.api.StoredState;
@@ -38,8 +44,6 @@ import org.sakaiproject.portal.render.api.ToolRenderService;
 import org.sakaiproject.portal.util.URLUtils;
 import org.sakaiproject.site.api.ToolConfiguration;
 import org.sakaiproject.util.Web;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * I Frame tool renderer, renders the iframe header to contain the tool content
@@ -48,13 +52,13 @@ import org.slf4j.LoggerFactory;
  * @since Sakai 2.4
  * @version $Rev$
  */
+@Slf4j
 public class IFrameToolRenderService implements ToolRenderService
 {
+	private final static String INVALID_PARAM_CHARS = ".*[\"'<>].*";
 
-	private static final Logger LOG = LoggerFactory.getLogger(IFrameToolRenderService.class);
-
-	private PortalService portalService;
-
+	@Setter private PortalService portalService;
+	@Setter private ServerConfigurationService serverConfigurationService;
 
 	// private static ResourceLoader rb = new ResourceLoader("sitenav");
 
@@ -71,10 +75,9 @@ public class IFrameToolRenderService implements ToolRenderService
 	{
 
 		final String titleString = Web.escapeHtml(configuration.getTitle());
-		String toolUrl = ServerConfigurationService.getToolUrl() + "/"
-				+ Web.escapeUrl(configuration.getId());
+		String toolUrl = serverConfigurationService.getToolUrl() + "/" + Web.escapeUrl(configuration.getId());
 		StoredState ss = portalService.getStoredState();
-		LOG.debug("Restoring Iframe [" + ss + "]");
+		log.debug("Restoring Iframe [" + ss + "]");
 
 		Map parametermap = ss == null ? request.getParameterMap() : ss
 				.getRequest(request).getParameterMap();
@@ -86,7 +89,7 @@ public class IFrameToolRenderService implements ToolRenderService
 		}
 
 		String sakaiPanel = request.getParameter("panel");
-		if ( sakaiPanel != null && sakaiPanel.matches(".*[\"'<>].*" ) ) sakaiPanel=null;
+		if ( StringUtils.isNotBlank(sakaiPanel) && sakaiPanel.matches(INVALID_PARAM_CHARS) ) sakaiPanel=null;
 		if ( sakaiPanel == null ) sakaiPanel="Main";
 		toolUrl = URLUtils.addParameter(toolUrl, "panel", sakaiPanel);
 
@@ -98,7 +101,7 @@ public class IFrameToolRenderService implements ToolRenderService
 		
 		// SAK-20462 - Pass through the sakai_action parameter
                 String sakaiAction = request.getParameter("sakai_action");
-                if ( sakaiAction != null && sakaiAction.matches(".*[\"'<>].*" ) ) sakaiAction=null;
+                if ( StringUtils.isNotBlank(sakaiAction) && sakaiAction.matches(INVALID_PARAM_CHARS) ) sakaiAction=null;
 
 		// Produce the iframe markup
 		sb.append("<iframe").append("	name=\"").append(
@@ -113,12 +116,29 @@ public class IFrameToolRenderService implements ToolRenderService
 				.append("\n").append("	marginwidth=\"0\"").append("\n").append(
 						"	marginheight=\"0\"").append("\n").append("	scrolling=\"auto\"")
 				.append(" allowfullscreen=\"allowfullscreen\"")
+				.append(" allow=\"").append(String.join(";", Optional.ofNullable(serverConfigurationService.getStrings("browser.feature.allow")).orElseGet(() -> new String[]{}))).append("\"")
 				.append("\n").append("	src=\"").append(toolUrl);
-		if ( sakaiAction != null ) 
-		{
-			sb.append( toolUrl.indexOf('?') >=0 ? '&' : '?');
-			sb.append("sakai_action=").append(Web.escapeHtml(sakaiAction));
-		}
+
+				boolean isFirstParam = (toolUrl.indexOf('?') >=0 ? false : true);
+				if ( sakaiAction != null ) 
+				{
+					sb.append( isFirstParam ? '?' : '&');
+					sb.append("sakai_action=").append(Web.escapeHtml(sakaiAction));
+					isFirstParam = false;
+				}
+
+				String[] persistToIframe = request.getParameterValues("persist_to_iframe");
+				if (persistToIframe != null) {
+					for (String parameter : persistToIframe) {
+						String parameterValue = request.getParameter(parameter);
+						if (parameterValue == null || (StringUtils.isNotBlank(parameterValue) && parameterValue.matches(INVALID_PARAM_CHARS))) {
+							continue;
+						}
+						sb.append(isFirstParam ? '?' : '&');
+						sb.append(parameter + "=").append(Web.escapeHtml(parameterValue));
+						isFirstParam = false;
+					}
+				}
 
 		sb.append("\">") .append("\n").append("</iframe>");
 		
@@ -165,22 +185,4 @@ public class IFrameToolRenderService implements ToolRenderService
 	public void reset( ToolConfiguration configuration)
 	{
 	}
-
-	/**
-	 * @return the portalService
-	 */
-	public PortalService getPortalService()
-	{
-		return portalService;
-	}
-
-	/**
-	 * @param portalService
-	 *        the portalService to set
-	 */
-	public void setPortalService(PortalService portalService)
-	{
-		this.portalService = portalService;
-	}
-
 }

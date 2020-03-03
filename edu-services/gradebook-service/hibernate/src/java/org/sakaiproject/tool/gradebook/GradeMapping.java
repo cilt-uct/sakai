@@ -1,38 +1,45 @@
-/**********************************************************************************
-*
-* $Id$
-*
-***********************************************************************************
-*
- * Copyright (c) 2005, 2006, 2007, 2008 The Sakai Foundation, The MIT Corporation
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
  *
  * Licensed under the Educational Community License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *       http://www.opensource.org/licenses/ECL-2.0
+ *             http://opensource.org/licenses/ecl2
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*
-**********************************************************************************/
+ */
 
 package org.sakaiproject.tool.gradebook;
 
 import java.io.Serializable;
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
-import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.CompareToBuilder;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.sakaiproject.service.gradebook.shared.DoubleComparator;
 
 /**
  * A GradeMapping provides a means to convert between an arbitrary set of grades
  * (letter grades, pass / not pass, 4,0 scale) and numeric percentages.
  *
  */
-public class GradeMapping implements Serializable, Comparable {
+public class GradeMapping implements Serializable, Comparable<Object> {
+
+	private static final long serialVersionUID = 1L;
+
 	protected Long id;
 	protected int version;
 
@@ -43,36 +50,36 @@ public class GradeMapping implements Serializable, Comparable {
 	public GradeMapping() {
 	}
 
-	public GradeMapping(GradingScale gradingScale) {
+	public GradeMapping(final GradingScale gradingScale) {
 		setGradingScale(gradingScale);
-		gradeMap = new HashMap<String, Double>(gradingScale.getDefaultBottomPercents());
+		this.gradeMap = new HashMap<>(gradingScale.getDefaultBottomPercents());
 	}
 
 	public String getName() {
-		return getGradingScale().getName();
+		return (getGradingScale() != null) ? getGradingScale().getName() : null;
 	}
 
 	/**
 	 * Sets the percentage values for this GradeMapping to their default values.
 	 */
 	public void setDefaultValues() {
-		gradeMap = new HashMap<String, Double>(getDefaultBottomPercents());
+		this.gradeMap = new HashMap<>(getDefaultBottomPercents());
 	}
-	
+
 	/**
-	 * Backwards-compatible wrapper to get to grading scale. 
+	 * Backwards-compatible wrapper to get to grading scale.
 	 */
 	public Map<String, Double> getDefaultBottomPercents() {
-		GradingScale gradingScale = getGradingScale();
-		if (gradingScale != null) {
-			return gradingScale.getDefaultBottomPercents();
+		final GradingScale scale = getGradingScale();
+		if (scale != null) {
+			return scale.getDefaultBottomPercents();
 		} else {
-			Map<String, Double> defaultBottomPercents = new HashMap<String, Double>();
-			Iterator defaultValuesIter = getDefaultValues().iterator();
-			Iterator gradesIter = getGrades().iterator();
+			final Map<String, Double> defaultBottomPercents = new HashMap<String, Double>();
+			final Iterator<String> gradesIter = getGrades().iterator();
+			final Iterator<Double> defaultValuesIter = getDefaultValues().iterator();
 			while (gradesIter.hasNext()) {
-				String grade = (String)gradesIter.next();
-				Double value = (Double)defaultValuesIter.next();
+				final String grade = gradesIter.next();
+				final Double value = defaultValuesIter.next();
 				defaultBottomPercents.put(grade, value);
 			}
 			return defaultBottomPercents;
@@ -84,14 +91,17 @@ public class GradeMapping implements Serializable, Comparable {
 	 * @return An (ordered) collection of the available grade values
 	 */
 	public Collection<String> getGrades() {
-		return getGradingScale().getGrades();
+		return (getGradingScale() != null) ? getGradingScale().getGrades() : Collections.emptyList();
 	}
 
 	/**
 	 *
 	 * @return A List of the default grade values. Only used for backward
 	 * compatibility to pre-grading-scale mappings.
+	 *
+	 * @deprecated
 	 */
+	@Deprecated
 	public List<Double> getDefaultValues() {
 		throw new UnsupportedOperationException("getDefaultValues called for GradeMapping " + getName() + " in Gradebook " + getGradebook());
     }
@@ -99,25 +109,32 @@ public class GradeMapping implements Serializable, Comparable {
 	/**
 	 * Gets the percentage mapped to a particular grade.
 	 */
-	public Double getValue(String grade) {
-		return (Double) gradeMap.get(grade);
+	public Double getValue(final String grade) {
+		return this.gradeMap.get(grade);
 	}
 
 	/**
-	 * This algorithm is slow, since it checks each grade option, starting from
-	 * the "top" (in this case an 'A'). We can make it faster by starting in the
-	 * middle (as in a bubble sort), but since there are so few grade options, I
-	 * think I'll leave it for now.
+	 * Get the mapped grade based on the persistent grade mappings
 	 *
-	 * @see org.sakaiproject.tool.gradebook.GradeMapping#getGrade(Double)
 	 */
-	public String getGrade(Double value) {
+	public String getMappedGrade(final Double value) {
+		return getMappedGrade(getGradeMap(), value);
+	}
+
+	/**
+	 * Get the mapped grade based on the passed in grade mappings.
+	 *
+	 * NOTE: The gradeMap MUST be sorted!
+	 */
+	public static String getMappedGrade(final Map<String, Double> gradeMap, final Double value) {
 		if(value == null) {
             return null;
         }
-        for (Iterator iter = getGrades().iterator(); iter.hasNext();) {
-			String grade = (String) iter.next();
-			Double mapVal = (Double) gradeMap.get(grade);
+
+		for (final Map.Entry<String, Double> entry : sortGradeMapping(gradeMap).entrySet()) {
+			final String grade = entry.getKey();
+			final Double mapVal = entry.getValue();
+
 			// If the value in the map is less than the value passed, then the
 			// map value is the letter grade for this value
 			if (mapVal != null && mapVal.compareTo(value) <= 0) {
@@ -128,74 +145,84 @@ public class GradeMapping implements Serializable, Comparable {
 		return null;
 	}
 
-	////// Bean accessors and mutators //////
-
 	/**
-	 * @return Returns the id.
+	 * Handles the sorting of the grade mapping.
+	 *
+	 * @param gradeMap
+	 * @return
 	 */
-	public Long getId() {
-		return id;
+	public static Map<String, Double> sortGradeMapping(final Map<String, Double> gradeMap) {
+
+		// we only ever order by bottom percents now
+		final DoubleComparator doubleComparator = new DoubleComparator(gradeMap);
+		final Map<String, Double> rval = new TreeMap<>(doubleComparator);
+		rval.putAll(gradeMap);
+
+		return rval;
 	}
 
-	/**
-	 * @param id
-	 *            The id to set.
-	 */
-	public void setId(Long id) {
+	public Long getId() {
+		return this.id;
+	}
+
+	public void setId(final Long id) {
 		this.id = id;
 	}
 
-	/**
-	 * @return Returns the version.
-	 */
+
 	public int getVersion() {
-		return version;
+		return this.version;
 	}
-	/**
-	 * @param version
-	 *            The version to set.
-	 */
-	public void setVersion(int version) {
+
+	public void setVersion(final int version) {
 		this.version = version;
 	}
 
-	/**
-	 * @return Returns the gradeMap.
-	 */
 	public Map<String, Double> getGradeMap() {
-		return gradeMap;
+		return this.gradeMap;
 	}
 
-	/**
-	 * @param gradeMap
-	 *            The gradeMap to set.
-	 */
-	public void setGradeMap(Map<String, Double> gradeMap) {
+	public void setGradeMap(final Map<String, Double> gradeMap) {
 		this.gradeMap = gradeMap;
 	}
 
-	/**
-	 * @return Returns the gradebook.
-	 */
 	public Gradebook getGradebook() {
-		return gradebook;
+		return this.gradebook;
 	}
-	/**
-	 * @param gradebook
-	 *            The gradebook to set.
-	 */
-	public void setGradebook(Gradebook gradebook) {
+
+	public void setGradebook(final Gradebook gradebook) {
 		this.gradebook = gradebook;
 	}
 
- 	public int compareTo(Object o) {
-        return getName().compareTo(((GradeMapping)o).getName());
+ 	@Override
+	public int compareTo(final Object o) {
+		final GradeMapping other = (GradeMapping) o;
+		return new CompareToBuilder().append(getName(), other.getName()).toComparison();
     }
 
-    public String toString() {
+	@Override
+	public boolean equals(final Object o) {
+		if (o == null || this.getClass() != o.getClass()) {
+			return false;
+		}
+		final GradeMapping other = (GradeMapping) o;
+		return new EqualsBuilder().append(getName(), other.getName()).isEquals();
+	}
+
+	@Override
+	public int hashCode() {
+		if (getGradingScale() == null || getName() == null) {
+			return 0;
+		}
+		return new HashCodeBuilder().append(getName()).toHashCode();
+
+	}
+
+    @Override
+	public String toString() {
         return new ToStringBuilder(this).
             append(getName()).
-            append(id).toString();
+            append(this.id).toString();
     }
 
     /**
@@ -206,10 +233,9 @@ public class GradeMapping implements Serializable, Comparable {
      *
      * @return The normalized version of the grade, or null if not found.
      */
-    public String standardizeInputGrade(String inputGrade) {
+    public String standardizeInputGrade(final String inputGrade) {
     	String standardizedGrade = null;
-    	for (Iterator iter = getGrades().iterator(); iter.hasNext(); ) {
-    		String grade = (String)iter.next();
+    	for (final String grade: getGrades()) {
     		if (grade.equalsIgnoreCase(inputGrade)) {
     			standardizedGrade = grade;
     			break;
@@ -223,10 +249,10 @@ public class GradeMapping implements Serializable, Comparable {
 	 * this is an old Gradebook which uses hard-coded scales
 	 */
     public GradingScale getGradingScale() {
-		return gradingScale;
+		return this.gradingScale;
 	}
 
-	public void setGradingScale(GradingScale gradingScale) {
+	public void setGradingScale(final GradingScale gradingScale) {
 		this.gradingScale = gradingScale;
 	}
 }

@@ -19,14 +19,18 @@ package org.sakaiproject.mailsender.logic.impl;
 import static org.sakaiproject.mailsender.logic.impl.MailConstants.PROTOCOL_SMTP;
 
 import java.io.InputStream;
-import java.util.*;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 
 import javax.mail.MessagingException;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.authz.api.FunctionManager;
 import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.component.api.ServerConfigurationService;
@@ -58,7 +62,6 @@ import org.sakaiproject.mailsender.logic.ExternalLogic;
 import org.sakaiproject.mailsender.model.ConfigEntry;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
-import org.sakaiproject.time.api.TimeService;
 import org.sakaiproject.tool.api.SessionManager;
 import org.sakaiproject.tool.api.ToolManager;
 import org.sakaiproject.user.api.User;
@@ -66,13 +69,14 @@ import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserNotDefinedException;
 import org.sakaiproject.util.Validator;
 
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * This is the implementation for logic which is external to our app logic
  */
+@Slf4j
 public class ExternalLogicImpl implements ExternalLogic
 {
-	private static Logger log = LoggerFactory.getLogger(ExternalLogicImpl.class);
-
 	// external service references
 	private FunctionManager functionManager;
 	private ToolManager toolManager;
@@ -81,12 +85,11 @@ public class ExternalLogicImpl implements ExternalLogic
 	private SiteService siteService;
 	private MailArchiveService mailArchiveService;
 	private UserDirectoryService userDirectoryService;
-    private TimeService timeService;
-    private EmailService emailService;
-    private ServerConfigurationService configService;
-    private EventTrackingService eventService;
-    private ContentHostingService contentHostingService;
-    private EntityManager entityManager;
+	private EmailService emailService;
+	private ServerConfigurationService configService;
+	private EventTrackingService eventService;
+	private ContentHostingService contentHostingService;
+	private EntityManager entityManager;
 
 	/**
 	 * Place any code that should run when this class is initialized by spring here
@@ -325,7 +328,7 @@ public class ExternalLogicImpl implements ExternalLogic
 			header.replaceAttachments(null);
 			header.setSubject(subject);
 			header.setFromAddress(sender);
-			header.setDateSent(timeService.newTime());
+			header.setInstantSent(Instant.now());
 			header.setMailHeaders(mailHeaders);
 			// List of references needed.
 			List<Reference> refs = new ArrayList<Reference>();
@@ -513,11 +516,6 @@ public class ExternalLogicImpl implements ExternalLogic
 	public void setFunctionManager(FunctionManager functionManager)
 	{
 		this.functionManager = functionManager;
-	}
-
-	public void setTimeService(TimeService timeService)
-	{
-		this.timeService = timeService;
 	}
 
 	public void setMailArchiveService(MailArchiveService mailArchiveService)

@@ -2,13 +2,35 @@
     
 
 	<sakai:view>
-	
+      <script type="text/javascript">includeLatestJQuery("chatEditRoom");</script>
+      <script type="text/javascript" src="/library/js/lang-datepicker/lang-datepicker.js"></script>
+
+      <script type="text/javascript">
+          $(document).ready(function() {
+             localDatePicker({
+                input: '#editRoomForm\\:startDate',
+                useTime: 0,
+                parseFormat: 'YYYY-MM-DD',
+                allowEmptyDate: true,
+                val: '<h:outputText value="#{ChatTool.currentChannelEdit.startDate}"><f:convertDateTime pattern="yyyy-MM-dd"/></h:outputText>',
+                ashidden: { iso8601: 'chatStartDateISO8601' }
+            });
+
+             localDatePicker({
+                input: '#editRoomForm\\:endDate',
+                useTime: 0,
+                parseFormat: 'YYYY-MM-DD',
+                allowEmptyDate: true,
+                val: '<h:outputText value="#{ChatTool.currentChannelEdit.endDate}"><f:convertDateTime pattern="yyyy-MM-dd"/></h:outputText>',
+                ashidden: { iso8601: 'chatEndDateISO8601' }
+            });
+          });
+        </script>
 		<sakai:view_title value="#{msgs.edit_channel_title}" rendered="#{!ChatTool.currentChannelEdit.newChannel}" />
 		<sakai:view_title value="#{msgs.add_channel_title}" rendered="#{ChatTool.currentChannelEdit.newChannel}" />
-		<sakai:stylesheet contextBase="/sakai-chat-tool" path="/css/chat.css" />
-		<h:messages globalOnly="false" styleClass="alertMessage" 
+		<h:messages globalOnly="false" styleClass="sak-banner-warn"
 			showDetail="true" showSummary="false" rendered="#{not empty facesContext.maximumSeverity}" />
-		<h:form id="editRoomForm">
+		<h:form id="editRoomForm" styleClass="edit-room">
 
 			<h:panelGrid columns="1" styleClass="jsfFormTable" cellpadding="0">
 				<h:panelGroup styleClass="shorttext">
@@ -83,17 +105,13 @@
               <sakai:instruction_message value="#{msgs.custom_date_instructions}" />
             </h:panelGroup>
             <h:panelGroup styleClass="chat-select-date longtext indnt1">
-              <h:outputLabel value="#{msgs.custom_date_start} #{msgs.custom_date_entry_format_description}" for="startDate" styleClass="chat-date-label"/>
-              <t:inputCalendar id="startDate" value="#{ChatTool.currentChannelEdit.startDate}" renderAsPopup="true" renderPopupButtonAsImage="true"
-                popupTodayString="#{msgs.custom_date_entry_today_is}" popupWeekString="#{msgs.custom_date_entry_week_header}"
-                popupDateFormat="#{msgs.custom_date_entry_format}" popupGotoString="#{msgs.custom_date_entry_goto}" />
+              <h:outputLabel value="#{msgs.custom_date_start}" for="startDate" styleClass="chat-date-label"/>
+              <h:inputText value="#{ChatTool.currentChannelEdit.startDateString}" size="20" id="startDate"/>
               <h:message for="startDate" styleClass="alertMessageInline" />
             </h:panelGroup>
             <h:panelGroup styleClass="chat-select-date longtext indnt1">
-              <h:outputLabel value="#{msgs.custom_date_end} #{msgs.custom_date_entry_format_description}" for="endDate" styleClass="chat-date-label"/>
-              <t:inputCalendar id="endDate" value="#{ChatTool.currentChannelEdit.endDate}" renderAsPopup="true" renderPopupButtonAsImage="true"
-                popupTodayString="#{msgs.custom_date_entry_today_is}" popupWeekString="#{msgs.custom_date_entry_week_header}"
-                popupDateFormat="#{msgs.custom_date_entry_format}" popupGotoString="#{msgs.custom_date_entry_goto}" />
+              <h:outputLabel value="#{msgs.custom_date_end}" for="endDate" styleClass="chat-date-label"/>
+              <h:inputText value="#{ChatTool.currentChannelEdit.endDateString}" size="20" id="endDate"/>
               <h:message for="endDate" styleClass="alertMessageInline" />
             </h:panelGroup>
           </t:div>
@@ -102,10 +120,11 @@
 			</h:panelGrid>
 
 			<sakai:button_bar>
-				<sakai:button_bar_item id="submit"
+				<h:commandButton id="submit"
 					action="#{ChatTool.processActionEditRoomSave}"
-					value="#{msgs['gen.save']}" />
-				<sakai:button_bar_item id="cancel" immediate="true"
+					value="#{msgs['gen.save']}"
+					styleClass="active" />
+				<h:commandButton id="cancel" immediate="true"
 					action="#{ChatTool.processActionEditRoomCancel}"
 					value="#{msgs['gen.cancel']}" />
 			</sakai:button_bar>

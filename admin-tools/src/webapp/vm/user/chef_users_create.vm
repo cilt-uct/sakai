@@ -1,0 +1,173 @@
+## $Header: /cvs/sakai2/legacy/tools/src/webapp/vm/admin/chef_users_create.vm,v 1.2 2005/05/24 19:36:12 gsilver.umich.edu Exp $
+
+#css("/admin-tools/css/sakai-user-tool.css" 'media="screen"')
+
+${includeLatestJQuery}
+#javascript("/admin-tools/js/userValidationCommon.js")
+<script type="text/javascript">USER.isPasswordPolicyEnabled =#if ($!isPasswordPolicyEnabled) true; #else false; #end</script>
+#javascript("/admin-tools/js/userCreateValidation.js")
+#javascript("/library/js/spinner.js")
+
+<div class="portletBody">
+#if($menu)
+	#toolbar($menu)
+#end
+
+	#if ($successMessage)<span class="sak-banner-success">$successMessage</span>#end
+
+	<h3>
+		$tlang.getString("usecre.entthe")
+	</h3>
+
+	#if ($alertMessage)<div class="sak-banner-error">$tlang.getString("useconrem.alert") $formattedText.escapeHtml($alertMessage)</div>#end
+
+	<form class="form-horizontal" name="user-create_edit" id="user-create_edit" action="#toolForm("$action")" method="post" autocomplete="on">
+		<fieldset>
+			<legend>
+				$tlang.getString("usecre.creaco")
+			</legend>
+			<div class="instruction">
+				#if ($createBlurb)
+					<div class="createBlurb">$createBlurb</div>
+				#end
+				<span class="reqStarInline">*</span> $tlang.getString("usecre.instruc")
+			</div>
+
+			#if ($displayEid)
+				<div class="form-group">
+					<label class="control-label col-sm-2" for="user_eid">
+						#if(!$user)<span class="red">*</span>#end $tlang.getString("useconrem.useid")
+					</label>
+					<div class="col-sm-3">
+						#if(!$user)<input class="form-control sakai-glow" type="text" name="eid" id="user_eid" placeholder="$tlang.getString("useconrem.useid.placeholder")" oninput="USER.validateUserId();" onkeyup="USER.validateUserId();" autocomplete="off" #if($valueEid)value="$formattedText.escapeHtml($valueEid)"#end />#else$formattedText.escapeHtml($user.Eid)#end
+					</div>
+				</div>
+			#end
+
+			#if (!$isValidatedWithAccountValidator)
+				<div class="form-group">
+					<label class="control-label col-sm-2" for="first-name">
+						$tlang.getString("usecre.firnam")
+					</label>
+					<div class="col-sm-3">
+						<input class="form-control sakai-glow" type="text" name="first-name" id="first-name" placeholder="$tlang.getString("usecre.firnam.placeholder")" #if($user)value="$formattedText.escapeHtml($user.FirstName)"#elseif($valueFirstName)value="$formattedText.escapeHtml($valueFirstName)"#end/>
+					</div>
+				</div>
+
+				<div class="form-group">
+					<label class="control-label col-sm-2" for="last-name">
+						$tlang.getString("usecre.lasnam")
+					</label>
+					<div class="col-sm-3">
+						<input class="form-control sakai-glow" type="text" name="last-name" id="last-name" placeholder="$tlang.getString("usecre.lasnam.placeholder")" #if($user)value="$formattedText.escapeHtml($user.LastName)"#elseif($valueLastName)value="$formattedText.escapeHtml($valueLastName)"#end/>
+					</div>
+				</div>
+			#end
+
+			<div class="form-group">
+				<label class="control-label col-sm-2" for="email">
+					#if ($emailRequired) <span class="red">*</span> #end $tlang.getString("useconrem.ema")
+				</label>
+				<div class="col-sm-3">
+					<input class="form-control sakai-glow" type="text" name="email" id="email" placeholder="$tlang.getString("useconrem.ema.placeholder")" oninput="USER.validateEmail();" onkeyup="USER.validateEmail();" autocomplete="off"#if($user)value="$formattedText.escapeHtml($user.Email)"#elseif($valueEmail)value="$formattedText.escapeHtml($valueEmail)"#end #if ($emailRequired) required='required' #end/>
+				</div>
+				<div class="col-sm-offset-2 col-sm-10" id="emailWarningMsg" style="display:none">
+					<div class="validationAlert sak-banner-error">
+						$tlang.getString("useact.invemail")
+					</div>
+				</div>
+			</div>
+
+			#if (!$isValidatedWithAccountValidator)
+				<div class="form-group">
+					<label class="control-label col-sm-2" for="user_pw">
+						#if ($pwRequired) <span class="red">*</span>#end $tlang.getString("usecre.crenewpass")
+					</label>
+					<div class="col-sm-3">
+						<input class="form-control sakai-glow" type="password" name="pw" id="user_pw" placeholder="$tlang.getString("usecre.crenewpass.placeholder")" oninput="USER.validatePassword();" oninput="USER.hideAllElements();USER.validateForm();" onblur="USER.displayStrengthInfo();USER.validatePassword();" onfocus="USER.displayStrengthInfo();" autocomplete="off" />
+					</div>
+				</div>
+
+				<div class="form-group forPopover" id="strengthBar" style="display:none;" >
+					<div class="row status-row">
+						<label class="control-label col-sm-2" for="strengthBarMeter">
+							 <span class="red">*</span> $tlang.getString("pw.strength")
+						</label>
+						<div class="status-display col-sm-3">
+							<div class="sak-banner-success" id="strongMsg" style="display:none">
+								<strong>$tlang.getString("pw.strong")</strong>
+								<i class="fa fa-question-circle" aria-hidden="true"></i>
+							</div>
+							<div class="sak-banner-warn" id="moderateMsg" style="display:none">
+								<strong>$tlang.getString("pw.moderate")</strong>
+								<i class="fa fa-question-circle" aria-hidden="true"></i>
+							</div>
+							<div class="sak-banner-error" id="weakMsg" style="display:none">
+								<strong>$tlang.getString("pw.weak")</strong>
+								<i class="fa fa-question-circle" aria-hidden="true"></i>
+							</div>
+							<div class="sak-banner-error" id="failMsg" style="display:none;">
+								<strong>$tlang.getString("pw.fail")</strong>
+								<i class="fa fa-question-circle" aria-hidden="true"></i>
+							</div>
+						</div>
+					</div>
+					<div class="row status-row">
+						<script>
+							$(document).ready(function(){
+								$('.status-display').popover({
+									placement:"bottom",
+									container: ".forPopover",
+									content: "$tlang.getString("pw.strengthInfo")"
+								}); 
+							});
+						</script>
+					<div class="col-sm-2">
+					</div>
+					<div class="col-sm-3">
+						<div class="progress" style="height:3rem; margin:0;">
+							<div class="progress-bar" id="strengthBarMeter" role="progressbar" style="width:0%;background-color:#900;">
+							</div>
+						</div> 
+					</div>
+					</div>
+				</div>
+
+				<div class="form-group">
+					<label class="control-label col-sm-2" for="user_pw0">
+						#if ($pwRequired) <span class="red">*</span>#end $tlang.getString("usecre.vernewpass")
+					</label>
+					<div class="col-sm-3">
+						<input class="form-control sakai-glow" type="password" name="pw0" id="user_pw0"  placeholder="$tlang.getString("usecre.vernewpass.placeholder")" oninput="USER.hideAllElements();USER.validateForm();" onblur="USER.verifyPasswordsMatch();" autocomplete="off" />
+					</div>
+					<div class="col-sm-offset-2 col-sm-10" id="matchMsg" style="display:none">
+						<div class="validationAlert sak-banner-success" id="matchMsg" style="display:block">
+							$tlang.getString("pw.match")
+						</div>
+					</div>
+					<div class="col-sm-offset-2 col-sm-10" id="noMatchMsg" style="display:none">
+						<div class="validationAlert sak-banner-error"  style="display:block">
+							$tlang.getString("pw.noMatch")
+						</div>
+					</div>
+				</div>
+
+				<div class="form-group">
+					<label class="control-label col-sm-2" for="dtype">
+						$tlang.getString("usecre.typ")
+					</label>
+					<div class="col-sm-3">
+						<input class="form-control sakai-glow" type="text" name="dtype" id="dtype" value="$type" disabled/>
+						<input type="hidden" name="type" id="type" value="$type"/>
+					</div>
+				</div>
+
+			#end
+			$!recaptchaScript
+			<div class="act">
+				<input type="submit" id="eventSubmit_doSave" class="active"  name="eventSubmit_doSave" #if ($isValidatedWithAccountValidator) value="$tlang.getString("usecre.reqaco")" #else value="$tlang.getString("usecre.creaco")" #end accesskey="s" onclick="SPNR.disableControlsAndSpin( this, null );" />
+				<input type="submit" id="eventSubmit_doCancel" name="eventSubmit_doCancel" value="$tlang.getString("useconrem.can")" accesskey="x" onclick="SPNR.disableControlsAndSpin( this, null );" />
+			<input type="hidden" name="sakai_csrf_token" value="$sakai_csrf_token" />
+		</fieldset>
+	</form>
+</div>

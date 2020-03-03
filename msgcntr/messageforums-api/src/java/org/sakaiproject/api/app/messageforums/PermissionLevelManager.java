@@ -23,8 +23,6 @@ package org.sakaiproject.api.app.messageforums;
 import java.util.List;
 import java.util.Set;
 
-import org.sakaiproject.api.app.messageforums.PermissionsMask;
-
 public interface PermissionLevelManager {
     public static final String PERMISSION_LEVEL_NAME_OWNER = "Owner";
     public static final String PERMISSION_LEVEL_NAME_AUTHOR = "Author";
@@ -92,8 +90,8 @@ public interface PermissionLevelManager {
 	public List<PermissionLevel> getDefaultPermissionLevels();
 	
     public DBMembershipItem createDBMembershipItem(String name, String permissionLevelName, Integer type);
-    public void saveDBMembershipItem(DBMembershipItem item);
-    public void savePermissionLevel(PermissionLevel level);
+    public DBMembershipItem saveDBMembershipItem(DBMembershipItem item);
+    public PermissionLevel savePermissionLevel(PermissionLevel level);
     
     /**
      * 
@@ -105,6 +103,6 @@ public interface PermissionLevelManager {
     public List getCustomPermissions();
   	public List getAllMembershipItemsForForumsForSite(final Long areaId);
   	public List getAllMembershipItemsForTopicsForSite(final Long areaId);
-  	public void deleteMembershipItems(Set membershipSet);
+  	public void deleteMembershipItems(Set<DBMembershipItem> membershipSet);
   	
 }

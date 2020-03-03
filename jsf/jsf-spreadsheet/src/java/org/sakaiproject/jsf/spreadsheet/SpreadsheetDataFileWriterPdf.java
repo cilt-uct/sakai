@@ -8,9 +8,7 @@ import java.util.List;
 
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.component.cover.ServerConfigurationService;
 
 import com.lowagie.text.BadElementException;
@@ -27,8 +25,10 @@ import com.lowagie.text.Table;
 import com.lowagie.text.pdf.BaseFont;
 import com.lowagie.text.pdf.PdfWriter;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public class SpreadsheetDataFileWriterPdf implements SpreadsheetDataFileWriter {
-	private static final Logger log = LoggerFactory.getLogger(SpreadsheetDataFileWriterCsv.class);
 	private List<List<String>> studentInfo = new ArrayList<List<String>>();
 	private static final int MAX_COLUMNS = 8;
 	

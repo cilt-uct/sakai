@@ -2,7 +2,7 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
 <%@ taglib uri="http://www.sakaiproject.org/samigo" prefix="samigo" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 
 <!DOCTYPE html
      PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
@@ -159,7 +159,7 @@
 
   <f:verbatim><br /></f:verbatim>
   <f:verbatim><div class="tier1"></f:verbatim>
-  <h:messages infoClass="messageSamigo" warnClass="messageSamigo" errorClass="messageSamigo" fatalClass="messageSamigo"/>
+  <h:messages infoClass="sak-banner-info" warnClass="sak-banner-warn" errorClass="sak-banner-error" fatalClass="sak-banner-error"/>
   
   <h:outputText value="#{evaluationMessages.download_responses_to}" escape="false"/>
   <f:verbatim></div></f:verbatim>
@@ -208,7 +208,7 @@
 <p class="act">
 
    <%-- <h:commandButton value="#{evaluationMessages.save_exit}" action="author"/> --%> 
-   <h:commandButton	value="#{evaluationMessages.download}" actionListener="#{downloadFileSubmissions.downloadFiles}" style="active" />
+   <h:commandButton	value="#{evaluationMessages.download}" actionListener="#{downloadFileSubmissions.downloadFiles}" styleClass="active" />
    
 </p>
 <f:verbatim></div></f:verbatim>

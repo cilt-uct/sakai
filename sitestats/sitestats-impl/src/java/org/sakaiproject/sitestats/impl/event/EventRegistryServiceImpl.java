@@ -18,8 +18,20 @@
  */
 package org.sakaiproject.sitestats.impl.event;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Observable;
+import java.util.Observer;
+import java.util.Set;
+
+import lombok.extern.slf4j.Slf4j;
+import lombok.Getter;
+import lombok.Setter;
+
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.memory.api.Cache;
 import org.sakaiproject.memory.api.MemoryService;
@@ -37,81 +49,52 @@ import org.sakaiproject.sitestats.impl.parser.ToolFactoryImpl;
 import org.sakaiproject.tool.api.ToolManager;
 import org.sakaiproject.util.ResourceLoader;
 
-import java.util.*;
-
-
+@Slf4j
 public class EventRegistryServiceImpl implements EventRegistry, EventRegistryService, Observer {
 	/** Static fields */
-	private static Logger					LOG							= LoggerFactory.getLogger(EventRegistryServiceImpl.class);
 	private static final String			CACHENAME					= EventRegistryServiceImpl.class.getName();
 	private static final String			CACHENAME_EVENTREGISTRY		= "eventRegistry";
 	private static ResourceLoader		msgs						= new ResourceLoader("Messages");
+	private static ResourceLoader		EVENT_MSGS					= new ResourceLoader("Events");
 
 	/** Event Registry members */
-	private Set<String>					toolEventIds				= null;
-	private Set<String>					anonymousToolEventIds		= null;
-	private Map<String, ToolInfo>		eventIdToolMap				= null;
-	private Map<String, String>			toolIdIconMap				= null;
-	private boolean						checkLocalEventNamesFirst	= false;
+	private Set<String>				toolEventIds				= null;
+	private Set<String>				anonymousToolEventIds		= null;
+	private Map<String, ToolInfo>	eventIdToolMap				= null;
+	private Map<String, EventInfo>	eventIdEventMap				= null;
+	private Map<String, String>		toolIdIconMap				= null;
+	@Setter private boolean			checkLocalEventNamesFirst	= false;
 
 	/** Event Registries */
-	private FileEventRegistry			fileEventRegistry			= null;
-	private EntityBrokerEventRegistry	entityBrokerEventRegistry	= null;
-	private List<String> 				serverEventIds				= new ArrayList<String>();
+	@Setter private FileEventRegistry		fileEventRegistry			= null;
+	private EntityBrokerEventRegistry		entityBrokerEventRegistry	= null;
+	@Getter @Setter private List<String>	serverEventIds				= new ArrayList<String>();
 
 	/** Caching */
-	private Cache						eventRegistryCache			= null;
+	private Cache<String, List> eventRegistryCache = null;
 
 	/** Sakai services */
-	private StatsManager				M_sm;
-	private SiteService					M_ss;
-	private ToolManager					M_tm;
-	private MemoryService				M_ms;
-	private ServerConfigurationService	M_scs;
-
+	@Setter private StatsManager				statsManager;
+	@Setter private SiteService					siteService;
+	@Setter private ToolManager					toolManager;
+	@Setter private MemoryService				memoryService;
+	@Setter private ServerConfigurationService	serverConfigurationService;
 
 	// ################################################################
 	// Spring methods
 	// ################################################################
-	public void setStatsManager(StatsManager m_sm) {
-		M_sm = m_sm;
-	}
-	
-	public void setSiteService(SiteService siteService) {
-		this.M_ss = siteService;
-	}
-
-	public void setToolManager(ToolManager toolManager) {
-		this.M_tm = toolManager;
-	}
-
-	public void setMemoryService(MemoryService memoryService) {
-		this.M_ms = memoryService;
-	}
-
-	public void setServerConfigurationService(ServerConfigurationService serverConfigurationService) {
-		this.M_scs = serverConfigurationService;
-	}
-
-	public void setFileEventRegistry(FileEventRegistry fileEventRegistry) {
-		this.fileEventRegistry = fileEventRegistry;
-	}
 
 	public void setEntityBrokerEventRegistry(EntityBrokerEventRegistry ebEventRegistry) {
 		this.entityBrokerEventRegistry = ebEventRegistry;
 		this.entityBrokerEventRegistry.addObserver(this);
 	}
-	
-	public void setCheckLocalEventNamesFirst(boolean checkLocalEventNamesFirst) {
-		this.checkLocalEventNamesFirst = checkLocalEventNamesFirst;
-	}
 
 	public void init() {
 		String willCheckLocalEventNamesFirst = checkLocalEventNamesFirst ? "Local event names in sitestats-bundles will be checked first" : "Tool specified event names (Statisticable interface) will be checked first";
-		LOG.info("init(): " + willCheckLocalEventNamesFirst);
+		log.info("init(): " + willCheckLocalEventNamesFirst);
 		
 		// configure cache
-		eventRegistryCache = M_ms.newCache(CACHENAME);		
+		eventRegistryCache = memoryService.getCache(CACHENAME);		
 	}
 
 	// ################################################################
@@ -126,7 +109,7 @@ public class EventRegistryServiceImpl implements EventRegistry, EventRegistrySer
 			toolEventIds.addAll(getEventIdToolMap().keySet());
 			// Add on the presence events if we're interested.
 			toolEventIds.add(StatsManager.SITEVISIT_EVENTID);
-			if(M_sm.isEnableSitePresences()) {
+			if(statsManager.getEnableSitePresences()) {
 				toolEventIds.add(StatsManager.SITEVISITEND_EVENTID);
 			}
 			toolEventIds = Collections.unmodifiableSet(toolEventIds);
@@ -168,10 +151,10 @@ public class EventRegistryServiceImpl implements EventRegistry, EventRegistrySer
 			return getMergedEventRegistry();
 		}else if(onlyAvailableInSite) {
 			// return the event registry with only tools available in site
-			return EventUtil.getIntersectionWithAvailableToolsInSite(M_ss, getMergedEventRegistry(), siteId);
+			return EventUtil.getIntersectionWithAvailableToolsInSite(siteService, getMergedEventRegistry(), siteId);
 		}else{
 			// return the event registry with only tools available in (whole) Sakai
-			return EventUtil.getIntersectionWithAvailableToolsInSakaiInstallation(M_tm, getMergedEventRegistry());
+			return EventUtil.getIntersectionWithAvailableToolsInSakaiInstallation(toolManager, getMergedEventRegistry());
 		}
 	}
 	
@@ -204,7 +187,7 @@ public class EventRegistryServiceImpl implements EventRegistry, EventRegistrySer
 			eventName = secondEr.getEventName(eventId);
 		}
 		if(eventName == null) {
-			LOG.warn("Missing resource bundle for event id: "+eventId);
+			log.warn("Missing resource bundle for event id: "+eventId);
 			eventName = eventId;
 		}
 		return eventName;
@@ -213,20 +196,25 @@ public class EventRegistryServiceImpl implements EventRegistry, EventRegistrySer
 	/* (non-Javadoc)
 	 * @see org.sakaiproject.sitestats.impl.event.EventRegistryService#getToolName(java.lang.String)
 	 */
+	@Override
 	public String getToolName(String toolId) {
 		if(ReportManager.WHAT_EVENTS_ALLTOOLS.equals(toolId)) {
-			return msgs.getString("all");
+			return msgs.getString("prefs_useAllTools");
+		}else if(ReportManager.WHAT_EVENTS_ALLTOOLS_EXCLUDE_CONTENT_READ.equals(toolId)) {
+			return msgs.getFormattedMessage("de_allTools_excludeContentRead", EVENT_MSGS.getString("content.read"));
+		}else if(StatsManager.PRESENCE_TOOLID.equals(toolId)) {
+			return msgs.getString("overview_title_visits");
 		}else{
 			String toolName;
 			try{
-				toolName = M_tm.getTool(toolId).getTitle();
+				toolName = toolManager.getTool(toolId).getTitle();
 			}catch(Exception e){
 				try{
-					LOG.debug("No sakai tool found for toolId: " + toolId
+					log.debug("No sakai tool found for toolId: " + toolId
 							+ " (tool undeployed?). Using bundle (if supplied) in sitestats/sitestats-impl/impl/src/bundle/org/sakaiproject/sitestats/impl/bundle/ for tool name.");
 					toolName = msgs.getString(toolId, toolId);
 				}catch(Exception e1){
-					LOG.debug("No translation found for toolId: " + toolId
+					log.debug("No translation found for toolId: " + toolId
 							+ " - using toolId as tool name. Please specify it in sitestats/sitestats-impl/impl/src/bundle/org/sakaiproject/sitestats/impl/bundle/");
 					toolName = toolId;
 				}
@@ -264,7 +252,7 @@ public class EventRegistryServiceImpl implements EventRegistry, EventRegistrySer
 			toolIdIconMap.put("sakai.messages", StatsManager.SILK_ICONS_DIR + "comment.png");
 			toolIdIconMap.put("sakai.metaobj", StatsManager.SILK_ICONS_DIR + "application_form.png");
 			toolIdIconMap.put("sakai.membership", StatsManager.SILK_ICONS_DIR + "group.png");
-			toolIdIconMap.put("sakai.news", StatsManager.SILK_ICONS_DIR + "rss.png");
+			toolIdIconMap.put("sakai.simple.rss", StatsManager.SILK_ICONS_DIR + "rss.png");
 			toolIdIconMap.put("sakai.podcasts", StatsManager.SILK_ICONS_DIR + "ipod_cast.png");
 			toolIdIconMap.put("sakai.postem", StatsManager.SILK_ICONS_DIR + "database_table.png");
 			toolIdIconMap.put("sakai.preferences", StatsManager.SILK_ICONS_DIR + "cog.png");
@@ -305,6 +293,7 @@ public class EventRegistryServiceImpl implements EventRegistry, EventRegistrySer
 			toolIdIconMap.put("sakai.markup", StatsManager.SILK_ICONS_DIR + "layout_edit.png");
 			toolIdIconMap.put("sakai.bbb", StatsManager.SILK_ICONS_DIR + "webcam.png");
 			toolIdIconMap.put("sakai.basiclti", StatsManager.SILK_ICONS_DIR + "application_go.png");
+			toolIdIconMap.put("sakai.lessonbuildertool", StatsManager.SILK_ICONS_DIR + "book_open.png");
 			
 			// Defaults: admin tools
 			toolIdIconMap.put("sakai.users", StatsManager.SILK_ICONS_DIR + "folder_user.png");
@@ -322,12 +311,12 @@ public class EventRegistryServiceImpl implements EventRegistry, EventRegistrySer
 			toolIdIconMap.put("sakai-createuser", StatsManager.SILK_ICONS_DIR + "user_add.png");
 			
 			// User-specified: process additions and overwrites from sakai.properties (STAT-232)
-			String[] tools = M_scs.getStrings("sitestats.toolicons.tools");
-			String[] icons = M_scs.getStrings("sitestats.toolicons.icons");
+			String[] tools = serverConfigurationService.getStrings("sitestats.toolicons.tools");
+			String[] icons = serverConfigurationService.getStrings("sitestats.toolicons.icons");
 			if(tools != null && icons != null) {
 				int count = tools.length;
 				if(tools.length != icons.length) {
-					LOG.warn("Number of values for property 'sitestats.toolicons.tools' doesn't match number of values in 'sitestats.toolicons.icons'! Using smaller number.");
+					log.warn("Number of values for property 'sitestats.toolicons.tools' doesn't match number of values in 'sitestats.toolicons.icons'! Using smaller number.");
 					if(icons.length < count) {
 						count = icons.length;
 					}
@@ -336,7 +325,7 @@ public class EventRegistryServiceImpl implements EventRegistry, EventRegistrySer
 					toolIdIconMap.put(tools[i], icons[i]);
 				}
 			}else if((tools != null && icons == null) || (tools == null && icons != null)) {
-				LOG.warn("Both 'sitestats.toolicons.tools' and 'sitestats.toolicons.icons' properties are required!");
+				log.warn("Both 'sitestats.toolicons.tools' and 'sitestats.toolicons.icons' properties are required!");
 			}
 		}
 		return toolIdIconMap.get(toolId);
@@ -345,20 +334,32 @@ public class EventRegistryServiceImpl implements EventRegistry, EventRegistrySer
 	/* (non-Javadoc)
 	 * @see org.sakaiproject.sitestats.impl.event.EventRegistryService#getEventIdToolMap()
 	 */
+	@Override
 	public Map<String, ToolInfo> getEventIdToolMap() {
 		if(eventIdToolMap == null){
-			eventIdToolMap = new HashMap<String, ToolInfo>();
-			Iterator<ToolInfo> i = getMergedEventRegistry().iterator();
-			while (i.hasNext()){
-				ToolInfo t = i.next();
-				Iterator<EventInfo> iE = t.getEvents().iterator();
-				while(iE.hasNext()){
-					EventInfo e = iE.next();
-					eventIdToolMap.put(e.getEventId(), t);
-				}
-			}
+			buildEventIdMaps();
 		}
 		return eventIdToolMap;
+	}
+
+	@Override
+	public Map<String, EventInfo> getEventIdEventMap() {
+		if (eventIdEventMap == null) {
+			buildEventIdMaps();
+		}
+
+		return eventIdEventMap;
+	}
+
+	private void buildEventIdMaps()	{
+		eventIdToolMap = new HashMap<>();
+		eventIdEventMap = new HashMap<>();
+		for (ToolInfo t : getMergedEventRegistry()){
+			for (EventInfo e : t.getEvents()){
+				eventIdToolMap.put(e.getEventId(), t);
+				eventIdEventMap.put(e.getEventId(), e);
+			}
+		}
 	}
 	
 	/* (non-Javadoc)
@@ -382,6 +383,12 @@ public class EventRegistryServiceImpl implements EventRegistry, EventRegistrySer
 		return getEventIds().contains(eventId);
 	}
 
+	@Override
+	public boolean isResolvableEvent(String eventId) {
+		EventInfo event = getEventIdEventMap().get(eventId);
+		return event != null && event.isResolvable();
+	}
+
 	// ################################################################
 	// Utility Methods
 	// ################################################################
@@ -399,13 +406,21 @@ public class EventRegistryServiceImpl implements EventRegistry, EventRegistrySer
 
 			// Cache Event Registry
 			eventRegistryCache.put(CACHENAME_EVENTREGISTRY, eventRegistry);
-			LOG.debug("Cached EventRegistry.");
+			log.debug("Cached EventRegistry.");
 		}
 		// STAT-380 ensure we do not return a null from this method
 		if (eventRegistry == null) {
-			eventRegistry = new ArrayList<ToolInfo>(0);
+			return new ArrayList<>(0);
 		}
-		return eventRegistry;
+
+		// defensively deep copy the event registry before returning it, this prevents outside code from
+		// mutating the cached registry entries
+		List<ToolInfo> cloneRegistry = new ArrayList<>(eventRegistry.size());
+		for (ToolInfo t : eventRegistry) {
+			cloneRegistry.add(t.clone());
+		}
+
+		return cloneRegistry;
 	}
 	
 	/** Process event registry expired notifications */
@@ -415,17 +430,7 @@ public class EventRegistryServiceImpl implements EventRegistry, EventRegistrySer
 			eventIdToolMap = null;
 			toolEventIds = null;
 			anonymousToolEventIds = null;
-			LOG.debug("EventRegistry expired. Reloading...");
+			log.debug("EventRegistry expired. Reloading...");
 		}
 	}
-
-	
-	public List<String> getServerEventIds() {
-		return serverEventIds;
-	}
-	
-	public void setServerEventIds(List<String> eventIds) {
-		this.serverEventIds=eventIds;
-	}
-
 }

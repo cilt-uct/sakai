@@ -33,28 +33,24 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.zip.DataFormatException;
 
-import javax.faces.FactoryFinder;
-import javax.faces.application.ApplicationFactory;
 import javax.faces.application.FacesMessage;
 import javax.faces.component.UIData;
 import javax.faces.context.ExternalContext;
 import javax.faces.context.FacesContext;
 
-import org.apache.commons.lang.StringEscapeUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.text.StringEscapeUtils;
 import org.apache.myfaces.shared_impl.util.MessageUtils;
+
 import org.sakaiproject.api.app.postem.data.Gradebook;
 import org.sakaiproject.api.app.postem.data.GradebookManager;
 import org.sakaiproject.api.app.postem.data.StudentGrades;
-
 import org.sakaiproject.authz.api.AuthzGroup;
 import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.authz.api.GroupNotDefinedException;
 import org.sakaiproject.content.api.ContentHostingService;
 import org.sakaiproject.content.api.ContentResource;
 import org.sakaiproject.content.api.FilePickerHelper;
-
 import org.sakaiproject.entity.api.Reference;
 import org.sakaiproject.entity.api.ResourceProperties;
 import org.sakaiproject.entity.cover.EntityManager;
@@ -67,13 +63,12 @@ import org.sakaiproject.tool.api.Placement;
 import org.sakaiproject.tool.api.ToolSession;
 import org.sakaiproject.tool.cover.SessionManager;
 import org.sakaiproject.tool.cover.ToolManager;
+import org.sakaiproject.user.api.User;
+import org.sakaiproject.user.api.UserNotDefinedException;
+import org.sakaiproject.user.cover.UserDirectoryService;
 import org.sakaiproject.util.ResourceLoader;
 
-import org.sakaiproject.user.api.User;
-
-import org.sakaiproject.user.cover.UserDirectoryService;
-import org.sakaiproject.user.api.UserNotDefinedException;
-
+@Slf4j
 public class PostemTool {
 	
 	protected GradebookManager gradebookManager;
@@ -112,9 +107,7 @@ public class PostemTool {
 	protected boolean displayErrors;
 
 	protected boolean userPressedBack = false;
-	
-	protected boolean gradebooksExist = true;
-	
+
 	private static final int TEMPLATE_MAX_LENGTH = 4000;
 	private static final int TITLE_MAX_LENGTH = 255;
 	private static final int HEADING_MAX_LENGTH = 500;
@@ -139,8 +132,6 @@ public class PostemTool {
 
 	private AuthzGroupService authzGroupService;
 
-	private static final Logger LOG = LoggerFactory.getLogger(PostemTool.class);
-	
 	public int getColumn() {
 		return column;
 	}
@@ -162,7 +153,7 @@ public class PostemTool {
 				try {
 					userEid = UserDirectoryService.getUserEid(userId);
 				} catch (UserNotDefinedException e) {
-					LOG.error("UserNotDefinedException", e);
+					log.error("UserNotDefinedException", e);
 				}
 			}
 		}
@@ -184,18 +175,14 @@ public class PostemTool {
 		} catch (Exception e) {
 			gradebooks = null;
 		}
-		
-		if (gradebooks != null && gradebooks.size() > 0)
-			gradebooksExist = true;
-		else
-			gradebooksExist = false;
 
 		return gradebooks;
 
 	}
-	
+
 	public boolean getGradebooksExist() {
-		return gradebooksExist;
+		this.gradebooks = this.getGradebooks();
+		return this.gradebooks != null && !this.gradebooks.isEmpty();
 	}
 
 	public String getCsv() {
@@ -288,7 +275,7 @@ public class PostemTool {
 		}
 		if (currentStudent == null) {	
 			return "<p>" + msgs.getFormattedMessage("no_grades_for_user", 
-					new Object[]{StringEscapeUtils.escapeHtml(currentGradebook.getTitle())}) + "</p>";
+					new Object[]{StringEscapeUtils.escapeHtml4(currentGradebook.getTitle())}) + "</p>";
 		}
 		return currentStudent.formatGrades();
 		
@@ -301,7 +288,7 @@ public class PostemTool {
 		Set students = currentGradebook.getStudents();
 		if (students.size() == 0) {
 			return "<p>" + msgs.getFormattedMessage("no_grades_in_gradebook", 
-					new Object[]{StringEscapeUtils.escapeHtml(currentGradebook.getTitle())}) + "</p>";
+					new Object[]{StringEscapeUtils.escapeHtml4(currentGradebook.getTitle())}) + "</p>";
 		}
 		if (currentGradebook.getFirstUploadedUsername() != null) {
 			StudentGrades student = currentGradebook.studentGrades(currentGradebook.getFirstUploadedUsername());
@@ -319,7 +306,7 @@ public class PostemTool {
 
 		if (currentGradebook.getUsernames() == null || currentGradebook.getUsernames().isEmpty()) {
 			return "<p>" + msgs.getFormattedMessage("no_grades_in_gradebook", 
-					new Object[]{StringEscapeUtils.escapeHtml(currentGradebook.getTitle())}) + "</p>";
+					new Object[]{StringEscapeUtils.escapeHtml4(currentGradebook.getTitle())}) + "</p>";
 		}
 		
 		if (selectedStudent == null || selectedStudent.equals("")) {
@@ -554,6 +541,7 @@ public class PostemTool {
 		
 		Reference attachment = getAttachmentReference();
 		if (attachment == null){			
+			PostemTool.populateMessage(FacesMessage.SEVERITY_ERROR, "missing_csv", new Object[] {});
 			return "create_gradebook";
 		}
 		
@@ -580,14 +568,20 @@ public class PostemTool {
 					String csvURL = new String(cr.getContent());
 					//Load the URL
 					csv = URLConnectionReader.getText(csvURL); 
-					if (LOG.isDebugEnabled()) {
-						LOG.debug(csv);
+					if (log.isDebugEnabled()) {
+						log.debug(csv);
 					}
 				}
 				else {
+					// check that file is actually a CSV file
+					if (!cr.getContentType().equalsIgnoreCase("text/csv")) {
+						PostemTool.populateMessage(FacesMessage.SEVERITY_ERROR, "invalid_ext", new Object[] {getAttachmentTitle()});
+						return "create_gradebook";
+					}
+
 					csv = new String(cr.getContent());
-					if (LOG.isDebugEnabled()) {
-						LOG.debug(csv);
+					if (log.isDebugEnabled()) {
+						log.debug(csv);
 					}
 				}
 				CSV grades = new CSV(csv, withHeader, csv_delim);
@@ -1066,9 +1060,9 @@ public class PostemTool {
 			row++;
 			String usr = (String) studentIter.next();
 			
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("usernamesValid : username=" + usr);
-				LOG.debug("usernamesValid : siteMembers" + siteMembers);
+			if (log.isDebugEnabled()) {
+				log.debug("usernamesValid : username=" + usr);
+				log.debug("usernamesValid : siteMembers" + siteMembers);
 			}
 			if (usr == null || usr.equals("")) {
 
@@ -1130,7 +1124,7 @@ public class PostemTool {
 			return realm.getUsers().contains(uid);
 		}
 		catch (GroupNotDefinedException e) {
-			LOG.error("IdUnusedException:", e);
+			log.error("IdUnusedException:", e);
 		}		
 		return false;
 	}
@@ -1151,8 +1145,8 @@ public class PostemTool {
 		try	{
 			userinfo = UserDirectoryService.getUser(usr);
 			userId = userinfo.getId();
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("getUserDefined: username for " + usr + " is " + userId);
+			if (log.isDebugEnabled()) {
+				log.debug("getUserDefined: username for " + usr + " is " + userId);
 			}
 			return userId;
 		} 
@@ -1166,8 +1160,8 @@ public class PostemTool {
 			catch (UserNotDefinedException ee)
 			{
 				//This is mostly expected behavior, don't need to notify about it, the UI can handle it
-				if (LOG.isDebugEnabled()) {
-					LOG.debug("getUserDefined: User Not Defined" + userId);
+				if (log.isDebugEnabled()) {
+					log.debug("getUserDefined: User Not Defined" + userId);
 				}
 			}
 		}
@@ -1181,7 +1175,7 @@ public class PostemTool {
 			siteMembers = new ArrayList(realm.getUsers());
 		}
 		catch (GroupNotDefinedException e) {
-			LOG.error("GroupNotDefinedException:", e);
+			log.error("GroupNotDefinedException:", e);
 		}
 		
 		return siteMembers;
@@ -1201,8 +1195,7 @@ public class PostemTool {
 }
 	    catch(Exception e)
 	    {
-	      LOG.error(this + ".processAddAttachRedirect - " + e);
-	      e.printStackTrace();
+	      log.error(this + ".processAddAttachRedirect - " + e);
 	      return null;
 	    }
 	  }

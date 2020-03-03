@@ -23,6 +23,7 @@ package org.sakaiproject.email.impl;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.util.Date;
 import java.util.Hashtable;
 import java.util.Iterator;
@@ -34,8 +35,13 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.Vector;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+
 import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.email.api.Digest;
@@ -65,21 +71,15 @@ import org.sakaiproject.util.Resource;
 import org.sakaiproject.util.ResourceLoader;
 import org.sakaiproject.util.SingleStorageUser;
 import org.sakaiproject.util.Xml;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
 
 /**
  * <p>
  * BaseDigestService is the base service for DigestService.
  * </p>
  */
+@Slf4j
 public abstract class BaseDigestService implements DigestService, SingleStorageUser
 {
-	/** Our logger. */
-	private static Logger M_log = LoggerFactory.getLogger(BasicEmailService.class);
-
 	/** localized tool properties **/
 	private static final String DEFAULT_RESOURCECLASS = "org.sakaiproject.localization.util.EmailImplProperties";
 	private static final String DEFAULT_RESOURCEBUNDLE = "org.sakaiproject.localization.bundle.emailimpl.email-impl";
@@ -199,7 +199,7 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 	//			}
 	//			catch (Exception e)
 	//			{
-	//				M_log.warn(": exception: ", e);
+	//				log.warn(": exception: ", e);
 	//			}
 	//
 	//			// take a small nap
@@ -218,7 +218,7 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 	 */
 	protected void processQueue()
 	{
-		M_log.debug("Processing mail digest queue...");
+		log.debug("Processing mail digest queue...");
 
 		// setup a re-try queue
 		List retry = new Vector();
@@ -243,7 +243,7 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 			}
 			catch (InUseException e)
 			{
-				M_log.warn("digest in use, will try send again at next digest attempt: " + e.getMessage());
+				log.warn("digest in use, will try send again at next digest attempt: " + e.getMessage());
 				// retry next time
 				retry.add(message);
 			}
@@ -264,7 +264,7 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 	 */
 	protected void sendDigests()
 	{
-		if (M_log.isDebugEnabled()) M_log.debug("checking for sending digests");
+		if (log.isDebugEnabled()) log.debug("checking for sending digests");
 
 		// compute the current period
 		String curPeriod = computeRange(timeService.newTime()).toString();
@@ -281,7 +281,7 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 		// if we are not sending, early out
 		if (!m_sendDigests) return;
 
-		M_log.info("Preparing to send the mail digests for "+curPeriod);
+		log.info("Preparing to send the mail digests for "+curPeriod);
 
 		// count send candidate digests
 		int count = 0;
@@ -330,9 +330,10 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 					{
 						TimeRange periodRange = timeService.newTimeRange(period);
 						Time timeInPeriod = periodRange.firstTime();
+						Instant timeInPeriodInstant = Instant.ofEpochMilli(timeInPeriod.getTime());
 
 						// any messages?
-						List msgs = edit.getMessages(timeInPeriod);
+						List msgs = edit.getMessages(timeInPeriodInstant);
 						if (msgs.size() > 0)
 						{
 							// send this one
@@ -340,7 +341,7 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 						}
 
 						// clear this period
-						edit.clear(timeInPeriod);
+						edit.clear(timeInPeriodInstant);
 
 						changed = true;
 					}
@@ -455,13 +456,13 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 			body.append(rb.getString("thiaut") + " " + serverConfigurationService.getString("ui.service", "Sakai") + " " + "("
 					+ serverConfigurationService.getServerUrl() + ")" + "\n" + rb.getString("youcan") + "\n");
 
-			if (M_log.isDebugEnabled()) M_log.debug(this + " sending digest email to: " + to);
+			if (log.isDebugEnabled()) log.debug(this + " sending digest email to: " + to);
 
 			emailService.send(from, to, subject, body.toString(), to, null, null);
 		}
 		catch (Exception any)
 		{
-			M_log.warn(".send: digest to: " + id + " not sent: " + any.toString());
+			log.warn(".send: digest to: " + id + " not sent: " + any.toString());
 		}
 	}
 
@@ -650,7 +651,7 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 		digestDelay += new Random().nextInt(60); // add some random delay to get the servers out of sync
 		digestTimer.schedule(new DigestTimerTask(), (digestDelay * 1000), (digestPeriod * 1000) );
 
-		M_log.info("init(): email digests will be checked in " + digestDelay + " seconds and then every " 
+		log.info("init(): email digests will be checked in " + digestDelay + " seconds and then every " 
 				+ digestPeriod + " seconds while the server is running" );
 	}
 
@@ -663,13 +664,13 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 		@Override
 		public void run() {
 			try {
-				M_log.debug("running timer task");
+				log.debug("running timer task");
 				// process the queue of digest requests
 				processQueue();
 				// check for a digest mailing time
 				sendDigests();
 			} catch (Exception e) {
-				M_log.error("Digest failure: " + e.getMessage(), e);
+				log.error("Digest failure: " + e.getMessage(), e);
 			}
 		}
 	}
@@ -687,11 +688,11 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 
 		if (m_digestQueue.size() > 0)
 		{
-			M_log.warn(".shutdown: with items in digest queue"); // %%%
+			log.warn(".shutdown: with items in digest queue"); // %%%
 		}
 		m_digestQueue.clear();
 
-		M_log.info("destroy()");
+		log.info("destroy()");
 	}
 
 	/**********************************************************************************************************************************************************************************************************************************************************
@@ -754,7 +755,7 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 				}
 				catch (IdUsedException e)
 				{
-					M_log.warn(".edit: from the add: " + e);
+					log.warn(".edit: from the add: " + e);
 				}
 			}
 
@@ -782,7 +783,7 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 			}
 			catch (Exception e)
 			{
-				M_log.warn(".commit(): closed DigestEdit", e);
+				log.warn(".commit(): closed DigestEdit", e);
 			}
 			return;
 		}
@@ -814,7 +815,7 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 			}
 			catch (Exception e)
 			{
-				M_log.warn(".cancel(): closed DigestEdit", e);
+				log.warn(".cancel(): closed DigestEdit", e);
 			}
 			return;
 		}
@@ -840,7 +841,7 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 			}
 			catch (Exception e)
 			{
-				M_log.warn(".remove(): closed DigestEdit", e);
+				log.warn(".remove(): closed DigestEdit", e);
 			}
 			return;
 		}
@@ -1117,11 +1118,11 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 			return m_properties;
 		}
 
-		/**
-		 * @inheritDoc
-		 */
-		public List getMessages(Time period)
+
+		@Override
+		public List<DigestMessage> getMessages(Instant periodInstant)
 		{
+			Time period = timeService.newTime(periodInstant.toEpochMilli());
 			synchronized (m_ranges)
 			{
 				// find the range
@@ -1151,7 +1152,7 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 								break;
 							}
 						} catch (ParseException e) {
-							M_log.warn("Failed to parse first 12 chars from '"+rangeKey+"' into a date, aborting the attempt to find close data matches", e);
+							log.warn("Failed to parse first 12 chars from '"+rangeKey+"' into a date, aborting the attempt to find close data matches", e);
 						}
 					}
 				}
@@ -1265,8 +1266,10 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 		/**
 		 * @inheritDoc
 		 */
-		public void clear(Time period)
-		{
+		
+		@Override
+		public void clear(Instant periodIntant) {
+			Time period = timeService.newTime(periodIntant.toEpochMilli());
 			synchronized (m_ranges)
 			{
 				// find the range
@@ -1278,6 +1281,7 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 				}
 			}
 		}
+
 
 		/**
 		 * Clean up.
@@ -1371,7 +1375,7 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 		 */
 		public void valueUnbound(SessionBindingEvent event)
 		{
-			if (M_log.isDebugEnabled()) M_log.debug(this + ".valueUnbound()");
+			if (log.isDebugEnabled()) log.debug(this + ".valueUnbound()");
 
 			// catch the case where an edit was made but never resolved
 			if (m_active)
@@ -1379,6 +1383,7 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 				cancel(this);
 			}
 		}
+
 	}
 
 	/**********************************************************************************************************************************************************************************************************************************************************

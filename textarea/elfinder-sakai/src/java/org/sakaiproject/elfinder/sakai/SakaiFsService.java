@@ -1,27 +1,47 @@
+/**
+ * Copyright (c) 2003-2016 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.elfinder.sakai;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import cn.bluejoe.elfinder.controller.executor.FsItemEx;
 import cn.bluejoe.elfinder.service.*;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Base64;
+
 import org.sakaiproject.content.api.ContentHostingService;
 import org.sakaiproject.elfinder.impl.SakaiFsServiceConfig;
 import org.sakaiproject.elfinder.sakai.content.ContentFsItem;
 import org.sakaiproject.elfinder.sakai.content.ContentSiteVolumeFactory;
 import org.sakaiproject.elfinder.sakai.site.SiteFsItem;
 import org.sakaiproject.elfinder.sakai.site.SiteFsVolume;
+import org.sakaiproject.exception.IdUnusedException;
+import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.elfinder.sakai.samigo.SamFsItem;
 import org.sakaiproject.elfinder.sakai.samigo.SamSiteVolumeFactory;
 import org.sakaiproject.elfinder.sakai.samigo.SamSiteVolumeFactory.SamSiteVolume;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.sakaiproject.user.api.UserDirectoryService;
-
-import java.io.IOException;
-import java.util.*;
-
 import static org.sakaiproject.site.api.SiteService.SelectionType.ACCESS;
+import org.sakaiproject.user.api.UserDirectoryService;
 
 /**
  *
@@ -35,6 +55,7 @@ import static org.sakaiproject.site.api.SiteService.SelectionType.ACCESS;
  *
  * Then within each volume there will be files. The one that needs to be done really carefully is
  */
+@Slf4j
 public class SakaiFsService implements FsService {
 
 	private ContentHostingService contentHostingService;
@@ -179,7 +200,14 @@ public class SakaiFsService implements FsService {
 			if("!admin".equals(currentSiteId) || "~admin".equals(currentSiteId)){
 				continue;
 			}
-			volumes.add(getSiteVolume(currentSiteId));
+			try
+			{
+				volumes.add(getSiteVolume(siteService.getSiteVisit(currentSiteId).getId()));
+			} catch (IdUnusedException e) {
+				log.warn("Unexpected IdUnusedException: {}", e.getMessage());
+			} catch (PermissionException e) {
+				log.warn("Unexpected PermissionException: {}", e.getMessage());
+			}
 		}
 		return volumes.toArray(new FsVolume[0]);
 	}

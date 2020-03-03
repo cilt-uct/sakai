@@ -3,7 +3,7 @@
   <parent>
     <artifactId>content</artifactId>
     <groupId>org.sakaiproject.content</groupId>
-    <version>12-SNAPSHOT</version>
+    <version>21-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
   <modelVersion>4.0.0</modelVersion>
@@ -14,6 +14,5 @@
   <url>http://maven.apache.org</url>
   <modules>
     <module>content-cleanup-impl</module>
-    <module>content-cleanup-pack</module>
   </modules>
 </project>

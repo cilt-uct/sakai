@@ -21,14 +21,7 @@
 
 package uk.ac.cam.caret.sakai.rwiki.tool.bean;
 
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
-import java.util.TreeMap;
-
-import org.apache.commons.lang.StringUtils;
-import org.sakaiproject.component.cover.ComponentManager;
-import org.sakaiproject.event.api.EventTrackingService;
 
 import uk.ac.cam.caret.sakai.rwiki.service.api.RWikiObjectService;
 import uk.ac.cam.caret.sakai.rwiki.service.api.dao.ObjectProxy;
@@ -60,6 +53,8 @@ public class RenderBean
 	
 	private boolean canRead = false;
 
+	private boolean canCreate = false;
+
 	private String previewContent = null;
 
 	public static final String PERMISSION_PROBLEM = "You do not have permission to view this page";
@@ -85,6 +80,7 @@ public class RenderBean
 		this.withBreadcrumbs = withBreadcrumbs;
 		this.canEdit = objectService.checkUpdate(rwo);
 		this.canRead = objectService.checkRead(rwo);
+		this.canCreate = objectService.checkCreate(rwo);
 	}
 
 	/**
@@ -115,6 +111,7 @@ public class RenderBean
 			this.rwo = objectService.getRWikiObject(pageName, pageRealm);
 			this.canEdit = objectService.checkUpdate(rwo);
 			this.canRead = objectService.checkRead(rwo);
+			this.canCreate = objectService.checkCreate(rwo);
 		}
 		catch (PermissionException e)
 		{
@@ -185,14 +182,6 @@ public class RenderBean
 	 */
 	public String getRenderedPage()
 	{
-	    // SAK-23566 capture the view wiki page events
-	    if (rwo != null && rwo.getName() != null) {
-	        // KNOWN ISSUE: getRenderedPage is also called when editing, there doesn't seem to be a way to tell the difference
-	        EventTrackingService ets = (EventTrackingService) ComponentManager.get(EventTrackingService.class);
-	        if (ets != null) {
-	            ets.post(ets.newEvent("wiki.read", StringUtils.abbreviate(rwo.getName(), 250), false));
-	        }
-	    }
 		return toolRenderService.renderPage(rwo);
 	}
 
@@ -206,16 +195,7 @@ public class RenderBean
 	{
 		return toolRenderService.renderPublicPage(rwo, withBreadcrumbs);
 	}
-	/**
-	 * Render the current RWikiObject with print links
-	 * 
-	 * @return XMTML as a String representing the content of the current
-	 *         RWikiObject
-	 */
-	public String getPrintRenderedPage()
-	{
-		return toolRenderService.renderPrintPage(rwo, withBreadcrumbs);
-	}
+
 	/**
 	 * Render the current RWikiObject
 	 * 
@@ -236,16 +216,6 @@ public class RenderBean
 	public String publicRenderedPage()
 	{
 		return toolRenderService.renderPublicPage(rwo, withBreadcrumbs);
-	}
-	/**
-	 * Render the current RWikiObject with print links
-	 * 
-	 * @return XMTML as a String representing the content of the current
-	 *         RWikiObject
-	 */
-	public String printRenderedPage()
-	{
-		return toolRenderService.renderPrintPage(rwo, withBreadcrumbs);
 	}
 
 	/**
@@ -313,40 +283,7 @@ public class RenderBean
 		}
 
 	}
-	/**
-	 * Render the rwikiObject as a print page represented by the given name and
-	 * realm
-	 * 
-	 * @param name
-	 *        a possible non-globalised name
-	 * @param defaultRealm
-	 *        the default space of that should be globalised against
-	 * @return XHTML as a String representing the content of the RWikiObject
-	 */
-	public String printRenderPage(String name, String defaultRealm,
-			boolean withBreadcrumbs)
-	{
-		String pageName = NameHelper.globaliseName(name, defaultRealm);
-		String pageSpace = NameHelper.localizeSpace(pageName, defaultRealm);
 
-		try
-		{
-			RWikiObject page = objectService
-					.getRWikiObject(pageName, pageSpace);
-			return toolRenderService.renderPrintPage(page, defaultRealm,
-					withBreadcrumbs);
-		}
-		catch (PermissionException e)
-		{
-			RWikiObject page = objectService.createNewRWikiCurrentObject();
-			page.setName(pageName);
-			ResourceLoaderBean rlb = ResourceLoaderHelperBean.getResourceLoaderBean();
-			page.setContent(rlb.getString("renderbean.permission_problem",PERMISSION_PROBLEM));
-			return toolRenderService.renderPrintPage(page, defaultRealm,
-					withBreadcrumbs);
-		}
-
-	}
 	/**
 	 * The current RWikiObject
 	 * 
@@ -496,6 +433,22 @@ public class RenderBean
 	public void setCanEdit(boolean canEdit)
 	{
 		this.canEdit = canEdit;
+	}
+	/**
+	 * @return Returns the canCreate.
+	 */
+	public boolean getCanCreate()
+	{
+		return canCreate;
+	}
+
+	/**
+	 * @param canCreate
+	 *        The canCreate to set.
+	 */
+	public void setCanCreate(boolean canCreate)
+	{
+		this.canCreate = canCreate;
 	}
 	
 	/**

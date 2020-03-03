@@ -6,7 +6,7 @@
                  org.sakaiproject.tool.cover.ToolManager" %>
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://sakaiproject.org/jsf/messageforums" prefix="mf" %>
 <jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
 	<jsp:setProperty name="msgs" property="baseName" value="org.sakaiproject.api.app.messagecenter.bundle.Messages"/>	
@@ -29,7 +29,7 @@
   <sakai:view >
   	<h:form id="dfStatisticsForm" rendered="#{ForumTool.instructor}">
 <!-- discussionForum/statistics/dfStatisticsList.jsp-->
-	<script type="text/javascript">
+	<script>
 
 	
 			var iframeId = '<%= org.sakaiproject.util.Web.escapeJavascript(thisId)%>';
@@ -119,12 +119,12 @@
 				}
 			}
 		</script>
-       		<script type="text/javascript">includeLatestJQuery("msgcntr");</script>
-			<sakai:script contextBase="/messageforums-tool" path="/js/dialog.js"/>
-			<script type="text/javascript" src="/library/js/spinner.js"></script>
+       		<script>includeLatestJQuery("msgcntr");</script>
+			<script src="/messageforums-tool/js/dialog.js"></script>
+			<script src="/library/js/spinner.js"></script>
 			<link rel="stylesheet" type="text/css" href="/messageforums-tool/css/dialog.css" />
 			<link rel="stylesheet" type="text/css" href="/messageforums-tool/css/msgcntr_statistics.css" />
-		<script type="text/javascript">		
+		<script>		
 			function toggleComments(link){
 				if(link.innerHTML == "<h:outputText value="#{msgs.stat_forum_comments_show}" escape="false"/>"){
 					$('.comments').fadeIn();
@@ -134,31 +134,30 @@
 					$('.comments').fadeOut();
 					$('.commentsHidden').fadeIn();
 					link.innerHTML = '<h:outputText value="#{msgs.stat_forum_comments_show}"/>';
-				}		
+				}
 				
 				resize();
 			}
-			
+
 			function applyDefaultToUngraded(value){
 				$('.gradeInput').each(function(){
 					if($(this).val() == null || $(this).val() == ''){
 						$(this).val($('.defaultValue').val());
 					}
 				});
-				
-				dialogutil.showDiv('gradesNeedSaved');				
+
+				dialogutil.showDiv('gradesNeedSaved');
 			}
-			
+
 			$(document).ready(function() {
 				$('.selAssignVal').val('<h:outputText value="#{mfStatisticsBean.selectedAssign}"/>');
 			});
 		</script>
 		
-		<f:verbatim>
-			<div id="dialogDiv" title="Grade Messages" style="display:none">
-		       <iframe id="dialogFrame" name="dialogFrame" width="100%" height="100%" frameborder="0"></iframe>
-		    </div>
-		</f:verbatim>
+		<div id="dialogDiv" title="Grade Messages" style="display:none">
+			<h:commandButton type="button" styleClass="closeDialogFrame" onclick="dialogutil.closeDialog($(this).parent().attr('id'), $('#dialogFrame').attr('id'));" value="#{msgs.close_window}"/>
+			<iframe id="dialogFrame" name="dialogFrame" width="100%" height="100%" frameborder="0"></iframe>
+		</div>
 		<f:verbatim>
 	  		<div class="success" id="gradesSavedDiv" class="success" style="display:none">
 	  	</f:verbatim>
@@ -182,16 +181,16 @@
 			      		rendered="#{ForumTool.messagesandForums}" />
 			      <h:commandLink action="#{ForumTool.processActionHome}" value="#{msgs.cdfm_discussion_forums}" title=" #{msgs.cdfm_discussion_forums}"
 			      		rendered="#{ForumTool.forumsTool}" />
-			      <f:verbatim><h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " /></f:verbatim>
+			      <h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " />
 			      <h:commandLink action="#{mfStatisticsBean.processActionStatisticsByAllTopics}" value="#{msgs.stat_list}" title="#{msgs.stat_list}"/>
-			      <f:verbatim><h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " /></f:verbatim>
+			      <h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " />
 			      <h:commandLink action="#{mfStatisticsBean.processActionStatisticsByTopic}" immediate="true">
 				    <f:param value="" name="topicId"/>
 				    <f:param value="#{mfStatisticsBean.selectedAllTopicsForumId}" name="forumId"/>
 				    <h:outputText value="#{mfStatisticsBean.selectedAllTopicsForumTitle}" />
 		      	  </h:commandLink>
 			      <h:panelGroup rendered="#{!empty mfStatisticsBean.selectedAllTopicsTopicId}">
-	    			  <f:verbatim><h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " /></f:verbatim>
+	    			  <h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " />
 			   		  <h:outputText value="#{mfStatisticsBean.selectedAllTopicsTopicTitle}" />
 		   		  </h:panelGroup>
 			    <f:verbatim></h3></f:verbatim>
@@ -352,7 +351,7 @@
 		  <h:panelGroup styleClass="itemNav" rendered="#{mfStatisticsBean.selectedAssign != 'Default_0'}">
 		  	<h:commandButton action="#{mfStatisticsBean.proccessActionSubmitGrades}" value="#{msgs.stat_forum_submit_grades}" accesskey="s"
 		  		onclick="warn = false;SPNR.disableControlsAndSpin( this, null );" />
-		  	<h:commandButton action="" value="#{msgs.stat_forum_submit_grades_cancel}" accesskey="c"
+		  	<h:commandButton value="#{msgs.stat_forum_submit_grades_cancel}" accesskey="x"
 		  		onclick="warn = false;SPNR.disableControlsAndSpin( this, null );" />
 		  </h:panelGroup>	
         </h:panelGrid>  

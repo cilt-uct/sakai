@@ -19,39 +19,41 @@
  *
  **********************************************************************************/
 
-
-
 package org.sakaiproject.tool.assessment.ui.bean.author;
 
-//import org.navigoproject.osid.assessment.AssessmentServiceDelegate;
 import java.io.Serializable;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Map;
 
-import com.sun.org.apache.xpath.internal.operations.Bool;
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.SessionScoped;
+
+import lombok.extern.slf4j.Slf4j;
+import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.samigo.util.SamigoConstants;
 import org.sakaiproject.tool.assessment.api.SamigoApiFactory;
 import org.sakaiproject.tool.assessment.business.entity.RecordingData;
 import org.sakaiproject.tool.assessment.shared.api.assessment.SecureDeliveryServiceAPI;
 import org.sakaiproject.tool.assessment.ui.bean.authz.AuthorizationBean;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
-import org.sakaiproject.component.cover.ServerConfigurationService;
 
 /**
- * <p>  JSF backing bean for Template pages
+ * <p> For author: Template editor backing bean
  * </p>
  *
  */
-public class TemplateBean implements Serializable
-{
+@Slf4j
+@ManagedBean(name="template")
+@SessionScoped
+ public class TemplateBean implements Serializable {
   private static final long serialVersionUID = 7526471155622776147L;
-  private HashMap values = new HashMap();
+  private Map values = new HashMap();
   private String newName;
-  private String templateName;
-  private String templateAuthor;
+  private String templateName;  
   private String templateDescription;
   private String itemAccessType = "2";
   private String displayChunking = "1";
@@ -76,7 +78,7 @@ public class TemplateBean implements Serializable
   private Boolean feedbackComponent_SelectionLevel = Boolean.FALSE;
   private Boolean feedbackComponent_GraderComments = Boolean.TRUE;
   private Boolean feedbackComponent_Statistics = Boolean.TRUE;
-  private HashMap feedbackTypes = new HashMap();
+  private Map feedbackTypes = new HashMap();
   private String anonymousGrading = "1";
   private String toGradebook = "1";
   private String recordedScore = "1";
@@ -151,7 +153,7 @@ public class TemplateBean implements Serializable
    *
    * @param newMap
    */
-  public void setValueMap(HashMap newMap)
+  public void setValueMap(Map newMap)
   {
     values = newMap;
   }
@@ -161,7 +163,7 @@ public class TemplateBean implements Serializable
    *
    * @return
    */
-  public HashMap getValueMap()
+  public Map getValueMap()
   {
     return values;
   }
@@ -233,7 +235,7 @@ public class TemplateBean implements Serializable
    *
    * @return
    */
-  public HashMap getFeedbackTypeMap()
+  public Map getFeedbackTypeMap()
   {
     return feedbackTypes;
   }
@@ -297,26 +299,6 @@ public class TemplateBean implements Serializable
   public String getTemplateName()
   {
     return checker(templateName, "");
-  }
-
-  /**
-   * suthor
-   *
-   * @param newAuthor aquthor
-   */
-  public void setTemplateAuthor(String newAuthor)
-  {
-    templateAuthor = newAuthor;
-  }
-
-  /**
-   * author
-   *
-   * @return author
-   */
-  public String getTemplateAuthor()
-  {
-    return checker(templateAuthor, "");
   }
 
   /**
@@ -947,7 +929,7 @@ public class TemplateBean implements Serializable
          modifiedDate=dateFm.parse(getLastModified());
 	}
 	catch(ParseException e){
-	    e.printStackTrace();
+	    log.error(e.getMessage(), e);
        }
     return modifiedDate;
 

@@ -5,19 +5,19 @@
 <script type="text/javascript">
   focus_path = [ "textfield" ];
 	$(function() {
-	    if($('.alertMessage').length ===1){
-	        $('.alertMessage').attr('tabindex',-1).focus();
+	    if($('.sak-banner-warn').length ===1){
+	        $('.sak-banner-warn').attr('tabindex',-1).focus();
 	    };
 	});
 </script>
 <div class="portletBody">
-	<h3>
-		$tlang.getString('cust.addrev')
-	</h3>
+	#if($menu)#toolbar($menu)#end
+	<div class="page-header">
+		<h1>$tlang.getString('cust.addrev')</h1>
+	</div>
 	<script type="text/javascript"> var a = document.MyCalendar; </script>
 	#if ($alertMessage)
-		<div class="alertMessage">$tlang.getString('gen.alert') $validator.escapeHtml($alertMessage)</div>
-		<div style="display:block;clear:both"></div>
+		<div class="sak-banner-warn">$tlang.getString('gen.alert') $formattedText.escapeHtml($alertMessage)</div>
 	#end
 	<p class="instruction">
 		$tlang.getString('cust.toadd')
@@ -34,7 +34,7 @@
 		</span >
 
 			#if (!$addFieldsCalendarsCollectionIsEmpty)
-				<table class="listHier fieldsTable lines nolines" cellspacing="0" summary="$tlang.getString('cust.list')" style="width:75%">
+				<table class="listHier fieldsTable lines nolines" cellspacing="0" summary="$tlang.getString('cust.list')">
 					<tr> 
 						<th id="fieldname">$tlang.getString('cust.fname')</th>
 						<th id="checkbox">$tlang.getString('cust.rem')</th>
@@ -98,7 +98,7 @@
 					#set ($addedFieldsCount=$addedFieldsCount + 1)
 						<tr> 
 							<td headers="fieldname">
-								<label for="addedFields$addedFieldsCount">$validator.escapeHtml($fieldEntry)</label>
+								<label for="addedFields$addedFieldsCount">$formattedText.escapeHtml($fieldEntry)</label>
 							</td>
 							<td headers="checkbox">
 								<input type="checkbox" id="addedFields$addedFieldsCount"  name="$fieldEntry" value="$tlang.getString('cust.true')"  />

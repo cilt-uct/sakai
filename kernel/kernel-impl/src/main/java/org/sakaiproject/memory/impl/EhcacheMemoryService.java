@@ -21,13 +21,21 @@
 
 package org.sakaiproject.memory.impl;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Properties;
+import java.util.UUID;
+
+import lombok.extern.slf4j.Slf4j;
+
 import net.sf.ehcache.CacheManager;
 import net.sf.ehcache.Ehcache;
+import net.sf.ehcache.ObjectExistsException;
 import net.sf.ehcache.config.CacheConfiguration;
 import net.sf.ehcache.config.Configuration;
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import org.apache.commons.lang3.StringUtils;
+
 import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.component.cover.ComponentManager;
@@ -35,11 +43,6 @@ import org.sakaiproject.memory.api.Cache;
 import org.sakaiproject.memory.api.CacheRefresher;
 import org.sakaiproject.memory.api.MemoryService;
 import org.sakaiproject.memory.util.CacheInitializer;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Properties;
-import java.util.UUID;
 
 /**
  * Ehcache based implementation of the MemoryService API which is meant to be friendly to distributed cache management
@@ -50,10 +53,8 @@ import java.util.UUID;
  * Send questions to Aaron Zeckoski
  * @author Aaron Zeckoski (azeckoski @ unicon.net) (azeckoski @ gmail.com)
  */
+@Slf4j
 public class EhcacheMemoryService implements MemoryService {
-
-    final Logger log = LoggerFactory.getLogger(EhcacheMemoryService.class);
-
     CacheManager cacheManager;
     /**
      * MUST be lazy loaded to avoid cyclical dependency issues
@@ -130,7 +131,12 @@ public class EhcacheMemoryService implements MemoryService {
 
     @Override
     public Cache getCache(String cacheName) {
-        return new EhcacheCache(makeEhcache(cacheName, null));
+	try {
+		return new EhcacheCache(makeEhcache(cacheName, null));
+	} catch (ObjectExistsException ex) {
+		log.debug("Cache {} already exists; possibly created by another thread", cacheName);
+		return null;
+	}
     }
 
     @Override

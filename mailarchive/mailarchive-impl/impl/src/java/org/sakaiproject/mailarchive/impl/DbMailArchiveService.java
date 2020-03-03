@@ -25,9 +25,15 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.util.List;
 
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+
 import org.apache.commons.codec.binary.Base64;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.StringUtils;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
 import org.sakaiproject.db.api.SqlReader;
 import org.sakaiproject.db.api.SqlService;
 import org.sakaiproject.javax.Filter;
@@ -39,10 +45,7 @@ import org.sakaiproject.message.api.MessageEdit;
 import org.sakaiproject.time.api.Time;
 import org.sakaiproject.util.BaseDbDoubleStorage;
 import org.sakaiproject.util.DoubleStorageUser;
-import org.apache.commons.lang.StringUtils;
 import org.sakaiproject.util.Xml;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
 
 /**
  * <p>
@@ -52,11 +55,9 @@ import org.w3c.dom.Element;
  * The sql scripts in src/sql/chef_mailarchive.sql must be run on the database.
  * </p>
  */
+@Slf4j
 public class DbMailArchiveService extends BaseMailArchiveService
 {
-	/** Our logger. */
-	private static Logger M_log = LoggerFactory.getLogger(DbMailArchiveService.class);
-
 	/** The name of the db table holding mail archive channels. */
 	protected String m_cTableName = "MAILARCHIVE_CHANNEL";
 
@@ -75,18 +76,7 @@ public class DbMailArchiveService extends BaseMailArchiveService
 	 *********************************************************************************************************************************************************************************************************************************************************/
 
 	/** Dependency: SqlService */
-	protected SqlService m_sqlService = null;
-
-	/**
-	 * Dependency: SqlService.
-	 * 
-	 * @param service
-	 *        The SqlService.
-	 */
-	public void setSqlService(SqlService service)
-	{
-		m_sqlService = service;
-	}
+	@Setter protected SqlService sqlService = null;
 
 	/**
 	 * Configuration: set the table name for the container.
@@ -163,13 +153,13 @@ public class DbMailArchiveService extends BaseMailArchiveService
 			// if we are auto-creating our schema, check and create
 			if (m_autoDdl)
 			{
-				m_sqlService.ddl(this.getClass().getClassLoader(), "sakai_mailarchive");
-				m_sqlService.ddl(this.getClass().getClassLoader(), "sakai_mailarchive_2_6_0");
+				sqlService.ddl(this.getClass().getClassLoader(), "sakai_mailarchive");
+				sqlService.ddl(this.getClass().getClassLoader(), "sakai_mailarchive_2_6_0");
 			}
 
 			super.init();
 
-			M_log.info("init(): tables: " + m_cTableName + " " + m_rTableName + " locks-in-db: " + m_locksInDb);
+			log.info("init(): tables: " + m_cTableName + " " + m_rTableName + " locks-in-db: " + m_locksInDb);
 
 			// convert?
 			if (m_convertToDraft)
@@ -180,7 +170,7 @@ public class DbMailArchiveService extends BaseMailArchiveService
 		}
 		catch (Throwable t)
 		{
-			M_log.warn("init(): ", t);
+			log.warn("init(): ", t);
 		}
 	}
 
@@ -214,7 +204,7 @@ public class DbMailArchiveService extends BaseMailArchiveService
 		public DbStorage(DoubleStorageUser user)
 		{
 			super(m_cTableName, "CHANNEL_ID", m_rTableName, "MESSAGE_ID", "CHANNEL_ID", "MESSAGE_DATE", "OWNER", "DRAFT",
-					"PUBVIEW", FIELDS, SEARCH_FIELDS, m_locksInDb, "channel", "message", user, m_sqlService);
+					"PUBVIEW", FIELDS, SEARCH_FIELDS, m_locksInDb, "channel", "message", user, sqlService);
 			m_locksAreInTable = false;
 		} // DbStorage
         
@@ -253,7 +243,7 @@ public class DbMailArchiveService extends BaseMailArchiveService
 			} 
 			catch (Exception e) 
 			{
-				M_log.warn("Exception decoding message body: " + e);
+				log.warn("Exception decoding message body: " + e);
 				return 0;
 			}
 
@@ -398,18 +388,18 @@ public class DbMailArchiveService extends BaseMailArchiveService
 	 */
 	protected void convertToDraft()
 	{
-		M_log.info("convertToDraft");
+		log.info("convertToDraft");
 
 		try
 		{
 			// get a connection
-			final Connection connection = m_sqlService.borrowConnection();
+			final Connection connection = sqlService.borrowConnection();
 			boolean wasCommit = connection.getAutoCommit();
 			connection.setAutoCommit(false);
 
 			// read all message records that need conversion
 			String sql = "select CHANNEL_ID, MESSAGE_ID, XML from " + m_rTableName /* + " where OWNER is null" */;
-			m_sqlService.dbRead(connection, sql, null, new SqlReader()
+			sqlService.dbRead(connection, sql, null, new SqlReader()
 			{
 				private int count = 0;
 
@@ -429,7 +419,7 @@ public class DbMailArchiveService extends BaseMailArchiveService
 						Element root = doc.getDocumentElement();
 						if (!root.getTagName().equals("message"))
 						{
-							M_log.warn("convertToDraft(): XML root element not message: " + root.getTagName());
+							log.warn("convertToDraft(): XML root element not message: " + root.getTagName());
 							return null;
 						}
 						Message m = new BaseMessageEdit(null, root);
@@ -446,16 +436,16 @@ public class DbMailArchiveService extends BaseMailArchiveService
 						fields[1] = (draft ? "1" : "0");
 						fields[2] = channelId;
 						fields[3] = messageId;
-						boolean ok = m_sqlService.dbWrite(connection, update, fields);
+						boolean ok = sqlService.dbWrite(connection, update, fields);
 
 						if (!ok)
-							M_log.info("convertToDraft: channel: " + channelId + " message: " + messageId + " owner: "
+							log.info("convertToDraft: channel: " + channelId + " message: " + messageId + " owner: "
 									+ owner + " draft: " + draft + " ok: " + ok);
 
 						count++;
 						if (count % 100 == 0)
 						{
-							M_log.info("convertToDraft: " + count);
+							log.info("convertToDraft: " + count);
 						}
 						return null;
 					}
@@ -468,15 +458,14 @@ public class DbMailArchiveService extends BaseMailArchiveService
 
 			connection.commit();
 			connection.setAutoCommit(wasCommit);
-			m_sqlService.returnConnection(connection);
+			sqlService.returnConnection(connection);
 		}
 		catch (Exception t)
 		{
-			M_log.warn("convertToDraft: failed: " + t);
+			log.warn("convertToDraft: failed: " + t);
 		}
 
-		M_log.info("convertToDraft: done");
+		log.info("convertToDraft: done");
 	}
 
 } // DbCachedMailArchiveService
-

@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.lessonbuildertool.ccexport;
 
 import java.io.PrintStream;
@@ -5,17 +20,18 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import org.apache.commons.lang.StringEscapeUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import org.apache.commons.text.StringEscapeUtils;
 import org.sakaiproject.component.cover.ComponentManager;
-import org.sakaiproject.lessonbuildertool.model.SimplePageToolDao;
 import org.sakaiproject.component.cover.ServerConfigurationService;
+import org.sakaiproject.lessonbuildertool.model.SimplePageToolDao;
 import org.sakaiproject.lti.api.LTIService;
+
+import lombok.extern.slf4j.Slf4j;
 import uk.org.ponder.messageutil.MessageLocator;
 
+@Slf4j
 public class BltiExport {
-    private static Logger log = LoggerFactory.getLogger(AssignmentExport.class);
     private static SimplePageToolDao simplePageToolDao;
     static MessageLocator messageLocator = null;
 
@@ -53,7 +69,7 @@ public class BltiExport {
 	    return ret;
 	List<Map<String,Object>> contents = null;
 	try {
-	    contents = ltiService.getContents(null, null, 0, 0);
+	    contents = ltiService.getContents(null, null, 0, 0, siteId);
 	} catch (Exception e) {
 	    // this should never happen, but we saw it once
 	    return null;
@@ -61,7 +77,7 @@ public class BltiExport {
 		
 	for (Map<String,Object> content : contents) {
 	    Long id = getLong(content.get(LTIService.LTI_ID));
-	    if (id.longValue() != -1L && entityReal(id)) {
+	    if (id.longValue() != -1L && entityReal(id, siteId)) {
 		ret.add("blti/" + id);
 	    }
 	}
@@ -69,14 +85,14 @@ public class BltiExport {
     }
 
     // we saw a weird site where this wasn't true. Admin had changed accessibility of tool
-    public boolean entityReal(Long bkey) {
-	Map content = ltiService.getContent(bkey);
+    public boolean entityReal(Long bkey, String siteId) {
+	Map content = ltiService.getContent(bkey, siteId);
 	if (content == null)
 	    return false;
 	Long toolKey = getLongNull(content.get(LTIService.LTI_TOOL_ID));
 	if (toolKey == null)
 	    return false;
-	Map tool = ltiService.getTool(toolKey);
+	Map tool = ltiService.getTool(toolKey, siteId);
 	if (tool == null)
 	    return false;
 	return true;
@@ -87,13 +103,13 @@ public class BltiExport {
 	String id = bltiRef.substring(i + 1);
 
 	Long bkey = getLong(id);
-	Map content = ltiService.getContent(bkey);
+	Map content = ltiService.getContent(bkey, bean.siteId);
 	if (content == null)
 	    return false;
 	Long toolKey = getLongNull(content.get(LTIService.LTI_TOOL_ID));
 	if (toolKey == null)
 	    return false;
-	Map tool = ltiService.getTool(toolKey);
+	Map tool = ltiService.getTool(toolKey, bean.siteId);
 	if (tool == null)
 	    return false;
 	
@@ -139,7 +155,7 @@ public class BltiExport {
 	    out.println("      xsi:schemaLocation = \"http://www.imsglobal.org/xsd/imslticc_v1p0 http://www.imsglobal.org/xsd/lti/ltiv1p0/imslticc_v1p0p1.xsd http://www.imsglobal.org/xsd/imsbasiclti_v1p0 http://www.imsglobal.org/xsd/lti/ltiv1p0/imsbasiclti_v1p0p1.xsd  http://www.imsglobal.org/xsd/imslticm_v1p0 http://www.imsglobal.org/xsd/lti/ltiv1p0/imslticm_v1p0.xsd http://www.imsglobal.org/xsd/imslticp_v1p0 http://www.imsglobal.org/xsd/lti/ltiv1p0/imslticp_v1p0.xsd\">");
 	}
 	
-	out.println("      <blti:title>" + StringEscapeUtils.escapeXml(title) + "</blti:title>");
+	out.println("      <blti:title>" + StringEscapeUtils.escapeXml11(title) + "</blti:title>");
 
 	if (custom.size() > 0) {
 	    out.println("      <blti:custom>");
@@ -149,15 +165,15 @@ public class BltiExport {
 		if (k >= 0) {
 		    String key = attr.substring(0, k).trim();
 		    String value = attr.substring(k + 1).trim();
-		    out.println("        <lticm:property name=\"" + StringEscapeUtils.escapeXml(key) + "\">" + StringEscapeUtils.escapeXml(value) + "</lticm:property>");
+		    out.println("        <lticm:property name=\"" + StringEscapeUtils.escapeXml11(key) + "\">" + StringEscapeUtils.escapeXml11(value) + "</lticm:property>");
 		}
 	    }
 	    out.println("      </blti:custom>");
 	}
-	out.println("      <blti:launch_url>" + StringEscapeUtils.escapeXml(launch_url) + "</blti:launch_url>");
+	out.println("      <blti:launch_url>" + StringEscapeUtils.escapeXml11(launch_url) + "</blti:launch_url>");
 	out.println("      <blti:vendor>");
-	out.println("        <lticp:code>" + StringEscapeUtils.escapeXml(ServerConfigurationService.getServerName()) + "</lticp:code>");
-	out.println("        <lticp:name>" + StringEscapeUtils.escapeXml(ServerConfigurationService.getString("ui.institution", "Sakai")) + "</lticp:name>");
+	out.println("        <lticp:code>" + StringEscapeUtils.escapeXml11(ServerConfigurationService.getServerName()) + "</lticp:code>");
+	out.println("        <lticp:name>" + StringEscapeUtils.escapeXml11(ServerConfigurationService.getString("ui.institution", "Sakai")) + "</lticp:name>");
 	out.println("      </blti:vendor>");
 	out.println("</cartridge_basiclti_link>");
 	return true;

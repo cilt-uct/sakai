@@ -21,21 +21,25 @@
  *
  **********************************************************************************
 -->
-<script type="text/javascript" src="#libraryLink('webjars/jquery/1.11.3/jquery.min.js')">
+<script type="text/javascript" src="#libraryLink('webjars/jquery/1.12.4/jquery.min.js')">
 </script>
-<script type="text/javascript" src="#libraryLink('webjars/jquery-ui/1.11.3/jquery-ui.min.js')">
+<script type="text/javascript" src="#libraryLink('webjars/jquery-ui/1.12.1/jquery-ui.min.js')">
 </script>
 <script type="text/javascript" src="#libraryLink('js/jquery/sortable/jquery.sortable.min.js')">
 </script>
-<link media="all" rel="stylesheet" type="text/css" href="#libraryLink('webjars/jquery-ui/1.11.3/jquery-ui.min.css')">
+<script src="/library/js/spinner.js" type="text/javascript">
+</script>
+<link media="all" rel="stylesheet" type="text/css" href="#libraryLink('webjars/jquery-ui/1.12.1/jquery-ui.min.css')">
 <link media="all" rel="stylesheet" type="text/css" href="/sakai-citations-tool/css/citations.css">
 <style type="text/css">
 </style>
 
 <div id="citationsPortletBody" class="portletBody">
-    <div id="messageSuccess" class="messageSuccess" style="display:none">
+    <div id="messageSuccess" class="sak-banner-success" style="display:none">
     </div>
-    <div id="messageValidation" class="messageValidation" style="display:none">
+    <div id="messageValidation" class="sak-banner-success" style="display:none">
+    </div>
+    <div id="messageError" class="sak-banner-error" style="display:none; height: 6.3em;">
     </div>
 	<h3>
 		#if($resourceAdd)
@@ -172,7 +176,7 @@
  
 	</div>
 	<form id="fossils">
-		<input type="hidden" name="displayName" id="displayName_fossil" value="$validator.escapeHtml("$!resourceTitle")" />
+		<input type="hidden" name="displayName" id="displayName_fossil" value="$formattedText.escapeHtml("$!resourceTitle")" />
 		<input type="hidden" name="access_mode" id="access_mode_fossil" value="$!{contentProperties.accessMode}" />
 #foreach ($group in $!{contentProperties.possibleGroups})
 		<input type="hidden" name="access_groups" id="access_groups_${group.Id}_fossil" value="$group.Id" />	

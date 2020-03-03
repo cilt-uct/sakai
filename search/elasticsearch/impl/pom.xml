@@ -5,13 +5,17 @@
     <parent>
         <groupId>org.sakaiproject.search.elasticsearch</groupId>
         <artifactId>elasticsearch-base</artifactId>
-        <version>12-SNAPSHOT</version><!-- ProjectVersion -->
+        <version>21-SNAPSHOT</version><!-- ProjectVersion -->
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>elasticsearch-impl</artifactId>
     <groupId>org.sakaiproject.search.elasticsearch</groupId>
     <name>Sakai search - ElasticSearch impl</name>
-    <packaging>jar</packaging>
+    <packaging>sakai-component</packaging>
+
+    <properties>
+        <deploy.target>components</deploy.target>
+    </properties>
 
     <dependencies>
         <!-- Dependencies -->
@@ -32,6 +36,16 @@
           <groupId>org.sakaiproject.search</groupId>
           <artifactId>search-util</artifactId>
           <type>jar</type>
+        </dependency>
+        <dependency>
+            <groupId>org.sakaiproject.search.elasticsearch</groupId>
+            <artifactId>elasticsearch-util</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.sakaiproject.search.elasticsearch</groupId>
+            <artifactId>elasticsearch-api</artifactId>
         </dependency>
         <dependency>
             <groupId>org.sakaiproject.kernel</groupId>
@@ -56,8 +70,13 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -65,12 +84,16 @@
             <artifactId>spring-core</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
         </dependency>
         <dependency>
             <groupId>javax.servlet</groupId>
-            <artifactId>servlet-api</artifactId>
+            <artifactId>javax.servlet-api</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

@@ -1,3 +1,19 @@
+/**
+ * Copyright (c) 2005-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.sakaiproject.tool.assessment.ui.listener.author;
 
 import java.util.ArrayList;
@@ -12,10 +28,10 @@ import javax.faces.event.AbortProcessingException;
 import javax.faces.event.ActionEvent;
 import javax.faces.event.ActionListener;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 import org.sakaiproject.event.cover.EventTrackingService;
+import org.sakaiproject.samigo.util.SamigoConstants;
 import org.sakaiproject.tool.assessment.facade.AgentFacade;
 import org.sakaiproject.tool.assessment.facade.AssessmentFacade;
 import org.sakaiproject.tool.assessment.facade.ItemFacade;
@@ -29,12 +45,10 @@ import org.sakaiproject.tool.assessment.ui.bean.authz.AuthorizationBean;
 import org.sakaiproject.tool.assessment.ui.bean.questionpool.QuestionPoolBean;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 
+@Slf4j
 public class ItemRemoveListener implements ActionListener
 {
-	private static final Logger log = LoggerFactory.getLogger(ItemModifyListener.class);
-	private static final String PERM_SAM_ASSESSMENT_REVISE = "sam.assessment.revise";
-	private static final String PERM_SAM_ASSESSMENT_ITEM_DELETE = "sam.assessment.item.delete";
-	
+
 	public void processAction(ActionEvent ae) throws AbortProcessingException
 	{		
 		ItemAuthorBean item = (ItemAuthorBean) ContextUtil.lookupBean("itemauthor");
@@ -78,7 +92,7 @@ public class ItemRemoveListener implements ActionListener
 			}
 		}
 		//An item has been deleted
-		EventTrackingService.post(EventTrackingService.newEvent(PERM_SAM_ASSESSMENT_ITEM_DELETE, "/sam/" +AgentFacade.getCurrentSiteId() + "/removed itemId=" + deleteId, true));
+		EventTrackingService.post(EventTrackingService.newEvent(SamigoConstants.EVENT_ASSESSMENT_ITEM_DELETE, "/sam/" +AgentFacade.getCurrentSiteId() + "/removed itemId=" + deleteId, true));
 		AssessmentService assessdelegate = new AssessmentService();
 
 		// reorder item numbers
@@ -101,7 +115,7 @@ public class ItemRemoveListener implements ActionListener
 		assessmentBean.setAssessment(assessment);
 		assessdelegate.updateAssessmentLastModifiedInfo(assessment);
 		//Assessment has been revised
-		EventTrackingService.post(EventTrackingService.newEvent(PERM_SAM_ASSESSMENT_REVISE, "/sam/" +AgentFacade.getCurrentSiteId() + "/removed itemId=" + deleteId + "from assessmentId=" + assessmentBean.getAssessmentId(), true));
+		EventTrackingService.post(EventTrackingService.newEvent(SamigoConstants.EVENT_ASSESSMENT_REVISE, "/sam/" +AgentFacade.getCurrentSiteId() + "/removed itemId=" + deleteId + "from assessmentId=" + assessmentBean.getAssessmentId(), true));
 	}
 
 }

@@ -1,11 +1,8 @@
-<?xml version="1.0"?>
-<!DOCTYPE hibernate-mapping
-    PUBLIC "-//Hibernate/Hibernate Mapping DTD//EN"
-    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN" "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping package="org.sakaiproject.component.app.messageforums.dao.hibernate">
 
-<hibernate-mapping>
-
-  <class 
+  <class
       name="org.sakaiproject.component.app.messageforums.dao.hibernate.MessageImpl"
       table="MFR_MESSAGE_T" 
       optimistic-lock="version" 
@@ -102,7 +99,7 @@
 	                    column="userSurrogateKey"/>
   	  </list>         
   	  -->
-  	  <list name="recipients" lazy="true" table="MFR_PVT_MSG_USR_T" cascade="all">
+  	  <list name="recipients" lazy="true" table="MFR_PVT_MSG_USR_T">
   	    <key column="messageSurrogateKey"/>
   	    <index column="user_index_col"/>
   	    <composite-element class="org.sakaiproject.component.app.messageforums.dao.hibernate.PrivateMessageRecipientImpl">
@@ -732,16 +729,16 @@
   <query name="findPvtMsgsBySearchText">
     <![CDATA[from org.sakaiproject.component.app.messageforums.dao.hibernate.PrivateMessageImpl as message
              left join fetch message.recipients recipient
-             where  (
-             				(((1 = :searchByAuthor and message.author like :searchText) )or 
-                    ((1 = :searchByText and message.title like :searchText) )or
-                    ((1 = :searchByBody and message.body like :searchText) )or
-                    ((1 = :searchByLabel and message.label like :searchText) ))and
-                    ((1 != :searchByDate or message.created between :searchFromDate and :searchToDate) ))
+             where  ((1 = :searchByAuthor and message.author like :searchText) or 
+                    (1 = :searchByText and message.title like :searchText) or
+                    (1 = :searchByBody and message.body like :searchText) or
+                    (1 = :searchByLabel and message.label like :searchText) or
+                    (1 != :searchByAuthor and 1 != :searchByText and 1 != :searchByBody and 1 != :searchByLabel) and
+                    (1 != :searchByDate or message.created between :searchFromDate and :searchToDate))
                     and recipient.typeUuid = :typeUuid
                     and recipient.userId = :userId
                     and recipient.contextId = :contextId
-    ]]>    
+    ]]>
   </query>
 
   <query name="findReadStatusByMsgIds">

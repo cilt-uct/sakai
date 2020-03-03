@@ -1,21 +1,35 @@
+/**
+ * Copyright (c) 2005-2016 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.tool.assessment.ui.listener.author;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 
+import javax.faces.application.FacesMessage;
+import javax.faces.context.FacesContext;
 import javax.faces.event.AbortProcessingException;
 import javax.faces.event.ActionEvent;
 import javax.faces.event.ActionListener;
 
-import org.sakaiproject.tool.assessment.data.dao.assessment.ItemData;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.ItemDataIfc;
-import org.sakaiproject.tool.assessment.facade.AgentFacade;
 import org.sakaiproject.tool.assessment.facade.ItemFacade;
-import org.sakaiproject.tool.assessment.facade.PublishedSectionFacade;
 import org.sakaiproject.tool.assessment.facade.SectionFacade;
 import org.sakaiproject.tool.assessment.services.ItemService;
+import org.sakaiproject.tool.assessment.services.PublishedItemService;
 import org.sakaiproject.tool.assessment.services.assessment.AssessmentService;
 import org.sakaiproject.tool.assessment.services.assessment.PublishedAssessmentService;
 import org.sakaiproject.tool.assessment.ui.bean.author.AssessmentBean;
@@ -26,148 +40,146 @@ import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 
 public class UpdateAssessmentQuestionsOrder implements ActionListener {
 
-	ItemService delegate;
-	AssessmentService assessdelegate;
-	PublishedAssessmentService publisheddelegate;
+	private ItemService itemService;
+	private AssessmentService assessmentService;
+	private AssessmentBean assessmentBean;
+
+	private int controlP = 1;
+	private int controlQ = 1;
 
 	public void processAction(ActionEvent ae) throws AbortProcessingException {
 
+		FacesContext context = FacesContext.getCurrentInstance();
 		AuthorBean author = (AuthorBean) ContextUtil.lookupBean("author");
-		delegate = new ItemService();
+		assessmentBean = (AssessmentBean) ContextUtil.lookupBean("assessmentBean");
 
-		boolean isEditPendingAssessmentFlow = author
-				.getIsEditPendingAssessmentFlow();
+		boolean isEditPendingAssessmentFlow = author.getIsEditPendingAssessmentFlow();
 
-		AssessmentBean assessmentBean = (AssessmentBean) ContextUtil.lookupBean("assessmentBean");
-
-
-		boolean published = isEditPendingAssessmentFlow ? false : true;
-
-		if(published) {
-			publisheddelegate = new PublishedAssessmentService();
+		if (isEditPendingAssessmentFlow) {
+			assessmentService = new AssessmentService();
+			itemService = new ItemService();
 		} else {
-			assessdelegate = new AssessmentService();
+			assessmentService = new PublishedAssessmentService();
+			itemService = new PublishedItemService();
 		}
 
-		reorderItems(published);
+		if(reorderItems()){
+			String err = ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.AuthorMessages", "edit_order_warning");
+			context.addMessage(null, new FacesMessage(err));
+		}
 
-		assessmentBean.setAssessment(published ? publisheddelegate.getAssessment(assessmentBean.getAssessmentId())
-				: assessdelegate.getAssessment(assessmentBean.getAssessmentId()));
+		assessmentBean.setAssessment(assessmentService.getAssessment(Long.valueOf(assessmentBean.getAssessmentId())));
 	}
 
-	public void reorderItems(boolean published) {
-		AssessmentBean assessmentBean = (AssessmentBean) ContextUtil
-				.lookupBean("assessmentBean");
-		
-		Map<Integer,Integer> swapSections = new HashMap<>();
+	private boolean reorderItems() {
 		Map<Integer,SectionFacade> sections = new HashMap<>();
-		
+		Map<Integer,Long> changedSections = new HashMap<>();
+		int sectionsNum = assessmentBean.getSections().size();
+		boolean duplicated = false;
+
+		//first loop, update parts changed by the instructor
 		for(SectionContentsBean curSection : assessmentBean.getSections()) {
 			
-			SectionFacade sectFc = 	published ? 
-						(PublishedSectionFacade) publisheddelegate.getSection(curSection.getSectionId()) :
-						(SectionFacade) assessdelegate.getSection(curSection.getSectionId());
-			boolean dirty = false;
+			SectionFacade sectFc = assessmentService.getSection(curSection.getSectionId());
+
 			Integer sectionNumber = Integer.valueOf(curSection.getNumber());
-			Integer secVal = swapSections.get(sectionNumber);
 			if(sectionNumber != sectFc.getSequence()) {
-				SectionFacade sec = sections.get(sectionNumber);
-				if(sec != null) {
-					sec.setSequence(sectFc.getSequence());
-					swapSections.put(sec.getSequence(), sectFc.getSequence());
-					if(published) { 
-						publisheddelegate.saveOrUpdateSection(sec);
-					} else {
-						assessdelegate.saveOrUpdateSection(sec);
+				if(changedSections.get(sectionNumber) != null){
+					//there are several parts with the same new section number, change only the first
+					duplicated = true;
+					sections.put(sectFc.getSequence(), sectFc);
+				} else {
+					//position has changed, prioritize this value
+					sectFc.setSequence(sectionNumber);
+					changedSections.put(sectionNumber, sectFc.getSectionId());
+					assessmentService.saveOrUpdateSection(sectFc);
+				}
+			} else {
+				//position not changed, adding to aux map
+				sections.put(sectFc.getSequence(), sectFc);
+			}
+		}
+
+		//second loop, fill the gaps
+		IntStream.range(1, sectionsNum+1).forEach(
+			nbr -> {
+				if(changedSections.get(nbr) == null){
+					SectionFacade sectFc = null;
+					for(int i = controlP; i <= sectionsNum; i++){
+						if(sections.get(i) != null){
+							//taking first section left from the not changed map
+							sectFc = sections.get(i);
+							sectFc.setSequence(nbr);
+							controlP = i+1;
+							assessmentService.saveOrUpdateSection(sectFc);
+							break;
+						}
 					}
 				}
-				int val = sectionNumber;
-				swapSections.put(val,sectFc.getSequence());
-				sectFc.setSequence(val);
-				dirty = true;
-			} else if (secVal != null) {
-				// previous swap, change values
-				swapSections.put(sectFc.getSequence(),secVal);
-				sectFc.setSequence(secVal);
-				dirty = true;
 			}
-			if(dirty) {
-				if(published) { 
-					publisheddelegate.saveOrUpdateSection(sectFc);
-				} else {
-					assessdelegate.saveOrUpdateSection(sectFc);
-				}
-			}
-			sections.put(sectFc.getSequence(), sectFc);
-		}
+		);
+
 		sections.clear();
-		swapSections.clear();
-		updateItemsOrder(assessmentBean);
+		changedSections.clear();
+		boolean duplicatedQ = updateItemsOrder(assessmentBean);
+		return (duplicated) ? duplicated : duplicatedQ;
 	}
 	
-	private void updateItemsOrder(AssessmentBean assessmentbean) {
+	private boolean updateItemsOrder(AssessmentBean assessmentbean) {
 		
+		boolean duplicated = false;
 		for(SectionContentsBean curSection : assessmentbean.getSections()) {
 			
 			int numberOfItems = curSection.getQuestions();
-			
-			Map<Integer,Integer> swapItems = new HashMap<>();
+			controlQ = 1;
+			Map<Integer,Long> changedItems = new HashMap<>();
 			Map<Integer,ItemFacade> sectionItems = new HashMap<>();
 			
-			for(ItemContentsBean icb : (List<ItemContentsBean>)curSection.getItemContents()) {
-				boolean dirty = false;
-				ItemData curItem = (ItemData) (icb).getItemData();
-				ItemFacade itemFc = delegate.getItem(String.valueOf(curItem.getItemId()));
-				int curSequence = curItem.getSequence();
-				Integer t = swapItems.get(curSequence);
-				if(curSequence != itemFc.getData().getSequence())  {
-					swapItems.put(curSequence, itemFc.getData().getSequence());
-					itemFc.getData().setSequence(curSequence);
-					itemFc.setSequence(curSequence);
-					dirty = true;
-					// deal retroactively	
-					ItemFacade it = sectionItems.get(curSequence);
-					// change already found items
-					if(it != null) {	
-						int val = itemFc.getSequence();
-						// if the position was taken by any other value, swap it for the previous change, prioritize latest change
-						int control = 0;
-						// cascade through items until we find an empty one
-						t = swapItems.get(val);
-						if(t != null) {
-							do {
-								val = swapItems.get(val);
-								control++;
-							} while(swapItems.get(val) != null && control <= numberOfItems);
-						}
-						it.setSequence(val);
-						swapItems.put(val, curSequence); // replace latest
-						sectionItems.put(it.getSequence(), it);
-						delegate.saveItem(it);
+			for(ItemContentsBean icb : curSection.getItemContents()) {
+				ItemDataIfc curItem = icb.getItemData();
+				ItemFacade itemFc = itemService.getItem(String.valueOf(curItem.getItemId()));
+
+				Integer curSequence = curItem.getSequence();
+				if(!curSequence.equals(itemFc.getData().getSequence())) {
+					if(changedItems.get(curSequence) != null){
+						//there are several items with the same new section number, change only the first
+						duplicated = true;
+						sectionItems.put(itemFc.getSequence(), itemFc);
+					} else {
+						//position has changed, prioritize this value
+						itemFc.getData().setSequence(curSequence);
+						itemFc.setSequence(curSequence);
+						changedItems.put(curSequence, itemFc.getItemId());
+						itemService.saveItem(itemFc);
 					}
-				} else if (t != null) {
-					int val = swapItems.get(curSequence);
-					// do not duplicate, cascade through until and empty one has been found
-					int control = 0;
-					t = swapItems.get(val);
-					if(t != null) {
-						// loop until no items was swapped with that number
-						do {
-							val = swapItems.get(val);
-							control++;
-						} while(swapItems.get(val) != null && control <= numberOfItems);
-					}
-					swapItems.put(val, itemFc.getSequence());
-					itemFc.setSequence(val);
-					dirty = true;
+				} else {
+					//position not changed, adding to aux map
+					sectionItems.put(itemFc.getSequence(), itemFc);
 				}
-				if(dirty) { 
-					delegate.saveItem(itemFc);
-				}
-				sectionItems.put(itemFc.getSequence(), itemFc);
 			}
-			swapItems.clear();
+
+			//second loop, fill the gaps
+			IntStream.range(1, numberOfItems+1).forEach(
+				nbr -> {
+					if(changedItems.get(nbr) == null){
+						ItemFacade itemFc = null;
+						for(int i = controlQ; i <= numberOfItems; i++){
+							if(sectionItems.get(i) != null){
+								//taking first section left from the not changed map
+								itemFc = sectionItems.get(i);
+								itemFc.setSequence(nbr);
+								controlQ = i+1;
+								itemService.saveItem(itemFc);
+								break;
+							}
+						}
+					}
+				}
+			);
+
+			changedItems.clear();
 			sectionItems.clear();
 		}
+		return duplicated;
 	}
 }

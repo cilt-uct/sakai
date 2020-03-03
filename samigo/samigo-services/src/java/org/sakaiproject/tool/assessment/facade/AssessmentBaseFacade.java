@@ -28,11 +28,10 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.osid.assessment.Assessment;
 import org.osid.assessment.AssessmentException;
 import org.osid.shared.Type;
+
 import org.sakaiproject.tool.assessment.data.dao.assessment.AssessmentBaseData;
 import org.sakaiproject.tool.assessment.data.dao.assessment.AssessmentMetaData;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentAccessControlIfc;
@@ -45,7 +44,6 @@ import org.sakaiproject.tool.assessment.services.PersistenceService;
 
 public class AssessmentBaseFacade
     implements java.io.Serializable, AssessmentBaseIfc{
-  private Logger log = LoggerFactory.getLogger(AssessmentBaseFacade.class);
 
   private AssessmentImpl assessmentImpl = new AssessmentImpl(); //<-- place holder
   protected org.osid.assessment.Assessment assessment =
@@ -82,6 +80,7 @@ public class AssessmentBaseFacade
   private HashMap assessmentMetaDataMap = new HashMap();
   private Set securedIPAddressSet;
   private String assessmentAttachmentMetaData;
+  private Long categoryId;
   
   /** AssessmentBaseFacade is the class that is exposed to developer
    *  It contains some of the useful methods specified in
@@ -226,6 +225,7 @@ public class AssessmentBaseFacade
     this.assessmentMetaDataMap = getAssessmentMetaDataMap(
         this.assessmentMetaDataSet);
     this.securedIPAddressSet = getSecuredIPAddressSet();
+    this.categoryId = getCategoryId();
   }
 
   // the following methods implements
@@ -801,5 +801,13 @@ public class AssessmentBaseFacade
   private void readObject(java.io.ObjectInputStream in) throws IOException,
       ClassNotFoundException {
     in.defaultReadObject();
+  }
+
+  public Long getCategoryId() {
+    return categoryId;
+  }
+
+  public void setCategoryId(Long categoryId) {
+    this.categoryId = categoryId;
   }
 }

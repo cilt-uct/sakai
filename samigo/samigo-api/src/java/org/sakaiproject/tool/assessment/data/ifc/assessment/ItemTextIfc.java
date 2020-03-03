@@ -25,6 +25,7 @@ package org.sakaiproject.tool.assessment.data.ifc.assessment;
 
 import java.util.List;
 import java.util.Set;
+import java.util.Map;
 
 public interface ItemTextIfc
     extends Comparable<ItemTextIfc>, java.io.Serializable
@@ -32,6 +33,7 @@ public interface ItemTextIfc
   public static Long EMI_THEME_TEXT_SEQUENCE = Long.valueOf(-1);
   public static Long EMI_ANSWER_OPTIONS_SEQUENCE = Long.valueOf(-2);
   public static Long EMI_LEAD_IN_TEXT_SEQUENCE = Long.valueOf(-3);
+  public static String NONE_OF_THE_ABOVE = "None of the above";
  
   Long getId();
 
@@ -56,6 +58,8 @@ public interface ItemTextIfc
   List<AnswerIfc> getAnswerArray();
 
   List<AnswerIfc> getAnswerArraySorted();
+
+  List<AnswerIfc> getAnswerArrayWithDistractorSorted();
   
   Set<ItemTextAttachmentIfc> getItemTextAttachmentSet();
 
@@ -68,6 +72,14 @@ public interface ItemTextIfc
      * @return
      * @since 2.10
      */
+
+  void addItemTextAttachment(ItemTextAttachmentIfc attachment);
+  void addNewItemTextAttachment(ItemTextAttachmentIfc attachment);
+  void removeItemTextAttachmentById(Long attachmentId);
+  void removeItemTextAttachment(ItemTextAttachmentIfc attachment);
+  Map<Long, ItemTextAttachmentIfc> getItemTextAttachmentMap();
+
+
     public boolean isEmiQuestionItemText();
 
     /**

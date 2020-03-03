@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2007-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 /*
 * Licensed to The Apereo Foundation under one or more contributor license
 * agreements. See the NOTICE file distributed with this work for
@@ -19,12 +34,34 @@
 
 package org.sakaiproject.signup.tool.downloadEvents;
 
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.common.usermodel.HyperlinkType;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.CreationHelper;
+import org.apache.poi.ss.usermodel.Hyperlink;
+import org.apache.poi.ss.usermodel.PrintSetup;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.util.CellRangeAddress;
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.hssf.usermodel.HSSFHyperlink;
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.signup.logic.SakaiFacade;
+import org.sakaiproject.signup.logic.SignupMeetingService;
 import org.sakaiproject.signup.model.MeetingTypes;
 import org.sakaiproject.signup.model.SignupAttachment;
 import org.sakaiproject.signup.model.SignupAttendee;
@@ -32,24 +69,13 @@ import org.sakaiproject.signup.model.SignupGroup;
 import org.sakaiproject.signup.model.SignupMeeting;
 import org.sakaiproject.signup.model.SignupSite;
 import org.sakaiproject.signup.model.SignupTimeslot;
-import org.sakaiproject.signup.tool.jsf.HtmlSortHeaderRenderer;
 import org.sakaiproject.signup.tool.jsf.SignupMeetingWrapper;
 import org.sakaiproject.signup.tool.util.SignupBeanConstants;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.time.api.Time;
-
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.util.ResourceLoader;
-
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Iterator;
+import org.apache.commons.lang3.StringUtils;
 
 /*
  * <p> This class will provides formatting data to Excel style functionality.
@@ -57,7 +83,12 @@ import java.util.Iterator;
  * 
  * @author Peter Liu
  */
+@Slf4j
 public class EventWorksheet implements MeetingTypes, SignupBeanConstants {
+
+	private static final int COLUMNS_NOT_GROUPING_BY_SLOT = 8;
+
+	private static final int COLUMNS_GROUPING_BY_SLOT = 7;
 
 	private ResourceLoader rb = new ResourceLoader("messages");
 
@@ -80,6 +111,9 @@ public class EventWorksheet implements MeetingTypes, SignupBeanConstants {
 	CreationHelper createHelper = null;
 
 	private SakaiFacade sakaiFacade;
+	
+	@Getter @Setter
+	private SignupMeetingService signupMeetingService;
 
 	/**
 	 * Constructor
@@ -89,8 +123,9 @@ public class EventWorksheet implements MeetingTypes, SignupBeanConstants {
 	 */
 	public EventWorksheet(SakaiFacade sakaiFacade) {
 		this.sakaiFacade = sakaiFacade;
-		wb = new HSSFWorkbook();
-		/* could also define wb = new XSSFWorkbook(); */
+
+		wb = new XSSFWorkbook();
+
 
 		styles = WorksheetStyleClass.createStyles(wb);
 
@@ -401,7 +436,6 @@ public class EventWorksheet implements MeetingTypes, SignupBeanConstants {
 		for (SignupMeetingWrapper wrp : wrappers) {
 			if (wrp.isToDownload()) {
 				row = sheet.createRow(rowNum);
-				int rowHighNum = 1;
 				rowNum++;
 				for (int i = 0; i <= 6; i++) {
 					row.createCell(i).setCellStyle(styles.get("tabItem_fields"));
@@ -410,7 +444,7 @@ public class EventWorksheet implements MeetingTypes, SignupBeanConstants {
 				cell = row.getCell(0);
 				cell.setCellStyle(styles.get("item_left_wrap"));
 				cell.setCellValue(wrp.getMeeting().getTitle());
-				Hyperlink sheetLink = createHelper.createHyperlink(Hyperlink.LINK_DOCUMENT);
+				Hyperlink sheetLink = createHelper.createHyperlink(HyperlinkType.DOCUMENT);
 				String validSheetName = CreateValidWorksheetName(wrp.getMeeting().getTitle(), seqNum, true);
 				String hlinkAddr = "'" + validSheetName + "'" + "!A1";
 				sheetLink.setAddress(hlinkAddr);
@@ -459,42 +493,35 @@ public class EventWorksheet implements MeetingTypes, SignupBeanConstants {
 	 * Create a full version excel worksheet
 	 */
 	private void createWorksheet(SignupMeetingWrapper wrapper, int serialNum, boolean hasSerialNum) {
-		String validSheetName = CreateValidWorksheetName(wrapper.getMeeting().getTitle(),serialNum,hasSerialNum);
-			
-		Sheet sheet = wb.createSheet(validSheetName);
-		PrintSetup printSetup = sheet.getPrintSetup();
-		printSetup.setLandscape(true);
+		
+		final String validSheetName = CreateValidWorksheetName(wrapper.getMeeting().getTitle(),serialNum,hasSerialNum);
+		final Sheet sheet = wb.createSheet(validSheetName);
+		sheet.getPrintSetup().setLandscape(true);
 		sheet.setFitToPage(true);
 		sheet.setHorizontallyCenter(true);
 
-		sheet.setColumnWidth(0, 3 * 256);
-		sheet.setColumnWidth(1, 3 * 256);
-		sheet.setColumnWidth(2, 17 * 256);
-		sheet.setColumnWidth(3, 15 * 256);
-		sheet.setColumnWidth(4, 22 * 256);
-		sheet.setColumnWidth(5, 22 * 256);
-		sheet.setColumnWidth(6, 22 * 256);
-
 		// title row
-		Row titleRow = sheet.createRow(0);
+		final Row titleRow = sheet.createRow(0);
 		titleRow.setHeightInPoints(35);
-		for (int i = 1; i <= 7; i++) {
+		for (int i = 1; i <= 6; i++) {
 			titleRow.createCell(i).setCellStyle(styles.get("title"));
 		}
-		Cell titleCell = titleRow.getCell(2);
+		final Cell titleCell = titleRow.getCell(2);
 		titleCell.setCellValue(wrapper.getMeeting().getTitle());
 		sheet.addMergedRegion(CellRangeAddress.valueOf("$C$1:$H$1"));
 		
 		// timezone row
-		Row timezoneRow = sheet.createRow(1);
+		final Row timezoneRow = sheet.createRow(1);
 		timezoneRow.setHeightInPoints(16);
-		for (int i = 1; i <= 7; i++) {
+		log.info("timezoneRow");
+		for (int i = 1; i <= 6; i++) {
+			log.info("timezone: " + i);
 			timezoneRow.createCell(i).setCellStyle(styles.get("tabItem_fields"));
 		}
-		Cell timezoneCell = timezoneRow.getCell(2);
-		timezoneCell.setCellValue("(" + rb.getString("event_timezone") + " " + sakaiFacade.getTimeService().getLocalTimeZone().getID() + ")");
+		final Cell timezoneCell = timezoneRow.getCell(2);
+		timezoneCell.setCellValue("(" + rb.getString("event_timezone") + " " + sakaiFacade.getTimeService().getLocalTimeZone().getID() + ")");		
 		sheet.addMergedRegion(CellRangeAddress.valueOf("$C$2:$H$2"));
-
+		
 		// owner row
 		Row row = sheet.createRow(2);
 		row.setHeightInPoints(rowHigh);
@@ -629,13 +656,23 @@ public class EventWorksheet implements MeetingTypes, SignupBeanConstants {
 
 			return;
 		}
+		
+		int numberOfColumns = 0;
+		boolean groupBySlot = sakaiFacade.getServerConfigurationService().getBoolean("signup.export.group.participants.by.slot", true);
 
+		if(groupBySlot) {
+			numberOfColumns = COLUMNS_GROUPING_BY_SLOT;
+		}
+		else {
+			numberOfColumns = COLUMNS_NOT_GROUPING_BY_SLOT;
+		}
+		
 		/* Case: for group and individual events */
 		// Table titles row
 		cur_rowNum = cur_rowNum + 2;
 		row = sheet.createRow(cur_rowNum);
 		row.setHeightInPoints(rowHigh);
-		for (int i = 2; i <= 7; i++) {
+		for (int i = 2; i <= numberOfColumns; i++) {
 			row.createCell(i).setCellStyle(styles.get("tabColNames"));
 		}
 		cell = row.getCell(2);
@@ -644,114 +681,26 @@ public class EventWorksheet implements MeetingTypes, SignupBeanConstants {
 		cell.setCellValue(currentTabTitles[0]);
 		sheet.addMergedRegion(CellRangeAddress.valueOf("$C$" + (cur_rowNum + 1) + ":$D$"
 				+ (cur_rowNum + 1)));
-		cell = row.getCell(4);
-		cell.setCellValue(currentTabTitles[1]);
-		cell = row.getCell(5);
-		cell.setCellValue(currentTabTitles[2]);
-		cell = row.getCell(6);
-		cell.setCellValue(currentTabTitles[3]);
-		cell = row.getCell(7);
-		cell.setCellValue(currentTabTitles[4]);
-
-		// Table schedule Info
-		int rowNum = cur_rowNum + 1;
-		List<SignupTimeslot> tsItems = wrapper.getMeeting().getSignupTimeSlots();
-		if (tsItems != null) {
-			for (SignupTimeslot tsItem : tsItems) {
-				/*strange thing happen for hibernate, it can be null for mySql 4.x*/
-				if (tsItem == null) {
-					continue;
-				}
-
-				row = sheet.createRow(rowNum);
-				int rowHighNum = 1;
-				rowNum++;
-				for (int i = 1; i <= 7; i++) {
-					row.createCell(i).setCellStyle(styles.get("tabItem_fields"));
-				}
-				// timeslot period
-				cell = row.getCell(2);
-				cell.setCellValue(getTimeSlotPeriod(tsItem, wrapper.getMeeting()
-						.isMeetingCrossDays()));
-				sheet.addMergedRegion(CellRangeAddress.valueOf("$C$" + rowNum + ":$D$" + rowNum));// "$C$11:$D$11"
-
-				// Max # of participants
-				cell = row.getCell(4);
-				if (tsItem.isUnlimitedAttendee())
-					cell.setCellValue(rb.getString("event_unlimited"));
-				else if (isOrganizer(wrapper.getMeeting())) {
-					cell.setCellValue(tsItem.getMaxNoOfAttendees());
-				} else {
-					int availableSpots = getValidAttendees(tsItem.getAttendees()) != null ? tsItem
-							.getMaxNoOfAttendees()
-							- getValidAttendees(tsItem.getAttendees()).size() : tsItem.getMaxNoOfAttendees();
-					availableSpots = availableSpots < 1 ? 0 : availableSpots;
-					String value = String.valueOf(availableSpots);
-					if (tsItem.isLocked())
-						value = rb.getString("event_is_locked");
-					else if (tsItem.isCanceled())
-						value = rb.getString("event_is_canceled");
-
-					cell.setCellValue(value);
-				}
-
-				
-				List<SignupAttendee> attendees = getValidAttendees(tsItem.getAttendees());
-				
-				// attendee names
-				cell = row.getCell(5);
-				String aNames = rb.getString("event_show_no_attendee_info");
-				if (isDisplayNames(wrapper.getMeeting())) {
-					if (attendees != null && attendees.size() > rowHighNum) {
-						rowHighNum = attendees.size();
-					}
-					aNames = getNames(attendees, true);
-				}
-				if (tsItem.isCanceled() && isOrganizer(wrapper.getMeeting())) {
-					aNames = rb.getString("event_is_canceled");
-				}
-				cell.setCellValue(aNames);
-				cell.setCellStyle(styles.get("attendee_layout"));
-				
-				// attendee userids
-				// without completely reformatting the way the table is constructed, this gives the userids in a separate column
-				cell = row.getCell(6);
-				String aIds = rb.getString("event_show_no_attendee_info");
-				if (isDisplayNames(wrapper.getMeeting())) {
-					if (attendees != null && attendees.size() > rowHighNum) {
-						rowHighNum = attendees.size();
-					}
-					aIds = getIds(attendees);
-				}
-				if (tsItem.isCanceled() && isOrganizer(wrapper.getMeeting())) {
-					aIds = rb.getString("event_is_canceled");
-				}
-				cell.setCellValue(aIds);
-				cell.setCellStyle(styles.get("attendee_layout"));
-
-				// waiters
-				cell = row.getCell(7);
-				String fieldValue = "";
-				if (isOrganizer(wrapper.getMeeting())) {
-					List<SignupAttendee> waiters = tsItem.getWaitingList();
-					if (waiters != null && waiters.size() > rowHighNum) {
-						rowHighNum = waiters.size();
-					}
-					fieldValue = getNames(waiters, false);
-				} else {
-					fieldValue = getYourStatus(tsItem);
-				}
-				cell.setCellValue(fieldValue);
-				cell.setCellStyle(styles.get("attendee_layout"));
-
-				// set row high
-				row.setHeightInPoints(rowHigh * rowHighNum);
-			}
+		
+		for (int i = 4; i <= numberOfColumns && (i-3<currentTabTitles.length); i++) {
+			cell = row.getCell(i);
+			cell.setCellValue(currentTabTitles[i-3]);
 		}
 
+		// Table schedule Info
+		int rowNum = cur_rowNum;
+		final List<SignupTimeslot> tsItems = wrapper.getMeeting().getSignupTimeSlots();
+		
+		if(groupBySlot) {
+			rowNum = getTableScheduleInfoStudentsGroupBySlot(wrapper, sheet, rowNum, tsItems);
+		}
+		else {
+			rowNum = getTableScheduleInfoOneStudentPerRow(wrapper, sheet, rowNum, tsItems);
+		}
+		
 		// end of table line
 		row = sheet.createRow(rowNum);
-		for (int i = 2; i <= 7; i++) {
+		for (int i = 2; i <= numberOfColumns; i++) {
 			row.createCell(i).setCellStyle(styles.get("tab_endline"));
 		}
 
@@ -760,7 +709,7 @@ public class EventWorksheet implements MeetingTypes, SignupBeanConstants {
 		// Comment Title row
 		Row commentsRow = sheet.createRow(rowNum);
 		commentsRow.setHeightInPoints(25);
-		for (int i = 1; i <= 7; i++) {
+		for (int i = 1; i <= numberOfColumns; i++) {
 			commentsRow.createCell(i).setCellStyle(styles.get("commentTitle"));
 		}
 		Cell commentsCell = commentsRow.getCell(2);
@@ -775,7 +724,7 @@ public class EventWorksheet implements MeetingTypes, SignupBeanConstants {
 		}
 
 		rowNum++;
-		;
+
 		boolean hasComment = false;
 		if (tsItems != null) {
 			for (SignupTimeslot ts : tsItems) {
@@ -787,7 +736,7 @@ public class EventWorksheet implements MeetingTypes, SignupBeanConstants {
 							String comment = att.getComments();
 							if (comment != null && comment.trim().length() > 0) {
 								row = sheet.createRow(rowNum++);
-								for (int i = 1; i <= 7; i++) {
+								for (int i = 1; i <= numberOfColumns; i++) {
 									row.createCell(i);
 								}
 								cell = row.getCell(2);
@@ -822,9 +771,231 @@ public class EventWorksheet implements MeetingTypes, SignupBeanConstants {
 					"There is no comments written by participants."));
 			cell.setCellStyle(styles.get("item_leftBold"));
 		}
+		
+		sheet.setColumnWidth(0, 3 * 256);
+		sheet.setColumnWidth(1, 3 * 256);
+		
+		for (int i = 2; i <= numberOfColumns; i++) {
+			sheet.autoSizeColumn(i);
+		}
 
 	}
 
+	private int getTableScheduleInfoStudentsGroupBySlot(SignupMeetingWrapper wrapper, final Sheet sheet,
+			int rowNumParameter, List<SignupTimeslot> tsItems) {
+		int rowNum = rowNumParameter;
+		if (tsItems != null) {
+			rowNum++;
+			for (SignupTimeslot tsItem : tsItems) {
+				/* strange thing happen for hibernate, it can be null for mySql 4.x */
+				if (tsItem == null) {
+					continue;
+				}
+
+				Row row = sheet.createRow(rowNum);
+				int rowHighNum = 1;
+				rowNum++;
+				for (int i = 1; i <= 7; i++) {
+					row.createCell(i).setCellStyle(styles.get("tabItem_fields"));
+				}
+				// timeslot period
+				Cell cell = row.getCell(2);
+				cell.setCellValue(getTimeSlotPeriod(tsItem, wrapper.getMeeting().isMeetingCrossDays()));
+				sheet.addMergedRegion(CellRangeAddress.valueOf("$C$" + rowNum + ":$D$" + rowNum));// "$C$11:$D$11"
+
+				// Max # of participants
+				cell = row.getCell(4);
+				if (tsItem.isUnlimitedAttendee())
+					cell.setCellValue(rb.getString("event_unlimited"));
+				else if (isOrganizer(wrapper.getMeeting())) {
+					cell.setCellValue(tsItem.getMaxNoOfAttendees());
+				} else {
+					int availableSpots = getValidAttendees(tsItem.getAttendees()) != null
+							? tsItem.getMaxNoOfAttendees() - getValidAttendees(tsItem.getAttendees()).size()
+							: tsItem.getMaxNoOfAttendees();
+					availableSpots = availableSpots < 1 ? 0 : availableSpots;
+					String value = String.valueOf(availableSpots);
+					if (tsItem.isLocked())
+						value = rb.getString("event_is_locked");
+					else if (tsItem.isCanceled())
+						value = rb.getString("event_is_canceled");
+
+					cell.setCellValue(value);
+				}
+
+				List<SignupAttendee> attendees = getValidAttendees(tsItem.getAttendees());
+
+				// attendee names
+				cell = row.getCell(5);
+				String aNames = rb.getString("event_show_no_attendee_info");
+				if (isDisplayNames(wrapper.getMeeting())) {
+					if (attendees != null && attendees.size() > rowHighNum) {
+						rowHighNum = attendees.size();
+					}
+					aNames = getNames(attendees, true);
+				}
+				if (tsItem.isCanceled() && isOrganizer(wrapper.getMeeting())) {
+					aNames = rb.getString("event_is_canceled");
+				}
+				cell.setCellValue(aNames);
+				cell.setCellStyle(styles.get("attendee_layout"));
+
+				// attendee userids
+				// without completely reformatting the way the table is constructed, this gives
+				// the userids in a separate column
+				cell = row.getCell(6);
+				String aIds = rb.getString("event_show_no_attendee_info");
+				if (isDisplayNames(wrapper.getMeeting())) {
+					if (attendees != null && attendees.size() > rowHighNum) {
+						rowHighNum = attendees.size();
+					}
+					aIds = getIds(attendees);
+				}
+				if (tsItem.isCanceled() && isOrganizer(wrapper.getMeeting())) {
+					aIds = rb.getString("event_is_canceled");
+				}
+				cell.setCellValue(aIds);
+				cell.setCellStyle(styles.get("attendee_layout"));
+
+				// waiters
+				cell = row.getCell(7);
+				String fieldValue = "";
+				if (isOrganizer(wrapper.getMeeting())) {
+					List<SignupAttendee> waiters = tsItem.getWaitingList();
+					if (waiters != null && waiters.size() > rowHighNum) {
+						rowHighNum = waiters.size();
+					}
+					fieldValue = getNames(waiters, false);
+				} else {
+					fieldValue = getYourStatus(tsItem);
+				}
+				cell.setCellValue(fieldValue);
+				cell.setCellStyle(styles.get("attendee_layout"));
+
+				// set row high
+				row.setHeightInPoints(rowHigh * rowHighNum);
+			}
+		}
+		return rowNum;
+	}
+
+	private int getTableScheduleInfoOneStudentPerRow(SignupMeetingWrapper wrapper, final Sheet sheet, int rowNumParameter, List<SignupTimeslot> tsItems) {
+		int rowNum = rowNumParameter;
+		if (tsItems != null) {
+			for (SignupTimeslot tsItem : tsItems) {
+				/*strange thing happen for hibernate, it can be null for mySql 4.x*/
+				if (tsItem == null) {
+					continue;
+				}
+				
+				final List<SignupAttendee> attendees = getValidAttendees(tsItem.getAttendees());
+				for (SignupAttendee signupAttendee : attendees) {
+					rowNum++;
+					fillAttendeeRow(wrapper, sheet, rowNum, tsItem, attendees, signupAttendee, false);
+				}
+				
+				final List<SignupAttendee> waiters = tsItem.getWaitingList();
+				for (SignupAttendee waiter : waiters) {
+					rowNum++;
+					fillAttendeeRow(wrapper, sheet, rowNum, tsItem, attendees, waiter, true);
+				}
+				if(attendees.isEmpty() && waiters.isEmpty()) {
+					rowNum++;
+					fillAttendeeRow(wrapper, sheet, rowNum, tsItem, attendees, null, true);
+				}
+			}
+		}
+
+		rowNum++;
+		return rowNum;
+	}
+
+	private void fillAttendeeRow(final SignupMeetingWrapper wrapper, final Sheet sheet, int rowNum, final SignupTimeslot tsItem,
+			final List<SignupAttendee> attendees, final SignupAttendee signupAttendee, boolean isWaiting) {
+		final Row row = sheet.createRow(rowNum);
+		for (int i = 1; i <= COLUMNS_NOT_GROUPING_BY_SLOT; i++) {
+			row.createCell(i).setCellStyle(styles.get("tabItem_fields"));
+		}
+		// timeslot period
+		Cell cell = row.getCell(2);
+		cell.setCellValue(getTimeSlotPeriod(tsItem, wrapper.getMeeting()
+				.isMeetingCrossDays()));
+		sheet.addMergedRegion(CellRangeAddress.valueOf("$C$" + (rowNum + 1) + ":$D$" + (rowNum + 1)));// "$C$11:$D$11"
+
+		// Max # of participants
+		cell = row.getCell(4);
+		if (tsItem.isUnlimitedAttendee())
+			cell.setCellValue(rb.getString("event_unlimited"));
+		else if (isOrganizer(wrapper.getMeeting())) {
+			cell.setCellValue(tsItem.getMaxNoOfAttendees());
+		} else {
+			int availableSpots = getValidAttendees(tsItem.getAttendees()) != null ? tsItem
+					.getMaxNoOfAttendees()
+					- getValidAttendees(tsItem.getAttendees()).size() : tsItem.getMaxNoOfAttendees();
+			availableSpots = availableSpots < 1 ? 0 : availableSpots;
+			String value = String.valueOf(availableSpots);
+			if (tsItem.isLocked())
+				value = rb.getString("event_is_locked");
+			else if (tsItem.isCanceled())
+				value = rb.getString("event_is_canceled");
+
+			cell.setCellValue(value);
+		}
+		
+		int rowHighNum = 1;
+		
+		if(signupAttendee != null) {
+			// attendee names
+			cell = row.getCell(5);
+			String aNames = rb.getString("event_show_no_attendee_info");
+			if (isDisplayNames(wrapper.getMeeting())) {
+				if (attendees != null && attendees.size() > rowHighNum) {
+					rowHighNum = attendees.size();
+				}
+				aNames = sakaiFacade.getUserDisplayLastFirstName(signupAttendee.getAttendeeUserId());
+			}
+	
+			if (tsItem.isCanceled() && isOrganizer(wrapper.getMeeting())) {
+				aNames = rb.getString("event_is_canceled");
+			}
+			cell.setCellValue(aNames);
+			cell.setCellStyle(styles.get("attendee_layout"));
+	
+			// attendee userids
+			// without completely reformatting the way the table is constructed, this gives
+			// the userids in a separate column
+			cell = row.getCell(6);
+			String aIds = rb.getString("event_show_no_attendee_info");
+			if (isDisplayNames(wrapper.getMeeting())) {
+				if (attendees != null && attendees.size() > rowHighNum) {
+					rowHighNum = attendees.size();
+				}
+				aIds = sakaiFacade.getUser(signupAttendee.getAttendeeUserId()).getDisplayId();
+			}
+			if (tsItem.isCanceled() && isOrganizer(wrapper.getMeeting())) {
+				aIds = rb.getString("event_is_canceled");
+			}
+			cell.setCellValue(aIds);
+			cell.setCellStyle(styles.get("attendee_layout"));
+	
+			// waiters
+			if (isWaiting) {
+				cell = row.getCell(7);
+				String fieldValue = "X";
+				cell.setCellValue(fieldValue);
+				cell.setCellStyle(styles.get("attendee_layout"));
+			}
+			
+			// Inscription date and time
+			cell = row.getCell(8);
+			String fieldValue = signupMeetingService.getUsersLocalDateTimeString(signupAttendee.getInscriptionTime());
+			cell.setCellValue(fieldValue);
+			cell.setCellStyle(styles.get("attendee_layout"));
+		}
+		// set row high
+		row.setHeightInPoints(rowHigh * rowHighNum);
+	}
+	
 	/**
 	 * This will convert the Java date object to a Sakai's Time object, which
 	 * provides all the useful methods for output.
@@ -884,19 +1055,6 @@ public class EventWorksheet implements MeetingTypes, SignupBeanConstants {
 		return sb.toString();
 	}
 
-	private String getNames(List<SignupAttendee> attendees) {
-		if (attendees == null)
-			return "";
-
-		StringBuffer sb = new StringBuffer();
-		for (SignupAttendee att : attendees) {
-			sb.append(sakaiFacade.getUserDisplayName(att.getAttendeeUserId()));
-			sb.append("\n");
-		}
-		/* remove the last'\n' one */
-		return sb.length() > 1 ? sb.substring(0, sb.length() - 1) : "";
-	}
-	
 	private String getNames(List<SignupAttendee> attendees, boolean needSorting) {
 		if (attendees == null)
 			return "";
@@ -911,6 +1069,10 @@ public class EventWorksheet implements MeetingTypes, SignupBeanConstants {
 		
 		for (SignupAttendee att : attendees) {
 			sb.append(att.getDisplayName());
+			final String dateInscription = signupMeetingService.getUsersLocalDateTimeString(att.getInscriptionTime());
+			if(StringUtils.isNotEmpty(dateInscription)) {
+				sb.append(" - " + dateInscription);
+			}
 			sb.append("\n");
 		}
 		/* remove the last'\n' one */
@@ -1063,8 +1225,8 @@ public class EventWorksheet implements MeetingTypes, SignupBeanConstants {
 		return title;
 	}
 
-	private HSSFHyperlink setAttachmentURLLinks(SignupAttachment attach) {
-		HSSFHyperlink hsHyperlink = new HSSFHyperlink(HSSFHyperlink.LINK_URL);
+	private Hyperlink setAttachmentURLLinks(SignupAttachment attach) {
+		Hyperlink hsHyperlink = wb.getCreationHelper().createHyperlink(HyperlinkType.URL);
 		String link = this.sakaiFacade.getServerConfigurationService().getServerUrl()
 				+ attach.getLocation();
 		hsHyperlink.setAddress(link);
@@ -1073,12 +1235,13 @@ public class EventWorksheet implements MeetingTypes, SignupBeanConstants {
 	}
 
 	private void initTableThRow() {
-		tabTitles_Organizor = new String[5];
+		tabTitles_Organizor = new String[6];
 		tabTitles_Organizor[0] = rb.getString("tab_time_slot", "Time Slot");
 		tabTitles_Organizor[1] = rb.getString("tab_max_attendee", "Max # of Participants");
 		tabTitles_Organizor[2] = rb.getString("tab_attendees", "Participants");
 		tabTitles_Organizor[3] = rb.getString("tab_attendees_eids", "Participants User IDs");
 		tabTitles_Organizor[4] = rb.getString("tab_waiting_list", "Wait List");
+		tabTitles_Organizor[5] = rb.getString("tab_date_inscription", "Date of Inscription");
 
 		tabTitles_Participant = new String[5];
 		tabTitles_Participant[0] = rb.getString("tab_time_slot", "Time Slot");

@@ -1,5 +1,6 @@
 /* portal.css currently sets label to display:block. reverse it but only for our content. have to
    do iframe and inline separately, and for some reason popups  */
+
 #content label,.ui-dialog label,body[onload] label{
   display: inline;
 }
@@ -21,7 +22,8 @@
 }
 
 .ui-dialog label {
-   padding-left: 0.5em;
+   padding-left: 0.5em;  
+   padding-right: 0.5em;
    font-weight: normal;
 }
 
@@ -109,9 +111,6 @@
 	background-color: #eee;
 	padding: 5px;
 }
-.nextprev {
-	font-size: 95% !important
-}
 .Mrphs-siteHierarchy {
 	display:flex
 }
@@ -171,11 +170,20 @@ div.action span .nextbutton, .Mrphs-siteHierarchy span .nextbutton{
 	border-width: 2px;
 }
 .instructionPanel,.controlsPanel {
-    border:1px solid #ccc;
+    border:1px solid #bbb;
     font-size:12px;
-    background: #eee;
+    background: #ddd;
     padding:5px;
     margin:5px 0
+}
+.indent {
+    margin-left: 10px;
+}
+.grouplist {
+    margin-left: 20px;
+    border:1px solid #bbb;
+    background: #ddd;
+    padding: 5px;
 }
 .controlsPanel {
     padding:0;
@@ -195,6 +203,11 @@ div.action span .nextbutton, .Mrphs-siteHierarchy span .nextbutton{
     color: #c00 !important;    
     text-shadow:none !important;
 
+}
+.mainList .narrow-instruction {
+    padding-top:5px;
+    padding-bottom:5px;
+    margin-bottom: 0px;
 }
 .act .deleteButton {
     float: none
@@ -266,6 +279,9 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
 	text-decoration: none !important;
 	background-color: #eee;
 }
+.border2.controlsPanel label.mm-file {
+    padding-left: 0;
+}
 .mm-file-input {
 	display:inline;
 }
@@ -279,8 +295,11 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
 .mm-file-input-itemname {
 	margin-left: 1.0em;
 }
-#edit-title {
-	margin-left: 1em
+.add-another-file-div {
+	padding: 10px;
+	padding-top: 0px;
+	background-color: #ddd;
+	border: 1px solid #bbb;
 }
 .ui-button-text {
 	padding: 0.25em 0.8em !important
@@ -340,7 +359,7 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
 
 /* padding-top 35 for one col, 25 for multiple, 20 in narrow screen */
 .column {
-    margin: 7px 15px;
+    margin: 7px 0;
     padding: 15px 7px;
     padding-top: 25px;
     list-style:none;
@@ -355,7 +374,7 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
 
 /* only up to 4 cols has been tuned */
 .cols9 {
-    width: calc(100$ / 9  - 17px) !important;
+    width: calc(100% / 9  - 17px) !important;
     margin-right: 2px !important;
 }
 [class~="cols9"][class~="double"] {
@@ -430,11 +449,11 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
   padding-right: 7px;
 }
 
-.split ul {
+.split .mainList {
     -webkit-column-count: 2;
     -moz-column-count: 2;
     column-count: 2;
-}
+} 
 .split .edit-col {
     right:0px;
 }
@@ -450,7 +469,7 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
    make them subjectively the same darkness.
 */
 /* default */
-.column .commentDiv, .column .studentContentTable, .column .questionDiv .contentCol, .column .checklistDiv, .column .forumSummaryHeaderDiv, .column .announcementsHeaderDiv {
+.column .commentDiv, .column .studentContentTable, .column .questionDiv .contentCol, .column .checklistDiv, .column .forumSummaryHeaderDiv, .column .announcementsHeaderDiv, .column .fc-toolbar {
   background-color: #b3ecff;
 }
 .column a[href]{
@@ -460,7 +479,7 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
    background-color: #f0f0f0;
    border-color: #222;
 }
-.colgray .commentDiv, .colgray .studentContentTable, .colgray .questionDiv .contentCol, .colgray .checklistDiv, .colgray .forumSummaryHeaderDiv, .colgray .announcementsHeaderDiv {
+.colgray .commentDiv, .colgray .studentContentTable, .colgray .questionDiv .contentCol, .colgray .checklistDiv, .colgray .forumSummaryHeaderDiv, .colgray .announcementsHeaderDiv, .colgray .fc-toolbar {
   background-color: #b8b8b8;
 }
 .colgray a[href]{
@@ -471,7 +490,7 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
    border-color: #600;
    color: #4660000;
 }
-.colred .commentDiv, .colred .studentContentTable, .colred .questionDiv .contentCol, .colred .checklistDiv, .colred .forumSummaryHeaderDiv, .colred .announcementsHeaderDiv {
+.colred .commentDiv, .colred .studentContentTable, .colred .questionDiv .contentCol, .colred .checklistDiv, .colred .forumSummaryHeaderDiv, .colred .announcementsHeaderDiv, .colred .fc-toolbar {
   background-color: #ffb3b3;
 }
 .colred a[href], .colred h3.author {
@@ -483,7 +502,7 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
    border-color: #004;
    color: #004;
 }
-.colblue .commentDiv, .colblue .studentContentTable, .colblue .questionDiv .contentCol, .colblue .checklistDiv, .colblue .forumSummaryHeaderDiv, .colblue .announcementsHeaderDiv {
+.colblue .commentDiv, .colblue .studentContentTable, .colblue .questionDiv .contentCol, .colblue .checklistDiv, .colblue .forumSummaryHeaderDiv, .colblue .announcementsHeaderDiv, .colblue .fc-toolbar {
   background-color: #b3d9ff;
   background-color: #99e7ff;
 }
@@ -495,7 +514,7 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
    border-color: #030;
    color: #030;
 }
-.colgreen .commentDiv, .colgreen .studentContentTable, .colgreen .questionDiv .contentCol, .colgreen .checklistDiv. .colgreen .forumSummaryHeaderDiv, .colgreen .announcementsHeaderDiv  {
+.colgreen .commentDiv, .colgreen .studentContentTable, .colgreen .questionDiv .contentCol, .colgreen .checklistDiv, .colgreen .forumSummaryHeaderDiv, .colgreen .announcementsHeaderDiv, .colgreen .fc-toolbar {
   background-color: #9fc;
 }
 .colgreen a[href] {
@@ -506,7 +525,7 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
    border-color: #840;
    color: #4b2600;
 }
-.colyellow .commentDiv, .colyellow .studentContentTable, .colyellow .questionDiv .contentCol, .colyellow .checklistDiv. colyellow .forumSummaryHeaderDiv, .colyellow .announcementsHeaderDiv {
+.colyellow .commentDiv, .colyellow .studentContentTable, .colyellow .questionDiv .contentCol, .colyellow .checklistDiv, .colyellow .forumSummaryHeaderDiv, .colyellow .announcementsHeaderDiv, .colyellow .fc-toolbar {
   background-color:  #ffd480
 }
 .colyellow a[href],.colyellow h3.author {
@@ -518,33 +537,33 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
 .columnopen, .addbottom {
   text-decoration: none;
 }
-.mainList li {
+.mainList div.item {
     position: relative;
 }
-.mainList li.canEdit > div.edit-col {
+.mainList div.canEdit > div.edit-col {
     vertical-align:top;
     padding-top: 0.35em;
     padding-left: 0;
     z-index:4
 }
-.mainList li.canEdit > div.edit-col {
+.mainList div.canEdit > div.edit-col {
     display: inline-block;
 }
-.mainList li.question, .mainList li.studentContentType  {
+.mainList div.question, .mainList div.studentContentType  {
     margin-top: 10px;
     margin-bottom: 20px;
 }
-.mainList li.commentsType {
+.mainList div.commentsType {
     margin-top: 10px;
     margin-bottom: 0px;
 }
-.mainList li.textType, .mainList li.multimediaType, .mainList li.checklistType {
+.mainList div.textType, .mainList div.multimediaType, .mainList div.checklistType {
     margin-top: 10px;
     margin-bottom: 10px;
 } 
-.mainList li.question .multipleChoiceAnswer {
+.mainList div.question .multipleChoiceAnswer {
 }
-.mainList li.question .multipleChoiceForm input.bold {
+.mainList div.question .multipleChoiceForm input.bold {
 }
 .multipleChoiceAnswer label {
   margin-left: 5px;
@@ -557,15 +576,21 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
 }
 .questionStatusText {
 }
-.mainList li .textbox {
+.mainList .textbox ul {
+
+}
+.mainList .textbox ul.forumSummaryList, .mainList .textbox ul.announcementSummaryList {
+    display: inherit;
+}
+.mainList div.item .textbox {
 
 }
 /*maybe a universal selector, instead of a p*/
-.mainList li .textbox p:first-child{
+.mainList div.item .textbox p:first-child{
     margin-top:0;
 }
 /*maybe a universal selector, instead of a p*/
-.mainList li .textbox p:last-child{
+.mainList div.item .textbox p:last-child{
     margin-bottom:0;
 }
 
@@ -598,16 +623,19 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
 	padding: 0px 4px !important;
 }
 .edit-col .ui-button-text, #submit-grading .ui-button-text, .portalmenu .ui-button-text {
-	font-size: 60%;
+	font-size: 90%;
 }
 .buttonItem {
 	padding-left: 20px
 }
 .offscreen {
-	/* from drupal */
+	/* from global skip */
 	position: absolute !important;
+	height: 1px; width: 1px; 
+	overflow: hidden;
 	clip: rect(1px 1px 1px 1px); /* IE6, IE7 */
 	clip: rect(1px, 1px, 1px, 1px);
+	clip-path: polygon(0px 0px, 0px 0px,0px 0px, 0px 0px);
 }
 .columnSetup2 {
     padding:5px;
@@ -631,6 +659,12 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
 } 
 .flc-reorderer-module:hover {
     border:1px solid #000;
+}
+.reorderItemsContainer {
+    min-height: 60px;
+}
+.ui-sortable-handle {
+    cursor: move;
 }
 .reordSeqContainer {
     position: absolute;
@@ -882,6 +916,9 @@ a.peer-eval-stats {
     margin-left: 2em;
     font-size: 110%;
 }
+.missingStudentTitle {
+    margin-left: 23px;
+}
 .studentContentTable {
         margin-top:10px;
 	border: none;
@@ -897,7 +934,9 @@ a.peer-eval-stats {
 .studentContentTable .studentLink{
     padding-left:8px;
 }
-
+.studentContentTable .missingStudent {
+    padding-left:43px;
+}
 
 .duecol {
 	padding-left: 2em !important
@@ -905,23 +944,12 @@ a.peer-eval-stats {
 
 /* negative bottom margin because we set a top margin for the section below for the case where there's no toolbar */
 #toolbar {
-  padding:2px;
-  margin:0px;
-  margin-bottom:-10px;
-  display:inline-block !important;
+  margin: 0;
+  margin-bottom: -10px;
+  display: inline-block;
 }
 
 /* Dropdown Menu */
-ul#toolbar li {
-	display: inline;
-	position: relative;
-}
-ul#toolbar li.dropdown a {
-    text-decoration:none
-}
-ul#toolbar li em {
-    font-style:normal;
-}
 .dropDownDiv {
 	position: absolute;
 	width: 350px;
@@ -972,7 +1000,6 @@ ul#toolbar li em {
 }
 .lessons-siteHierarchy-title {
    font-weight: bold;
-   margin-left: 0.5em;
 }
 .itemAction {
   padding-top: 0px;
@@ -986,7 +1013,6 @@ span.nextprev {
   margin-right: 0.5em;
 }
 a.nextprev {
-	margin-left: 5px !important;
 	margin-right: 0px !important;
 }
 img {
@@ -1054,7 +1080,7 @@ img {
  color:#000;
  font-weight: normal;
 }
-.forumSummaryList{
+.forumSummaryList, .announcementSummaryList{
  list-style: none;
  padding: 0 15px;
  font-family: 'Segoe UI', Segoe, Tahoma, Helvetica, Arial, sans-serif;
@@ -1122,23 +1148,24 @@ img {
 	margin-bottom: 0.5em;
 	margin-top: 0em;
 }
-
+.twitter-div{
+ overflow-y: auto;
+ float: left;margin:
+ 0 10.0px 20.0px 0;
+ border: solid #999 1px;
+ border-radius: 0px 0px 10px 10px;
+ clear: right;
+}
+.edit-twitter-div{
+float:left;
+}
 #question-text-input {
 	width: 400px;
 }
 .question-multiplechoice-answer, .question-shortanswer-answer {
 	width: 250px;
 }
-
-.addStudentContent {
- -webkit-border-radius: 3px;
- -moz-border-radius: 3px;
- border-radius: 3px;
- border:solid black 1px;
- text-decoration:none;
- font-size:85%;
-}
-input[type="submit"].question-submit,.addStudentContent {
+input[type="submit"].question-submit,.linkCell .addStudentContent, input[type="submit"].setStudentZero {
    margin: inherit;
    margin-top:15px;
    border:1px solid #999;
@@ -1154,6 +1181,15 @@ input[type="submit"].question-submit,.addStudentContent {
    border-radius: 3px;
    position: static;
 }
+.linkCell .addStudentContent {
+ -webkit-border-radius: 3px;
+ -moz-border-radius: 3px;
+ background-image:none;
+ border-radius: 3px;
+ border:solid #999 1px;
+ text-decoration:none;
+ margin-top:0px;
+}
 
 .questionDiv .contentCol, .checklistDiv {
  margin-top:5px;
@@ -1166,6 +1202,11 @@ input[type="submit"].question-submit,.addStudentContent {
 }
 .checklistDiv {
  padding-right: 15px;
+ width: 100%;
+ max-width: 500px;
+}
+.checklistDiv .checklistDescription {
+ width: auto;
 }
 .questionDivControl {
  margin-top: 5px;
@@ -1240,19 +1281,22 @@ div[role="dialog"] {
     display: none !important;
 }
 .neoPortletTitleWrap {
-    border-radius:0
+    border-radius:0;
+    top: 25px;
 }
 .portletTitle {
     width: 100%;
     height: 100%;
 }
 .action {
-  display:inline-block;
-  float:right !important;
+  float: right;
+  clear: both;
 }
-.action {
-  margin-top: 5px;
-}			      
+.action a {
+  margin-top: 0;
+  margin-right: 0;
+  margin-left: 3px;
+}
 .Mrphs-siteHierarchy {
     height: auto !important;
 }
@@ -1338,7 +1382,6 @@ div[role="dialog"] {
 }
 
 .right-col {
-  display: inline-block; /* probably no longer needed */
   -webkit-column-break-inside: avoid; /* Chrome, Safari, Opera */
   page-break-inside: avoid; /* Firefox */
   break-inside: avoid; /* standard, IE 10+ */
@@ -1413,27 +1456,22 @@ padding: 10px 15px 0 15px
 div.navIntraTool {
   border-top:none;
 }
-
 /* temporary, to avoid changing old stuff for the moment */
 .edit-col {
   padding-top: 0px !important;
-}
-.mainList > li {
-  margin-top: 0px !important;
-  margin-bottom: 0px !important;
 }
 .image-col {
  display: inline-block;
 }
 
 .edit-col {
-margin-top:5px;
+margin-top:4px;
 display:inline-block;
 position:absolute;
 background-color:#eee;
 top:-5px;
 right:-8px;
-z-index: 900;
+z-index: 15;
 -webkit-border-radius: 3px;
 -moz-border-radius: 3px;
 border-radius: 3px;
@@ -1443,7 +1481,35 @@ padding:1px;
 .edit-col span {
 color: #666;
 }
+.calendar-div{
+max-width: 650px;
+border: solid #999 1px;
+border-radius: 0px 0px 10px 10px;
+}
 
+.eventAttachmentList{
+display: inline-table;
+}
+
+eventAttachmentItem{
+list-style-type: none;
+}
+.fc-event{
+cursor: pointer;
+margin-bottom: 6px; /*to add space between two events*/
+}
+.fc-state-default {
+color: #333 !important;
+}
+.fc-toolbar {
+padding: 10px 15px;
+}
+.fc-button-group {
+box-shadow: none !important;
+text-shadow: none !important;
+border: none !important;
+background: none !important;
+}
 .sectionHeader {
     padding: .5em;
 }
@@ -1515,8 +1581,8 @@ color: #666;
 }
 .sectionedit {
    display:inline-block;
-   background-color:#eee;
-   z-index: 900;
+   background-color:#ddd;
+   z-index: 15;
    -webkit-border-radius: 3px;
    -moz-border-radius: 3px;
    border-radius: 3px;
@@ -1564,7 +1630,7 @@ margin-left: 0px;
 
 li.listType .contentCol {
 }
-li.question .contentCol
+li.question .contentCol {
 }
 /* links should be spaced as close as possible to each other, so override padding */
 li.resourceType .right-col {
@@ -1577,23 +1643,13 @@ li.resourceType .right-col {
  border:none;
 }
 .itemclass {
- margin-top:3.0em !important;
-}
-.add-comment-button span {
-font-size: 90%;
+  margin-top: 2.0em !important;
 }
 .add-comment-button a {
  padding: 3px 7px;
 }
 .questionDivControl a, .commentsDiv a.gradingPaneLink{
  padding: 5px 10px;
-}
-
-/* in full width mode, if we don't do this, and the
-   first region is split, the right column doesn't fit
-   must be overridden for narrow format */
-.Mrphs-container--toolTitleNav {
-  margin-bottom:-30px !important;
 }
 
 /* for ShowItem */
@@ -1611,17 +1667,14 @@ font-size: 12px;
   margin-bottom:0px;
 }
 
-.forumSummaryItem{
+.forumSummaryItem, .announcementSummaryItem{
  margin-bottom: 10px;
+ display: inline-block;
 }
 
 .itemTitle {
   line-height:10px;
   margin-bottom:5px;
-}
-/* fit the actual height, so it doesn't overlap title */
-.Mrphs-toolTitleNav__button_container {
-  height: 30px;
 }
 .portletBody {
   margin-top:2px;
@@ -1632,7 +1685,7 @@ font-size: 12px;
 /* 800 is when the left margin collapses */
 @media only screen and (max-width: 800px) {
 .Mrphs-container--toolTitleNav {
-  margin-bottom: 0px !important;
+  margin-bottom: 10px !important;
 }
 .genTitle {
   display:none;
@@ -1646,7 +1699,7 @@ div.portletBody[sakaiversion="12"] {
   margin-top:-5px;
 }
 .itemclass {
-  margin-top: 0.5em !important;
+  margin-top: 2em !important;
 }
 .itemTitle {
   width: calc(100% - 100px);
@@ -1665,11 +1718,12 @@ div.portletBody[sakaiversion="12"] {
   padding-left: 7px;
   padding-right: 7px;
 }
-.split ul {
+
+.split .mainList {
     -webkit-column-count: 1;
     -moz-column-count: 1;
     column-count: 1;
-}
+} 
 /* with narrow screen, don't use multiple columns */
 .cols1, .cols2, .cols3, .cols4, .cols5, .cols6, .cols7, .cols8, .cols9, 
 [class~="cols9"][class~="double"],
@@ -1728,11 +1782,6 @@ span.nextprev {
 .fa-button-text{
   font-size:125%;
 }
-.navIntraTool li.contentButton a, .topaction a {
-  padding-top:2px !important;
-  padding-bottom:2px !important;
-  text-transform: uppercase;
-}
 .navIntraTool li.contentButton a .fa-button-text, .fa-fw {
   font-family:FontAwesome;
   font-size: 0.8em;
@@ -1757,7 +1806,7 @@ span.nextprev {
   font-size:16px;
   font-family:FontAwesome;
 }
-.mainList li:hover.canEdit {
+.mainList div:hover.canEdit {
     background-color: #eee;
 }
 .peer-eval-row .newPeerCell {
@@ -1767,18 +1816,6 @@ span.nextprev {
 /* nothing - used to save information */
 }
 
-.Mrphs-siteHierarchy span:last-child {
-  margin-left: 6px;
-}
-.contentButton span a {
-  height: 24px;
-}
-.contentButton {
-  height: 26px;
-  line-height: 21px;
-  margin-top: 3px !important;
-  z-index:900;
-}
 .Mrphs-siteHierarchy .action .lessonsToolButton {
   background-color: transparent;
   padding-top: 1px;
@@ -1822,7 +1859,7 @@ body > .portletBody {
 }
 /* put back default value if an instructor */
 .navIntraTool ~ div.itemclass {
-  margin-top: 3.0em !important;
+  margin-top: 2.0em !important;
 }
 .title-tools {
   float:none;
@@ -1860,7 +1897,7 @@ body > .portletBody > .action {
 }
 
 .cols9 {
-    width: calc(100$ / 9  - 32px) !important;
+    width: calc(100% / 9  - 32px) !important;
 }
 [class~="cols9"][class~="double"] {
     width: calc(200% / 9 - 32px) !important;
@@ -1918,13 +1955,8 @@ body > .portletBody > .action {
    elements of Morpheus. */
 
 /* directURL popup */
-nav.Mrphs-container--toolTitleNav {
+nav.Mrphs-container--toolTitleNav .Mrphs-directUrl__dropDown .active {
         z-index: 100001 !important;
-}
-/* menu off user icon, site menu in narrow, site menu in  wide mode */
-.Mrphs-mainHeader, .Mrphs-skipNav__menu, #selectSiteModal {
-        z-index: 100002 !important;
-	position:relative;
 }
 /* chat open button */
 #Mrphs-footerApp__chat {
@@ -1939,10 +1971,6 @@ nav.Mrphs-container--toolTitleNav {
     font-size: 100%;
     font-weight: normal;
     color: #000;
-}
-.checklistDiv h3 {
-    margin-top: 0px;
-    font-size: 100%;
 }
 .checklistSaveMessage {
     font-family:Arial, Helvetica, sans-serif;
@@ -1959,6 +1987,7 @@ nav.Mrphs-container--toolTitleNav {
 .saveChecklistError {
     color: #D8000C;
     background-image: url('../images/failed.png');
+    background-size: 16px 16px;
 }
 .saveChecklistSaving {
     margin-left: 2em;
@@ -1968,4 +1997,99 @@ nav.Mrphs-container--toolTitleNav {
     padding: .5em;
     margin: .5em 0;
     border: 1px solid #ccc;
+}
+
+.Mrphs-sakai-lessonbuildertool .navIntraTool.top-next-prev {
+    margin-top: 20px;
+}
+
+.top-next-prev.navIntraTool > li {
+    display: block;
+}
+
+.top-next-prev .nextprev.prev {
+    float: left;
+}
+
+.top-next-prev .nextprev.next {
+    float: right;
+}
+
+.subpage-breadcrumb-div {
+    margin-top: 1.5em;
+    margin-bottom: -1em
+}
+
+/*
+	This CSS should be deleted in the moment Lessons doesn't use iframes to include other tools inside itself. 
+*/
+form#revise[action$=dfReviseForumSettingsAttach] label {
+  font-weight: 400;
+  margin: 1em 0 0.25em 0;
+}
+form#revise[action$=dfReviseForumSettingsAttach] label input[type=radio] {
+  margin: 0 0.5em 0 0;
+}
+form#revise[action$=dfReviseForumSettingsAttach] label[for*=forum_assignments] {
+  margin-top: 0;
+}
+form#revise[action$=dfReviseForumSettingsAttach] input[type=text], form#revise[action$=dfReviseForumSettingsAttach] textarea {
+  width: 100%;
+}
+form#revise[action$=dfReviseForumSettingsAttach] input[type=text].hasDatepicker, form#revise[action$=dfReviseForumSettingsAttach] textarea.hasDatepicker {
+  display: inline-block;
+  margin: 0 4px 0 0;
+  width: calc(100% - 62px);
+}
+form#revise[action$=dfReviseForumSettingsAttach] .jsfFormTable, form#revise[action$=dfReviseForumSettingsAttach] .shorttext, form#revise[action$=dfReviseForumSettingsAttach] .longtext {
+  width: 100%;
+}
+form#revise[action$=dfReviseForumSettingsAttach] table {
+  width: 100%;
+}
+form#revise[action$=dfReviseForumSettingsAttach] .checkbox {
+  display: block;
+  margin: 0 0 0 0;
+}
+form#revise[action$=dfReviseForumSettingsAttach] .checkbox input[type=radio] {
+  margin-left: -10px;
+  margin-right: 11px;
+  position: relative;
+}
+form#revise[action$=dfReviseForumSettingsAttach] .checkbox input[type=checkbox] {
+  margin-left: 10px;
+  position: inherit;
+}
+form#revise[action$=dfReviseForumSettingsAttach] .checkbox input[type=checkbox] + label {
+  padding-left: 10px;
+  padding-right: 40px;
+}
+@media only screen and (max-width: 800px) {
+  form#revise[action$=dfReviseForumSettingsAttach] .checkbox input[type=checkbox] + label {
+    max-width: calc(100% - 50px);
+    vertical-align: middle;
+  }
+}
+form#revise[action$=dfReviseForumSettingsAttach] .checkbox.openDateSpan label {
+  font-weight: 700;
+  padding-left: 0;
+}
+form#revise[action$=dfReviseForumSettingsAttach] .act {
+  margin: 1em 0 0 0;
+}
+form#revise[action$=dfReviseForumSettingsAttach] .permissionRow label {
+  margin: 0 0 0 0;
+}
+form#revise[action$=dfReviseForumSettingsAttach] .messageInstruction {
+  display: inline;
+}
+form#revise[action$=dfReviseForumSettingsAttach] #forum_grading {
+  margin-top: 2em;
+}
+@media only screen and (max-width: 800px) {
+  form#revise[action$=dfReviseForumSettingsAttach] .messageInstruction {
+    display: inline-block;
+    margin: 0 0 0 0;
+    padding: 3px 0 3px 6px;
+  }
 }

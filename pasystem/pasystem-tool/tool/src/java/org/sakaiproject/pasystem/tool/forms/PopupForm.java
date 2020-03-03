@@ -28,25 +28,26 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
 import javax.servlet.http.HttpServletRequest;
+
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.fileupload.disk.DiskFileItem;
+
 import org.sakaiproject.pasystem.api.Errors;
 import org.sakaiproject.pasystem.api.PASystem;
 import org.sakaiproject.pasystem.api.MissingUuidException;
 import org.sakaiproject.pasystem.api.Popup;
 import org.sakaiproject.pasystem.api.TemplateStream;
 import org.sakaiproject.pasystem.tool.handlers.CrudHandler;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Maps to and from the popup HTML form and a popup data object.
  */
 @Data
+@Slf4j
 public class PopupForm extends BaseForm {
-
-    private static final Logger LOG = LoggerFactory.getLogger(PopupForm.class);
 
     private final String descriptor;
     private final boolean isOpenCampaign;
@@ -124,6 +125,14 @@ public class PopupForm extends BaseForm {
             errors.addError("template", "template_was_missing");
         }
 
+        List<String> acceptedTemplateMimetypes = new ArrayList<String>();
+        acceptedTemplateMimetypes.add("text/html");
+        acceptedTemplateMimetypes.add("text/plain");
+        acceptedTemplateMimetypes.add("text/xml");
+        if (templateItem.isPresent() && !acceptedTemplateMimetypes.contains(templateItem.get().getContentType())) {
+            errors.addError("template", "template_wrong_mimetype");
+        }
+
         Errors modelErrors = toPopup().validate();
 
         return errors.merge(modelErrors);
@@ -139,7 +148,7 @@ public class PopupForm extends BaseForm {
                         templateItem.get().getSize()));
             }
         } catch (IOException e) {
-            LOG.error("IOException while fetching template stream", e);
+            log.error("IOException while fetching template stream", e);
         }
 
         return Optional.empty();

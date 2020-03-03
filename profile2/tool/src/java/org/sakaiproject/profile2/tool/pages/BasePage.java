@@ -19,9 +19,7 @@ import java.util.Locale;
 
 import javax.servlet.http.HttpServletRequest;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.behavior.AttributeAppender;
 import org.apache.wicket.markup.head.CssHeaderItem;
@@ -40,6 +38,7 @@ import org.apache.wicket.spring.injection.annot.SpringBean;
 import org.apache.wicket.util.cookies.CookieDefaults;
 import org.apache.wicket.util.cookies.CookieUtils;
 import org.apache.wicket.util.string.StringValue;
+import org.sakaiproject.portal.util.PortalUtils;
 import org.sakaiproject.profile2.logic.ProfileConnectionsLogic;
 import org.sakaiproject.profile2.logic.ProfileExternalIntegrationLogic;
 import org.sakaiproject.profile2.logic.ProfileImageLogic;
@@ -54,9 +53,10 @@ import org.sakaiproject.profile2.logic.SakaiProxy;
 import org.sakaiproject.profile2.util.ProfileConstants;
 import org.sakaiproject.profile2.util.ProfileUtils;
 
-public class BasePage extends WebPage implements IHeaderContributor {
+import lombok.extern.slf4j.Slf4j;
 
-	private static final Logger log = LoggerFactory.getLogger(BasePage.class);
+@Slf4j
+public class BasePage extends WebPage implements IHeaderContributor {
 
 	@SpringBean(name = "org.sakaiproject.profile2.logic.SakaiProxy")
 	protected SakaiProxy sakaiProxy;
@@ -93,6 +93,7 @@ public class BasePage extends WebPage implements IHeaderContributor {
 
 	Link<Void> myPicturesLink;
 	Link<Void> myProfileLink;
+	Link<Void> otherProfileLink;
 	Link<Void> myFriendsLink;
 	Link<Void> myMessagesLink;
 	Link<Void> myPrivacyLink;
@@ -113,7 +114,7 @@ public class BasePage extends WebPage implements IHeaderContributor {
 		// get currentUserUuid
 		final String currentUserUuid = this.sakaiProxy.getCurrentUserId();
 
-		// profile link
+		// my profile link
 		this.myProfileLink = new Link<Void>("myProfileLink") {
 			private static final long serialVersionUID = 1L;
 
@@ -130,6 +131,18 @@ public class BasePage extends WebPage implements IHeaderContributor {
 		}
 
 		add(this.myProfileLink);
+
+		// other profile link
+		this.otherProfileLink = new Link<Void>("otherProfileLink") {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void onClick() {
+			}
+		};
+		this.otherProfileLink.add(new Label("otherProfileLabel", new Model("INVISIBLE")));
+		this.otherProfileLink.setVisible(false);
+		add(this.otherProfileLink);
 
 		// my pictures link
 		this.myPicturesLink = new Link<Void>("myPicturesLink") {
@@ -278,10 +291,12 @@ public class BasePage extends WebPage implements IHeaderContributor {
 		}
 		response.render(OnLoadHeaderItem.forScript("setMainFrameHeight( window.name )"));
 
+		String version = PortalUtils.getCDNQuery();
+
 		// Tool additions (at end so we can override if required)
 		response.render(StringHeaderItem.forString("<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />"));
-		response.render(CssHeaderItem.forUrl("/profile2-tool/css/profile2.css"));
-		response.render(JavaScriptHeaderItem.forUrl("/profile2-tool/javascript/profile2.js"));
+		response.render(CssHeaderItem.forUrl(String.format("/profile2-tool/css/profile2.css%s", version)));
+		response.render(JavaScriptHeaderItem.forUrl(String.format("/profile2-tool/javascript/profile2.js%s", version)));
 
 	}
 

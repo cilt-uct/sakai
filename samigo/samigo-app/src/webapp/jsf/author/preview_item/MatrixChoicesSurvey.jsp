@@ -36,11 +36,11 @@
                          value="#{question.itemData.rowChoices}"
                          var="row"
                          rowIndexVar="rowIndex"
-                         columnClasses="Tablecolumn"
+                         columnClasses="matrixColumn"
                          rowClasses=""
                          frame="border"
                          rules="rows"
-                         styleClass="TableClass">
+                         styleClass="matrixTable">
                 <t:column headerstyle="#{question.itemData.relativeWidthStyle}" style="text-align:right;padding-left:0.3em" >
                     <f:facet name="header">
                         <t:outputText value="                "/>
@@ -67,3 +67,5 @@
   <h:outputLabel value="#{commonMessages.feedback}: " />
   <h:outputText value="#{question.itemData.generalItemFeedback}" escape="false" />
 </h:panelGroup>
+
+<%@ include file="/jsf/author/preview_item/tags.jsp" %>

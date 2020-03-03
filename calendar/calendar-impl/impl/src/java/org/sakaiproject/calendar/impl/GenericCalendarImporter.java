@@ -23,7 +23,6 @@ package org.sakaiproject.calendar.impl;
 
 import java.io.InputStream;
 import java.text.DateFormat;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -35,8 +34,12 @@ import java.util.Map;
 import java.util.Stack;
 import java.util.Vector;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
 import org.sakaiproject.calendar.api.Calendar;
 import org.sakaiproject.calendar.api.CalendarEvent;
 import org.sakaiproject.calendar.api.CalendarEventEdit;
@@ -56,19 +59,15 @@ import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.time.api.Time;
 import org.sakaiproject.time.api.TimeRange;
 import org.sakaiproject.time.api.TimeService;
-import org.sakaiproject.util.FormattedText;
 import org.sakaiproject.util.ResourceLoader;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
+import org.sakaiproject.util.api.FormattedText;
 
 /**
  * This class provides common importing functionality after a lower-level reader has taken care of the peculiarities of a given import format.
  */
+@Slf4j
 public class GenericCalendarImporter implements CalendarImporterService
 {
-	/** Our logger. */
-	private static Logger M_log = LoggerFactory.getLogger(GenericCalendarImporter.class);
-
 	public static final String LOCATION_PROPERTY_NAME = "Location";
 
 	public static final String LOCATION_DEFAULT_COLUMN_HEADER = "Location";
@@ -126,42 +125,44 @@ public class GenericCalendarImporter implements CalendarImporterService
 	public static final String ACTUAL_TIMERANGE = "ActualStartTime";
 
 	// Map of readers for various formats. Keyed by import type.
-	private final Map readerMap = new HashMap();
+	private final Map<String, Class<? extends Reader>> readerMap = new HashMap<>();
 	
 	protected Map<String, String> columnMap = null;
-
-	private DateFormat timeFormatter()
-	{
-		DateFormat rv = new SimpleDateFormat("hh:mm a");
-		rv.setLenient(false);
-		return rv;
-	}
-
-	private DateFormat timeFormatterWithSeconds()
-	{
-		return new SimpleDateFormat("hh:mm:ss a");
-	}
-
-	private DateFormat time24HourFormatter()
-	{
-		DateFormat rv = new SimpleDateFormat("HH:mm");
-		rv.setLenient(false);
-		return rv;
-	}
-
-	private DateFormat time24HourFormatterWithSeconds()
-	{
-		DateFormat rv = new SimpleDateFormat("HH:mm:ss");
-		rv.setLenient(false);
-		return rv;
-	}
-
+	
 	private static ResourceLoader rb = new ResourceLoader("calendar");
 
 	// These are injected at runtime by Spring.
 	private CalendarService calendarService = null;
 
 	private TimeService timeService = null;
+	
+	@Setter private FormattedText formattedText;
+
+	static DateFormat timeFormatter()
+	{
+		DateFormat rv = new SimpleDateFormat("hh:mm a");
+		rv.setLenient(false);
+		return rv;
+	}
+
+	static DateFormat timeFormatterWithSeconds()
+	{
+		return new SimpleDateFormat("hh:mm:ss a");
+	}
+
+	static DateFormat time24HourFormatter()
+	{
+		DateFormat rv = new SimpleDateFormat("HH:mm");
+		rv.setLenient(false);
+		return rv;
+	}
+
+	static DateFormat time24HourFormatterWithSeconds()
+	{
+		DateFormat rv = new SimpleDateFormat("HH:mm:ss");
+		rv.setLenient(false);
+		return rv;
+	}
 
 	/*
 	 * This class is used as a "prototype" event that may be added to a real calendar. We emulate enough of a calendar event to hold all the information necessary to create a real event.
@@ -185,6 +186,8 @@ public class GenericCalendarImporter implements CalendarImporterService
 		private TimeRange timeRange;
 
 		private int lineNumber;
+		
+		private String creator;
 
 		/**
 		 * Default constructor
@@ -221,7 +224,7 @@ public class GenericCalendarImporter implements CalendarImporterService
 		 */
 		public String getDescription()
 		{
-			return FormattedText.convertFormattedTextToPlaintext(description);
+			return formattedText.convertFormattedTextToPlaintext(description);
 		}
 
 		/*
@@ -416,7 +419,7 @@ public class GenericCalendarImporter implements CalendarImporterService
 		 */
 		public void setDescription(String description)
 		{
-			this.description = FormattedText.convertPlaintextToFormattedText(description);
+			this.description = formattedText.convertPlaintextToFormattedText(description);
 		}
 
 		/*
@@ -440,7 +443,7 @@ public class GenericCalendarImporter implements CalendarImporterService
 		}
 
 		/**
-		* Returns true if current user is thhe event's owner/creator
+		* Returns true if current user is the event's owner/creator
 		* @return boolean true or false
 		*/
 		public boolean isUserOwner()
@@ -469,6 +472,11 @@ public class GenericCalendarImporter implements CalendarImporterService
 			// Stub routine only
 
 		} // setCreator
+		
+		public void setCreator(String creator)
+		{
+			this.creator = creator;
+		}
 
 		/**
 		* Gets the event modifier (userid), if any (cover for PROP_MODIFIED_BY).
@@ -702,7 +710,14 @@ public class GenericCalendarImporter implements CalendarImporterService
 	public List doImport(String importType, InputStream importStream, Map columnMapping, String[] customFieldPropertyNames)
 			throws ImportException
 	{
-		final List rowList = new ArrayList();
+		return doImport(importType, importStream, columnMapping, customFieldPropertyNames, null);
+	}
+	
+
+	public List doImport(String importType, InputStream importStream, Map columnMapping, String[] customFieldPropertyNames, String userTzid)
+			throws ImportException
+	{
+		final List rowList;
 		final Reader scheduleImport;
 
 		try
@@ -740,238 +755,18 @@ public class GenericCalendarImporter implements CalendarImporterService
 		columnMap = scheduleImport.getDefaultColumnMap();
 		
 		// Read in the file.
-		scheduleImport.importStreamFromDelimitedFile(importStream, new Reader.ReaderImportRowHandler()
-		{
-			String frequencyColumn = columnMap.get(FREQUENCY_DEFAULT_COLUMN_HEADER);
-			String startTimeColumn = columnMap.get(START_TIME_DEFAULT_COLUMN_HEADER);
-			String endTimeColumn = columnMap.get(END_TIME_DEFAULT_COLUMN_HEADER);
-			String durationTimeColumn = columnMap.get(DURATION_DEFAULT_COLUMN_HEADER);
-			String dateColumn = columnMap.get(DATE_DEFAULT_COLUMN_HEADER);
-			String endsColumn = columnMap.get(ENDS_DEFAULT_COLUMN_HEADER);
-			String intervalColumn = columnMap.get(INTERVAL_DEFAULT_COLUMN_HEADER);
-			String repeatColumn = columnMap.get(REPEAT_DEFAULT_COLUMN_HEADER);
-			
-			// This is the callback that is called for each row.
-			public void handleRow(Iterator columnIterator) throws ImportException
-			{
-				final Map eventProperties = new HashMap();
+		GenericImportRowHandler handler = new GenericImportRowHandler(columnMap, rb);
+		String calendarTzid = scheduleImport.importStreamFromDelimitedFile(importStream, handler);
+		rowList = handler.getRowList();
 
-				// Add all the properties to the map
-				while (columnIterator.hasNext())
-				{
-					Reader.ReaderImportCell column = (Reader.ReaderImportCell) columnIterator.next();
-
-					String value = column.getCellValue().trim();
-					Object mapCellValue = null;
-
-					// First handle any empy columns.
-					if (value.length() == 0)
-					{
-						mapCellValue = null;
-					}
-					else
-					{
-						if (frequencyColumn != null && frequencyColumn.equals(column.getColumnHeader()))
-						{
-							mapCellValue = column.getCellValue();
-						}
-						else if (endTimeColumn != null && endTimeColumn.equals(column.getColumnHeader())
-								|| (startTimeColumn != null && startTimeColumn.equals(column.getColumnHeader())))
-						{
-							boolean success = false;
-
-							try
-							{
-								mapCellValue = timeFormatter().parse(value);
-								success = true;
-							}
-
-							catch (ParseException e)
-							{
-								// Try another format
-							}
-
-							if (!success)
-							{
-								try
-								{
-									mapCellValue = timeFormatterWithSeconds().parse(value);
-									success = true;
-								}
-
-								catch (ParseException e)
-								{
-									// Try another format
-								}
-							}
-
-							if (!success)
-							{
-								try
-								{
-									mapCellValue = time24HourFormatter().parse(value);
-									success = true;
-								}
-
-								catch (ParseException e)
-								{
-									// Try another format
-								}
-							}
-
-							if (!success)
-							{
-								try
-								{
-									mapCellValue = time24HourFormatterWithSeconds().parse(value);
-									success = true;
-								}
-
-								catch (ParseException e)
-								{
-									// Give up, we've run out of possible formats.
-                           String msg = (String)rb.getFormattedMessage(
-                                                   "err_time", 
-                                                   new Object[]{Integer.valueOf(column.getLineNumber()),
-                                                                column.getColumnHeader()});
-                           throw new ImportException( msg );
-								}
-							}
-						}
-						else if (durationTimeColumn != null && durationTimeColumn.equals(column.getColumnHeader()))
-						{
-                     String timeFormatErrorString = (String)rb.getFormattedMessage(
-                                                   "err_time", 
-                                                   new Object[]{Integer.valueOf(column.getLineNumber()),
-                                                                column.getColumnHeader()});
-
-							String parts[] = value.split(":");
-
-							if (parts.length == 1)
-							{
-								// Convert to minutes to get into one property field.
-								try
-								{
-									mapCellValue = Integer.valueOf(Integer.parseInt(parts[0]));
-								}
-								catch (NumberFormatException ex)
-								{
-									throw new ImportException(timeFormatErrorString);
-								}
-							}
-							else if (parts.length == 2)
-							{
-								// Convert to hours:minutes to get into one property field.
-								try
-								{
-									mapCellValue = Integer.valueOf(Integer.parseInt(parts[0]) * 60 + Integer.parseInt(parts[1]));
-								}
-								catch (NumberFormatException ex)
-								{
-									throw new ImportException(timeFormatErrorString);
-								}
-							}
-							else
-							{
-								// Not a legal format of mm or hh:mm
-								throw new ImportException(timeFormatErrorString);
-							}
-						}
-						else if (dateColumn != null && dateColumn.equals(column.getColumnHeader())
-								|| (endsColumn != null && endsColumn.equals(column.getColumnHeader())))
-						{
-                     DateFormat df = DateFormat.getDateInstance( DateFormat.SHORT, rb.getLocale() );
-                     df.setLenient(false);
-							try
-							{
-								mapCellValue = df.parse(value);
-							}
-							catch (ParseException e)
-							{
-                        String msg = (String)rb.getFormattedMessage("err_date", 
-                                                                    new Object[]{Integer.valueOf(column.getLineNumber()),
-                                                                                 column.getColumnHeader()});
-                        throw new ImportException( msg );
-							}
-						}
-						else if (intervalColumn != null && intervalColumn.equals(column.getColumnHeader())
-								|| repeatColumn != null && repeatColumn.equals(column.getColumnHeader()))
-						{
-							try
-							{
-								mapCellValue = Integer.valueOf(column.getCellValue());
-							}
-							catch (NumberFormatException ex)
-							{
-                        String msg = (String)rb.getFormattedMessage("err_interval", 
-                                                                    new Object[]{Integer.valueOf(column.getLineNumber()),
-                                                                                 column.getColumnHeader()});
-                        throw new ImportException( msg );
-							}
-						}
-						else if (ITEM_TYPE_PROPERTY_NAME.equals(column.getColumnHeader())){
-							String cellValue = column.getCellValue();
-							if (cellValue!=null){
-								if (cellValue.equals("event.activity")){
-									mapCellValue = "Activity";
-								}else if (cellValue.equals("event.exam")){
-									mapCellValue="Exam";
-								}else if (cellValue.equals("event.meeting")){
-									mapCellValue="Meeting"; 
-								}else if (cellValue.equals("event.academic.calendar")){
-									mapCellValue="Academic Calendar"; 
-								}else if (cellValue.equals("event.cancellation")){
-									mapCellValue="Cancellation"; 
-								}else if (cellValue.equals("event.discussion")){
-									mapCellValue="Class section - Discussion"; 
-								}else if (cellValue.equals("event.lab")){
-									mapCellValue="Class section - Lab"; 
-								}else if (cellValue.equals("event.lecture")){
-									mapCellValue="Class section - Lecture"; 
-								}else if (cellValue.equals("event.smallgroup")){
-									mapCellValue="Class section - Small Group"; 
-								}else if (cellValue.equals("event.class")){
-									mapCellValue="Class session"; 
-								}else if (cellValue.equals("event.computer")){
-									mapCellValue="Computer Session"; 
-								}else if (cellValue.equals("event.deadline")){
-									mapCellValue="Deadline"; 
-								}else if (cellValue.equals("event.conference")){
-									mapCellValue="Multidisciplinary Conference"; 
-								}else if (cellValue.equals("event.quiz")){
-									mapCellValue="Quiz"; 
-								}else if (cellValue.equals("event.special")){
-									mapCellValue="Special event"; 
-								}else if (cellValue.equals("event.assignment")){
-									mapCellValue="Web Assignment"; 
-								}else{ 
-									mapCellValue = cellValue; 
-								}
-							}
-						}
-						else
-						{
-							// Just a string...
-							mapCellValue = column.getCellValue();
-						}
-					}
-
-					// Store in the map for later reference.
-					eventProperties.put(column.getColumnHeader(), mapCellValue);
-				}
-
-				// Add the map of properties for this row to the list of rows.
-				rowList.add(eventProperties);
-			}
-		});
-
-		return getPrototypeEvents(scheduleImport.filterEvents(rowList, customFieldPropertyNames), customFieldPropertyNames);
+		// Calendar time zone remains over user time zone
+		String tzid = calendarTzid==null ? userTzid:calendarTzid;
+		
+		return getPrototypeEvents(scheduleImport.filterEvents(rowList, customFieldPropertyNames, tzid), customFieldPropertyNames);
 	}
 
 	/**
 	 * Interprets the list of maps created by doImport()
-	 * 
-	 * @param map
 	 */
 	protected List getPrototypeEvents(List rowList, String[] customFieldPropertyNames) throws ImportException
 	{
@@ -988,7 +783,7 @@ public class GenericCalendarImporter implements CalendarImporterService
 			prototypeEvent.setDescription((String) eventProperties.get(columnMap.get(DESCRIPTION_DEFAULT_COLUMN_HEADER)));
 			prototypeEvent.setDisplayName((String) eventProperties.get(columnMap.get(TITLE_DEFAULT_COLUMN_HEADER)));
 			prototypeEvent.setLocation((String) eventProperties.get(columnMap.get(LOCATION_DEFAULT_COLUMN_HEADER)));
-			prototypeEvent.setType((String) eventProperties.get(ITEM_TYPE_PROPERTY_NAME));
+			prototypeEvent.setType((String) eventProperties.get(ITEM_TYPE_DEFAULT_COLUMN_HEADER));
 
 			if (prototypeEvent.getType() == null || prototypeEvent.getType().length() == 0)
 			{
@@ -1078,11 +873,11 @@ public class GenericCalendarImporter implements CalendarImporterService
 	 * 
 	 * @see org.sakaiproject.tool.calendar.schedimport.importers.Importer#getDefaultColumnMap(java.lang.String)
 	 */
-	public Map getDefaultColumnMap(String importType) throws ImportException
+	public Map<String, String> getDefaultColumnMap(String importType) throws ImportException
 	{
 		try
 		{
-			Reader scheduleImport = (Reader) ((Class) readerMap.get(importType)).newInstance();
+			Reader scheduleImport = readerMap.get(importType).newInstance();
 
 			if (scheduleImport != null)
 			{
@@ -1090,16 +885,9 @@ public class GenericCalendarImporter implements CalendarImporterService
 			}
 		}
 
-		catch (InstantiationException e1)
+		catch (InstantiationException | IllegalAccessException e1)
 		{
-			String msg = (String)rb.getFormattedMessage("err_import", 
-                                                      new Object[]{importType});
-			throw new ImportException( msg );
-		}
-		catch (IllegalAccessException e1)
-		{
-			String msg = (String)rb.getFormattedMessage("err_import", 
-                                                      new Object[]{importType});
+			String msg = rb.getFormattedMessage("err_import", importType);
 			throw new ImportException( msg );
 		}
 
@@ -1163,7 +951,7 @@ public class GenericCalendarImporter implements CalendarImporterService
 		}
 		catch (Throwable t)
 		{
-			M_log.warn("init(): ", t);
+			log.warn("init(): ", t);
 		}
 	}
 
@@ -1172,6 +960,7 @@ public class GenericCalendarImporter implements CalendarImporterService
 	 */
 	public void destroy()
 	{
-		M_log.info("destroy()");
+		log.info("destroy()");
 	}
+
 }

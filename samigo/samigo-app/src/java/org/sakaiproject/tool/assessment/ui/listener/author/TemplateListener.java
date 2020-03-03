@@ -19,21 +19,20 @@
  *
  **********************************************************************************/
 
-
-
 package org.sakaiproject.tool.assessment.ui.listener.author;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 
 import javax.faces.context.FacesContext;
 import javax.faces.event.AbortProcessingException;
 import javax.faces.event.ActionEvent;
 import javax.faces.event.ActionListener;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
 import org.sakaiproject.tool.assessment.facade.AssessmentTemplateFacade;
 import org.sakaiproject.tool.assessment.services.assessment.AssessmentService;
 import org.sakaiproject.tool.assessment.ui.bean.author.IndexBean;
@@ -45,11 +44,10 @@ import org.sakaiproject.component.cover.ServerConfigurationService;
 /**
  * <p>Description: Listener for the Template(Assessment Type) page</p>
  */
-
+@Slf4j
 public class TemplateListener extends TemplateBaseListener
     implements ActionListener
 {
-  private static Logger log = LoggerFactory.getLogger(TemplateListener.class);
   private static BeanSort bs;
 
   public TemplateListener()
@@ -58,9 +56,6 @@ public class TemplateListener extends TemplateBaseListener
 
   public void processAction(ActionEvent ae) throws AbortProcessingException
   {
-    //log.info("debugging ActionEvent: " + ae);
-    //log.info("debug requestParams: " + requestParams);
-    //log.info("debug reqMap: " + reqMap);
 
     // get service and managed bean
     AssessmentService assessmentService = new AssessmentService();
@@ -70,7 +65,7 @@ public class TemplateListener extends TemplateBaseListener
     // look for some sort information passed as parameters
     processSortInfo(templateIndex);
 
-    boolean autoSubmitEnabled = ServerConfigurationService.getBoolean("samigo.autoSubmit.enabled", false);
+    boolean autoSubmitEnabled = ServerConfigurationService.getBoolean("samigo.autoSubmit.enabled", true);
     if (!autoSubmitEnabled) {
     	templateIndex.setAutomaticSubmissionEnabled(false);
     }
@@ -78,12 +73,12 @@ public class TemplateListener extends TemplateBaseListener
     	templateIndex.setAutomaticSubmissionEnabled(true);
     }
     
-    ArrayList templates = new ArrayList();
+    List<TemplateBean> templates = new ArrayList();
     try
     {
 	FacesContext.getCurrentInstance().
 	getExternalContext().getSessionMap().put("template", new TemplateBean());
-	ArrayList list = assessmentService.getBasicInfoOfAllActiveAssessmentTemplates("title");
+	List<AssessmentTemplateFacade> list = assessmentService.getBasicInfoOfAllActiveAssessmentTemplates("title");
         Iterator iter = list.iterator();
         while (iter.hasNext())
         {
@@ -96,7 +91,7 @@ public class TemplateListener extends TemplateBaseListener
          templates.add(bean);
         }
       } catch (Exception e) {
-	e.printStackTrace();
+          log.error(e.getMessage(), e);
       }
 
      String sortProperty = templateIndex.getTemplateOrderBy();
@@ -118,12 +113,6 @@ public class TemplateListener extends TemplateBaseListener
      {
 	Collections.reverse(templates);
      }
-/*
-     // debug
-     for (int i=0; i<templates.size();i++){
-       log.debug("*****"+((TemplateBean)templates.get(i)).getLastModified());
-     }
-*/
 
      // get the managed bean, author and set the list
      templateIndex.setSortTemplateList(templates);

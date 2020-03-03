@@ -23,16 +23,18 @@ import java.util.List;
 import java.util.ArrayList;
 
 public class CopyrightInfo implements org.sakaiproject.content.copyright.api.CopyrightInfo {
-	List<org.sakaiproject.content.copyright.api.CopyrightItem> items = new ArrayList();
+	List<org.sakaiproject.content.copyright.api.CopyrightItem> items = new ArrayList<>();
 	
 	public CopyrightInfo(){
-		items = new ArrayList();
+		items = new ArrayList<>();
 	}
 	public void add(org.sakaiproject.content.copyright.api.CopyrightItem item){
 		items.add(item);
 	}
+	public void addToBeginning(org.sakaiproject.content.copyright.api.CopyrightItem item) {
+		items.add(0, item);
+	}
 	public List<org.sakaiproject.content.copyright.api.CopyrightItem> getItems(){
 		return items;
 	}
-	
 }

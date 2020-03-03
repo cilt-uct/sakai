@@ -35,7 +35,7 @@ import java.util.UUID;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.beanutils.BeanUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.entitybroker.EntityReference;
 import org.sakaiproject.entitybroker.EntityView;
 import org.sakaiproject.entitybroker.entityprovider.EntityProvider;
@@ -159,7 +159,6 @@ public class PollsEntityProvider extends AbstractEntityProvider implements
 				List<Vote> l = voteMap.get(pollId);
 				if (l != null) {
 					poll.setCurrentUserVoted(true);
-					poll.setCurrentUserVotes(l);
 				} else {
 					poll.setCurrentUserVoted(false);
 				}
@@ -244,7 +243,6 @@ public class PollsEntityProvider extends AbstractEntityProvider implements
 				List<Vote> l = voteMap.get(pollId);
 				if (l != null) {
 					poll.setCurrentUserVoted(true);
-					poll.setCurrentUserVotes(l);
 				} else {
 					poll.setCurrentUserVoted(false);
 				}
@@ -338,7 +336,6 @@ public class PollsEntityProvider extends AbstractEntityProvider implements
 			List<Vote> l = voteMap.get(pollId);
 			if (l != null) {
 				poll.setCurrentUserVoted(true);
-				poll.setCurrentUserVotes(l);
 			} else {
 				poll.setCurrentUserVoted(false);
 			}
@@ -550,14 +547,14 @@ public class PollsEntityProvider extends AbstractEntityProvider implements
 					"Poll ID must be set to create an option");
 		}
 		// check minimum settings
-		if (option.getOptionText() == null) {
+		if (option.getText() == null) {
 			throw new IllegalArgumentException(
 					"Poll Option text must be set to create an option");
 		}
 		checkOptionPermission(userReference, option);
 
 		// set default values
-		option.setUUId(UUID.randomUUID().toString());
+		option.setUuid(UUID.randomUUID().toString());
 		boolean saved = pollListManager.saveOption(option);
 		if (!saved) {
 			throw new IllegalStateException("Unable to save option (" + option
@@ -894,7 +891,7 @@ public class PollsEntityProvider extends AbstractEntityProvider implements
 	 * pollOption parameters.
 	 */
 	@EntityCustomAction(action = "vote", viewKey = EntityView.VIEW_NEW)
-	public List<Vote> vote(EntityView view, EntityReference ref, String prefix,
+	public void vote(EntityView view, EntityReference ref, String prefix,
 			Search search, OutputStream out, Map<String, Object> params) {
 		Long pollId = null;
 		try {
@@ -997,7 +994,6 @@ public class PollsEntityProvider extends AbstractEntityProvider implements
 			}
 			votes.add(vote);
 		}
-		return votes;
 	}
 
 	/**

@@ -25,22 +25,24 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.sakaiproject.section.api.coursemanagement.Course;
 import org.sakaiproject.section.api.coursemanagement.CourseSection;
 import org.sakaiproject.section.api.coursemanagement.Meeting;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public class LocalSectionModel implements CourseSection, Serializable {
-	private static final Logger log = LoggerFactory.getLogger(LocalSectionModel.class);
 	private static final long serialVersionUID = 1L;
 
 	private Course course;
 	private String uuid;
 	private String title;
 	private String category;
-    private Integer maxEnrollments;
+	private Integer maxEnrollments;
+	private boolean isLocked;
+	private boolean isLockedForDeletion;
 
 	// We need a string to represent size limit due to this JSF bug: http://issues.apache.org/jira/browse/MYFACES-570
 	private String limitSize;
@@ -72,6 +74,8 @@ public class LocalSectionModel implements CourseSection, Serializable {
 			Meeting meeting = (Meeting)iter.next();
 			meetings.add(new LocalMeetingModel(meeting));
 		}
+		this.isLocked = section.isLocked();
+		this.isLockedForDeletion = section.isLockedForDeletion();
 	}
     
     public Integer getMaxEnrollments() {
@@ -96,6 +100,14 @@ public class LocalSectionModel implements CourseSection, Serializable {
 
 	public void setMeetings(List<Meeting> meetings) {
 		this.meetings = meetings;
+	}
+
+    public boolean isLocked() {
+		return isLocked;
+	}
+
+	public boolean isLockedForDeletion() {
+		return isLockedForDeletion;
 	}
 
 	public String toString() {

@@ -34,7 +34,7 @@ import java.util.Collections;
  * @deprecated use commons-collection instead, this will be removed after 2.9 - Dec 2011
  */
 @Deprecated 
-public class SortedIterator implements Iterator
+public class SortedIterator<E> implements Iterator<E>
 {
 	/** The sorted iterator. */
 	protected Iterator m_iterator = null;
@@ -42,12 +42,12 @@ public class SortedIterator implements Iterator
 	/**
 	 * Creates new SortedIterator based on the base iterator and the comparator function
 	 * 
-	 * @param aIterator
+	 * @param iterator
 	 *        The original Iterator
-	 * @param aComparator
+	 * @param comparator
 	 *        The comparator object
 	 */
-	public SortedIterator(Iterator iterator, Comparator comparator)
+	public SortedIterator(Iterator<? extends E> iterator, Comparator<? super E> comparator)
 	{
 		// construct a collection (Vector) from the base iterator so we can sort
 		Vector collection = new Vector();
@@ -78,9 +78,9 @@ public class SortedIterator implements Iterator
 	 * 
 	 * @return The next element in the iteration
 	 */
-	public Object next()
+	public E next()
 	{
-		return m_iterator.next();
+		return (E) m_iterator.next();
 	}
 
 	/**

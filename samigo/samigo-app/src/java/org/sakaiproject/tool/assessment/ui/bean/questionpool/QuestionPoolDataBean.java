@@ -19,8 +19,6 @@
  *
  **********************************************************************************/
 
-
-
 package org.sakaiproject.tool.assessment.ui.bean.questionpool;
 
 //import org.sakaiproject.tool.assessment.business.entity.questionpool.*;
@@ -30,23 +28,23 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.sakaiproject.tool.assessment.facade.QuestionPoolFacade;
-import org.sakaiproject.util.FormattedText;
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.SessionScoped;
 
-/**
- * This holds question pool information.
- *
- * Used to be org.navigoproject.ui.web.form.questionpool.QuestionPoolBean
- *
- * @author Rachel Gollub <rgollub@stanford.edu>
- */
-public class QuestionPoolDataBean
-  implements Serializable
-{
+import lombok.extern.slf4j.Slf4j;
+
+import org.sakaiproject.component.cover.ComponentManager;
+import org.sakaiproject.tool.assessment.facade.QuestionPoolFacade;
+import org.sakaiproject.util.api.FormattedText;
+
+/* For questionpool: Question Pool Data backing bean. */
+@Slf4j
+@ManagedBean(name="questionpooldata")
+@SessionScoped
+public class QuestionPoolDataBean implements Serializable {
 
   /** Use serialVersionUID for interoperability. */
   private final static long serialVersionUID = 418920360211039758L;
@@ -67,283 +65,126 @@ public class QuestionPoolDataBean
   private Date lastModified;
   private Date dateCreated;
 
-
-  private static Logger log = LoggerFactory.getLogger(QuestionPoolDataBean.class);
-
   private Map parentPools = new HashMap();
-  private ArrayList parentPoolsArray = new ArrayList();
+  private List parentPoolsArray = new ArrayList();
 
-
-
-
-  /**
-   * DOCUMENTATION PENDING
-   *
-   * @return DOCUMENTATION PENDING
-   */
   public Date getLastModified() {
 	return lastModified;
   }
 
-
-  /**
-   * DOCUMENTATION PENDING
-   *
-   * @param newName DOCUMENTATION PENDING
-   */
   public void setLastModified(Date param)
   {
     lastModified = param;
   }
 
-  /**
-   * DOCUMENTATION PENDING
-   *
-   * @return DOCUMENTATION PENDING
-   */
   public Date getDateCreated() {
 	return dateCreated;
   }
 
-
-  /**
-   * DOCUMENTATION PENDING
-   *
-   * @param newName DOCUMENTATION PENDING
-   */
   public void setDateCreated(Date param)
   {
 	  dateCreated = param;
   }
   
-  /**
-   * DOCUMENTATION PENDING
-   *
-   * @return DOCUMENTATION PENDING
-   */
   public String getDisplayName()
   {
-    return FormattedText.convertFormattedTextToPlaintext(displayName);
+    return ComponentManager.get(FormattedText.class).convertFormattedTextToPlaintext(displayName);
   }
 
-  /**
-   * DOCUMENTATION PENDING
-   *
-   * @param newName DOCUMENTATION PENDING
-   */
   public void setDisplayName(String newName)
   {
     displayName = newName;
   }
 
-  /**
-   * DOCUMENTATION PENDING
-   *
-   * @return DOCUMENTATION PENDING
-   */
   public String getOwner()
   {
     return owner;
   }
 
-  /**
-   * DOCUMENTATION PENDING
-   *
-   * @param newName DOCUMENTATION PENDING
-   */
   public void setOwner(String param)
   {
     owner= param;
   }
 
-
-
-
-
-  /**
-   * DOCUMENTATION PENDING
-   *
-   * @return DOCUMENTATION PENDING
-   */
   public String getDescription()
   {
-    return FormattedText.convertFormattedTextToPlaintext(description);
+    return ComponentManager.get(FormattedText.class).convertFormattedTextToPlaintext(description);
   }
 
-  /**
-   * DOCUMENTATION PENDING
-   *
-   * @param newDesc DOCUMENTATION PENDING
-   */
   public void setDescription(String newDesc)
   {
     description = newDesc;
   }
-  /**
-   * DOCUMENTATION PENDING
-   *
-   * @return DOCUMENTATION PENDING
-   */
+
   public String getOrganizationName()
   {
-    return FormattedText.convertFormattedTextToPlaintext(organizationName);
+    return ComponentManager.get(FormattedText.class).convertFormattedTextToPlaintext(organizationName);
   }
 
-  /**
-   * DOCUMENTATION PENDING
-   *
-   * @param newDesc DOCUMENTATION PENDING
-   */
   public void setOrganizationName(String param)
   {
     organizationName= param;
   }
 
-  /**
-   * DOCUMENTATION PENDING
-   *
-   * @return DOCUMENTATION PENDING
-   */
   public String getKeywords()
   {
-    return FormattedText.convertFormattedTextToPlaintext(keywords);
+    return ComponentManager.get(FormattedText.class).convertFormattedTextToPlaintext(keywords);
   }
 
-  /**
-   * DOCUMENTATION PENDING
-   *
-   * @param newDesc DOCUMENTATION PENDING
-   */
   public void setKeywords(String param)
   {
     keywords= param;
   }
 
-  /**
-   * DOCUMENTATION PENDING
-   *
-   * @return DOCUMENTATION PENDING
-   */
   public String getObjectives()
   {
-    return FormattedText.convertFormattedTextToPlaintext(objectives);
+    return ComponentManager.get(FormattedText.class).convertFormattedTextToPlaintext(objectives);
   }
 
-  /**
-   * DOCUMENTATION PENDING
-   *
-   * @param newDesc DOCUMENTATION PENDING
-   */
   public void setObjectives(String param)
   {
     objectives = param;
   }
 
-
-  /**
-   * DOCUMENTATION PENDING
-   *
-   * @return DOCUMENTATION PENDING
-   */
   public Long getParentPoolId()
   {
     return parentPoolId;
   }
 
-  /**
-   * DOCUMENTATION PENDING
-   *
-   * @param newId DOCUMENTATION PENDING
-   */
   public void setParentPoolId(Long newId)
   {
     parentPoolId = newId;
   }
 
-  /**
-   * DOCUMENTATION PENDING
-   *
-   * @return DOCUMENTATION PENDING
-   */
   public Long getId()
   {
     return id;
   }
 
-  /**
-   * DOCUMENTATION PENDING
-   *
-   * @param newId DOCUMENTATION PENDING
-   */
   public void setId(Long newId)
   {
     id = newId;
   }
-
-
-  /**
-   * DOCUMENTATION PENDING
-   *
-   * @return DOCUMENTATION PENDING
-   */
 
   public String getNumberOfQuestions()
   {
     	return numberOfQuestions;
   }
 
-  /**
-   * DOCUMENTATION PENDING
-   *
-   * @param newNumber DOCUMENTATION PENDING
-   */
   public void setNumberOfQuestions(String newNumber)
   {
     numberOfQuestions= newNumber;
   }
 
-  /**
-   * DOCUMENTATION PENDING
-   *
-   * @return DOCUMENTATION PENDING
-   */
   public String getNumberOfSubpools()
   {
     	return numberOfSubpools ;
   }
 
-  /**
-   * DOCUMENTATION PENDING
-   *
-   * @param newNumber DOCUMENTATION PENDING
-   */
   public void setNumberOfSubpools(String newNumber)
   {
     numberOfSubpools = newNumber;
   }
-
-
-/*
-  public boolean getShowQuestions()
-  {
-	if ( (new Integer(numberOfQuestions)).intValue() >0)
-        {
-                return true;
-        }
-	return false;
-
-  }
-
-  public boolean getShowSubpools()
-  {
-	if ( (new Integer(numberOfSubpools)).intValue() >0)
-	{
-		return true;
-	}
-       	return false;
-
-  }
-*/
 
   public boolean getShowParentPools()
   {
@@ -355,17 +196,12 @@ public class QuestionPoolDataBean
 
   }
 
-  /**
-   * DOCUMENTATION PENDING
-   *
-   * @return DOCUMENTATION PENDING
-   */
   public Map getParentPools()
   {
     return parentPools;
   }
 
-  public void setParentPools(ArrayList newpools)
+  public void setParentPools(List newpools)
   {
 	parentPools = new HashMap();
    Iterator iter = newpools.iterator();
@@ -377,65 +213,13 @@ public class QuestionPoolDataBean
 
   }
 
-  public ArrayList getParentPoolsArray()
+  public List getParentPoolsArray()
   {
     return parentPoolsArray;
   }
 
-  public void setParentPoolsArray(ArrayList newpools)
+  public void setParentPoolsArray(List newpools)
   {
     parentPoolsArray = newpools;
   }
-
-
-
-
-
-
-  /**
-   * This checks to see if the question titles are unique.  If they're
-   * all the same, or null, the titles aren't displayed.
-   */
-/*
- // not used
-  public boolean getShowTitles()
-  {
-    String title = null;
-
-    if(properties.getQuestions() == null)
-    {
-      return true;
-    }
-
-    Iterator iter = properties.getQuestions().iterator();
-    try
-    {
-      while(iter.hasNext())
-      {
-        Item item = (Item) iter.next();
-
-        // If we've found at least two different titles, show titles
-        if(
-          (item.getDisplayName() != null) && (title != null) &&
-            ! item.getDisplayName().equals(title))
-        {
-          return true;
-        }
-
-        if((title == null) && (item.getDisplayName() != null))
-        {
-          title = item.getDisplayName();
-        }
-      }
-    }
-    catch(Exception e)
-    {
-      throw new Error(e);
-    }
-
-    return true;
-  }
-*/
-
-
 }

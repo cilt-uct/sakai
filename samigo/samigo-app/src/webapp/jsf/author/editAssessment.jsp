@@ -33,22 +33,22 @@
     <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
       <head><%= request.getAttribute("html.head") %>
       <title><h:outputText value="#{authorMessages.create_modify_a}" /></title>
-      <samigo:script path="/js/authoring.js"/>
+      <script type="text/javascript" src="/samigo-app/js/authoring.js"></script>
 
 <script type="text/JavaScript">
 <%@ include file="/js/samigotree.js" %>
 
 $(window).load( function() {
   // No need for an insert question box after every single question!
-  $('table.parts-table').find('div.part-insert-question:not(:last)').hide();
+  $('div.part-insert-question:not(:last)').hide();
 });
 </script>
 
-<script type="text/javascript" src="/library/webjars/jquery/1.11.3/jquery.min.js"></script>
-<script language='javascript' src='/samigo-app/js/selection.author.preview.js'></script>
-<script src="/library/js/spinner.js" type="text/javascript"></script>
+<script type="text/javascript" src="/library/webjars/jquery/1.12.4/jquery.min.js"></script>
+<script type="text/javascript" src="/samigo-app/js/selection.author.preview.js"></script>
+<script type="text/javascript" src="/library/js/spinner.js"></script>
 
-<link href="/samigo-app/css/imageQuestion.author.css" type="text/css" rel="stylesheet" media="all" />
+<link rel="stylesheet" type="text/css" href="/samigo-app/css/imageQuestion.author.css">
 
 <script type="text/JavaScript">	
 	jQuery(window).load(function(){
@@ -76,7 +76,7 @@ $(window).load( function() {
 <!-- some back end stuff stubbed -->
 <h:form id="assessmentForm">
 
-  <h:panelGroup rendered="#{!author.isEditPendingAssessmentFlow}" styleClass="bs-callout-danger">
+  <h:panelGroup rendered="#{!author.isEditPendingAssessmentFlow}" styleClass="sak-banner-warn">
     <h:panelGrid  columns="1">
 	  <h:outputText value="#{authorMessages.edit_published_assessment_warn_1}" />
 	  <h:outputText value="#{authorMessages.edit_published_assessment_warn_21}" rendered="#{assessmentBean.hasGradingData}"/>
@@ -97,7 +97,7 @@ $(window).load( function() {
   <h:inputHidden id="ItemIdent" value="#{author.currentItem}"/>
 
   <!-- HEADINGS -->
-  <%@ include file="/jsf/author/allHeadings.jsp" %>
+  <%@ include file="/jsf/author/editAssessmentHeadings.jsp" %>
 
   <div class="navView">
     <h1>
@@ -111,7 +111,7 @@ $(window).load( function() {
     <h:outputText value="#{assessmentBean.questionSize} #{authorMessages.existing_q} #{authorMessages.dash} " rendered="#{assessmentBean.questionSize == 1}" />
     <h:outputText value="#{assessmentBean.questionSize} #{authorMessages.existing_qs} #{authorMessages.dash} " rendered="#{assessmentBean.questionSize == 0}" />
     <h:outputText value="#{assessmentBean.totalScore}">
-      <f:convertNumber maxFractionDigits="2"/>
+      <f:convertNumber maxFractionDigits="2" groupingUsed="false"/>
     </h:outputText>
     <h:outputText value="&#160;" escape="false" />
     <h:outputText value="#{authorMessages.total_pts}" rendered="#{assessmentBean.totalScore > 1}" />
@@ -165,7 +165,7 @@ $(window).load( function() {
           action="#{author.getOutcome}">
         
         <h:outputText  value="#{commonMessages.settings_action}" />
-        <f:param name="publishedAssessmentId" value="#{assessmentBean.assessmentId}"/>
+        <f:param name="publishedId" value="#{assessmentBean.assessmentId}"/>
         <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.author.EditPublishedSettingsListener" />
 	    <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.author.SetFromPageAsEditAssessmentListener" />
     </h:commandLink>
@@ -221,13 +221,12 @@ $(window).load( function() {
   </h:outputLink>
 </h:panelGrid>
 
-<h:commandLink id="hiddenlink" action="#{itemauthor.doit}" value="">
-  <f:actionListener
-           type="org.sakaiproject.tool.assessment.ui.listener.author.StartCreateItemListener" />
+<h:commandLink id="hiddenlink" action="#{itemauthor.doit}" value="" styleClass="hidden">
+  <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.author.StartCreateItemListener" />
   <f:param name="itemSequence" value="0"/>
 </h:commandLink>
 
-<h:messages styleClass="messageSamigo" rendered="#{! empty facesContext.maximumSeverity}" layout="table"/>
+<h:messages styleClass="sak-banner-error" rendered="#{! empty facesContext.maximumSeverity}" layout="table"/>
 
 <div class="tier1">
   <h:dataTable id="parts" width="100%" value="#{assessmentBean.sections}" var="partBean">
@@ -235,10 +234,11 @@ $(window).load( function() {
     <h:column>
       <h:panelGrid styleClass="table table-striped" columns="2" width="100%" columnClasses="navView,navList" border="0">
        <h:panelGroup rendered="#{!author.isEditPoolFlow}">
-		<h:outputText value="#{authorMessages.p}" /> <f:verbatim>&nbsp; </b></f:verbatim>
-          <h:selectOneMenu id="number" value="#{partBean.number}" onchange="enableOrderUpdate()" rendered="#{author.isEditPendingAssessmentFlow}" >
-          <f:selectItems value="#{assessmentBean.partNumbers}" />          
-        </h:selectOneMenu>
+          <h:outputLabel for="number" value="#{authorMessages.p}" />
+          <h:outputText value="&#160;" escape="false" />
+          <h:selectOneMenu id="number" value="#{partBean.number}" onchange="enableOrderUpdate()" rendered="#{!author.isEditPoolFlow}" >
+            <f:selectItems value="#{assessmentBean.partNumbers}" />          
+          </h:selectOneMenu>
         <h:outputText value="#{partBean.number}: " rendered="#{!author.isEditPendingAssessmentFlow}"/>
         <h:outputText value="&#160;" escape="false" />
 	  <h:panelGroup rendered="#{!author.isEditPoolFlow}">
@@ -312,20 +312,21 @@ $(window).load( function() {
         	<f:param value="#{partBean.randomQuestionsDrawTime}"/>
         </h:outputFormat>
         
-<!-- this insert should only show up when there are no questions in this part -->
-<h:panelGroup rendered="#{partBean.itemContentsSize eq '0' && author.isEditPendingAssessmentFlow && !author.isEditPoolFlow}">
-    <div class="insert-question-row"> 
-	  <h:outputLabel for="changeQType" value="#{authorMessages.ins_new_q} "/>
-	  <h:outputText value="&#160;" escape="false" />
+<!-- this insert should be at the top of each part -->
+<h:panelGroup rendered="#{author.isEditPendingAssessmentFlow && !author.isEditPoolFlow}">
+    <div class="insert-question-row">
+      <div class="sak-banner-info">
+        <h:outputLabel for="changeQType" value="#{authorMessages.ins_new_q} "/>
+        <h:outputText value="&#160;" escape="false" />
         <!-- each selectItem stores the itemtype, current sequence -->
-         <h:selectOneMenu id="changeQType" onchange="clickInsertLink(this);"  value="#{itemauthor.itemTypeString}">
+        <h:selectOneMenu id="changeQType" onchange="clickInsertLink(this);"  value="#{itemauthor.itemTypeString}">
              <f:valueChangeListener type="org.sakaiproject.tool.assessment.ui.listener.author.StartInsertItemListener" />
              <f:selectItems value="#{itemConfig.itemTypeSelectList}" />
-             <f:selectItem itemLabel="#{authorMessages.import_from_q}" itemValue="10,#{partBean.number},0"/>
-         </h:selectOneMenu>
+        </h:selectOneMenu>
+      </div>
     </div>
-    <h:commandLink id="hiddenlink" action="#{itemauthor.doit}" value="">
-      <f:param name="itemSequence" value="0"/>
+    <h:commandLink id="hiddenlink" action="#{itemauthor.doit}" value="" styleClass="hidden">
+      <f:param name="itemSequence" value="#{partBean.itemContentsCount}"/>
     </h:commandLink>
 </h:panelGroup>
 
@@ -335,9 +336,10 @@ $(window).load( function() {
       <h:column>
          <h:panelGrid styleClass="table table-condensed" columns="2" width="100%" columnClasses="navView,navList">
           <h:panelGroup>
-          <h:outputText value="#{authorMessages.q} " />
+            <h:outputLabel for="number" value="#{authorMessages.q} " />
+            <h:outputText value="&#160;" escape="false" />
             <h:inputHidden id="currItemId" value="#{question.itemData.itemIdString}"/>
-            <h:selectOneMenu id="number" onchange="enableOrderUpdate()" value="#{question.number}" rendered="#{author.isEditPendingAssessmentFlow}">
+            <h:selectOneMenu id="number" onchange="enableOrderUpdate()" value="#{question.number}" rendered="#{!author.isEditPoolFlow}">
               <f:selectItems value="#{partBean.questionNumbers}" />
             </h:selectOneMenu>
           <h:outputText value="#{question.number}: " rendered="#{!author.isEditPendingAssessmentFlow}"/>
@@ -361,12 +363,19 @@ $(window).load( function() {
 
      <h:outputText value=" #{authorMessages.dash} " />
      <h:inputText id="answerptr" value="#{question.updatedScore}" required="true" disabled="#{author.isEditPoolFlow || (question.itemData.typeId== 14)}" label="#{authorMessages.pt}" size="6" onkeydown="inIt()" styleClass="ConvertPoint" rendered="#{question.itemData.typeId!= 3}">
-	<f:validateDoubleRange minimum="0.00"/></h:inputText>
-    <h:outputText rendered="#{question.itemData.typeId== 3}" value="#{question.updatedScore}"/>
-		<h:outputText rendered="#{question.itemData.score > 1}" value=" #{authorMessages.points_lower_case}"/>
-		<h:outputText rendered="#{question.itemData.score == 1}" value=" #{authorMessages.point_lower_case}"/>
-		<h:outputText rendered="#{question.itemData.score == 0}" value=" #{authorMessages.points_lower_case}"/>
+       <f:validateDoubleRange minimum="0.00"/>
+     </h:inputText>
+     <h:outputText value="&#160;" escape="false" />
+     <h:outputLabel styleClass="notbold" for="answerptr" rendered="#{question.itemData.typeId== 3}" value="#{question.updatedScore}"/>
+     <h:outputLabel styleClass="notbold" for="answerptr" rendered="#{question.itemData.score > 1}" value=" #{authorMessages.points_lower_case}"/>
+     <h:outputLabel styleClass="notbold" for="answerptr" rendered="#{question.itemData.score == 1}" value=" #{authorMessages.point_lower_case}"/>
+     <h:outputLabel styleClass="notbold" for="answerptr" rendered="#{question.itemData.score == 0}" value=" #{authorMessages.points_lower_case}"/>
+     <h:outputText styleClass="extraCreditLabel" rendered="#{question.itemData.isExtraCredit == true}" value=" #{authorMessages.extra_credit_preview}" />
 	</h:panelGroup>
+
+	<!--Rubrics icon-->
+	<h:outputText styleClass="fa fa-table" id="rubrics-question-icon" rendered="#{author.isEditPendingAssessmentFlow && author.questionHasRubric(assessmentBean.assessmentId, question.itemData.itemIdString, false)}" title="#{authorMessages.question_use_rubric}" style="margin-left:0.5em"/>
+	<h:outputText styleClass="fa fa-table" id="rubrics-published-question-icon" rendered="#{!author.isEditPendingAssessmentFlow && author.questionHasRubric(author.editPublishedAssessmentID, question.itemData.itemIdString, true)}" title="#{authorMessages.question_use_rubric}" style="margin-left:0.5em"/>
 
 
         </h:panelGroup>
@@ -447,18 +456,17 @@ $(window).load( function() {
           </h:panelGroup>   
       </div>
 
-      <!-- Only want this displayed at the bottom of each part not on every question -->
+      <!-- Only want this displayed at the bottom of the last part (others hidden via docReady JS) -->
       <h:panelGroup styleClass="part-insert-question" layout="block" rendered="#{author.isEditPendingAssessmentFlow}">
-        <div class="bs-callout-primary">
+        <div class="sak-banner-info">
 	      <h:outputLabel for="changeQType" value="#{authorMessages.ins_new_q} "/>
           <h:outputText value="&#160;" escape="false" />
           <!-- each selectItem stores the itemtype, current sequence -->
           <h:selectOneMenu id="changeQType" onchange="clickInsertLink(this);" value="#{itemauthor.itemTypeString}" >
             <f:valueChangeListener type="org.sakaiproject.tool.assessment.ui.listener.author.StartInsertItemListener" />
             <f:selectItems value="#{itemConfig.itemTypeSelectList}" />
-            <f:selectItem itemLabel="#{authorMessages.import_from_q}" itemValue="10,#{partBean.number},#{question.itemData.sequence}"/>
           </h:selectOneMenu>
-          <h:commandLink id="hiddenlink" styleClass="hiddenLink" action="#{itemauthor.doit}" value="">
+          <h:commandLink id="hiddenlink" styleClass="hidden" action="#{itemauthor.doit}" value="">
             <f:param name="itemSequence" value="#{question.itemData.sequence}"/>
           </h:commandLink>
         </div>
@@ -469,13 +477,15 @@ $(window).load( function() {
 </div>
   </h:column>
 </h:dataTable>
+<div class="act">
 <h:commandButton value="#{authorMessages.button_update_points}" id="pointsUpdate" action="editAssessment" rendered="#{!author.isEditPoolFlow}">
   <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.author.UpdateAssessmentTotalPointsListener" />
 </h:commandButton>
 <h:outputText value="&#160;" escape="false" />
-<h:commandButton value="#{authorMessages.button_update_order}" id="orderUpdate" action="orderUpdate" rendered="#{!author.isEditPoolFlow}">
+<h:commandButton value="#{authorMessages.button_update_order}" id="orderUpdate" action="editAssessment" rendered="#{!author.isEditPoolFlow}">
   <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.author.UpdateAssessmentQuestionsOrder" />
 </h:commandButton>
+</div>
 </div> <!-- End the main container -->
 
 <h:panelGrid columns="1" width="100%" columnClasses="navList" border="0">
@@ -513,7 +523,7 @@ $(window).load( function() {
 	    <f:param value="#{author.editPoolName}" />
 	</h:outputFormat>
 </h:panelGrid>
-<h:panelGroup rendered="#{!author.isEditPendingAssessmentFlow}" styleClass="bs-callout-danger">
+<h:panelGroup rendered="#{!author.isEditPendingAssessmentFlow}" styleClass="sak-banner-error">
     <h:panelGrid  columns="1">
 	  <h:outputText value="#{authorMessages.edit_published_assessment_warn_1}" />
 	  <h:outputText value="#{authorMessages.edit_published_assessment_warn_21}" rendered="#{assessmentBean.hasGradingData}"/>

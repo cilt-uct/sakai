@@ -50,6 +50,9 @@ public interface UserDirectoryService extends EntityProducer
 	/** Name for the event of updating any user info. */
 	static final String SECURE_UPDATE_USER_ANY = "user.upd.any";
 
+	/** Name for the ability for read access to any user's details. */
+	static final String SECURE_VIEW_USER_ANY = "user.view.any";
+
 	/** Name for the event of updating one's own user info. */
 	static final String SECURE_UPDATE_USER_OWN = "user.upd.own";
 	
@@ -70,6 +73,10 @@ public interface UserDirectoryService extends EntityProducer
 
 	/** User eid for the admin user. */
 	static final String ADMIN_EID = "admin";
+
+	/** Cache keys for the id/eid mapping **/
+	static final String EIDCACHE = "eid:";
+	static final String IDCACHE = "id:";
 
 	/**
 	 * This function returns a boolean value of true/false,
@@ -178,14 +185,24 @@ public interface UserDirectoryService extends EntityProducer
 	 * @return true if the user is allowed to update their own first and last names, false if not.
 	 */
 	public boolean allowUpdateUserName(String id);
+
 	/**
-	 * Gets the UserEdit object from storage inorder to update the user Eid()
+	 * Gets the UserEdit object from storage inorder to update the user eid and email
 	 *
-	 * @param eId  The user id.
-	 * @param newEmail the Id with which userId will be updated
+	 * @param id  The user id.
+	 * @param newEmail the new email that will set the eid + email fields
 	 * @return UserEdit object
 	 */
-	public boolean updateUserId(String eId,String newEmail);
+	public boolean updateUserId(String id, String newEmail);
+
+	/**
+	 * Gets the UserEdit object from storage to remap the username (eid)
+	 *
+	 * @param id  The internal user id.
+	 * @param newEid the new username
+	 * @return UserEdit object
+	 */
+	public boolean updateUserEid(String id, String newEid);
 
 	/**
 	 * check permissions for editUser()
@@ -437,7 +454,9 @@ public interface UserDirectoryService extends EntityProducer
 	void removeUser(UserEdit user) throws UserPermissionException;
 
 	/**
-	 * Search all the users that match this criteria in id or email, first or last name, returning a subset of records within the record range given (sorted by sort name).
+	 * Search all the users that match this criteria in id or email, first or last name, returning a subset
+	 * of records within the record range given (sorted by sort name). Note: this method does not search among
+	 * external users, users provided by an institutional LDAP, for example.
 	 *
 	 * @param criteria
 	 *        The search criteria.
@@ -445,7 +464,8 @@ public interface UserDirectoryService extends EntityProducer
 	 *        The first record position to return. (Note: the first record is 1 not 0)
 	 * @param last
 	 *        The last record position to return.
-	 * @return A list (User) of all the aliases matching the criteria, within the record range given (sorted by sort name).
+	 * @return A list (User) of all the aliases matching the criteria, within the record range given
+	 *			(sorted by sort name).
 	 */
 	List<User> searchUsers(String criteria, int first, int last);
 

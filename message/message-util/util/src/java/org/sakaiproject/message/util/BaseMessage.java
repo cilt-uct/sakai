@@ -21,25 +21,64 @@
 
 package org.sakaiproject.message.util;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.io.ByteArrayOutputStream;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.time.Instant;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Observable;
+import java.util.Properties;
+import java.util.Set;
+import java.util.Stack;
+import java.util.Vector;
+
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
 import org.sakaiproject.api.app.scheduler.ScheduledInvocationManager;
 import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.authz.api.AuthzPermissionException;
+import org.sakaiproject.authz.api.AuthzRealmLockException;
 import org.sakaiproject.authz.api.GroupNotDefinedException;
 import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.component.cover.ComponentManager;
-import org.sakaiproject.entity.api.*;
+import org.sakaiproject.entity.api.Entity;
+import org.sakaiproject.entity.api.EntityManager;
+import org.sakaiproject.entity.api.EntityNotDefinedException;
+import org.sakaiproject.entity.api.EntityPermissionException;
+import org.sakaiproject.entity.api.HttpAccess;
+import org.sakaiproject.entity.api.Reference;
+import org.sakaiproject.entity.api.ResourceProperties;
+import org.sakaiproject.entity.api.ResourcePropertiesEdit;
+import org.sakaiproject.entity.api.Summary;
 import org.sakaiproject.event.api.Event;
 import org.sakaiproject.event.api.EventTrackingService;
 import org.sakaiproject.event.api.NotificationService;
-import org.sakaiproject.exception.*;
+import org.sakaiproject.exception.IdInvalidException;
+import org.sakaiproject.exception.IdUnusedException;
+import org.sakaiproject.exception.IdUsedException;
+import org.sakaiproject.exception.InUseException;
+import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.id.api.IdManager;
 import org.sakaiproject.javax.Filter;
 import org.sakaiproject.javax.PagingPosition;
+import org.sakaiproject.memory.api.Cache;
 import org.sakaiproject.memory.api.MemoryService;
-import org.sakaiproject.message.api.*;
+import org.sakaiproject.message.api.Message;
+import org.sakaiproject.message.api.MessageChannel;
+import org.sakaiproject.message.api.MessageChannelEdit;
+import org.sakaiproject.message.api.MessageEdit;
+import org.sakaiproject.message.api.MessageHeader;
+import org.sakaiproject.message.api.MessageHeaderEdit;
+import org.sakaiproject.message.api.MessageService;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
@@ -47,32 +86,35 @@ import org.sakaiproject.site.api.ToolConfiguration;
 import org.sakaiproject.thread_local.api.ThreadLocalManager;
 import org.sakaiproject.time.api.Time;
 import org.sakaiproject.time.api.TimeService;
-import org.sakaiproject.tool.api.*;
+import org.sakaiproject.tool.api.Session;
+import org.sakaiproject.tool.api.SessionBindingEvent;
+import org.sakaiproject.tool.api.SessionBindingListener;
+import org.sakaiproject.tool.api.SessionManager;
+import org.sakaiproject.tool.api.ToolSession;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserNotDefinedException;
-import org.sakaiproject.util.*;
+import org.sakaiproject.util.BaseResourcePropertiesEdit;
+import org.sakaiproject.util.DoubleStorageUser;
+import org.sakaiproject.util.EntityCollections;
+import org.sakaiproject.util.FormattedText;
+import org.sakaiproject.util.Validator;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.ByteArrayOutputStream;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.util.*;
-
+import lombok.Setter;
+import lombok.experimental.Accessors;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * BaseMessage is...
  */
+@Slf4j
+@Accessors(prefix = "m_" )
 public abstract class BaseMessage implements MessageService, DoubleStorageUser
 {
-	/** Our logger. */
-	private static Logger M_log = LoggerFactory.getLogger(BaseMessage.class);
-
 	/** A Storage object for persistent storage. */
 	protected Storage m_storage = null;
 
@@ -86,8 +128,49 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 	
 	/** added to allow for scheduled notifications */
 	private static final String SCHED_INV_UUID = "schInvUuid";
-//	private static final String SCHINV_DELETE_EVENT = "schInv.delete";
-	
+	//private static final String SCHINV_DELETE_EVENT = "schInv.delete";
+
+	private Cache<String, List<Message>> messagesCache;
+
+	/**********************************************************************************************************************************************************************************************************************************************************
+	 * Constructors, Dependencies and their setter methods
+	 *********************************************************************************************************************************************************************************************************************************************************/
+
+	/** Dependency: MemoryService. */
+	@Setter protected MemoryService m_memoryService;
+
+	/** Dependency: ServerConfigurationService. */
+	@Setter protected ServerConfigurationService m_serverConfigurationService;
+
+	/** Dependency: SessionManager. */
+	@Setter protected SessionManager m_sessionManager;
+
+	/** Dependency: AuthzGroupService. */
+	@Setter protected AuthzGroupService m_authzGroupService;
+
+	/** Dependency: SecurityService. */
+	@Setter protected SecurityService m_securityService;
+
+	/** Dependency: TimeService. */
+	@Setter protected TimeService m_timeService;
+
+	/** Dependency: EventTrackingService. */
+	@Setter protected EventTrackingService m_eventTrackingService;
+
+	/** Dependency: IdManager. */
+	@Setter protected IdManager m_idManager;
+
+	/** Dependency: SiteService. */
+	@Setter protected SiteService m_siteService;
+
+	/** Dependency: UserDirectoryService. */
+	@Setter protected UserDirectoryService m_userDirectoryService;
+
+	/** Dependency: ThreadLocalManager. */
+	@Setter protected ThreadLocalManager m_threadLocalManager;
+
+	/** Dependency: EntityManager. */
+	@Setter protected EntityManager m_entityManager;
 
 	/**
 	 * Access this service from the inner classes.
@@ -95,164 +178,6 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 	protected BaseMessage service()
 	{
 		return this;
-	}
-
-	/**********************************************************************************************************************************************************************************************************************************************************
-	 * Constructors, Dependencies and their setter methods
-	 *********************************************************************************************************************************************************************************************************************************************************/
-
-	/** Dependency: MemoryService. */
-	protected MemoryService m_memoryService = null;
-
-	/**
-	 * Dependency: MemoryService.
-	 *
-	 * @param service
-	 *        The MemoryService.
-	 */
-	public void setMemoryService(MemoryService service)
-	{
-		m_memoryService = service;
-	}
-
-	/** Dependency: ServerConfigurationService. */
-	protected ServerConfigurationService m_serverConfigurationService = null;
-
-	/**
-	 * Dependency: ServerConfigurationService.
-	 * 
-	 * @param service
-	 *        The ServerConfigurationService.
-	 */
-	public void setServerConfigurationService(ServerConfigurationService service)
-	{
-		m_serverConfigurationService = service;
-	}
-
-	/** Dependency: SessionManager. */
-	protected SessionManager m_sessionManager = null;
-
-	/**
-	 * Dependency: SessionManager.
-	 * 
-	 * @param service
-	 *        The SessionManager.
-	 */
-	public void setSessionManager(SessionManager service)
-	{
-		m_sessionManager = service;
-	}
-
-	/** Dependency: AuthzGroupService. */
-	protected AuthzGroupService m_authzGroupService = null;
-
-	/**
-	 * Dependency: AuthzGroupService.
-	 * 
-	 * @param service
-	 *        The AuthzGroupService.
-	 */
-	public void setAuthzGroupService(AuthzGroupService service)
-	{
-		m_authzGroupService = service;
-	}
-
-	/** Dependency: SecurityService. */
-	protected SecurityService m_securityService = null;
-
-	/**
-	 * Dependency: SecurityService.
-	 * 
-	 * @param service
-	 *        The SecurityService.
-	 */
-	public void setSecurityService(SecurityService service)
-	{
-		m_securityService = service;
-	}
-
-	/** Dependency: TimeService. */
-	protected TimeService m_timeService = null;
-
-	/**
-	 * Dependency: TimeService.
-	 * 
-	 * @param service
-	 *        The TimeService.
-	 */
-	public void setTimeService(TimeService service)
-	{
-		m_timeService = service;
-	}
-
-	/** Dependency: EventTrackingService. */
-	protected EventTrackingService m_eventTrackingService = null;
-
-	/**
-	 * Dependency: EventTrackingService.
-	 * 
-	 * @param service
-	 *        The EventTrackingService.
-	 */
-	public void setEventTrackingService(EventTrackingService service)
-	{
-		m_eventTrackingService = service;
-	}
-
-	/** Dependency: IdManager. */
-	protected IdManager m_idManager = null;
-
-	/**
-	 * Dependency: IdManager.
-	 * 
-	 * @param service
-	 *        The IdManager.
-	 */
-	public void setIdManager(IdManager service)
-	{
-		m_idManager = service;
-	}
-
-	/** Dependency: SiteService. */
-	protected SiteService m_siteService = null;
-
-	/**
-	 * Dependency: SiteService.
-	 * 
-	 * @param service
-	 *        The SiteService.
-	 */
-	public void setSiteService(SiteService service)
-	{
-		m_siteService = service;
-	}
-
-	/** Dependency: UserDirectoryService. */
-	protected UserDirectoryService m_userDirectoryService = null;
-
-	/**
-	 * Dependency: UserDirectoryService.
-	 * 
-	 * @param service
-	 *        The UserDirectoryService.
-	 */
-	public void setUserDirectoryService(UserDirectoryService service)
-	{
-		m_userDirectoryService = service;
-	}
-
-	/** Dependency: ThreadLocalManager. */
-	protected ThreadLocalManager m_threadLocalManager = null;
-
-	/**
-	 * Dependency: ThreadLocalManager.
-	 * 
-	 * @param service
-	 *        The ThreadLocalManager.
-	 */
-	public void setThreadLocalManager(ThreadLocalManager service)
-	{
-		m_threadLocalManager = service;
 	}
 
 	/**
@@ -263,20 +188,6 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
      * @deprecated 7 April 2014 - this should be removed in sakai 11
 	 */
 	public void setCaching(String value) {} // intentionally blank - remove this later
-
-	/** Dependency: EntityManager. */
-	protected EntityManager m_entityManager = null;
-
-	/**
-	 * Dependency: EntityManager.
-	 * 
-	 * @param service
-	 *        The EntityManager.
-	 */
-	public void setEntityManager(EntityManager service)
-	{
-		m_entityManager = service;
-	}
 
 	/**********************************************************************************************************************************************************************************************************************************************************
 	 * Init and Destroy
@@ -292,12 +203,12 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 			// construct a storage helper and read
 			m_storage = newStorage();
 			m_storage.open();
-
-			M_log.info("init()");
+			messagesCache = m_memoryService.getCache("org.sakaiproject.announcement.tool.messages.cache");
+			log.info("init()");
 		}
 		catch (Throwable t)
 		{
-			M_log.warn("init(): "+t, t);
+			log.warn("init(): "+t, t);
 		}
 
 		// entity producer registration in the extension services
@@ -314,7 +225,7 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 		m_storage.close();
 		m_storage = null;
 
-		M_log.info("destroy()");
+		log.info("destroy()");
 	}
 
 	/**********************************************************************************************************************************************************************************************************************************************************
@@ -732,7 +643,7 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 		if (channel != null) 
 			channel_reference = channel.getReference();
 		else
-			M_log.info("addChannel: null channel returned from putChannel("+ref+")");
+			log.info("addChannel: null channel returned from putChannel("+ref+")");
 		
 		Event event = m_eventTrackingService.newEvent(eventId(SECURE_CREATE), channel_reference, true);
 		m_eventTrackingService.post(event);
@@ -808,7 +719,7 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 			}
 			catch (Exception e)
 			{
-				M_log.warn("commitEdit(): closed ChannelEdit", e);
+				log.warn("commitEdit(): closed ChannelEdit", e);
 			}
 			return;
 		}
@@ -839,7 +750,7 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 			}
 			catch (Exception e)
 			{
-				M_log.warn("cancelChannelEdit(): closed MessageChannelEdit", e);
+				log.warn("cancelChannelEdit(): closed MessageChannelEdit", e);
 			}
 			return;
 		}
@@ -887,7 +798,7 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 			}
 			catch (Exception e)
 			{
-				M_log.warn("removeChannel(): closed ChannelEdit", e);
+				log.warn("removeChannel(): closed ChannelEdit", e);
 			}
 			return;
 		}
@@ -914,10 +825,15 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 		}
 		catch (AuthzPermissionException e)
 		{
-			M_log.warn("removeChannel: removing realm for : " + channel.getReference() + " : " + e);
+			log.warn("removeChannel: removing realm for : " + channel.getReference() + " : " + e);
 		}
-		catch (GroupNotDefinedException ignore)
+		catch (GroupNotDefinedException gnde)
 		{
+			log.debug(gnde.getMessage());
+		}
+		catch (AuthzRealmLockException arle)
+		{
+			log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
 		}
 
 	} // removeChannel
@@ -1095,7 +1011,7 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 
 					} catch (UserNotDefinedException e1) {
 						// TODO Auto-generated catch block
-						M_log.info("User Not Defined: " + e1.getMessage());
+						log.info("User Not Defined: " + e1.getMessage());
 					}
 					
 //					boolean isViewingAs = (m_securityService.getUserEffectiveRole(context) != null);
@@ -1113,7 +1029,7 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 						site = m_siteService.getSite(context);
 					} catch (IdUnusedException e) {
 						// TODO Auto-generated catch block
-						M_log.debug("Site not found for " + context + " " + e.getMessage());
+						log.debug("Site not found for " + context + " " + e.getMessage());
 					}
 
 					if (!canSeeAllGroups(userId, site)){
@@ -1415,20 +1331,20 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 			}
 
 			else
-				M_log.warn("getProperties(): unknown message ref subtype: " + ref.getSubType() + " in ref: " + ref.getReference());
+				log.warn("getProperties(): unknown message ref subtype: " + ref.getSubType() + " in ref: " + ref.getReference());
 		}
 		catch (PermissionException e)
 		{
-			M_log.warn("getProperties(): " + e);
+			log.warn("getProperties(): " + e);
 		}
 		catch (IdUnusedException e)
 		{
 			// This just means that the resource once pointed to as an attachment or something has been deleted.
-			// M_log.warn("getProperties(): " + e);
+			// log.warn("getProperties(): " + e);
 		}
 		catch (NullPointerException e)
 		{
-			M_log.warn("getProperties(): " + e);
+			log.warn("getProperties(): " + e);
 		}
 
 		return rv;
@@ -1457,21 +1373,21 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 				rv = getMessage(ref);
 			}
 
-			// else try {throw new Exception();} catch (Exception e) {M_log.warn("getResource(): unknown message ref subtype: " + m_subType + " in ref: " + m_reference, e);}
+			// else try {throw new Exception();} catch (Exception e) {log.warn("getResource(): unknown message ref subtype: " + m_subType + " in ref: " + m_reference, e);}
 			else
-				M_log.warn("getResource(): unknown message ref subtype: " + ref.getSubType() + " in ref: " + ref.getReference());
+				log.warn("getResource(): unknown message ref subtype: " + ref.getSubType() + " in ref: " + ref.getReference());
 		}
 		catch (PermissionException e)
 		{
-			M_log.warn("getResource(): " + e);
+			log.warn("getResource(): " + e);
 		}
 		catch (IdUnusedException e)
 		{
-			M_log.warn("getResource(): " + e);
+			log.warn("getResource(): " + e);
 		}
 		catch (NullPointerException e)
 		{
-			M_log.warn("getResource(): " + e);
+			log.warn("getResource(): " + e);
 		}
 
 		return rv;
@@ -1551,7 +1467,7 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 		}
 		catch (Throwable e)
 		{
-			M_log.warn("getEntityAuthzGroups(): " + e);
+			log.warn("getEntityAuthzGroups(): " + e);
 		}
 
 		return rv;
@@ -1583,19 +1499,19 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 			}
 
 			else
-				M_log.warn("getUrl(): unknown message ref subtype: " + ref.getSubType() + " in ref: " + ref.getReference());
+				log.warn("getUrl(): unknown message ref subtype: " + ref.getSubType() + " in ref: " + ref.getReference());
 		}
 		catch (PermissionException e)
 		{
-			M_log.warn("getUrl(): " + e);
+			log.warn("getUrl(): " + e);
 		}
 		catch (IdUnusedException e)
 		{
-			M_log.warn("getUrl(): " + e);
+			log.warn("getUrl(): " + e);
 		}
 		catch (NullPointerException e)
 		{
-			M_log.warn("getUrl(): " + e);
+			log.warn("getUrl(): " + e);
 		}
 
 		return url;
@@ -1654,7 +1570,7 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 		}
 		catch (Exception any)
 		{
-			M_log.warn("archve: exception archiving messages for service: " + serviceName() + " channel: " + channelRef);
+			log.warn("archve: exception archiving messages for service: " + serviceName() + " channel: " + channelRef);
 		}
 
 		stack.pop();
@@ -1697,7 +1613,7 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 		}
 		catch (Exception e)
 		{
-			M_log.warn("archive: exception archiving synoptic options for service: " + serviceName());
+			log.warn("archive: exception archiving synoptic options for service: " + serviceName());
 		}
 	}
 
@@ -1891,7 +1807,7 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 															catch (IdUnusedException e)	
 															{
 																// do not add channel b/c it does not exist in tool
-																M_log.warn("Synoptic Tool Channel option not added- " + synChannelRef + ":" + e);
+																log.warn("Synoptic Tool Channel option not added- " + synChannelRef + ":" + e);
 															}
 														}			
 													}
@@ -1979,7 +1895,7 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 												}
 												// TODO: reall want a draft? -ggolden
 												// set draft status based upon property setting
-												if ("false".equalsIgnoreCase(m_serverConfigurationService.getString("import.importAsDraft")))
+												if (!m_serverConfigurationService.getBoolean("import.importAsDraft", true))
 												{
 													String draftAttribute = element4.getAttribute("draft");
 													if (draftAttribute.equalsIgnoreCase("true") || draftAttribute.equalsIgnoreCase("false"))
@@ -2013,7 +1929,7 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 		}
 		catch (Exception any)
 		{
-			M_log.warn("mergeMessages(): exception in handling " + serviceName() + " : ", any);
+			log.warn("mergeMessages(): exception in handling " + serviceName() + " : ", any);
 		}
 
 		results.append("merging " + getLabel() + " channel " + channelRef + " (" + count + ") messages.\n");
@@ -2083,15 +1999,15 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 		}
 		catch (PermissionException pe)
 		{
-			M_log.warn("PermissionException transferring synoptic options for " + serviceName() + ':', pe);
+			log.warn("PermissionException transferring synoptic options for " + serviceName() + ':', pe);
 		}
 		catch (IdUnusedException e)
 		{
-			M_log.warn("Channel " + fromContext + " cannot be found. ");
+			log.warn("Channel " + fromContext + " cannot be found. ");
 		}
 		catch (Exception e)
 		{
-			M_log.warn("transferSynopticOptions(): exception in handling " + serviceName() + " : ", e);
+			log.warn("transferSynopticOptions(): exception in handling " + serviceName() + " : ", e);
 		}
 	}
 
@@ -2161,7 +2077,7 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 	 * MessageChannel implementation
 	 *********************************************************************************************************************************************************************************************************************************************************/
 
-	public class BaseMessageChannelEdit extends Observable implements MessageChannelEdit, SessionBindingListener
+	public class BaseMessageChannelEdit<T extends MessageEdit> extends Observable implements MessageChannelEdit<T>, SessionBindingListener
 	{
 		/** The context in which this channel exists. */
 		protected String m_context = null;
@@ -2599,7 +2515,7 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 				}
 				catch (Exception e)
 				{
-					M_log.warn("commitEdit(): closed MessageEdit", e);
+					log.warn("commitEdit(): closed MessageEdit", e);
 				}
 				return;
 			}
@@ -2690,7 +2606,7 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 				}
 				catch (Exception e)
 				{
-					M_log.warn("commitEdit(): closed MessageEdit", e);
+					log.warn("commitEdit(): closed MessageEdit", e);
 				}
 				return;
 			}
@@ -2715,12 +2631,12 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 				// if an immediate notification is needed or a scheduled one
 				// Put here since need to store uuid for notification just in case need to
 				// delete/modify
-				Time now = m_timeService.newTime();
-				
+				Instant now = Instant.now();
+				Instant date = edit.getHeader().getInstant();
 
-				if (now.before(edit.getHeader().getDate()) && priority != NotificationService.NOTI_NONE)
+				if (now.isBefore(date) && priority != NotificationService.NOTI_NONE)
 				{
-					final String uuid = scheduledInvocationManager.createDelayedInvocation(edit.getHeader().getDate(), 
+					final String uuid = scheduledInvocationManager.createDelayedInvocation(date, 
 							invokee, edit.getReference());
 
 					final ResourcePropertiesEdit editProps = edit.getPropertiesEdit();
@@ -2804,7 +2720,7 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 				}
 				catch (Exception e)
 				{
-					M_log.warn("commitEdit(): closed MessageEdit", e);
+					log.warn("commitEdit(): closed MessageEdit", e);
 				}
 				return;
 			}
@@ -2995,7 +2911,7 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 				}
 				catch (Exception e)
 				{
-					M_log.warn("removeMessage(String): null edit ", e);
+					log.warn("removeMessage(String): null edit ", e);
 				}
 				return;
 			}
@@ -3017,7 +2933,7 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 			// check for closed edit
 			if (!message.isActiveEdit())
 			{
-				M_log.warn("removeMessage(): message is not in active edit, unable to remove");
+				log.warn("removeMessage(): message is not in active edit, unable to remove");
 				return;
 			}
 
@@ -3049,7 +2965,11 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 			}
 			catch (AuthzPermissionException e)
 			{
-				M_log.warn("removeMessage: removing realm for : " + message.getReference() + " : " + e);
+				log.warn("removeMessage: removing realm for : " + message.getReference() + " : " + e);
+			}
+			catch (AuthzRealmLockException arle)
+			{
+				log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
 			}
 
 		} // removeMessage
@@ -3136,18 +3056,15 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 		 * 
 		 * @return a List of all messages in the channel.
 		 */
-		protected List findMessages()
-		{
-			// if we have done this already in this thread, use that
-			List msgs = (List) m_threadLocalManager.get(getReference() + ".msgs");
-			if (msgs == null)
-			{
+		protected List findMessages() {
+			List msgs;
+			final List<Message> cachedMessages = messagesCache.get(getReference());
+			if (cachedMessages != null) {
+				msgs = cachedMessages;
+			} else {
 				msgs = m_storage.getMessages(this);
-
-				// "cache" the mesasge in the current service in case they are needed again in this thread...
-				m_threadLocalManager.set(getReference() + ".msgs", msgs);
+				messagesCache.put(getReference(), msgs);
 			}
-
 			return msgs;
 		} // findMessages
 
@@ -3298,7 +3215,7 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 
 		public void valueUnbound(SessionBindingEvent event)
 		{
-			if (M_log.isDebugEnabled()) M_log.debug("valueUnbound()");
+			if (log.isDebugEnabled()) log.debug("valueUnbound()");
 
 			// catch the case where an edit was made but never resolved
 			if (m_active)
@@ -3730,7 +3647,7 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 
 		public void valueUnbound(SessionBindingEvent event)
 		{
-			if (M_log.isDebugEnabled()) M_log.debug("valueUnbound()");
+			if (log.isDebugEnabled()) log.debug("valueUnbound()");
 
 			// catch the case where an edit was made but never resolved
 			if ((m_active) && (m_channel != null))
@@ -3916,6 +3833,11 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 
 		} // getDate
 		
+
+		@Override
+		public Instant getInstant() {
+			return Instant.ofEpochMilli(m_date.getTime());
+		}
 		/**
 		 * Access the message order the message was sent to the channel.
 		 * 
@@ -4017,7 +3939,7 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 			// there should not be a case where there's no message or a message with no channel... -ggolden
 			if ((m_message == null) || ((BaseMessageEdit) m_message).m_channel == null)
 			{
-				M_log.warn("setGroupAccess() called with null message: " + ((m_message == null) ? "null" : ((BaseMessageEdit) m_message).toString()) + " or channel: " + ((m_message == null) ? "" : ((BaseMessageEdit) m_message).m_channel.toString()));
+				log.warn("setGroupAccess() called with null message: " + ((m_message == null) ? "null" : ((BaseMessageEdit) m_message).toString()) + " or channel: " + ((m_message == null) ? "" : ((BaseMessageEdit) m_message).m_channel.toString()));
 				throw new PermissionException(m_sessionManager.getCurrentSessionUserId(), "access:channel", ((m_message == null) ? "" : ((BaseMessageEdit) m_message).getReference()));
 			}
 
@@ -4081,7 +4003,7 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 			// there should not be a case where there's no message or a message with no channel... -ggolden
 			if ((m_message == null) || ((BaseMessageEdit) m_message).m_channel == null)
 			{
-				M_log.warn("clearGroupAccess() called with null message: " + ((m_message == null) ? "null" : ((BaseMessageEdit) m_message).toString()) + " or channel: " + ((m_message == null) ? "" : ((BaseMessageEdit) m_message).m_channel.toString()));
+				log.warn("clearGroupAccess() called with null message: " + ((m_message == null) ? "null" : ((BaseMessageEdit) m_message).toString()) + " or channel: " + ((m_message == null) ? "" : ((BaseMessageEdit) m_message).m_channel.toString()));
 				throw new PermissionException(m_sessionManager.getCurrentSessionUserId(), "access:channel", ((m_message == null) ? "" : ((BaseMessageEdit) m_message).getReference()));
 			}
 
@@ -4163,6 +4085,12 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 			}
 
 		} // setDate
+		
+
+		@Override
+		public void setInstant(Instant instant) {
+			setDate(m_timeService.newTime(instant.toEpochMilli()));
+		}
 		
 		/**
 		 * Set the message_order the message was sent to the channel.

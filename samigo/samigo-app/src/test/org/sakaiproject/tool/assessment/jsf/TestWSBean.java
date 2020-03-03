@@ -18,14 +18,16 @@
  * limitations under the License.
 *
 **********************************************************************************/
+
 package org.sakaiproject.tool.assessment.jsf;
 
 import java.io.Serializable;
 
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.SessionScoped;
 import javax.faces.context.FacesContext;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 import org.sakaiproject.tool.assessment.facade.ItemFacade;
 import org.sakaiproject.tool.assessment.services.ItemService;
@@ -36,11 +38,10 @@ import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 /**
  * <p>Description: Test Bean with some properties</p>
  */
-
-public class TestWSBean
-  implements Serializable
-{
-  private static Logger log = LoggerFactory.getLogger(TestWSBean.class);
+@Slf4j
+@ManagedBean(name="testwsbean")
+@SessionScoped
+public class TestWSBean implements Serializable {
   private String itemid;
   private String itembankxml;
 

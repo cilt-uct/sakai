@@ -21,57 +21,37 @@
 
 package org.sakaiproject.site.tool;
 
-import java.io.IOException;
-
-import java.util.Properties;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ArrayList;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.sakaiproject.authz.api.AuthzGroup;
-import org.sakaiproject.authz.api.GroupNotDefinedException;
-import org.sakaiproject.authz.api.Role;
 import org.sakaiproject.cheftool.Context;
 import org.sakaiproject.cheftool.JetspeedRunData;
 import org.sakaiproject.cheftool.RunData;
 import org.sakaiproject.cheftool.VelocityPortlet;
 import org.sakaiproject.cheftool.VelocityPortletPaneledAction;
-import org.sakaiproject.component.cover.ServerConfigurationService;
-import org.sakaiproject.entity.api.Reference;
-import org.sakaiproject.entity.cover.EntityManager;
 import org.sakaiproject.entity.api.ResourcePropertiesEdit;
 import org.sakaiproject.event.api.SessionState;
-import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.site.api.Site;
-import org.sakaiproject.site.api.SitePage;
 import org.sakaiproject.site.api.SiteService.SortType;
 import org.sakaiproject.site.api.ToolConfiguration;
 import org.sakaiproject.site.cover.SiteService;
-import org.sakaiproject.tool.api.Tool;
-import org.sakaiproject.tool.api.ToolException;
-import org.sakaiproject.tool.api.ToolSession;
+import org.sakaiproject.site.util.SiteConstants;
 import org.sakaiproject.tool.api.Placement;
-import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.tool.api.ToolSession;
 import org.sakaiproject.tool.cover.SessionManager;
 import org.sakaiproject.tool.cover.ToolManager;
 import org.sakaiproject.util.ResourceLoader;
-import org.sakaiproject.util.StringUtil;
 import org.sakaiproject.util.ParameterParser;
-import org.sakaiproject.user.api.User;
-import org.sakaiproject.user.api.UserNotDefinedException;
-import org.sakaiproject.user.cover.UserDirectoryService;
 
 /**
  * <p>
  * LinkAction allows site owners to link a site to a parent.
  * </p>
  */
+@Slf4j
 public class LinkAction extends VelocityPortletPaneledAction
 {
 	/** Resource bundle using current language locale */
@@ -79,8 +59,6 @@ public class LinkAction extends VelocityPortletPaneledAction
 
 	/** Name of state attribute for Site instance id */
 	private static final String STATE_SITE_INSTANCE_ID = "site.instance.id";
-
-	private static final Logger logger = LoggerFactory.getLogger(LinkAction.class);
 
 	/**
 	 * Get the current site page our current tool is placed on.
@@ -210,6 +188,9 @@ public class LinkAction extends VelocityPortletPaneledAction
 			rpe.addProperty("sakai:parent-id", parentId);
 			SiteService.save(site);
 			SessionManager.getCurrentToolSession().setAttribute(HELPER_LINK_MODE, HELPER_MODE_DONE);
+
+			// Go to Site Info landing page on 'Save'
+			state.setAttribute(SiteConstants.STATE_TEMPLATE_INDEX, SiteConstants.SITE_INFO_TEMPLATE_INDEX);
 		} 
 		catch (Exception e)
 		{
@@ -235,6 +216,9 @@ public class LinkAction extends VelocityPortletPaneledAction
 			rpe.removeProperty("sakai:parent-id");
 			SiteService.save(site);
 			SessionManager.getCurrentToolSession().setAttribute(HELPER_LINK_MODE, HELPER_MODE_DONE);
+
+			// Go to Site Info landing page on 'Remove'
+			state.setAttribute(SiteConstants.STATE_TEMPLATE_INDEX, SiteConstants.SITE_INFO_TEMPLATE_INDEX);
 		} 
 		catch (Exception e)
 		{
@@ -251,6 +235,9 @@ public class LinkAction extends VelocityPortletPaneledAction
 		String peid = ((JetspeedRunData) data).getJs_peid();
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(peid);
 		SessionManager.getCurrentToolSession().setAttribute(HELPER_LINK_MODE, HELPER_MODE_DONE);
+
+		// Go to Site Info landing page on 'Cancel'
+		state.setAttribute(SiteConstants.STATE_TEMPLATE_INDEX, SiteConstants.SITE_INFO_TEMPLATE_INDEX);
 	}
 
 	/**

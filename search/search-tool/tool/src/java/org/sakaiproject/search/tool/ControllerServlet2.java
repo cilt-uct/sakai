@@ -35,10 +35,12 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.sakaiproject.velocity.util.SLF4JLogChute;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
+import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.context.support.WebApplicationContextUtils;
+
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.search.tool.api.SearchAdminBean;
@@ -48,16 +50,14 @@ import org.sakaiproject.tool.api.Tool;
 import org.sakaiproject.tool.api.ToolSession;
 import org.sakaiproject.tool.cover.ToolManager;
 import org.sakaiproject.util.ResourceLoader;
-import org.springframework.web.context.WebApplicationContext;
-import org.springframework.web.context.support.WebApplicationContextUtils;
 import org.sakaiproject.portal.util.PortalUtils;
 
 /**
  * @author ieb
  */
+@Slf4j
 public class ControllerServlet2 extends HttpServlet
 {
-	private static final Logger log = LoggerFactory.getLogger(ControllerServlet2.class);
 
 	private static final String MACROS = "/WEB-INF/vm/macros.vm";
 
@@ -209,13 +209,9 @@ public class ControllerServlet2 extends HttpServlet
 		if (TITLE_PANEL.equals(request.getParameter(PANEL)))
 		{
 			template = "title";
-
 		}
 		else
 		{
-
-
-
 			String path = request.getPathInfo();
 			if (path == null || path.length() == 0)
 			{
@@ -224,35 +220,6 @@ public class ControllerServlet2 extends HttpServlet
 			if (path.startsWith("/"))
 			{
 				path = path.substring(1);
-
-				// SAK-13408, SAK-16278 - Websphere must be told to look in a different directory for .vm files.
-				// This fix forces the class to use the default directory and file when using WebSphere.
-				ServerConfigurationService  serverConfigurationService
-					 = (ServerConfigurationService) wac.getBean(ServerConfigurationService.class.getName());
-				if (serverConfigurationService == null)
-				{
-					throw new ServletException("Unable to get " + ServerConfigurationService.class.getName());
-				}
-				if ("websphere".equals(serverConfigurationService.getString("servlet.container")))
-				{
-					// expecting path like: "tool/fe2bb974-dbd4-4a08-b75b-d69f3cdcacea" or
-					//                      "tool/fe2bb974-dbd4-4a08-b75b-d69f3cdcacea/admin/index"
-					if (path.indexOf("/") >= 0) {
-						path = path.substring(path.indexOf("/"));
-					}
-					if (path.startsWith("/")) {
-						path = path.substring(1);
-					}
-					if (path.indexOf("/") >= 0) {
-						path = path.substring(path.indexOf("/"));
-						if (path.startsWith("/")) {
-							path = path.substring(1);
-						}
-					} else
-					{
-						path = "index";
-					}
-				}
 			}
 			template = path;
 		}

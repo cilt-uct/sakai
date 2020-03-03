@@ -39,21 +39,23 @@ import javax.servlet.ServletContext;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.sakaiproject.tool.assessment.facade.AgentFacade;
+import lombok.extern.slf4j.Slf4j;
 import org.w3c.dom.Document;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+
+import org.sakaiproject.component.cover.ComponentManager;
+import org.sakaiproject.component.api.ServerConfigurationService;
+import org.sakaiproject.tool.assessment.facade.AgentFacade;
 
 /**
  * <p>Copyright: Copyright (c) 2007 Sakai</p>
  * @version $Id$
  */
 
+@Slf4j
 public class ImportService {
-	private static Logger log = LoggerFactory.getLogger(ImportService.class);
 	private String qtiFilename;
 
 	public String unzipImportFile(String filename) {
@@ -62,8 +64,9 @@ public class ImportService {
 		ZipInputStream zipStream = null;
 		ZipEntry entry = null;
 
-		ExternalContext external = FacesContext.getCurrentInstance().getExternalContext();
-		StringBuilder unzipLocation = new StringBuilder((String)((ServletContext)external.getContext()).getAttribute("FILEUPLOAD_REPOSITORY_PATH"));
+		ServerConfigurationService serverConfigurationService = ComponentManager.get(ServerConfigurationService.class);
+		String repositoryPath = serverConfigurationService.getString("samigo.answerUploadRepositoryPath", "${sakai.home}/samigo/answerUploadRepositoryPath/");
+		StringBuilder unzipLocation = new StringBuilder(repositoryPath);
 	    log.debug("****"+unzipLocation);
 	    unzipLocation.append("/jsf/upload_tmp/qti_imports/");
 	    unzipLocation.append(AgentFacade.getAgentString());
@@ -154,7 +157,6 @@ public class ImportService {
 	    	log.error(e.getMessage());
 	    } catch (IOException e) {
 	    	log.error(e.getMessage());
-	    	e.printStackTrace();
 	    } finally {
 	    	if (ofile != null) {
 	    		try {

@@ -1,7 +1,6 @@
 <f:view>
 	<sakai:view title="#{msgs.room_list_title}">
-	<sakai:stylesheet contextBase="/sakai-chat-tool" path="/css/chat.css" />
-		<h:form>
+		<h:form styleClass="list-rooms">
 			<sakai:tool_bar>
 				<h:commandLink id="addRoom" rendered="#{ChatTool.canCreateChannel}"
 					action="#{ChatTool.processActionAddRoom}" immediate="true">
@@ -16,7 +15,7 @@
 			
 			<sakai:view_title value="#{msgs.room_list_title}"/>  	
 
-			<sakai:messages rendered="#{!empty facesContext.maximumSeverity}" />
+			<h:messages rendered="#{!empty facesContext.maximumSeverity}" />
 
 			<h:dataTable value="#{ChatTool.chatChannels}" var="channel"
 				styleClass="lines listHier" headerClass="exclude">
@@ -50,7 +49,7 @@
 							<h:outputText  styleClass="skip" value=" #{channel.chatChannel.title}: " /> <h:outputText value="#{msgs.delete_room_messages}" />
 						</h:commandLink>
 					</f:subview>
-					<f:subview id="defaultLink" rendered="#{(!channel.chatChannel.placementDefaultChannel || ChatTool.toolString != channel.chatChannel.placement) && ChatTool.maintainer}">
+					<f:subview id="defaultLink" rendered="#{(!channel.chatChannel.placementDefaultChannel || ChatTool.placementId != channel.chatChannel.placement) && ChatTool.maintainer}">
 						<h:commandLink action="#{channel.processActionSetAsDefaultRoom}" 
 							title="#{channel.setAsDefaultText}">
 							<h:outputText  styleClass="skip" value=" #{channel.chatChannel.title}: " /> <h:outputText value="#{msgs.set_default}" />
@@ -74,7 +73,7 @@
 			</h:dataTable>
 			
 			<sakai:button_bar>
-				<sakai:button_bar_item id="back"
+				<h:commandButton id="back"
 					action="#{ChatTool.processActionBackToRoom}"
 					value="#{msgs.back_to_room}" />
 			</sakai:button_bar>

@@ -27,10 +27,6 @@
 #rightPanel {
 }
 
-div#footer {
-}
-
-
 #fullWidth {
 }
 
@@ -123,6 +119,8 @@ div#footer {
 	border-left: thin solid #09c;
 	border-right: thin solid #09c;
 	border-bottom: thin solid #09c;
+	position: absolute;
+	right: 15px;
 }
 
 .edit-button:hover {
@@ -258,6 +256,14 @@ h2 {
 .myspace {
 	background-image: url(../images/myspace.png);
 }
+.recordIcon {
+	background-image: url(../images/mic.png);
+	width: 11px;
+	height: 15px;
+	display: inline-block;
+	background-size: 100%;
+	margin-left: 7px;
+}
 
 /* sideLink styles */
 #sideLink ul {
@@ -389,14 +395,13 @@ h2 {
 	width: 100%;
 }
 
+.mainSectionContentDescription {
+	padding-top: 5px;
+}
+
 .mainSectionContent {
 	padding-top: 5px;
-	padding-right: 80px; /* keep it in a block and out of the edit button's way */
 }
-
-.mainSectionContentForm {
-}
-
 
 
 /* profile and preferences information sections */
@@ -405,10 +410,6 @@ h2 {
 	padding-bottom: 2px;
 	font-size: 90%;
 	border: none;
-}
-
-.profileContent {
-	margin-right: 20px; /* space for the closebutton, if any */
 }
 
 .preferencesContent {
@@ -457,6 +458,10 @@ h2 {
     -webkit-hyphens: auto;
     /* Only split after 8 characters. Webkit only. */
     -webkit-hyphenate-limit-before:8;
+}
+
+.contentExample {
+	color: #aaa;
 }
 
 .preferencesContent .item  {
@@ -832,18 +837,6 @@ h2 {
 }
 
 
-
-
-
-
-
-/* overrides cluetip's text color and border that jquery-ui sets */
-.cluetip-inner {
-	color: #5D5D5D;
-	border: 0 !important;
-}
-
-
 /* heading for pages and items */
 .header {
 	border-bottom: 1px solid #DDD;
@@ -950,7 +943,7 @@ div.wicket-aa ul {
 
 div.wicket-aa li {
 	list-style:none;
-	margin-left: -40px; /*strip the default margin */
+	margin-left: -17px; /*strip the default margin */
 	padding-left: 5px;
 	padding-top: 2px;
 	padding-bottom: 2px;
@@ -1370,6 +1363,14 @@ div.wicket-aa ul li.selected {
 /* center the datepicker icon */
 img.ui-datepicker-trigger {
 	vertical-align: middle;
+}
+
+button.ui-datepicker-trigger {
+	margin: 0 0;
+}
+
+button.ui-datepicker-trigger .fa.fa-calendar{
+	color: #212121 !important;
 }
 
 .no-pictures {

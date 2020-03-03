@@ -32,6 +32,7 @@ import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.db.api.SqlService;
 import org.sakaiproject.entity.api.EntityManager;
 import org.sakaiproject.event.api.EventTrackingService;
+import org.sakaiproject.event.api.NotificationService;
 import org.sakaiproject.id.api.IdManager;
 import org.sakaiproject.javax.PagingPosition;
 import org.sakaiproject.memory.api.MemoryService;
@@ -171,8 +172,20 @@ public class SiteServiceTest extends DbSiteService
 	}
 
 	@Override
+	public List<String> getSiteIds(SelectionType type, Object ofType, String criteria, Map<String,String> propertyCriteria, Map<String,String> propertyRestrictions, SortType sort, PagingPosition page, String userId)
+	{
+		return new ArrayList<String>(0);
+	}
+
+	@Override
 	public String getUserSpecificSiteTitle( Site site, String userID )
 	{
+		return null;
+	}
+
+	@Override
+	protected NotificationService notificationService() {
+		// TODO Auto-generated method stub
 		return null;
 	}
 }

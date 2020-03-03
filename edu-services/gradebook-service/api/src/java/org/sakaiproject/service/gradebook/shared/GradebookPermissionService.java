@@ -1,9 +1,25 @@
+/**
+ * Copyright (c) 2003-2015 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.service.gradebook.shared;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import org.sakaiproject.section.api.facade.Role;
 
 public interface GradebookPermissionService
 {
@@ -255,5 +271,26 @@ public interface GradebookPermissionService
 	  */
 	 public void updatePermissionsForUser(final String gradebookUid, final String userId, List<PermissionDefinition> permissionDefinitions);
 
-	 
+	/**
+	 * Remove all grader specific permissions for the given user
+	 *
+	 * @param gradebookUid
+	 * @param userId
+	 * @return
+	 */
+	public void clearPermissionsForUser(final String gradebookUid, final String userId);
+
+	 /**
+	  * Get a list of permissions defined for the given user based on section and role or all sections if allowed. 
+	  * This method checks realms permissions for role/section and is independent of the 
+	  * gb_permissions_t permissions.
+	  * 
+	  * note: If user has the grade privilege, they are given the GraderPermission.VIEW_COURSE_GRADE permission to match
+	  * GB classic functionality. This needs to be reviewed.
+	  *
+	  * @param userUuid
+	  * @param siteId
+	  * @return list of {@link org.sakaiproject.service.gradebook.shared.PermissionDefinition PermissionDefinitions} or empty list if none
+	  */	
+	 public List<PermissionDefinition> getRealmsPermissionsForUser(String userUuid,String siteId, Role role);
 }

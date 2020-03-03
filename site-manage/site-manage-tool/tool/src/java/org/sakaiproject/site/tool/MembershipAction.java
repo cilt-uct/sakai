@@ -23,36 +23,36 @@ package org.sakaiproject.site.tool;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Vector;
 
-import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.cheftool.Context;
 import org.sakaiproject.cheftool.JetspeedRunData;
 import org.sakaiproject.cheftool.PagedResourceActionII;
 import org.sakaiproject.cheftool.RunData;
 import org.sakaiproject.cheftool.VelocityPortlet;
+import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.component.cover.ComponentManager;
-import org.sakaiproject.component.cover.ServerConfigurationService;
-import org.sakaiproject.coursemanagement.api.CourseManagementService;
-import org.sakaiproject.coursemanagement.api.Section;
-import org.sakaiproject.coursemanagement.api.exception.IdNotFoundException;
 import org.sakaiproject.event.api.SessionState;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.exception.InUseException;
 import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.javax.PagingPosition;
 import org.sakaiproject.site.api.Site;
-import org.sakaiproject.site.cover.SiteService;
-import org.sakaiproject.site.util.SiteParticipantHelper;
+import org.sakaiproject.site.api.SiteService;
+import org.sakaiproject.site.api.SiteService.SelectionType;
+import org.sakaiproject.site.api.SiteService.SortType;
+import org.sakaiproject.site.tool.EnrolmentsHandler.Enrolment;
+import org.sakaiproject.site.tool.EnrolmentsHandler.EnrolmentsWrapper;
+import org.sakaiproject.site.tool.MenuBuilder.MembershipActiveTab;
 import org.sakaiproject.site.util.SiteTextEditUtil;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.userauditservice.api.UserAuditRegistration;
 import org.sakaiproject.userauditservice.api.UserAuditService;
 import org.sakaiproject.util.ResourceLoader;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * <p>
@@ -62,26 +62,25 @@ import org.sakaiproject.util.ResourceLoader;
 @Slf4j
 public class MembershipAction extends PagedResourceActionII
 {
-	private static String STATE_VIEW_MODE = "state_view";
-
-	private static ResourceLoader rb = new ResourceLoader("membership");
-
-	private static String SORT_ASC = "sort_asc";
-
-	private static String JOINABLE_SORT_ASC = "sort_asc";
-
-	private static String STATE_CONFIRM_VIEW_MODE = "state_confirm_view";
-
-	private static String UNJOIN_SITE = "unjoin_site";
-
-	private static String SEARCH_TERM = "search";
-	
+	private static final ResourceLoader RB = new ResourceLoader("membership");
+	private static final String STATE_VIEW_MODE = "state_view";
+	private static final String SORT_ASC = "sort_asc";
+	private static final String STATE_CONFIRM_VIEW_MODE = "state_confirm_view";
+	private static final String UNJOIN_SITE = "unjoin_site";
+	private static final String SEARCH_TERM = "search";
 	private static final String STATE_TOP_PAGE_MESSAGE = "msg-top";
-	
-	private static UserAuditRegistration userAuditRegistration = (UserAuditRegistration) ComponentManager.get("org.sakaiproject.userauditservice.api.UserAuditRegistration.membership");
-	private static UserAuditService userAuditService = (UserAuditService) ComponentManager.get(UserAuditService.class);
-	private static UserDirectoryService userDirectoryService = (UserDirectoryService) ComponentManager.get(UserDirectoryService.class);
-	private static final CourseManagementService cms = (CourseManagementService) ComponentManager.get( CourseManagementService.class );
+
+	private static final UserAuditRegistration userAuditRegistration = (UserAuditRegistration) ComponentManager.get("org.sakaiproject.userauditservice.api.UserAuditRegistration.membership");
+	private static final UserDirectoryService userDirectoryService = (UserDirectoryService) ComponentManager.get(UserDirectoryService.class);
+
+	// SAK-32087
+	private static final ServerConfigurationService SCS = (ServerConfigurationService) ComponentManager.get( ServerConfigurationService.class );
+	private static final SiteService SITE_SERV = (SiteService) ComponentManager.get( SiteService.class );
+	private static final EnrolmentsHandler ENROLMENTS_HANDLER = new EnrolmentsHandler();
+	private static final String SAK_PROP_ENROLMENTS_BLURB = "membership.enrolments.blurb";
+	private static final String ENROLMENTS_BLURB = SCS.getString( SAK_PROP_ENROLMENTS_BLURB, "" );
+	private static final String MY_ENROLMENTS_MODE = "my_enrolments";
+	private static final String JOINABLE_MODE = "joinable";
 
 	/*
 	 * (non-Javadoc)
@@ -90,7 +89,7 @@ public class MembershipAction extends PagedResourceActionII
 	 */
 	protected int sizeResources(SessionState state)
 	{
-		int size = 0;
+		int size;
 
 		String search = (String) state.getAttribute(SEARCH_TERM);
 		if ((search != null) && search.trim().equals(""))
@@ -98,21 +97,48 @@ public class MembershipAction extends PagedResourceActionII
 			search = null;
 		}
 
-		boolean defaultMode = state.getAttribute(STATE_VIEW_MODE) == null;
-		if (defaultMode)
+		String mode = (String) state.getAttribute( STATE_VIEW_MODE );
+		if( MY_ENROLMENTS_MODE.equals( mode ) )
 		{
-			List unjoinableSites = SiteService.getSites(org.sakaiproject.site.api.SiteService.SelectionType.ACCESS, null, null,
-					null, org.sakaiproject.site.api.SiteService.SortType.TITLE_ASC, null);
-			size=unjoinableSites.size();
+			String currentUserID = userDirectoryService.getCurrentUser().getId();
+			ENROLMENTS_HANDLER.getSectionEnrolments( currentUserID );
+
+			// If a search is provided, filter the results
+			if( StringUtils.isNotBlank( search ) )
+			{
+				ENROLMENTS_HANDLER.filterSectionEnrolments( search, currentUserID );
+				size = ENROLMENTS_HANDLER.getFilteredEnrolments().size();
+			}
+			else
+			{
+				if( ENROLMENTS_HANDLER.getEnrolmentsCacheMap().get( currentUserID ) == null )
+				{
+					ENROLMENTS_HANDLER.getSectionEnrolments( currentUserID );
+				}
+
+				EnrolmentsWrapper wrapper = ENROLMENTS_HANDLER.getEnrolmentsCacheMap().get( currentUserID );
+				if( wrapper != null )
+				{
+					List<Enrolment> enrolments = wrapper.getEnrolments();
+					size = enrolments != null ? enrolments.size() : 0;
+				}
+				else
+				{
+					size = 0;
+				}
+			}
+		}
+		else if( JOINABLE_MODE.equals( mode ) )
+		{
+			List openSites = SITE_SERV.getSites(SelectionType.JOINABLE, null, search, null, SortType.TITLE_ASC, null);
+
+			// SAK-24423 - joinable site settings - filter sites
+			JoinableSiteSettings.filterSitesListForMembership( openSites );
+			size = openSites.size();
 		}
 		else
 		{
-		List openSites = SiteService.getSites(org.sakaiproject.site.api.SiteService.SelectionType.JOINABLE,
-				null, search, null, org.sakaiproject.site.api.SiteService.SortType.TITLE_ASC, null);
-			
-            // bjones86 - SAK-24423 - joinable site settings - filter sites
-            JoinableSiteSettings.filterSitesListForMembership( openSites );
-		size = openSites.size();
+			size = SITE_SERV.countSites(SelectionType.ACCESS, null, search, null);
 		}
 
 		return size;
@@ -125,82 +151,78 @@ public class MembershipAction extends PagedResourceActionII
 	 */
 	protected List readResourcesPage(SessionState state, int first, int last)
 	{
-		List rv = new Vector();
+		List rv;
 
 		String search = (String) state.getAttribute(SEARCH_TERM);
 		if ((search != null) && search.trim().equals(""))
 		{
 			search = null;
 		}
-		
-		boolean defaultMode = state.getAttribute(STATE_VIEW_MODE) == null;
+
+		String mode = (String) state.getAttribute( STATE_VIEW_MODE );
 		PagingPosition page = new PagingPosition(first, last);
-		
+
 		// check the sort order
 		boolean sortAsc = true;
 		if (state.getAttribute(SORT_ASC) != null)
 		{
-			sortAsc =((Boolean) state.getAttribute(SORT_ASC)).booleanValue();
+			sortAsc =((Boolean) state.getAttribute(SORT_ASC));
 		}
 		else
 		{
 			state.setAttribute(SORT_ASC, Boolean.TRUE);
 		}
-		
-		if (defaultMode)
+
+		if( MY_ENROLMENTS_MODE.equals( mode ) )
+		{
+			String sortMode = ENROLMENTS_HANDLER.getSortModeForMyEnrolments( state );
+			ENROLMENTS_HANDLER.getSectionEnrolments( userDirectoryService.getCurrentUser().getId() );
+			rv = ENROLMENTS_HANDLER.getSortedAndPagedEnrolments( page, sortMode, sortAsc, StringUtils.isNotBlank( search ) );
+		}
+		else if( JOINABLE_MODE.equals( mode ) )
 		{
 			if (sortAsc)
 			{
-				rv = SiteService.getSites(org.sakaiproject.site.api.SiteService.SelectionType.ACCESS, null, search,
-						null, org.sakaiproject.site.api.SiteService.SortType.TITLE_ASC, page);
+				List<Site> sites = SITE_SERV.getSites(SelectionType.JOINABLE, null, search, null, SortType.TITLE_ASC, page);
+
+				// SAK-24423 - filter sites taking into account 'exclude from public list' setting and global toggle
+				JoinableSiteSettings.filterSitesListForMembership( sites );
+				rv = sites;
 			}
 			else
 			{
-				rv = SiteService.getSites(org.sakaiproject.site.api.SiteService.SelectionType.ACCESS, null, search,
-						null, org.sakaiproject.site.api.SiteService.SortType.TITLE_DESC, page);
+				List<Site> sites = SITE_SERV.getSites(SelectionType.JOINABLE, null, search, null, SortType.TITLE_DESC, page);
+
+				// SAK-24423 - filter sites taking into account 'exclude from public list' setting and global toggle
+				JoinableSiteSettings.filterSitesListForMembership( sites );
+				rv = sites;
 			}
 		}
 		else
 		{
-
 			if (sortAsc)
 			{
-				List<Site> sites = SiteService.getSites(org.sakaiproject.site.api.SiteService.SelectionType.JOINABLE, 
-						// null, null, null, org.sakaiproject.service.legacy.site.SiteService.SortType.TITLE_ASC, null);
-						null, search, null, org.sakaiproject.site.api.SiteService.SortType.TITLE_ASC, page);
-				
-				// bjones86 - SAK-24423 - filter sites taking into account 'exclude from public list' setting and global toggle
-				JoinableSiteSettings.filterSitesListForMembership( sites );
-				rv = sites;
+				rv = SITE_SERV.getSites(SelectionType.ACCESS, null, search, null, SortType.TITLE_ASC, page);
 			}
 			else
 			{
-				List<Site> sites = SiteService.getSites(org.sakaiproject.site.api.SiteService.SelectionType.JOINABLE, 
-						// null, null, null, org.sakaiproject.service.legacy.site.SiteService.SortType.TITLE_ASC, null);
-						null, search, null, org.sakaiproject.site.api.SiteService.SortType.TITLE_DESC, page);
-				
-				// bjones86 - SAK-24423 - filter sites taking into account 'exclude from public list' setting and global toggle
-				JoinableSiteSettings.filterSitesListForMembership( sites );
-				rv = sites;
+				rv = SITE_SERV.getSites(SelectionType.ACCESS, null, search, null, SortType.TITLE_DESC, page);
 			}
 		}
-
-		//PagingPosition page = new PagingPosition(first, last);
-		//page.validate(rv.size());
-		//rv = rv.subList(page.getFirst() - 1, page.getLast());
 
 		return rv;
 	}
 
-	/** the above : paging * */
-
 	/**
 	 * build the context
+	 * @param portlet
+	 * @param context
+	 * @param rundata
+	 * @param state
+	 * @return 
 	 */
 	public String buildMainPanelContext(VelocityPortlet portlet, Context context, RunData rundata, SessionState state)
 	{
-		// buildMenu(portlet, context, rundata, state);
-
 		String template = (String) getContext(rundata).get("template");
 
 		// read the group ids to join
@@ -217,84 +239,43 @@ public class MembershipAction extends PagedResourceActionII
 		}
 		context.put(SEARCH_TERM, state.getAttribute(SEARCH_TERM));
 
-		boolean defaultMode = state.getAttribute(STATE_VIEW_MODE) == null;
-		if (defaultMode)
+		MembershipActiveTab activeTab = MembershipActiveTab.CURRENT_SITES;
+		String mode = (String) state.getAttribute( STATE_VIEW_MODE );
+		if( MY_ENROLMENTS_MODE.equals( mode ) )
+		{
+			activeTab = MembershipActiveTab.OFFICIAL_ENROLMENTS;
+			template = buildMyEnrolmentsContext( portlet, context, rundata, state );
+		}
+		else if( JOINABLE_MODE.equals( mode ) )
+		{
+			activeTab = MembershipActiveTab.JOINABLE_SITES;
+			template = buildJoinableContext(portlet, context, rundata, state);
+		}
+		else
 		{
 			// process all the sites the user has access to so can unjoin
-			//List unjoinableSites = new Vector();
-			List unjoinableSites = prepPage(state);
+			List<Site> unjoinableSites = prepPage(state);
+			for (Site site : unjoinableSites)
+			{
+				site.setTitle(SITE_SERV.getUserSpecificSiteTitle(site, userDirectoryService.getCurrentUser().getId()));
+			}
 			pagingInfoToContext(state, context);
-			
-			/*
-			 if (sortAsc.booleanValue())
-			{
-				unjoinableSites = SiteService.getSites(org.sakaiproject.site.api.SiteService.SelectionType.ACCESS, null, null,
-						null, org.sakaiproject.site.api.SiteService.SortType.TITLE_ASC, null);
-			}
-			else
-			{
-				unjoinableSites = SiteService.getSites(org.sakaiproject.site.api.SiteService.SelectionType.ACCESS, null, null,
-						null, org.sakaiproject.site.api.SiteService.SortType.TITLE_DESC, null);
-			}
-			*/
 			context.put("unjoinableSites", unjoinableSites);
-
-			// SAK-29138
-			Map<String, String> siteGroupsMap = new HashMap<>();
-			Map<String, String> sectionRoles = cms.findSectionRoles( userDirectoryService.getCurrentUser().getEid() );
-			for( Object obj : unjoinableSites )
-			{
-				Site site = (Site) obj;
-				List<String> providerIDs = SiteParticipantHelper.getProviderCourseList( site.getId() );
-				StringBuilder sectionTitles = new StringBuilder();
-				for( String providerID : providerIDs )
-				{
-					// If the user isn't enrolled in this section, skip it
-					if( !sectionRoles.keySet().contains( providerID ) )
-					{
-						continue;
-					}
-
-					if( sectionTitles.length() != 0 )
-					{
-						sectionTitles.append( ", " );
-					}
-
-					try
-					{
-						Section section = cms.getSection( providerID );
-						sectionTitles.append( section.getTitle() );
-					}
-					catch( IdNotFoundException ex )
-					{
-					 	log.warn( "cannot find section {}, {}", providerID, ex.getMessage());
-					}
-				}
-				
-				siteGroupsMap.put( site.getId(), sectionTitles.toString() );
-			}
-			context.put( "siteGroupsMap", siteGroupsMap );
-
-			context.put("tlang", rb);
-
-			context.put("SiteService", SiteService.getInstance());
+			context.put("tlang", RB);
+			context.put("SiteService", SITE_SERV);
 
 			// if property set in sakai.properties then completely disable 'unjoin' link
-			if (ServerConfigurationService.getBoolean("disable.membership.unjoin.selection", false))
+			if (SCS.getBoolean("disable.membership.unjoin.selection", false))
 			{
 				context.put("disableUnjoinSelection", Boolean.TRUE);
 			}
 			
-			if (ServerConfigurationService.getStrings("wsetup.disable.unjoin") != null)
+			if (SCS.getStrings("wsetup.disable.unjoin") != null)
 			{
-				context.put("disableUnjoinSiteTypes", new ArrayList(Arrays.asList(ServerConfigurationService.getStrings("wsetup.disable.unjoin"))));
+				context.put("disableUnjoinSiteTypes", new ArrayList(Arrays.asList(SCS.getStrings("wsetup.disable.unjoin"))));
 			}
 		}
-		
-		else
-		{
-			template = buildJoinableContext(portlet, context, rundata, state);
-		}
+
 		// build confirmation screen context
 		if (state.getAttribute(STATE_CONFIRM_VIEW_MODE) != null)
 		{
@@ -303,32 +284,70 @@ public class MembershipAction extends PagedResourceActionII
 				template = buildUnjoinconfirmContext(portlet, context, rundata, state);
 			}
 		}
-		context.put("tlang", rb);
+
+		context.put("tlang", RB);
 		context.put("alertMessage", state.getAttribute(STATE_MESSAGE));
 		context.put("membershipTextEdit", new SiteTextEditUtil());
+
+		// Add the menu to the vm
+		MenuBuilder.buildMenuForMembership(portlet, rundata, state, context, RB, activeTab);
 
 		return template;
 
 	} // buildMainPanelContext
-	
+
+	/**
+	 * Build the context for the 'My Official Course Enrolments' page.
+	 * SAK-32087
+	 * @param portlet
+	 * @param context
+	 * @param runData
+	 * @param state
+	 * @return 
+	 */
+	public String buildMyEnrolmentsContext( VelocityPortlet portlet, Context context, RunData runData, SessionState state )
+	{
+		// Get the sort mode
+		String sortMode = ENROLMENTS_HANDLER.getSortModeForMyEnrolments( state );
+		context.put( "sortMode", sortMode );
+
+		// Get the enrolments for the user, taking into consideration sorting, paging and filtering
+		List<Enrolment> currentUserEnrolments = prepPage( state );
+		context.put( "enrolments", currentUserEnrolments );
+		context.put( "sessionHelper", EnrolmentsHandler.SESSION_HELPER );
+		context.put( "hasBlurb", StringUtils.isNotBlank( ENROLMENTS_BLURB ) );
+		context.put( "enrolmentsBlurb", ENROLMENTS_BLURB );
+
+		Object[] replacements = new Object[] { SCS.getString( "ui.service", "Sakai" ) };
+		String noEnrolments = RB.getFormattedMessage( "mb.enrolments.noEnrolments", replacements );
+		String summary = RB.getFormattedMessage( "mb.enrolments.summary", replacements );
+		context.put( "noEnrolments", noEnrolments );
+		context.put( "summary", summary );
+
+		// Put the paging info into the context and return the template name
+		pagingInfoToContext( state, context );
+		String template = (String) getContext( runData ).get( "template" );
+		return template + "_enrolments";
+	}
+
 	/**
 	 * Navigate to confirmation screen
+	 * @param data
 	 */
 	public void doGoto_unjoinconfirm(RunData data)
 	{
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
 		String[] id = data.getParameters().getStrings("itemReference");
-				
+
 		if (id==null){
 			state.setAttribute(STATE_CONFIRM_VIEW_MODE, "noSelectionUnjoin");
-			addAlert(state, rb.getString("mb.noselection.unjoin"));
+			addAlert(state, RB.getString("mb.noselection.unjoin"));
 		}
 		else
 		{
 			state.setAttribute(STATE_CONFIRM_VIEW_MODE, "unjoinconfirm");
-			
 		}
-		
+
 		state.setAttribute(UNJOIN_SITE, id);
 	}
 
@@ -343,21 +362,19 @@ public class MembershipAction extends PagedResourceActionII
 	 */
 	public String buildUnjoinconfirmContext(VelocityPortlet portlet, Context context, RunData runData, SessionState state)
 	{
-
-		context.put("tlang", rb);
+		context.put("tlang", RB);
 		if (state.getAttribute(UNJOIN_SITE) != null)
 		{
 			String[] items=(String[])state.getAttribute(UNJOIN_SITE);
-			List unjoinSite=new Vector();
+			List unjoinSite=new ArrayList();
 
-			for (int i=0; i<items.length;i++){
+			for( String item : items ){
 				try
 				{
-					unjoinSite.add(SiteService.getSite(items[i]).getTitle());
-				}
-				catch (IdUnusedException e)
+					unjoinSite.add(SITE_SERV.getSite(item).getTitle());
+				}catch (IdUnusedException e)
 				{
-				 	log.warn(e.getMessage());
+					log.warn(e.getMessage());
 				}
 			}
 			context.put("unjoinSite", unjoinSite);
@@ -394,35 +411,32 @@ public class MembershipAction extends PagedResourceActionII
 
 	/**
 	 * Setup for the options panel.
+	 * @param portlet
+	 * @param context
+	 * @param runData
+	 * @param state
+	 * @return 
 	 */
 	public String buildJoinableContext(VelocityPortlet portlet, Context context, RunData runData, SessionState state)
 	{
-		// the sorting sequence
-		if (state.getAttribute(JOINABLE_SORT_ASC) == null)
+		List<Site> openSites = prepPage(state);
+		for (Site site : openSites)
 		{
-			state.setAttribute(JOINABLE_SORT_ASC, Boolean.TRUE);
+			site.setTitle(SITE_SERV.getUserSpecificSiteTitle(site, userDirectoryService.getCurrentUser().getId()));
 		}
-		context.put("currentSortAsc", state.getAttribute(JOINABLE_SORT_ASC));
-
-		if (state.getAttribute(SEARCH_TERM) == null)
-		{
-			state.setAttribute(SEARCH_TERM, "");
-		}
-		context.put(SEARCH_TERM, state.getAttribute(SEARCH_TERM));
-
-		List openSites = prepPage(state);
 		context.put("openSites", openSites);
 
 		pagingInfoToContext(state, context);
 
-		context.put("tlang", rb);
+		context.put("tlang", RB);
 
 		String template = (String) getContext(runData).get("template");
 		return template + "_joinable";
 	}
 
 	/**
-	 * Handle the eventSubmit_doGoto_unJoinable command to shwo the list of site which are unjoinable.
+	 * Handle the eventSubmit_doGoto_unJoinable command to show the list of site which are unjoinable.
+	 * @param data
 	 */
 	public void doGoto_unjoinable(RunData data)
 	{
@@ -430,23 +444,39 @@ public class MembershipAction extends PagedResourceActionII
 		state.removeAttribute(STATE_VIEW_MODE);
 		state.removeAttribute(STATE_PAGESIZE);
 		state.removeAttribute(STATE_TOP_PAGE_MESSAGE);
-		state.removeAttribute(SEARCH_TERM);		
+		state.removeAttribute(SEARCH_TERM);
 	}
 
 	/**
 	 * Handle the eventSubmit_doGoto_unJoinable command to shwo the list of site which are joinable.
+	 * @param data
 	 */
 	public void doGoto_joinable(RunData data)
 	{
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
-		state.setAttribute(STATE_VIEW_MODE, "joinable");
+		state.setAttribute(STATE_VIEW_MODE, JOINABLE_MODE);
 		state.removeAttribute(STATE_PAGESIZE);
 		state.removeAttribute(STATE_TOP_PAGE_MESSAGE);
 		state.removeAttribute(SEARCH_TERM);
 	}
 
 	/**
+	 * Handle the eventSubmit_doGoto_enrolments command to show the list of enrolments for the current user.
+	 * SAK-32087
+	 * @param data 
+	 */
+	public void doGoto_enrolments( RunData data )
+	{
+		SessionState state = ((JetspeedRunData) data).getPortletSessionState( ((JetspeedRunData) data).getJs_peid() );
+		state.setAttribute( STATE_VIEW_MODE, MY_ENROLMENTS_MODE );
+		state.removeAttribute( STATE_PAGESIZE );
+		state.removeAttribute( STATE_TOP_PAGE_MESSAGE );
+		state.removeAttribute( SEARCH_TERM );
+	}
+
+	/**
 	 * Handle the eventSubmit_doJoin command to have the user join one or more sites.
+	 * @param data
 	 */
 	public void doJoin(RunData data)
 	{
@@ -458,21 +488,22 @@ public class MembershipAction extends PagedResourceActionII
 		{
 			try
 			{
-				// bjones86 - SAK-24423 - joinable site settings - join the site
+				// SAK-24423 - joinable site settings - join the site
 				if( JoinableSiteSettings.doJoinForMembership( id ) )
 				{
-					addAlert( state, rb.getString( "mb.youhave2" ) + " " + SiteService.getSite( id ).getTitle() );
+					String msg = RB.getFormattedMessage( "mb.youhave2", new Object[] {SITE_SERV.getSite( id ).getTitle()} );
+					addAlert( state, msg );
 				}
 				else
 				{
-					addAlert( state, rb.getString( "mb.join.notAllowed" ) );
+					addAlert( state, RB.getString( "mb.join.notAllowed" ) );
 				}
-				
+
 				// add to user auditing
-				List<String[]> userAuditList = new ArrayList<String[]>();
+				List<String[]> userAuditList = new ArrayList<>();
 				String currentUserEid = userDirectoryService.getCurrentUser().getEid();
-				String roleId = SiteService.getSite(id).getJoinerRole();
-				String[] userAuditString = {id,currentUserEid,roleId,userAuditService.USER_AUDIT_ACTION_ADD,userAuditRegistration.getDatabaseSourceKey(),currentUserEid};
+				String roleId = SITE_SERV.getSite(id).getJoinerRole();
+				String[] userAuditString = {id,currentUserEid,roleId,UserAuditService.USER_AUDIT_ACTION_ADD,userAuditRegistration.getDatabaseSourceKey(),currentUserEid};
 				userAuditList.add(userAuditString);
 				if (!userAuditList.isEmpty())
 				{
@@ -481,23 +512,21 @@ public class MembershipAction extends PagedResourceActionII
 			}
 			catch (IdUnusedException | PermissionException e)
 			{
-			 	log.warn(e.getMessage());
+				log.warn(e.getMessage());
 			}
 			catch (InUseException e)
 			{
-				addAlert(state, rb.getString("mb.sitebeing"));
+				addAlert(state, RB.getString("mb.sitebeing"));
 			}
 		}
 
 		// TODO: hard coding this frame id is fragile, portal dependent, and needs to be fixed -ggolden
-		 schedulePeerFrameRefresh("sitenav");
-		
-		//scheduleTopRefresh();
-
+		schedulePeerFrameRefresh("sitenav");
 	} // doJoin
 
 	/**
 	 * Handle the eventSubmit_doUnjoin command to have the user un-join one or more groups.
+	 * @param data
 	 */
 	public void doUnjoin(RunData data)
 	{
@@ -508,30 +537,30 @@ public class MembershipAction extends PagedResourceActionII
 		String[] id = (String[]) state.getAttribute(UNJOIN_SITE);
 		if (id != null)
 		{
-			String msg = rb.getString("mb.youhave") + " "; 
+			String msg = RB.getString("mb.youhave") + " "; 
 			
 			// add to user auditing
-			List<String[]> userAuditList = new ArrayList<String[]>();
+			List<String[]> userAuditList = new ArrayList<>();
 			// get the User object since we need a couple of lookups
 			User tempUser = userDirectoryService.getCurrentUser();
 			String currentUserId = tempUser.getId();
 			String currentUserEid = tempUser.getEid();
-			
+
 			for(int i=0; i< id.length; i++){
 
 				try
 				{
 					// Get the user's role before unjoining the site
-					String roleId = SiteService.getSite(id[i]).getUserRole(currentUserId).getId();
-					
-					SiteService.unjoin(id[i]);
+					String roleId = SITE_SERV.getSite(id[i]).getUserRole(currentUserId).getId();
+
+					SITE_SERV.unjoin(id[i]);
 					if (i>0)
 					{
 						msg=msg+", ";
 					}
-					msg = msg+SiteService.getSite(id[i]).getTitle();
-					
-					String[] userAuditString = {id[i],currentUserEid,roleId,userAuditService.USER_AUDIT_ACTION_REMOVE,userAuditRegistration.getDatabaseSourceKey(),currentUserEid};
+					msg = msg+SITE_SERV.getSite(id[i]).getTitle();
+
+					String[] userAuditString = {id[i],currentUserEid,roleId,UserAuditService.USER_AUDIT_ACTION_REMOVE,userAuditRegistration.getDatabaseSourceKey(),currentUserEid};
 					userAuditList.add(userAuditString);
 				}
 				catch (IdUnusedException ignore)
@@ -541,12 +570,7 @@ public class MembershipAction extends PagedResourceActionII
 				{
 					// This could occur if the user's role is the maintain role for the site, and we don't let the user
 					// unjoin sites they are maintainers of
-				 	log.warn(e.getMessage());
-				}
-				catch (InUseException e)
-				{
-				 	log.warn(e.getMessage());
-					addAlert(state, rb.getString("mb.sitebeing"));
+					log.warn(e.getMessage());
 				}
 			}
 			addAlert(state, msg);
@@ -558,11 +582,11 @@ public class MembershipAction extends PagedResourceActionII
 
 		// TODO: hard coding this frame id is fragile, portal dependent, and needs to be fixed -ggolden
 		schedulePeerFrameRefresh("sitenav");
-
 	} // doUnjoin
 
 	/**
-	 * toggle the sort ascending vs decending property in main view
+	 * toggle the sort ascending vs descending property in main view
+	 * @param data
 	 */
 	public void doToggle_sort(RunData data)
 	{
@@ -570,20 +594,20 @@ public class MembershipAction extends PagedResourceActionII
 
 		if (state.getAttribute(SORT_ASC) != null)
 		{
-			state.setAttribute(SORT_ASC, Boolean.valueOf(!((Boolean) state.getAttribute(SORT_ASC)).booleanValue()));
+			state.setAttribute(SORT_ASC, !((Boolean) state.getAttribute(SORT_ASC)));
 		}
 	} // doToggle_sort
 
 	/**
-	 * toggle the sort ascending vs decending property in joinable view
+	 * toggle the sort ascending vs descending by property in enrolments view
+	 * @param data
 	 */
-	public void doToggle_joinable_sort(RunData data)
+	public void doToggle_sortEnrolments(RunData data)
 	{
-		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
+		doToggle_sort(data);
 
-		if (state.getAttribute(JOINABLE_SORT_ASC) != null)
-		{
-			state.setAttribute(JOINABLE_SORT_ASC, Boolean.valueOf(!((Boolean) state.getAttribute(JOINABLE_SORT_ASC)).booleanValue()));
-		}
+		// Set the sort mode
+		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
+		ENROLMENTS_HANDLER.setSortModeFromMyEnrolments(data, state);
 	}
 }

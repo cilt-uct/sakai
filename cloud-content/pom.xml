@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.sakaiproject</groupId>
     <artifactId>master</artifactId>
-    <version>12-SNAPSHOT</version>
+    <version>21-SNAPSHOT</version>
     <relativePath>../master/pom.xml</relativePath>
   </parent>
 
@@ -12,15 +12,9 @@
   <groupId>org.sakaiproject.content</groupId>
   <artifactId>cloud-content</artifactId>
   <packaging>pom</packaging>
-  <organization>
-    <name>Sakai Foundation</name>
-    <url>http://sakaiproject.org/</url>
-  </organization>
-  <inceptionYear>2003</inceptionYear>
 
   <modules>
     <module>impl</module>
-    <module>pack</module>
   </modules>
 
 

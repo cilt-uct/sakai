@@ -1,4 +1,4 @@
-<!-- Javascript for the Question Progress Panel-->
+/* Javascript for the Question Progress Panel */
 (function (questionProgress, $, undefined) {
 	var origWrapWidth = 0;
 	var CLICK_PANEL_WIDTH = 299;
@@ -8,10 +8,17 @@
 	var arrowSuffix = "']";
 	var rightArrowSuffix = ":rightArrow";
 	var downArrowSuffix = ":downArrow";
+	var qPToggleOnNoStorage = false;
 
 	$('#questionProgressClick').click(function () {
 		toggle(400);
 		setQPToggleOn(!getQPToggleOn());
+	});
+
+	$("#questionProgressClick").keypress(function(event) {
+		if (event.keyCode === 13) {
+			$("#questionProgressClick").click();
+		}
 	});
 
 	function toggle(animateTimer) {
@@ -35,21 +42,26 @@
 		// Position the clickTab
 		if (!QPToggleOn) {
 			$("#questionProgressClick").animate({marginTop: 0, right: panelWidth}, animateTimer);
-			$("#delivAssessmentWrapper").animate({width: newWrapWidth}, animateTimer);
 		}
 		else {
 			$("#questionProgressClick").animate({marginTop: 0, right: 0}, animateTimer);
-			$("#delivAssessmentWrapper").animate({width: origWrapWidth}, animateTimer);
 		}
 	}
 
 	function getQPToggleOn() {
+		if(localStorage === null) {
+			return qPToggleOnNoStorage;
+		}
 		var value = localStorage.getItem('QPToggleOn');
 		return value == '1';
 	}
 
 	function setQPToggleOn(QPToggleOn) {
-		localStorage.setItem('QPToggleOn', (QPToggleOn ? '1' : '0'));
+		if(localStorage !== null) {
+			localStorage.setItem('QPToggleOn', (QPToggleOn ? '1' : '0'));
+		} else {
+			qPToggleOnNoStorage = !qPToggleOnNoStorage;
+		}
 	}
 
 	function partLinkClickEvent(event) {
@@ -57,6 +69,7 @@
 		$(event.data.downArrow).slideToggle();
 		$(event.data.item).slideToggle();
 		event.preventDefault();
+		event.target.blur();
 	}
 
 	function selectAllPartTableDivs() {
@@ -148,7 +161,6 @@
 				document.getElementById('questionProgressPanel').style.display = "block";
 			}
 
-			document.getElementById('delivAssessmentWrapper').style.width = newWrapWidth + "px";
 			document.getElementById('questionProgressClick').style.marginTop = clickPos + "px";
 
 			setUpClickHandlersForParts();
@@ -176,7 +188,7 @@
 
 	questionProgress.disableLink = function(link) {
 		link.style.display = 'none';
-		link.parentNode.firstChild.style.display = 'block';
+		link.parentNode.firstChild.style.display = 'inline-block';
 		return true;
 	};
 }( window.questionProgress = window.questionProgress || {}, jQuery )) ;

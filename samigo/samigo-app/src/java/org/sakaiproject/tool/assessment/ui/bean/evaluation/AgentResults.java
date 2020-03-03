@@ -23,18 +23,17 @@
 package org.sakaiproject.tool.assessment.ui.bean.evaluation;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import javax.faces.context.ExternalContext;
 import javax.faces.context.FacesContext;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.sakaiproject.content.api.FilePickerHelper;
 import org.sakaiproject.entity.api.Reference;
+import org.sakaiproject.rubrics.logic.RubricsConstants;
 import org.sakaiproject.tool.api.ToolSession;
 import org.sakaiproject.tool.assessment.data.dao.grading.AssessmentGradingAttachment;
 import org.sakaiproject.tool.assessment.data.dao.grading.AssessmentGradingData;
@@ -45,12 +44,12 @@ import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 import org.sakaiproject.tool.assessment.util.AttachmentUtil;
 import org.sakaiproject.tool.cover.SessionManager;
 
-
 /**
  * A set of information for an agent.  This contains both totalScores
  * and questionScores information.
 */
 
+@Slf4j
 public class AgentResults
     implements Serializable
 {
@@ -58,7 +57,6 @@ public class AgentResults
 	 * 
 	 */
 	private static final long serialVersionUID = 2820488402465439395L;
-	private static Logger log = LoggerFactory.getLogger(AgentResults.class);
 	
   private Long assessmentGradingId;
   private Long itemGradingId;
@@ -87,10 +85,10 @@ public class AgentResults
   private String gradedBy;
   private Date gradedDate;
   private Set itemGradingSet;
-  private ArrayList itemGradingArrayList;
+  private List itemGradingArrayList;
   private String rationale="";
   private boolean retakeAllowed;
-  private boolean isAutoSubmitted;
+  private Boolean isAutoSubmitted;
   private boolean isAttemptDateAfterDueDate;
   private ItemGradingData itemGrading;
   private AssessmentGradingData assessmentGrading;
@@ -100,6 +98,10 @@ public class AgentResults
   private int submissionCount=0;
   private Double scoreSummation=new Double("0");
   private Double averageScore= new Double("0");
+
+  @Getter
+  @Setter
+  private String rubricStateDetails;
   
   public AgentResults() {
   }
@@ -230,7 +232,7 @@ public class AgentResults
     this.forGrade = forGrade;
   }
   public String getTotalAutoScore() {
-    return getRoundedTotalAutoScore();
+    return getExactTotalAutoScore();
   }
   
   public String getExactTotalAutoScore() {
@@ -238,10 +240,10 @@ public class AgentResults
   }
 
   public String getRoundedTotalAutoScore() {
-   if (totalAutoScore!= null){	  
+   if (totalAutoScore!= null){
 	   try {
 		   String newscore = ContextUtil.getRoundedValue(totalAutoScore.replace(',', '.'), 2);
-		   return Validator.check(newscore, "N/A").replace(',', '.');
+		   return Validator.check(newscore, "N/A");
 	   }
 	   catch (Exception e) {
 		   // encountered some weird number format/locale
@@ -252,6 +254,10 @@ public class AgentResults
 	   return Validator.check(totalAutoScore, "0").replace(',', '.');
    }
   }
+
+	public void setRoundedTotalAutoScore(String roundedTotalAutoScore) {
+		this.setTotalAutoScore(roundedTotalAutoScore);
+	}
   
   public void setTotalAutoScore(String totalAutoScore) {
 	  if (totalAutoScore!= null){
@@ -271,7 +277,7 @@ public class AgentResults
 			try {
 				String newscore = ContextUtil.getRoundedValue(
 						totalOverrideScore.replace(',', '.'), 2);
-				return Validator.check(newscore, "N/A").replace(',', '.');
+				return Validator.check(newscore, "N/A");
 			} catch (Exception e) {
 				// encountered some weird number format/locale
 				return Validator.check(totalOverrideScore, "0").replace(',', '.');
@@ -296,7 +302,7 @@ public class AgentResults
 	  if (finalScore!= null){
 		  try {
 			  String newscore = ContextUtil.getRoundedValue(finalScore.replace(',', '.'), 2);
-			  return Validator.check(newscore, "N/A").replace(',', '.');
+			  return Validator.check(newscore, "N/A");
 		  }
 		  catch (Exception e) {
 			  // encountered some weird number format/locale
@@ -371,11 +377,11 @@ public class AgentResults
   }
 
   // added by daisy to support to display answers to file upload question
-  public ArrayList getItemGradingArrayList() {
+  public List getItemGradingArrayList() {
     return itemGradingArrayList;
   }
 
-  public void setItemGradingArrayList(ArrayList itemGradingArrayList) {
+  public void setItemGradingArrayList(List itemGradingArrayList) {
     this.itemGradingArrayList = itemGradingArrayList;
   }
 
@@ -404,11 +410,11 @@ public class AgentResults
 		this.retakeAllowed = retakeAllowed;
 	}
 	
-	public boolean getIsAutoSubmitted() {
+	public Boolean getIsAutoSubmitted() {
 		return this.isAutoSubmitted;
 	}
 	
-	public void setIsAutoSubmitted(boolean isAutoSubmitted) {
+	public void setIsAutoSubmitted(Boolean isAutoSubmitted) {
 		this.isAutoSubmitted = isAutoSubmitted;
 	}
 	
@@ -444,25 +450,35 @@ public class AgentResults
 	}
 	
 	public String addAttachmentsRedirect() {
-		  // 1. redirect to add attachment
-		  try	{
-			  List filePickerList = new ArrayList();
-			  if (itemGradingAttachmentList != null){
-				  AttachmentUtil attachmentUtil = new AttachmentUtil();
-				  filePickerList = attachmentUtil.prepareReferenceList(itemGradingAttachmentList);
-			  }
-			  ToolSession currentToolSession = SessionManager.getCurrentToolSession();
-			  currentToolSession.setAttribute(FilePickerHelper.FILE_PICKER_ATTACHMENTS, filePickerList);
+
+		// We need to make sure that the state details are reapplied to the agent beans
+		QuestionScoresBean questionScoresBean = (QuestionScoresBean) ContextUtil.lookupBean("questionScores");
+		questionScoresBean.getAgentResultsByItemGradingId().values().forEach(ar -> {
+
+			String evalId = ar.getAssessmentGradingId() + "." + questionScoresBean.getItemId();
+			String entityId = RubricsConstants.RBCS_PUBLISHED_ASSESSMENT_ENTITY_PREFIX + questionScoresBean.getPublishedId() + "." + questionScoresBean.getItemId();
+			String rubricStateDetails = ContextUtil.lookupParam(RubricsConstants.RBCS_PREFIX + evalId + "-" + entityId + "-state-details");
+			ar.setRubricStateDetails(rubricStateDetails);
+		});
+
+		// 1. redirect to add attachment
+		try	{
+			List filePickerList = new ArrayList();
+			if (itemGradingAttachmentList != null) {
+				AttachmentUtil attachmentUtil = new AttachmentUtil();
+				filePickerList = attachmentUtil.prepareReferenceList(itemGradingAttachmentList);
+			}
+			ToolSession currentToolSession = SessionManager.getCurrentToolSession();
+			currentToolSession.setAttribute(FilePickerHelper.FILE_PICKER_ATTACHMENTS, filePickerList);
 			  
-			  currentToolSession.setAttribute("itemGradingId", itemGradingId);
-			  ExternalContext context = FacesContext.getCurrentInstance().getExternalContext();
-			  context.redirect("sakai.filepicker.helper/tool");
-		  }
-		  catch(Exception e){
-			  log.error("fail to redirect to attachment page: " + e.getMessage());
-		  }
-		  return "sakai.filepicker.helper";
-	  }
+			currentToolSession.setAttribute("itemGradingId", itemGradingId);
+			ExternalContext context = FacesContext.getCurrentInstance().getExternalContext();
+			context.redirect("sakai.filepicker.helper/tool");
+		} catch (Exception e) {
+			log.error("fail to redirect to attachment page: " + e.getMessage());
+		}
+		return "sakai.filepicker.helper";
+	}
 	
 	public AssessmentGradingData getAssessmentGrading() {
 		return this.assessmentGrading;
@@ -518,9 +534,9 @@ public class AgentResults
 	
 	public String getFormatedTimeElapsed() {
 	    String timeElapsedInString = "n/a";
-	    if (this.timeElapsed!=null && this.timeElapsed.intValue() >0)
+	    if (this.timeElapsed!=null && this.timeElapsed >0)
 	    {
-	      int totalSec = this.timeElapsed.intValue();
+	      int totalSec = this.timeElapsed;
 	      int hr = totalSec / 3600;
 	      int min = (totalSec % 3600)/60;
 	      int sec = (totalSec % 3600)%60;

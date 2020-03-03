@@ -24,22 +24,27 @@ package org.sakaiproject.tool.assessment.ui.bean.evaluation;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import javax.annotation.Resource;
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.SessionScoped;
 import javax.faces.context.FacesContext;
 import javax.faces.event.ActionEvent;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
@@ -48,51 +53,53 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.sakaiproject.component.cover.ServerConfigurationService;
-import org.sakaiproject.jsf.model.PhaseAware;
+import org.sakaiproject.component.api.ServerConfigurationService;
+import org.sakaiproject.jsf2.model.PhaseAware;
 import org.sakaiproject.tool.assessment.jsf.convert.AnswerSurveyConverter;
 import org.sakaiproject.tool.assessment.services.GradingService;
 import org.sakaiproject.tool.assessment.services.assessment.PublishedAssessmentService;
 import org.sakaiproject.tool.assessment.ui.bean.util.Validator;
 import org.sakaiproject.tool.assessment.ui.listener.evaluation.HistogramListener;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
-import org.sakaiproject.util.FormattedText;
 import org.sakaiproject.util.ResourceLoader;
+import org.sakaiproject.util.api.FormattedText;
+import org.springframework.web.context.ContextLoader;
+import org.springframework.web.context.WebApplicationContext;
 
-
-
-/**
- * <p>Description: class form for evaluating total scores</p>
- *
- */
+/* For evaluation: Export Responses backing bean. */
+@Slf4j
+@ManagedBean(name="exportResponses")
+@SessionScoped
 public class ExportResponsesBean implements Serializable, PhaseAware {
-	
-	/**
-	 * 
-	 */
+
 	private static final long serialVersionUID = 2854656853283125977L;
-	/**
-	 * Marks the beginning of each new sheet.
-	 * If absent, treat as a single-sheet workbook. 
-	 */
+
+	// Marks the beginning of each new sheet. If absent, treat as a single-sheet workbook.
 	public static final String NEW_SHEET_MARKER = "<sheet/>";
 	public static final String HEADER_MARKER = "<header/>";
-	
 	public static final String FORMAT = "<format ";
 	public static final String FORMAT_BOLD = FORMAT + "bold/>";
+	private static final String MSG_BUNDLE = "org.sakaiproject.tool.assessment.bundle.EvaluationMessages";
 
-	
-	private String assessmentId;
-	private String assessmentName;
-	private boolean anonymous;
+	@Resource(name = "org.sakaiproject.util.api.FormattedText")
+	private FormattedText formattedText;
+	@Resource(name = "org.sakaiproject.component.api.ServerConfigurationService")
+	private ServerConfigurationService serverConfigurationService;
 
-	private static Logger log = LoggerFactory.getLogger(ExportResponsesBean.class);
+	@Setter private String assessmentId;
+	@Setter private String assessmentName;
+	@Getter @Setter private boolean anonymous;
 
 	/**
 	 * Creates a new TotalScoresBean object.
 	 */
 	public ExportResponsesBean() {
+		this(ContextLoader.getCurrentWebApplicationContext());
 		log.debug("Creating a new ExportResponsesBean");
+	}
+
+	public ExportResponsesBean(WebApplicationContext context) {
+		context.getAutowireCapableBeanFactory().autowireBean(this);
 	}
 
 	/**
@@ -105,15 +112,6 @@ public class ExportResponsesBean implements Serializable, PhaseAware {
 	}
 
 	/**
-	 * set assessment id
-	 *
-	 * @param passessmentId the id
-	 */
-	public void setAssessmentId(String assessmentId) {
-		this.assessmentId = assessmentId;
-	}
-
-	/**
 	 * get assessment name
 	 *
 	 * @return the name
@@ -122,33 +120,6 @@ public class ExportResponsesBean implements Serializable, PhaseAware {
 		return Validator.check(assessmentName, "N/A");
 	}
 
-	/**
-	 * set assessment name
-	 *
-	 * @param passessmentName the name
-	 */
-	public void setAssessmentName(String assessmentName) {
-		this.assessmentName = assessmentName;
-	}
-
-	/**
-	 * get anonymous
-	 *
-	 * @return anonymous
-	 */
-	public boolean getAnonymous() {
-		return anonymous;
-	}
-
-	/**
-	 * set anonymous
-	 *
-	 * @param anonymous
-	 */
-	public void setAnonymous(boolean anonymous) {
-		this.anonymous = anonymous;
-	}
-	// Following three methods are for interface PhaseAware
 	public void endProcessValidators() {
 		log.debug("endProcessValidators");
 	}
@@ -182,18 +153,20 @@ public class ExportResponsesBean implements Serializable, PhaseAware {
   	  	detailedStats.next();
   	  	boolean showPartAndTotalScoreSpreadsheetColumns = true;
   		boolean showDetailedStatisticsSheet = (Boolean) detailedStats.next();
-  	  	
-  	  	String audioMessage = ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.EvaluationMessages","audio_message");
-    	String fileUploadMessage = ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.EvaluationMessages","file_upload_message");
-    	String noSubmissionMessage = ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.EvaluationMessages","export_no_submission");
+
+        String audioMessage = ContextUtil.getLocalizedString(MSG_BUNDLE,"audio_message");
+        String fileUploadMessage = ContextUtil.getLocalizedString(MSG_BUNDLE,"file_upload_message");
+        String noSubmissionMessage = ContextUtil.getLocalizedString(MSG_BUNDLE,"export_no_submission");
         GradingService gradingService = new GradingService();
-        String poolString = ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.EvaluationMessages","pool");
-        String partString = ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.EvaluationMessages","part");
-        String questionString = ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.EvaluationMessages","question");
-        String responseString = ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.EvaluationMessages","response");
-        String rationaleString = ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.EvaluationMessages","rationale");
-        String itemGradingCommentsString = ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.EvaluationMessages","grader_comments");
-        String responseCommentsString = ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.EvaluationMessages","student_comments");
+        String poolString = ContextUtil.getLocalizedString(MSG_BUNDLE,"pool");
+        String partString = ContextUtil.getLocalizedString(MSG_BUNDLE,"part");
+        String questionString = ContextUtil.getLocalizedString(MSG_BUNDLE,"question");
+        String responseString = ContextUtil.getLocalizedString(MSG_BUNDLE,"response");
+        String rationaleString = ContextUtil.getLocalizedString(MSG_BUNDLE,"rationale");
+        String itemGradingCommentsString = ContextUtil.getLocalizedString(MSG_BUNDLE,"grader_comments");
+        String responseCommentsString = ContextUtil.getLocalizedString(MSG_BUNDLE,"student_comments");
+        String startTimeString = ContextUtil.getLocalizedString(MSG_BUNDLE,"start_time");
+        String submitTimeString = ContextUtil.getLocalizedString(MSG_BUNDLE,"submit_time");
         
         List exportResponsesDataList = gradingService.getExportResponsesData(assessmentId, anonymous, audioMessage, fileUploadMessage, noSubmissionMessage, 
         		showPartAndTotalScoreSpreadsheetColumns, poolString, partString, questionString, responseString, rationaleString, itemGradingCommentsString, useridMap, responseCommentsString);
@@ -208,25 +181,28 @@ public class ExportResponsesBean implements Serializable, PhaseAware {
         ArrayList<Object> headerList = new ArrayList<Object>();
         headerList.add(HEADER_MARKER);
         if (anonymous) {
-  		  headerList.add(ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.EvaluationMessages","sub_id"));
+  		  headerList.add(ContextUtil.getLocalizedString(MSG_BUNDLE,"sub_id"));
   	  	}
   	  	else {
-  		  headerList.add(ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.EvaluationMessages","last_name"));
-  		  headerList.add(ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.EvaluationMessages","first_name"));
-  		  headerList.add(ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.EvaluationMessages","user_name"));
-  		  headerList.add(ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.EvaluationMessages","num_submission"));
+  		  headerList.add(ContextUtil.getLocalizedString(MSG_BUNDLE,"last_name"));
+  		  headerList.add(ContextUtil.getLocalizedString(MSG_BUNDLE,"first_name"));
+  		  headerList.add(ContextUtil.getLocalizedString(MSG_BUNDLE,"user_name"));
+  		  headerList.add(ContextUtil.getLocalizedString(MSG_BUNDLE,"num_submission"));
   	  	}
+
+        headerList.add(startTimeString);
+        headerList.add(submitTimeString);
 
         PublishedAssessmentService pubService = new PublishedAssessmentService();
         if (showPartAndTotalScoreSpreadsheetColumns) {
 	  	  	int numberOfSections = pubService.getPublishedSectionCount(Long.valueOf(assessmentId)).intValue();
 	  	  	if (numberOfSections > 1) {
 		  	  	for (int i = 1; i <= numberOfSections; i++) {
-		  	  		headerList.add(partString + " " + i + " " + ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.EvaluationMessages","score"));
+		  	  		headerList.add(partString + " " + i + " " + ContextUtil.getLocalizedString(MSG_BUNDLE,"score"));
 		    	}
 	  	  	}
 	        
-	        headerList.add(ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.EvaluationMessages","tot"));
+	        headerList.add(ContextUtil.getLocalizedString(MSG_BUNDLE,"tot"));
 	        headerList.add(itemGradingCommentsString);
         }
         //SAM-1693 the returned list could be null -DH
@@ -239,13 +215,13 @@ public class ExportResponsesBean implements Serializable, PhaseAware {
   		ArrayList<Object> newSheetList;
   	  	newSheetList = new ArrayList<Object>();
   	  	newSheetList.add(NEW_SHEET_MARKER);
-  	  	newSheetList.add(ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.EvaluationMessages","responses"));
+  	  	newSheetList.add(ContextUtil.getLocalizedString(MSG_BUNDLE,"responses"));
   	  	list.add(0, newSheetList);
 
   	  	if (showDetailedStatisticsSheet) {
   	  		newSheetList = new ArrayList<Object>();
   	  		newSheetList.add(NEW_SHEET_MARKER);
-  	  		newSheetList.add(ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.EvaluationMessages","item_analysis"));
+  	  		newSheetList.add(ContextUtil.getLocalizedString(MSG_BUNDLE,"item_analysis"));
   	  		list.add(newSheetList);
 
         	while (detailedStats.hasNext()) {
@@ -259,21 +235,18 @@ public class ExportResponsesBean implements Serializable, PhaseAware {
     /**
      * Generates a default filename (minus the extension) for a download from this Gradebook. 
      *
-	 * @param   prefix for filename
 	 * @return The appropriate filename for the export
 	 */
     public String getDownloadFileName() {
-		Date now = new Date();
-		String dateFormat = ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.EvaluationMessages","export_filename_date_format");
-		DateFormat df = new SimpleDateFormat(dateFormat, new ResourceLoader().getLocale());
-		StringBuilder fileName = new StringBuilder(ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.EvaluationMessages","assessment"));
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
+        StringBuilder fileName = new StringBuilder(ContextUtil.getLocalizedString(MSG_BUNDLE,"assessment"));
         if(StringUtils.trimToNull(assessmentName) != null) {
         	assessmentName = assessmentName.replaceAll("\\s", "_"); // replace whitespace with '_'
             fileName.append("-");
             fileName.append(assessmentName);
         }
 		fileName.append("-");
-		fileName.append(df.format(now));
+		fileName.append( LocalDate.now().format(formatter) );
 		return fileName.toString();
 	}
     
@@ -357,8 +330,8 @@ public class ExportResponsesBean implements Serializable, PhaseAware {
 
 		CellStyle boldStyle = wb.createCellStyle();
 		Font font = wb.createFont();
-		font.setBoldweight(Font.BOLDWEIGHT_BOLD);
-		String fontName = ServerConfigurationService.getString("spreadsheet.font");
+		font.setBold(true);
+		String fontName = serverConfigurationService.getString("spreadsheet.font");
 		if (fontName != null) {
 			font.setFontName(fontName);
 		}
@@ -421,12 +394,18 @@ public class ExportResponsesBean implements Serializable, PhaseAware {
 						}
 						if (data != null) {
 							if (data instanceof Double) {
-								cell.setCellValue(((Double)data).doubleValue());
+								cell.setCellValue(ContextUtil.getRoundedValue(((Double)data).doubleValue(), 2));
+							} else if (data instanceof Date) {
+								// tell Excel this is a date
+								CellStyle style = wb.createCellStyle();
+								style.setDataFormat((short) 15);
+								cell.setCellStyle(style);
+								cell.setCellValue((Date) data);
 							} else {
 								AnswerSurveyConverter converter = new AnswerSurveyConverter();
 								String datac = converter.getAsString(null, null, data.toString());
 								// stripping html for export, SAK-17021
-								cell.setCellValue(FormattedText.convertFormattedTextToPlaintext(datac));
+								cell.setCellValue(formattedText.convertFormattedTextToPlaintext(datac));
 							}
 						}
 					}
@@ -457,7 +436,4 @@ public class ExportResponsesBean implements Serializable, PhaseAware {
 		
 		return cell;
 	}
-	
-    
-    
 }

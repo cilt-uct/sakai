@@ -25,7 +25,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.component.api.ServerConfigurationService.ConfigHistory;
 import org.sakaiproject.component.api.ServerConfigurationService.ConfigItem;
@@ -161,7 +161,7 @@ public class ConfigItemImpl extends BasicConfigItem implements ConfigItem, Compa
             this.value = ci.getValue();
             this.type = setValue(ci.getValue());
             this.description = ci.getDescription();
-            if (!StringUtils.isBlank(ci.getSource())) {
+            if (StringUtils.isNotBlank(ci.getSource())) {
                 this.source = ci.getSource();
             }
             this.defaultValue = ci.getDefaultValue();

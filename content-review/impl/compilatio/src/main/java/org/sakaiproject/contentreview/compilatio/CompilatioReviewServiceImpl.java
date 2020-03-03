@@ -22,6 +22,7 @@ import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -34,32 +35,25 @@ import java.util.Optional;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import lombok.Setter;
+import javax.servlet.http.HttpServletRequest;
 
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.sakaiproject.assignment.api.Assignment;
-import org.sakaiproject.assignment.api.AssignmentContent;
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.assignment.api.AssignmentService;
+import org.sakaiproject.assignment.api.model.Assignment;
+import org.sakaiproject.content.api.ContentHostingService;
+import org.sakaiproject.content.api.ContentResource;
 import org.sakaiproject.contentreview.advisors.ContentReviewSiteAdvisor;
 import org.sakaiproject.contentreview.compilatio.util.CompilatioAPIUtil;
 import org.sakaiproject.contentreview.dao.ContentReviewConstants;
 import org.sakaiproject.contentreview.dao.ContentReviewItem;
-import org.sakaiproject.component.api.ServerConfigurationService;
-import org.sakaiproject.content.api.ContentHostingService;
-import org.sakaiproject.content.api.ContentResource;
 import org.sakaiproject.contentreview.exception.QueueException;
 import org.sakaiproject.contentreview.exception.ReportException;
 import org.sakaiproject.contentreview.exception.SubmissionException;
 import org.sakaiproject.contentreview.exception.TransientSubmissionException;
+import org.sakaiproject.contentreview.service.BaseContentReviewService;
 import org.sakaiproject.contentreview.service.ContentReviewQueueService;
-import org.sakaiproject.contentreview.service.ContentReviewService;
-import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.entity.api.EntityManager;
-import org.sakaiproject.entity.api.EntityProducer;
-import org.sakaiproject.entity.api.Reference;
 import org.sakaiproject.entity.api.ResourceProperties;
 import org.sakaiproject.entitybroker.EntityReference;
 import org.sakaiproject.exception.IdUnusedException;
@@ -67,18 +61,18 @@ import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.exception.TypeException;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.tool.api.ToolManager;
-import org.sakaiproject.user.api.PreferencesService;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.util.ResourceLoader;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-public class CompilatioReviewServiceImpl implements ContentReviewService {
-	
-	private static final Log log = LogFactory.getLog(CompilatioReviewServiceImpl.class);
-	
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+public class CompilatioReviewServiceImpl extends BaseContentReviewService {
+
 	public static final String COMPILATIO_DATETIME_FORMAT = "yyyy-MM-dd HH:mm:ss";
 	
 	private static final String SERVICE_NAME = "Compilatio";
@@ -161,10 +155,11 @@ public class CompilatioReviewServiceImpl implements ContentReviewService {
 	private final int DEFAULT_MAX_FILENAME_LENGTH = -1;
 
 	private final String KEY_FILE_TYPE_PREFIX = "file.type";
-	
+
+	private static final String NEW_ASSIGNMENT_REVIEW_SERVICE_REPORT_RADIO = "report_gen_speed";
 	private static final String NEW_ASSIGNMENT_REVIEW_SERVICE_REPORT_IMMEDIATELY = "0";
 	private static final String NEW_ASSIGNMENT_REVIEW_SERVICE_REPORT_DUE = "2";	
-	
+
 	final static long LOCK_PERIOD = 12000000;
 	private Long maxRetry = 20L;
 	
@@ -197,7 +192,6 @@ public class CompilatioReviewServiceImpl implements ContentReviewService {
 	@Setter protected ToolManager toolManager;
 	@Setter protected UserDirectoryService userDirectoryService;
 	@Setter protected ContentHostingService contentHostingService;
-	@Setter protected ServerConfigurationService serverConfigurationService;
 	@Setter protected EntityManager entityManager;
 	@Setter protected AssignmentService assignmentService;
 	@Setter protected CompilatioAccountConnection compilatioConn;
@@ -392,15 +386,29 @@ public class CompilatioReviewServiceImpl implements ContentReviewService {
 		while ((nextItem = getNextItemInSubmissionQueue()).isPresent()) {
 			ContentReviewItem currentItem = nextItem.get();
 			
+			//if document has no external id, we need to add it to Compilatio
+			if(StringUtils.isBlank(currentItem.getExternalId())) {
+				
+				if(!processItem(currentItem)){
+					errors++;
+					continue;
+				}
+				
+				//check if we have added it correctly
+				if(addDocumentToCompilatio(currentItem) == false){
+					errors++;
+					continue;
+				}
+			}
+			
 			try {
 				//check if current item has to be processed after the assignment due date
 				String assignmentId = assignmentService.getEntity(entityManager.newReference(currentItem.getTaskId())).getId();
 				Assignment a = assignmentService.getAssignment(assignmentId);
-				AssignmentContent ac = a.getContent();
-				
-				if(ac.getGenerateOriginalityReport().equals(NEW_ASSIGNMENT_REVIEW_SERVICE_REPORT_DUE)) {
-					Date dueDate = new Date(a.getDueTime().getTime());
-					if(dueDate.after(new Date())) {
+
+				if(NEW_ASSIGNMENT_REVIEW_SERVICE_REPORT_DUE.equals(a.getProperties().get(NEW_ASSIGNMENT_REVIEW_SERVICE_REPORT_RADIO))) {
+					Instant dueDate = a.getDueDate();
+					if(dueDate.isAfter(Instant.now())) {
 						log.debug("assignment due time not yet reached for item: " + currentItem.getId());
 						currentItem.setNextRetryTime(this.getNextRetryTime(0));
 						crqs.update(currentItem);
@@ -417,29 +425,9 @@ public class CompilatioReviewServiceImpl implements ContentReviewService {
 			log.debug("Attempting to submit content (status:"+currentItem.getStatus()+"): " + currentItem.getContentId() + " for user: "
 					+ currentItem.getUserId() + " and site: " + currentItem.getSiteId());						
 
-			if (currentItem.getRetryCount() == null) {
-				currentItem.setRetryCount(Long.valueOf(0));
-				currentItem.setNextRetryTime(this.getNextRetryTime(0));
-				crqs.update(currentItem);
-			} else if (currentItem.getRetryCount().intValue() > maxRetry) {
-				processError(currentItem, ContentReviewConstants.CONTENT_REVIEW_SUBMISSION_ERROR_RETRY_EXCEEDED_CODE, null, null);
+			if(!processItem(currentItem)){
 				errors++;
 				continue;
-			} else {
-				long l = currentItem.getRetryCount().longValue();
-				l++;
-				currentItem.setRetryCount(Long.valueOf(l));
-				currentItem.setNextRetryTime(this.getNextRetryTime(Long.valueOf(l)));
-				crqs.update(currentItem);
-			}
-			
-			//if document has no external id, we need to add it to compilatio
-			if(StringUtils.isBlank(currentItem.getExternalId())) {
-				//check if we have added it correctly
-				if(addDocumentToCompilatio(currentItem) == false){
-					errors++;
-					continue;
-				}
 			}
 			
 			Document document = null;
@@ -450,7 +438,8 @@ public class CompilatioReviewServiceImpl implements ContentReviewService {
 				document = compilatioConn.callCompilatioReturnDocument(params);
 
 			} catch (TransientSubmissionException | SubmissionException e) {
-				processError(currentItem, ContentReviewConstants.CONTENT_REVIEW_SUBMISSION_ERROR_RETRY_CODE, "Error Submitting Assignment for Submission: " + e.getMessage() + ". Assume unsuccessful", null);
+				String errorMsg = createLastError(doc -> createFormattedMessageXML(doc, "submission.error.generic", e.getLocalizedMessage()));
+				processError(currentItem, ContentReviewConstants.CONTENT_REVIEW_SUBMISSION_ERROR_RETRY_CODE, errorMsg, null);
 				errors++;
 				continue;
 			}
@@ -487,7 +476,8 @@ public class CompilatioReviewServiceImpl implements ContentReviewService {
 					if (CompilatioError.valueOf(rCode) != null) {
 						errorCodeInt = CompilatioError.valueOf(rCode).getErrorCode();
 					}
-					processError(currentItem, ContentReviewConstants.CONTENT_REVIEW_SUBMISSION_ERROR_RETRY_CODE, "Submission Error: " + rMessage + "(" + rCode + ")", errorCodeInt);
+					String errorMsg = createLastError(doc -> createFormattedMessageXML(doc, "submission.error.with.code", rMessage, rCode));
+					processError(currentItem, ContentReviewConstants.CONTENT_REVIEW_SUBMISSION_ERROR_RETRY_CODE, errorMsg, errorCodeInt);
 					errors++;
 				}
 	
@@ -511,7 +501,6 @@ public class CompilatioReviewServiceImpl implements ContentReviewService {
 		List<ContentReviewItem> awaitingReport = crqs.getAwaitingReports(getProviderId());
 
 		Iterator<ContentReviewItem> listIterator = awaitingReport.iterator();
-		HashMap<String, Integer> reportTable = new HashMap<>();
 
 		log.debug("There are " + awaitingReport.size() + " submissions awaiting reports");
 
@@ -534,20 +523,9 @@ public class CompilatioReviewServiceImpl implements ContentReviewService {
 				continue;
 			}
 
-			if (currentItem.getRetryCount() == null) {
-				currentItem.setRetryCount(Long.valueOf(0));
-				currentItem.setNextRetryTime(this.getNextRetryTime(0));
-			} else if (currentItem.getRetryCount().intValue() > maxRetry) {
-				processError(currentItem, ContentReviewConstants.CONTENT_REVIEW_SUBMISSION_ERROR_RETRY_EXCEEDED_CODE, null, null);
+			if(!processItem(currentItem)){
 				errors++;
 				continue;
-			} else {
-				long l = currentItem.getRetryCount().longValue();
-				log.debug("Still have retries left ("+l+" <= "+maxRetry+"), continuing. ItemID: " + currentItem.getId());
-				l++;
-				currentItem.setRetryCount(Long.valueOf(l));
-				currentItem.setNextRetryTime(this.getNextRetryTime(Long.valueOf(l)));
-				crqs.update(currentItem);
 			}
 
 			//back to analysis (this should not happen)
@@ -558,63 +536,67 @@ public class CompilatioReviewServiceImpl implements ContentReviewService {
 				continue;
 			}
 
-			if (!reportTable.containsKey(currentItem.getExternalId())) {
-				// get the list from compilatio and see if the review is
-				// available
+			// get the list from compilatio and see if the review is
+			// available
 
-				log.debug("Attempting to update hashtable with reports for site " + currentItem.getSiteId());
+			log.debug("Attempting to update hashtable with reports for site " + currentItem.getSiteId());
 
-				Map<String, String> params = CompilatioAPIUtil.packMap("action", "getDocument", "idDocument", currentItem.getExternalId());
+			Map<String, String> params = CompilatioAPIUtil.packMap("action", "getDocument", "idDocument", currentItem.getExternalId());
 
-				Document document = null;
-				try {
-					document = compilatioConn.callCompilatioReturnDocument(params);
-				} catch (TransientSubmissionException | SubmissionException e) {
-					log.warn("Update failed : " + e.toString(), e);
-					processError(currentItem, ContentReviewConstants.CONTENT_REVIEW_REPORT_ERROR_RETRY_CODE, e.getMessage(), null);
+			Document document = null;
+			try {
+				document = compilatioConn.callCompilatioReturnDocument(params);
+			} catch (TransientSubmissionException | SubmissionException e) {
+				log.warn("Update failed : " + e.toString(), e);
+				processError(currentItem, ContentReviewConstants.CONTENT_REVIEW_REPORT_ERROR_RETRY_CODE, e.getLocalizedMessage(), null);
+				errors++;
+				continue;
+			}
+
+			Element root = document.getDocumentElement();
+			if (root.getElementsByTagName("documentStatus").item(0) != null) {
+				log.debug("Report list returned successfully");
+
+				NodeList objects = root.getElementsByTagName("documentStatus");
+				log.debug(objects.getLength() + " objects in the returned list");
+				
+				String status = getNodeValue("status", root);
+
+				if ("ANALYSE_NOT_STARTED".equals(status)) {
+					//send back to the process queue, we need no analyze it again
+					String msg = createLastError(doc -> createFormattedMessageXML(doc, "report.error.analyse.not.started"));
+					processError(currentItem, ContentReviewConstants.CONTENT_REVIEW_SUBMISSION_ERROR_RETRY_CODE, msg, null);
 					errors++;
 					continue;
-				}
-
-				Element root = document.getDocumentElement();
-				if (root.getElementsByTagName("documentStatus").item(0) != null) {
-					log.debug("Report list returned successfully");
-
-					NodeList objects = root.getElementsByTagName("documentStatus");
-					log.debug(objects.getLength() + " objects in the returned list");
-					
-					String status = getNodeValue("status", root);
-
-					if ("ANALYSE_NOT_STARTED".equals(status)) {
-						//send back to the process queue, we need no analyze it again
-						processError(currentItem, ContentReviewConstants.CONTENT_REVIEW_SUBMISSION_ERROR_RETRY_CODE, "ANALYSE_NOT_STARTED", null);
-						errors++;
-						continue;
-					} else if ("ANALYSE_COMPLETE".equals(status)) {
-						String reportVal = getNodeValue("indice", root);
-						currentItem.setReviewScore((int) Math.round(Double.parseDouble(reportVal)));
-						currentItem.setStatus(ContentReviewConstants.CONTENT_REVIEW_SUBMITTED_REPORT_AVAILABLE_CODE);
-						success++;
-					} else {
-						String progression = getNodeValue("progression", root);
-						if (StringUtils.isNotBlank(progression)) {
-							currentItem.setReviewScore((int) Double.parseDouble(progression));
-							inprogress++;
-						}
-					}
-					currentItem.setDateReportReceived(new Date());
-					crqs.update(currentItem);
-					log.debug("new report received: " + currentItem.getExternalId() + " -> " + currentItem.getReviewScore());
-
+				} else if ("ANALYSE_COMPLETE".equals(status)) {
+					String reportVal = getNodeValue("indice", root);
+					currentItem.setReviewScore((int) Math.round(Double.parseDouble(reportVal)));
+					currentItem.setStatus(ContentReviewConstants.CONTENT_REVIEW_SUBMITTED_REPORT_AVAILABLE_CODE);
+					success++;
 				} else {
-					log.debug("Report list request not successful");
-					log.debug(document.getTextContent());
-					errors++;
+					String progression = getNodeValue("progression", root);
+					if (StringUtils.isNotBlank(progression)) {
+						currentItem.setReviewScore((int) Double.parseDouble(progression));
+						inprogress++;
+					}
 				}
+				currentItem.setDateReportReceived(new Date());
+				crqs.update(currentItem);
+				log.debug("new report received: " + currentItem.getExternalId() + " -> " + currentItem.getReviewScore());
+
+			} else {
+				log.debug("Report list request not successful");
+				log.debug(document.getTextContent());
+				errors++;
 			}
 		}
 
 		log.info("Finished fetching reports from Compilatio : "+success+" success items, "+inprogress+" in progress, "+errors+" errors");
+	}
+
+	@Override
+	public void syncRosters() {
+		// Auto-generated method stub
 	}
 	
 	@Override
@@ -664,7 +646,7 @@ public class CompilatioReviewServiceImpl implements ContentReviewService {
 			 * Use ResourceLoader to resolve the file types.
 			 * If the resource loader doesn't find the file extenions, log a warning and return the [missing key...] messages
 			 */
-			ResourceLoader resourceLoader = new ResourceLoader("compilatio");
+			ResourceLoader resourceLoader = getResourceLoader();
 			for( String fileExtension : acceptableFileExtensions )
 			{
 				String key = KEY_FILE_TYPE_PREFIX + fileExtension;
@@ -707,38 +689,23 @@ public class CompilatioReviewServiceImpl implements ContentReviewService {
 	}
 
 	@Override
-	public String getIconUrlforScore(Long score) {
-		String urlBase = "/library/content-review/score_";
-		String suffix = ".gif";
-
-		//TODO : check this (compilatio original)
-		/*if (score.compareTo(Long.valueOf(5)) <= 0) {
-			return urlBase + "green" + suffix;
-		} else if (score.compareTo(Long.valueOf(20)) <= 0) {
-			return urlBase + "orange" + suffix;
+	public String getIconCssClassforScore(int score, String contentId) {
+		if (score == 0) {
+			return "contentReviewIconThreshold-5";
+		} else if (score < 25) {
+			return "contentReviewIconThreshold-4";
+		} else if (score < 50) {
+			return "contentReviewIconThreshold-3";
+		} else if (score < 75) {
+			return "contentReviewIconThreshold-2";
 		} else {
-			return urlBase + "red" + suffix;
-		}*/
-
-		//TODO : check this (turnitin)
-		if (score.equals(Long.valueOf(0))) {
-			return urlBase + "blue" + suffix;
-		} else if (score.compareTo(Long.valueOf(25)) < 0) {
-			return urlBase + "green" + suffix;
-		} else if (score.compareTo(Long.valueOf(50)) < 0) {
-			return urlBase + "yellow" + suffix;
-		} else if (score.compareTo(Long.valueOf(75)) < 0) {
-			return urlBase + "orange" + suffix;
-		} else {
-			return urlBase + "red" + suffix;
+			return "contentReviewIconThreshold-1";
 		}
 	}
 
 	@Override
 	public String getLocalizedStatusMessage(String messageCode, String userRef) {
-		String userId = EntityReference.getIdFromRef(userRef);
-		ResourceLoader resourceLoader = new ResourceLoader(userId, "compilatio");
-		return resourceLoader.getString(messageCode);
+		return getResourceLoader().getString(messageCode);
 	}
 
 	@Override
@@ -834,18 +801,21 @@ public class CompilatioReviewServiceImpl implements ContentReviewService {
 				//this never should happen, user can not add to queue invalid files
 				if(!compilatioContentValidator.isAcceptableContent(resource)){
 					log.error("Not valid extension: resource with id " + currentItem.getContentId());
-					processError(currentItem, ContentReviewConstants.CONTENT_REVIEW_SUBMISSION_ERROR_NO_RETRY_CODE, "Not valid extension: resource with id " + currentItem.getContentId(), null);
+					String errorMsg = createLastError(doc -> createFormattedMessageXML(doc, "submission.error.invalid.extension"));
+					processError(currentItem, ContentReviewConstants.CONTENT_REVIEW_SUBMISSION_ERROR_NO_RETRY_CODE, errorMsg, null);
 					return false;
 				}
 
 			} catch (TypeException e4) {
 
 				log.warn("TypeException: resource with id " + currentItem.getContentId());
-				processError(currentItem, ContentReviewConstants.CONTENT_REVIEW_SUBMISSION_ERROR_NO_RETRY_CODE, "TypeException: resource with id " + currentItem.getContentId(), null);
+				String errorMsg = createLastError(doc -> createFormattedMessageXML(doc, "submission.error.type.exception", e4.getLocalizedMessage()));
+				processError(currentItem, ContentReviewConstants.CONTENT_REVIEW_SUBMISSION_ERROR_NO_RETRY_CODE, errorMsg, null);
 				return false;
 			} catch (IdUnusedException e) {
 				log.warn("IdUnusedException: no resource with id " + currentItem.getContentId());
-				processError(currentItem, ContentReviewConstants.CONTENT_REVIEW_SUBMISSION_ERROR_NO_RETRY_CODE, "IdUnusedException: no resource with id " + currentItem.getContentId(), null);
+				String errorMsg = createLastError(doc -> createFormattedMessageXML(doc, "submission.error.id.unused.exception"));
+				processError(currentItem, ContentReviewConstants.CONTENT_REVIEW_SUBMISSION_ERROR_NO_RETRY_CODE, errorMsg, null);
 				return false;
 			}
 			ResourceProperties resourceProperties = resource.getProperties();
@@ -853,7 +823,8 @@ public class CompilatioReviewServiceImpl implements ContentReviewService {
 			fileName = escapeFileName(fileName, resource.getId());
 		} catch (PermissionException e2) {
 			log.error("Submission failed due to permission error.", e2);
-			processError(currentItem, ContentReviewConstants.CONTENT_REVIEW_SUBMISSION_ERROR_RETRY_CODE, "Permission exception: " + e2.getMessage(), null);
+			String errorMsg = createLastError(doc -> createFormattedMessageXML(doc, "submission.error.permission.exception"));
+			processError(currentItem, ContentReviewConstants.CONTENT_REVIEW_SUBMISSION_ERROR_RETRY_CODE, errorMsg, null);
 			return false;
 		}
 		
@@ -891,7 +862,8 @@ public class CompilatioReviewServiceImpl implements ContentReviewService {
 					crqs.update(currentItem);
 				} else {
 					log.warn("invalid external id");
-					processError(currentItem, ContentReviewConstants.CONTENT_REVIEW_SUBMISSION_ERROR_RETRY_CODE, "Submission error: no external id received", null);
+					String errorMsg = createLastError(doc -> createFormattedMessageXML(doc, "submission.error.no.external.id.received"));
+					processError(currentItem, ContentReviewConstants.CONTENT_REVIEW_SUBMISSION_ERROR_RETRY_CODE, errorMsg, null);
 					return false;
 				}
 			} else {
@@ -904,11 +876,13 @@ public class CompilatioReviewServiceImpl implements ContentReviewService {
 				if (errorCode != null) {
 					errorCodeInt = errorCode.getErrorCode();
 				}
-				processError(currentItem, ContentReviewConstants.CONTENT_REVIEW_SUBMISSION_ERROR_RETRY_CODE, "Add Document To compilatio Error: " + rMessage + "(" + rCode + ")", errorCodeInt);
+				String errorMsg = createLastError(doc -> createFormattedMessageXML(doc, "submission.error.compilatio.with.code", rMessage, rCode));
+				processError(currentItem, ContentReviewConstants.CONTENT_REVIEW_SUBMISSION_ERROR_RETRY_CODE, errorMsg, errorCodeInt);
 				return false;
 			}
 		} catch (Exception e) {
-			processError(currentItem, ContentReviewConstants.CONTENT_REVIEW_SUBMISSION_ERROR_RETRY_CODE, "Error Submitting Assignment for Submission: " + e.getMessage() + ". Assume unsuccessful", null);
+			String errorMsg = createLastError(doc -> createFormattedMessageXML(doc, "submission.error.generic", e.getLocalizedMessage()));
+			processError(currentItem, ContentReviewConstants.CONTENT_REVIEW_SUBMISSION_ERROR_RETRY_CODE, errorMsg, null);
 			return false;
 		}
 
@@ -1054,5 +1028,57 @@ public class CompilatioReviewServiceImpl implements ContentReviewService {
 		}
 
 		crqs.update( item );
+	}
+	
+	private boolean processItem(ContentReviewItem currentItem){
+		if (currentItem.getRetryCount() == null) {
+			currentItem.setRetryCount(Long.valueOf(0));
+			currentItem.setNextRetryTime(this.getNextRetryTime(0));
+		} else if (currentItem.getRetryCount().intValue() > maxRetry) {
+			processError(currentItem, ContentReviewConstants.CONTENT_REVIEW_SUBMISSION_ERROR_RETRY_EXCEEDED_CODE, null, null);
+			return false;
+		} else {
+			long l = currentItem.getRetryCount().longValue();
+			l++;
+			currentItem.setRetryCount(Long.valueOf(l));
+			currentItem.setNextRetryTime(this.getNextRetryTime(Long.valueOf(l)));
+		}
+		crqs.update(currentItem);
+		
+		return true;
+	}
+
+	@Override
+	public ContentReviewItem getContentReviewItemByContentId(String contentId){
+		Optional<ContentReviewItem> cri = crqs.getQueuedItem(getProviderId(), contentId);
+		if(cri.isPresent()){
+			ContentReviewItem item = cri.get();
+
+			//Compilatio specific work would be here
+
+			return item;
+		}
+		return null;
+	}
+
+	@Override
+	public String getEndUserLicenseAgreementLink(String userId) {
+		return null;
+	}
+
+	@Override
+	public Instant getEndUserLicenseAgreementTimestamp() {
+		return null;
+	}
+
+	@Override
+	public String getEndUserLicenseAgreementVersion() {
+		return null;
+	}
+
+	@Override
+	public void webhookEvent(HttpServletRequest request, int providerId, Optional<String> customParam) {
+		// TODO Auto-generated method stub
+		
 	}
 }

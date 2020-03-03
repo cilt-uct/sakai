@@ -1,9 +1,8 @@
-<?xml version="1.0"?>
-<!DOCTYPE hibernate-mapping PUBLIC
-  "-//Hibernate/Hibernate Mapping DTD//EN"
-  "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN" "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping package="org.sakaiproject.tool.assessment.data.dao.assessment"
+                   default-lazy="false">
 
-<hibernate-mapping default-lazy="false">
   <class name="org.sakaiproject.tool.assessment.data.dao.assessment.PublishedAssessmentData"
     table="SAM_PUBLISHEDASSESSMENT_T">
     <id name="publishedAssessmentId" column="ID" type="java.lang.Long" unsaved-value="0">
@@ -28,6 +27,7 @@
     <property name="lastModifiedBy" type="string" length="255" column="LASTMODIFIEDBY" not-null="true" />
     <property name="lastModifiedDate" type="timestamp" column="LASTMODIFIEDDATE" not-null="true" />
     <property name="lastNeedResubmitDate" type="timestamp" column="LASTNEEDRESUBMITDATE" not-null="false" />
+    <property name="categoryId" type="long" column="CATEGORYID" not-null="false" />
     <set name="sectionSet" table="SAM_PUBLISHEDSECTION_T" cascade="all" order-by="sequence asc"
       inverse="true" lazy="true">
       <key column="ASSESSMENTID"/>
@@ -98,6 +98,8 @@
     <property name="finalPageUrl" type="string" length="1023" column="FINALPAGEURL" not-null="false" />
     <property name="markForReview" type="integer" column="MARKFORREVIEW" not-null="false" />
     <property name="honorPledge" type="boolean" column="HONORPLEDGE" not-null="false" />
+    <property name="feedbackEndDate" type="timestamp" column="FEEDBACKENDDATE" not-null="false" />
+    <property name="feedbackScoreThreshold" type="double" column="FEEDBACKSCORETHRESHOLD" not-null="false" />
   </class>
 
   <class name="org.sakaiproject.tool.assessment.data.dao.assessment.PublishedEvaluationModel"
@@ -201,7 +203,7 @@
     table="SAM_PUBLISHEDSECTIONMETADATA_T">
     <id name="id" column="PUBLISHEDSECTIONMETADATAID" type="java.lang.Long" unsaved-value="0">
       <generator class="native">
-        <param name="sequence">SAM_PUBLISHEDASSESSMENT_ID_S</param>
+        <param name="sequence">SAM_PUBSECTIONMETADATA_ID_S</param>
       </generator>
     </id>
     <many-to-one name="section" class="org.sakaiproject.tool.assessment.data.dao.assessment.PublishedSectionData"
@@ -240,5 +242,6 @@
     <property name="endDate" type="timestamp" column="ENDDATE" not-null="false" />
     <property name="eclipseTime" type="integer" column="ECLIPSETIME" not-null="false" />
     <property name="errorMsg" type="string" length="255" column="ERRORMSG" not-null="false" />
+    <property name="ipAddress" type="string" length="99" column="IPADDRESS" not-null="false" />
  </class>
 </hibernate-mapping>

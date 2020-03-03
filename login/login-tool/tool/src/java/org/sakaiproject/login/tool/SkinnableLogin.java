@@ -20,6 +20,8 @@
  **********************************************************************************/
 package org.sakaiproject.login.tool;
 
+import edu.umd.cs.findbugs.annotations.SuppressWarnings;
+
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URL;
@@ -32,12 +34,15 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.commons.lang.StringEscapeUtils;
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.text.StringEscapeUtils;
+import org.apache.commons.lang3.StringUtils;
+
+import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.component.api.ServerConfigurationService;
+import org.sakaiproject.event.api.UsageSession;
 import org.sakaiproject.event.cover.UsageSessionService;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.login.api.Login;
@@ -53,17 +58,12 @@ import org.sakaiproject.tool.api.Tool;
 import org.sakaiproject.tool.cover.SessionManager;
 import org.sakaiproject.util.ResourceLoader;
 import org.sakaiproject.util.Web;
-import org.sakaiproject.authz.api.AuthzGroupService;
-import org.sakaiproject.event.api.UsageSession;
+import org.sakaiproject.util.RequestFilter;
 
-import edu.umd.cs.findbugs.annotations.SuppressWarnings;
-
+@Slf4j
 public class SkinnableLogin extends HttpServlet implements Login {
 
 	private static final long serialVersionUID = 1L;
-
-	/** Our log (commons). */
-	private static Logger log = LoggerFactory.getLogger(SkinnableLogin.class);
 
 	// Service instance variables
 	private AuthzGroupService authzGroupService = ComponentManager.get(AuthzGroupService.class);
@@ -241,7 +241,7 @@ public class SkinnableLogin extends HttpServlet implements Login {
 				session.setAttribute(ATTR_RETURN_URL, Web.returnUrl(req, null));
 
 				String containerCheckPath = this.getServletConfig().getInitParameter("container");
-				String containerCheckUrl = Web.serverUrl(req) + containerCheckPath;
+				String containerCheckUrl = RequestFilter.serverUrl(req) + containerCheckPath;
 
 				// support query parms in url for container auth
 				String queryString = req.getQueryString();
@@ -450,6 +450,10 @@ public class SkinnableLogin extends HttpServlet implements Login {
 		String uiService = serverConfigurationService.getString("ui.service", "Sakai");
 		String passwordResetUrl = getPasswordResetUrl();
 
+		String xloginChoice = serverConfigurationService.getString("xlogin.choice", null);
+		String containerText = serverConfigurationService.getString("login.text.title", "Container Login");
+		String loginContainerUrl = serverConfigurationService.getString("login.container.url");
+
 		String eidWording = rb.getString("userid");
 		String pwWording = rb.getString("log.pass");
 		String loginRequired = rb.getString("log.logreq");
@@ -470,9 +474,12 @@ public class SkinnableLogin extends HttpServlet implements Login {
 		rcontext.put("cancelWording", cancelWording);
 		rcontext.put("passwordResetUrl", passwordResetUrl);
 		rcontext.put("passwordResetWording", passwordResetWording);
+		rcontext.put("xloginChoice", xloginChoice);
+		rcontext.put("containerText", containerText);
+		rcontext.put("loginContainerUrl", loginContainerUrl);
 
-		String eid = StringEscapeUtils.escapeHtml(request.getParameter("eid"));
-		String pw = StringEscapeUtils.escapeHtml(request.getParameter("pw"));
+		String eid = StringEscapeUtils.escapeHtml4(request.getParameter("eid"));
+		String pw = StringEscapeUtils.escapeHtml4(request.getParameter("pw"));
 
 		if (eid == null)
 			eid = "";
@@ -504,6 +511,9 @@ public class SkinnableLogin extends HttpServlet implements Login {
 		rcontext.put("pageWebjarsPath", getWebjarsPath());
 
 		rcontext.put("choiceRequired", rb.getString("log.choicereq"));
+		rcontext.put("loginRequired", rb.getString("log.logreq"));
+		rcontext.put("loginTitle", serverConfigurationService.getString("login.text.title"));
+		rcontext.put("loginTitle2", serverConfigurationService.getString("xlogin.text.title"));
 
 		rcontext.put("containerLoginChoiceIcon", serverConfigurationService.getString("container.login.choice.icon"));
 		rcontext.put("xloginChoiceIcon", serverConfigurationService.getString("xlogin.choice.icon"));

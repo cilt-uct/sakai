@@ -27,9 +27,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.authz.api.AuthzGroup;
 import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.authz.api.GroupNotDefinedException;
@@ -47,9 +45,11 @@ import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserNotDefinedException;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public class ComposeLogicImpl implements ComposeLogic
 {
-	private static final Logger log = LoggerFactory.getLogger(ComposeLogicImpl.class);
 	private static final int NUMBER_ROLES = 15;
 
 	protected SiteService siteService;

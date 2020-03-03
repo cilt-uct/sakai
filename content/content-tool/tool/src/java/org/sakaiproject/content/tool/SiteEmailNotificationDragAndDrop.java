@@ -1,48 +1,59 @@
+/**
+ * Copyright (c) 2003-2016 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.content.tool;
 
-import java.util.Iterator;
-import java.util.Set;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
-import org.sakaiproject.util.SiteEmailNotification;
-import org.sakaiproject.util.api.FormattedText;
-import org.sakaiproject.util.Resource;
-import org.sakaiproject.util.ResourceLoader;
-import org.sakaiproject.util.StringUtil;
-import org.sakaiproject.entity.api.Entity;
-import org.sakaiproject.entity.api.Reference;
-import org.sakaiproject.entity.api.ResourceProperties;
-import org.sakaiproject.entity.api.EntityManager;
-import org.sakaiproject.content.api.ContentHostingService;
-import org.sakaiproject.content.api.ContentResource;
-import org.sakaiproject.content.api.ContentCollection;
+import org.apache.commons.lang3.StringUtils;
+import org.sakaiproject.authz.api.Member;
+import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.component.cover.ComponentManager;
-import org.sakaiproject.user.api.User;
-import org.sakaiproject.user.api.UserDirectoryService;
-import org.sakaiproject.user.api.UserNotDefinedException;
+import org.sakaiproject.content.api.ContentCollection;
+import org.sakaiproject.content.api.ContentHostingService;
+import org.sakaiproject.entity.api.Entity;
+import org.sakaiproject.entity.api.EntityManager;
+import org.sakaiproject.entity.api.Reference;
+import org.sakaiproject.entity.api.ResourceProperties;
 import org.sakaiproject.event.api.Event;
-import org.sakaiproject.event.api.Notification;
-import org.sakaiproject.site.api.SiteService;
-import org.sakaiproject.site.api.Site;
-import org.sakaiproject.site.api.Group;
-import org.sakaiproject.authz.api.SecurityService;
-import org.sakaiproject.authz.api.Member;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.exception.TypeException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.sakaiproject.site.api.Group;
+import org.sakaiproject.site.api.Site;
+import org.sakaiproject.site.api.SiteService;
+import org.sakaiproject.user.api.User;
+import org.sakaiproject.user.api.UserDirectoryService;
+import org.sakaiproject.user.api.UserNotDefinedException;
+import org.sakaiproject.util.Resource;
+import org.sakaiproject.util.ResourceLoader;
+import org.sakaiproject.util.SiteEmailNotification;
+import org.sakaiproject.util.StringUtil;
+import org.sakaiproject.util.api.FormattedText;
 
-//import org.sakaiproject.content.cover.ComponentManager;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class SiteEmailNotificationDragAndDrop extends SiteEmailNotification
 {
-	static final Logger logger = LoggerFactory.getLogger(SiteEmailNotificationDragAndDrop.class);
-
 	/* property bundles */
 	private static final String DEFAULT_RESOURCECLASS = "org.sakaiproject.localization.util.SiteemaconProperties";
 	private static final String DEFAULT_RESOURCEBUNDLE = "org.sakaiproject.localization.bundle.siteemacon.siteemacon";
@@ -136,7 +147,51 @@ public class SiteEmailNotificationDragAndDrop extends SiteEmailNotification
 		String[] args = {title, folderName};
 		if (this.isDropboxFolder())
 		{
-			return rb.getFormattedMessage((contentHostingService.EVENT_RESOURCE_AVAILABLE.equals(function) ? "db.subj.new.dnd" : "db.subj.upd-dnd"), args);
+			String dropboxId = contentHostingService.getIndividualDropboxId(ref.getId());
+			boolean toplevel = false;
+			if (dropboxId == null || "".equals(dropboxId))
+			{
+				toplevel = true;
+			}
+			else
+			{
+				try
+				{
+					contentHostingService.getProperties(dropboxId);
+					// checking for valid INDIVIDUAL dropboxId. results not needed.
+				}
+				catch (PermissionException e)
+				{
+					log.warn("PermissionException trying to get title for individual dropbox: {}", dropboxId);
+				}
+				catch (IdUnusedException e)
+				{
+					String[] parts = dropboxId.split(Entity.SEPARATOR);
+					if (parts.length == 4)
+					{
+						toplevel = true;
+					}
+					else
+					{
+						log.warn("IdUnusedException trying to get title for individual dropbox: {}", dropboxId);
+					}
+				}
+			}
+			if (toplevel)
+			{
+				// toplevel templates here don't use final array item args[1] == folderName
+				return rb.getFormattedMessage(
+						(ContentHostingService.EVENT_RESOURCE_AVAILABLE.equals(function)
+						? "db.subj.new.dnd.toplevel"
+						: "db.subj.upd.dnd.toplevel"), (Object[]) args);
+			}
+			else
+			{
+				return rb.getFormattedMessage(
+						(ContentHostingService.EVENT_RESOURCE_AVAILABLE.equals(function)
+						? "db.subj.new.dnd"
+						: "db.subj.upd.dnd"), (Object[]) args);
+			}
 		}
 		else return "[ " + title + " - "
 		+ ((contentHostingService.EVENT_RESOURCE_AVAILABLE.equals(function))||(contentHostingService.EVENT_RESOURCE_ADD.equals(function)) ? rb.getString("newDnD") : rb.getString("chan")) + " "
@@ -204,7 +259,7 @@ public class SiteEmailNotificationDragAndDrop extends SiteEmailNotification
 				site = siteService.getSite(siteId);
 			}
 			catch (IdUnusedException e) {
-				logger.warn("Could not getSite for " + siteId + " not returning any recipients.");
+				log.warn("Could not getSite for {} not returning any recipients.", siteId);
 				return recipients;
 			}
 
@@ -216,8 +271,14 @@ public class SiteEmailNotificationDragAndDrop extends SiteEmailNotification
 			String parts[] = resourceRef.split("/");
 			if(parts.length >= 4)
 			{
-				String dropboxOwnerId = parts[4];
-				if(modifiedBy != null && modifiedBy.equals(dropboxOwnerId))
+				String dropboxOwnerId = "";
+				if (parts.length >= 5)
+				{
+					dropboxOwnerId = parts[4];
+				}
+				if (StringUtils.isBlank(dropboxOwnerId) // notify on change made in common top-level dropbox
+					|| StringUtils.equals(modifiedBy, dropboxOwnerId)) // notify on change made by member/student in individual
+				// dropbox
 				{
 					// notify instructor(s)
 					StringBuilder buf = new StringBuilder();
@@ -235,7 +296,7 @@ public class SiteEmailNotificationDragAndDrop extends SiteEmailNotification
 					
 					refineToSiteMembers(recipients, site);
 				}
-				else
+				else // notify on change made by owner/instructor in individual dropbox
 				{
 					// notify student
 					try
@@ -252,7 +313,7 @@ public class SiteEmailNotificationDragAndDrop extends SiteEmailNotification
 						}
 						catch(UserNotDefinedException e1)
 						{
-							logger.warn("UserNotDefinedException trying to get user: " + dropboxOwnerId);
+							log.warn("UserNotDefinedException trying to get user: {}", dropboxOwnerId);
 						}
 					}
 
@@ -359,11 +420,11 @@ public class SiteEmailNotificationDragAndDrop extends SiteEmailNotification
 						}
 
 					} catch (PermissionException e) {
-						e.printStackTrace();
+						log.error(e.getMessage(), e);
 					} catch (IdUnusedException e) {
-						e.printStackTrace();
+						log.error(e.getMessage(), e);
 					} catch (TypeException e) {
-						e.printStackTrace();
+						log.error(e.getMessage(), e);
 					}
 				}
 
@@ -465,14 +526,32 @@ public class SiteEmailNotificationDragAndDrop extends SiteEmailNotification
 			buf.append("<p>");
 		}
 
-		if ((contentHostingService.EVENT_RESOURCE_AVAILABLE.equals(function))||(contentHostingService.EVENT_RESOURCE_ADD.equals(function)))
+		boolean plural = this.fileList.size() > 1;
+		Object[] replacementValues = new Object[] {this.fileList.size()};
+		String numResourcesMsg;
+		if (ContentHostingService.EVENT_RESOURCE_AVAILABLE.equals(function) || ContentHostingService.EVENT_RESOURCE_ADD.equals(function))
 		{
-			buf.append(rb.getString("anewresDnD"));
+			if (plural)
+			{
+				numResourcesMsg = rb.getFormattedMessage("anewresDnD.plural", replacementValues);
+			}
+			else
+			{
+				numResourcesMsg = rb.getString("anewresDnD");
+			}
 		}
 		else
 		{
-			buf.append(rb.getString("anewres2DnD"));
+			if (plural)
+			{
+				numResourcesMsg = rb.getFormattedMessage("anewres2DnD.plural", replacementValues);
+			}
+			else
+			{
+				numResourcesMsg = rb.getString("anewres2DnD");
+			}
 		}
+		buf.append(numResourcesMsg);
 		buf.append(" ");
 		buf.append(rb.getString("tothe"));
 		buf.append(" \"");
@@ -497,37 +576,40 @@ public class SiteEmailNotificationDragAndDrop extends SiteEmailNotification
 		}
 		buf.append(blankLine);
 
-		for (int i=0;i<this.fileList.size();i++)
+		if (this.fileList != null)
 		{
-			ref2 = entityManager.newReference((String)this.getFileList().get(i));
-			url = ref2.getUrl();
-			props = ref2.getProperties();
-			resourceName = props.getPropertyFormatted(ResourceProperties.PROP_DISPLAY_NAME);
-
-			// add location
-			String path = constructPath(ref2.getReference());
-			buf.append(rb.getString("locsit") + " \"" + title + "\" > " + rb.getString("reso") + " " + path + " > ");
-			if ( doHtml ) 
+			for (int i=0;i<this.fileList.size();i++)
 			{
-				buf.append("<a href=\"");
-				buf.append(url);
-				buf.append("\">");
-				buf.append(resourceName);
-				buf.append("</a>");
-			}
-			else
-			{
-				buf.append(resourceName);
-			}
+				ref2 = entityManager.newReference((String)this.getFileList().get(i));
+				url = ref2.getUrl();
+				props = ref2.getProperties();
+				resourceName = props.getPropertyFormatted(ResourceProperties.PROP_DISPLAY_NAME);
 
-			buf.append(blankLine);
+				// add location
+				String path = constructPath(ref2.getReference());
+				buf.append(rb.getString("locsit") + " \"" + title + "\" > " + rb.getString("reso") + " " + path + " > ");
+				if ( doHtml )
+				{
+					buf.append("<a href=\"");
+					buf.append(url);
+					buf.append("\">");
+					buf.append(resourceName);
+					buf.append("</a>");
+				}
+				else
+				{
+					buf.append(resourceName);
+				}
 
-			// add a reference to the resource for non-HTML
-			if ( ! doHtml )
-			{
-				buf.append("\n" + rb.getString("resour") + " " + resourceName);
-				buf.append(" " + url);
-				buf.append("\n\n");  // End on a blank line
+				buf.append(blankLine);
+
+				// add a reference to the resource for non-HTML
+				if ( ! doHtml )
+				{
+					buf.append("\n" + rb.getString("resour") + " " + resourceName);
+					buf.append(" " + url);
+					buf.append("\n\n");  // End on a blank line
+				}
 			}
 		}
 
@@ -559,19 +641,35 @@ public class SiteEmailNotificationDragAndDrop extends SiteEmailNotification
 		String newLine = "\n";
 
 		String dropboxId = contentHostingService.getIndividualDropboxId(ref.getId());
-		String dropboxTitle = null;
-		try 
+		String dropboxTitle = "";
+		boolean toplevel = false;
+		if (StringUtils.isBlank(dropboxId))
 		{
-			ResourceProperties dbProps = contentHostingService.getProperties(dropboxId);
-			dropboxTitle = dbProps.getPropertyFormatted(ResourceProperties.PROP_DISPLAY_NAME);
-		} 
-		catch (PermissionException e) 
+			toplevel = true;
+		}
+		else
 		{
-			logger.warn("PermissionException trying to get title for individual dropbox: " + dropboxId);
-		} 
-		catch (IdUnusedException e) 
-		{
-			logger.warn("IdUnusedException trying to get title for individual dropbox: " + dropboxId);
+			try
+			{
+				ResourceProperties dbProps = contentHostingService.getProperties(dropboxId);
+				dropboxTitle = dbProps.getPropertyFormatted(ResourceProperties.PROP_DISPLAY_NAME);
+			}
+			catch (PermissionException e)
+			{
+				log.warn("PermissionException trying to get title for individual dropbox: {}", dropboxId);
+			}
+			catch (IdUnusedException e)
+			{
+				String[] parts = dropboxId.split(Entity.SEPARATOR);
+				if (parts.length == 4)
+				{
+					toplevel = true;
+				}
+				else
+				{
+					log.warn("IdUnusedException trying to get title for individual dropbox: {}", dropboxId);
+				}
+			}
 		}
 
 		if ( doHtml ) 
@@ -596,43 +694,58 @@ public class SiteEmailNotificationDragAndDrop extends SiteEmailNotification
 		}
 		if (contentHostingService.EVENT_RESOURCE_AVAILABLE.equals(function))
 		{
-			buf.append(rb.getFormattedMessage("db.text.new.dnd", new String[]{dropboxTitle, siteTitle, portalName, portalUrl}));
+			if (toplevel)
+			{
+				buf.append(rb.getFormattedMessage("db.text.new.dnd.toplevel", new Object[] {siteTitle, portalName, portalUrl}));
+			}
+			else
+			{
+				buf.append(rb.getFormattedMessage("db.text.new.dnd", new Object[] {dropboxTitle, siteTitle, portalName, portalUrl}));
+			}
 		}
 		else
 		{
-			buf.append(rb.getFormattedMessage("db.text.upd.dnd", new String[]{dropboxTitle, siteTitle, portalName, portalUrl}));
+			if (toplevel)
+			{
+				buf.append(rb.getFormattedMessage("db.text.upd.dnd.toplevel", new Object[] {siteTitle, portalName, portalUrl}));
+			}
+			else
+			{
+				buf.append(rb.getFormattedMessage("db.text.upd.dnd", new Object[] {dropboxTitle, siteTitle, portalName, portalUrl}));
+			}
 		}
 		buf.append(blankLine);
 
-		//FOR
-		for (int i=0;i<this.fileList.size();i++)
+		if (this.fileList != null)
 		{
-			ref2 = entityManager.newReference((String)this.getFileList().get(i));
-			url = ref2.getUrl();
-			props = ref2.getProperties();
-			resourceName = props.getPropertyFormatted(ResourceProperties.PROP_DISPLAY_NAME);
-
-			// add location
-			String path = constructPath(ref2.getReference());
-			String item = resourceName;
-
-			if(doHtml)
+			for (int i=0;i<this.fileList.size();i++)
 			{
-				item = "<a href=\"" + url + "\">" + item + "</a>";
-			}
-			buf.append(rb.getFormattedMessage("db.text.location", new String[]{siteTitle, path, item}));
+				ref2 = entityManager.newReference((String)this.getFileList().get(i));
+				url = ref2.getUrl();
+				props = ref2.getProperties();
+				resourceName = props.getPropertyFormatted(ResourceProperties.PROP_DISPLAY_NAME);
 
-			buf.append(blankLine);
+				// add location
+				String path = constructPath(ref2.getReference());
+				String item = resourceName;
 
-			// add a reference to the resource for non-HTML
-			if ( ! doHtml )
-			{
-				buf.append("\n" + rb.getString("resour") + " " + resourceName);
-				buf.append(" " + url);
-				buf.append("\n\n");  // End on a blank line
+				if(doHtml)
+				{
+					item = "<a href=\"" + url + "\">" + item + "</a>";
+				}
+				buf.append(rb.getFormattedMessage("db.text.location", new String[]{siteTitle, path, item}));
+
+				buf.append(blankLine);
+
+				// add a reference to the resource for non-HTML
+				if ( ! doHtml )
+				{
+					buf.append("\n" + rb.getString("resour") + " " + resourceName);
+					buf.append(" " + url);
+					buf.append("\n\n");  // End on a blank line
+				}
 			}
 		}
-		//END FOR
 
 		// Add the tag
 		if (doHtml) 

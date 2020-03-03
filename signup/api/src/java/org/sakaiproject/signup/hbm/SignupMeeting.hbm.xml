@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
-	"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN" "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping default-cascade="none"
+				   package="org.sakaiproject.signup.model"
+				   default-lazy="false">
 
-<hibernate-mapping default-cascade="none" package="org.sakaiproject.signup.model" default-lazy="false">
 	<class name="org.sakaiproject.signup.model.SignupMeeting"
 			table="signup_meetings" optimistic-lock="version">
 
@@ -59,21 +60,21 @@
 		
 		<property name="uuid" column="vevent_uuid" length="36" type="string" not-null="false" />
 		
-		<list name="signupTimeSlots" cascade="save-update,delete" fetch="select" batch-size="50">
+		<list name="signupTimeSlots" cascade="all" fetch="select" batch-size="50">
 			<key column="meeting_id" not-null="true"/>
 			<list-index column="list_index" />
 			<one-to-many 
 				class="org.sakaiproject.signup.model.SignupTimeslot" />
 		</list>
 		
-		<list name="signupSites" cascade="save-update,delete" fetch="select" batch-size="50">
+		<list name="signupSites" cascade="all" fetch="select" batch-size="50">
 			<key column="meeting_id" not-null="true"/>
 			<list-index column="list_index" />
 			<one-to-many
 				class="org.sakaiproject.signup.model.SignupSite" />
 		</list>
 		
-		<list name="signupAttachments" cascade="save-update,delete" table="signup_attachments" fetch="select" batch-size="50">
+		<list name="signupAttachments" cascade="all" table="signup_attachments" fetch="select" batch-size="50">
 			<key column="meeting_id" not-null="true"/>
 			<list-index column="list_index" />
 			<composite-element class="org.sakaiproject.signup.model.SignupAttachment" >

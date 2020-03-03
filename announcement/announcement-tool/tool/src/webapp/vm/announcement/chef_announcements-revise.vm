@@ -1,5 +1,5 @@
 ## $Header: /cvs/sakai2/legacy/tools/src/webapp/vm/announcement/chef_announcements-revise.vm,v 1.4 2005/05/15 04:54:19 gsilver.umich.edu Exp $ 
-
+<script type="text/javascript" src="/library/js/spinner.js$!{portalCdnQuery}"></script>
 <script type="text/javascript">
   focus_path = ["subject"];
   
@@ -52,8 +52,41 @@ function resizeFrame(){
 		updateEmailDropdownOptions();
 		
 	});
-</script>	
+</script>
+
+<script>
+    includeWebjarLibrary('bootstrap-multiselect');
+
+    <!-- Initialize the plugin: -->
+    $(document).ready(function() {
+        $('#selectedGroups').multiselect({
+            selectAllText: '$tlang.getString("announcement.edit.selectall")',
+            nonSelectedText: '$tlang.getString("announcement.edit.selectone")',
+            allSelectedText: '$tlang.getString("announcement.edit.allselected")',
+            nSelectedText: ' $tlang.getString("announcement.edit.groupsselected")',
+            filterPlaceholder: '$tlang.getString("announcement.edit.searchgroup")',
+            enableFiltering: true,
+            enableCaseInsensitiveFiltering: true
+        });
+    });
+</script>
+
 <div class="portletBody container-fluid">
+    #if ($isOnWorkspaceTab.equals("false"))
+		#if($menu && $EnabledMenuItemExists)
+			#if ($toolId == "sakai.synoptic.announcement")
+				<ul class="navIntraTool actionToolBar" role="menu">
+					<li class="firstToolBarItem" role="menuitem"><span><a href="#" title="$tlang.getString("gen.recopt")" onclick="location = '#toolLink("$action" "doOptions")';return false;">
+						$tlang.getString("custom.options")
+						<span class="skip">$toolTitle</span>
+					</a></span></li>
+				</ul>
+			#else
+				#toolbar($menu)
+			#end
+		#end
+	#end
+
 	<div class="page-header">
 		<h1>
 		#if ( $newAnn =="true")
@@ -64,7 +97,7 @@ function resizeFrame(){
 		</h1>
 	</div>
 	
-	#if ($alertMessage)<div class="alertMessage">$tlang.getFormattedMessage("gen.alert.message", $alertMessage)</div><div class="clear"></div>#end
+	#if ($alertMessage)<div class="sak-banner-error">$tlang.getFormattedMessage("gen.alert.message", $alertMessage)</div>#end
 		
 		<p class="instruction">
 				#if ( $newAnn =="true")
@@ -87,9 +120,9 @@ function resizeFrame(){
 				</label>
 				<div class="col-md-6">
 					#if ($new=="true")
-						<input type="text" size="45" name="subject" id="subject" value="$validator.escapeHtml($tempSubject)" class="form-control"/>                
+						<input type="text" size="45" name="subject" id="subject" value="$formattedText.escapeHtml($tempSubject)" class="form-control" autofocus="autofocus" />                
 					#else
-						<input type="text" size="45" name="subject" id="subject" value="$validator.escapeHtml($message.Header.subject)" class="form-control"/>
+						<input type="text" size="45" name="subject" id="subject" value="$formattedText.escapeHtml($message.Header.subject)" class="form-control" autofocus="autofocus" />
 					#end
 				</div>
 			</div>
@@ -104,14 +137,14 @@ function resizeFrame(){
 				<div class="col-md-12">
 					#if ($new=="true")
 						#if ($!tempBody.length() != 0)
-							<textarea name="body" class="block" id="body" cols="65" rows="30" wrap="virtual">$validator.escapeHtmlFormattedTextarea($tempBody)</textarea>
+							<textarea name="body" class="block" id="body" cols="65" rows="30" wrap="virtual">$formattedText.escapeHtmlFormattedTextarea($tempBody)</textarea>
 						#else
 							<textarea name="body" class="block" id="body" cols="65" rows="30" wrap="virtual"></textarea>
 						#end
 					#else
 						#set($messageBody = $message.body)
 						#if ($!messageBody.length() != 0)
-							<textarea name="body" class="block" id="body" cols="65" rows="30" wrap="virtual">$validator.escapeHtmlFormattedTextarea($message.body)</textarea>
+							<textarea name="body" class="block" id="body" cols="65" rows="30" wrap="virtual">$formattedText.escapeHtmlFormattedTextarea($message.body)</textarea>
 						#else
 							<textarea name="body" class="block" id="body" cols="65" rows="30" wrap="virtual"></textarea>
 						#end
@@ -128,7 +161,7 @@ function resizeFrame(){
 							<h4>$tlang.getString("displayto.access")</h4>
 						</legend>
 					
-				#if ($!groups || ($!groups.size()>1)) #set ($show_group = "true") #else #set ($show_group = "false") #end
+				#if ($!groups && ($!groups.size()>1)) #set ($show_group = "true") #else #set ($show_group = "false") #end
 				#if ( $motd )
 					## no show this selection, but set default to public
 					<input type="hidden" name="announceTo" id="pubview" value="pubview" checked="checked" onclick="updateEmailDropdownOptions()" />
@@ -189,53 +222,30 @@ function resizeFrame(){
 						#else
 							#set ($listDisplay="none")
 						#end
-						<div class="table-responsive">
-							<table id="groupTable" style="display:$listDisplay" class="table table-hover table-striped table-bordered" summary="$tlang.getString("revise.group.list.summary")">
-							<caption class="skip" style="display:none">$tlang.getString("displayto.selected")</caption>
-								<tr>
-									<th id ="selectAllGroups" class="attach">
-										<input type="checkbox" name="selectall" value="" id="selectall" title="$tlang.getString("revise.group.list.toggle")" onclick="javascript:toggleSelectAll(this, 'selectedGroups')"  />
-									</th>
-							 		<th id ="groupname">
-										$tlang.getString("revise.group.list.title")
-									</th>
-									<th id ="groupdescription">
-										$tlang.getString("revise.group.list.desc")
-									</th>
-								</tr>
+						<div id="groupTable" style="display:$listDisplay">
+							<caption class="skip" style="display:none">$tlang.getString("displayto.selected")</caption></br>
+							<select id="selectedGroups" name="selectedGroups" multiple="multiple">
 								#foreach ($group in $!groups)
-									<tr>
-										<td headers="selectAllGroups" class="attach">
-											#set($selected=false)
-											#foreach($aGroupRef in $announceToGroups)
-												#set($aGroup = $!site.getGroup($!aGroupRef))
-												#if ($!group.Id == $!aGroup.Id)
-													#set($selected = true)
-												#end
-											#end
-											#if($groups.size() == 1) #set($selected=true) #end
-											#set($disabled=true)	
-											<input type="checkbox" name="selectedGroups" id="group-$group.Id" title="$validator.escapeHtml($group.title)" value="$group.Id" #if($selected) checked="checked"#end />
-										</td>
-										<td headers="groupname" nowrap="nowrap">
-											<label for="group-$group.Id">
-												$validator.escapeHtml($group.Title)
-											</label>	
-										</td>
-										<td headers="groupdescription" width="100%"> ##mozilla does not resize table children dynamically , so set here
-											#set($description = "")
-											#set($description = $group.Description)
-											$validator.escapeHtml($!description)
-										</td>
-									</tr>
+									#set($selected=false)
+									#foreach($aGroupRef in $announceToGroups)
+										#set($aGroup = $!site.getGroup($!aGroupRef))
+										#if ($!group.Id == $!aGroup.Id)
+											#set($selected = true)
+										#end
+									#end
+									#if($groups.size() == 1) #set($selected=true) #end
+									#set($disabled=true)
+									#set($description = "")
+									#set($description = $formattedText.escapeHtml($group.Description))
+
+									<option id="group-$group.Id" value="$group.Id" #if($selected) selected #end>$formattedText.escapeHtml($group.Title) #if("$!description" != "") ($!description) #end</option>
 								#end
-							</table>
+							</select>
 						</div>
 					#end
 				#end
 		        </fieldset>
-				
-				</div>			
+				</div>
 			</div>
 ##
 ################### AVAILABLE section (to show/hide and set release/retract dates)
@@ -249,7 +259,7 @@ function resizeFrame(){
 						<div class="checkbox">
 						  <label for="hidden_false">
 								<input type="radio" class="showHide" name="hidden" id="hidden_false" value="false" #if(!$hidden)checked="checked" #end/>
-								$tlang.getString("avail.show.withtips")						  
+								$tlang.getString("avail.show.withtips")
 						  </label>
 						</div>
 
@@ -308,8 +318,6 @@ function resizeFrame(){
 			                    <input type="text" id="closedate">
 							</div>
 						</div>
-
-
 		        </fieldset>
 		        </div>
 		    </div>
@@ -372,7 +380,7 @@ function resizeFrame(){
 									<img src = "#imageLink($contentTypeImageService.getContentTypeImage($props.getProperty($props.NamePropContentType)))" border="0" alt ="$props.getProperty($props.NamePropContentType)" />
 							#end
 							<a href="$attachment.Url" target="_blank">
-							$validator.escapeHtml($attachment.Properties.getPropertyFormatted("DAV:displayname"))</a>
+							$formattedText.escapeHtml($attachment.Properties.getPropertyFormatted("DAV:displayname"))</a>
 							#if (!$props.getBooleanProperty($props.NamePropIsCollection) && $props.getProperty("DAV:getcontenttype") != "text/url")
 								($props.getPropertyFormatted($props.NamePropContentLength))
 							#end
@@ -384,11 +392,11 @@ function resizeFrame(){
 			#end
 			#if ($size == 0) <p class="instruction">$tlang.getString("revise.noattach")</p>
 				<div class="act">
-					 <input type="button" name="attach" value="$tlang.getString("revise.addatt")" onclick="javascript:document.reviseForm.onsubmit();document.getElementById('option').value='attach';document.reviseForm.submit();return false;" />
+					 <input type="button" name="attach" value="$tlang.getString("revise.addatt")" onclick="document.getElementById('option').value='attach';document.reviseForm.submit();return false;" />
 				</div>
 			#else
 				<div class="act">
-					 <input type="button" name="attach" value="$tlang.getString("revise.addrem")" onclick="javascript:document.reviseForm.onsubmit();document.getElementById('option').value='attach';document.reviseForm.submit();return false;" />
+					 <input type="button" name="attach" value="$tlang.getString("revise.addrem")" onclick="document.getElementById('option').value='attach';document.reviseForm.submit();return false;" />
 				</div>
 			#end
 
@@ -413,7 +421,6 @@ function resizeFrame(){
 					</div>
 				</div>	
 			#end
-		</div>	
 		
 		#if ($notiHistory)
 			<div class="specialLink act act-outer"><a href="#" class="indnt2 specialLink" id="notiHistoryToggle">$tlang.getString("revise.notify.ver_link")</a></div>
@@ -468,17 +475,16 @@ function resizeFrame(){
 			</table>
 			</div>
 		#end
-		<p class="act act-outer">
+		<p class="act">
 				<input type="button" class="active" name="post" accesskey="s"  id="saveChanges"  value=
 					#if ( $newAnn =="true")				
 						"$tlang.getString("revise.add")"
 					#else
 						"$tlang.getString("revise.savechanges")"
 					#end
-				 onclick="javascript:showNotif('submitnotif','saveChanges','reviseForm');document.reviseForm.onsubmit();document.getElementById('option').value='post';document.reviseForm.submit();return false;" />
-				<input type="button" accesskey="v" name="preview" value="$tlang.getString("revise.preview")" onclick="javascript:document.reviseForm.onsubmit();document.getElementById('option').value='preview';document.reviseForm.submit();return false;" />
-				<input type="button" accesskey="x" name="cancel" value="$tlang.getString("gen.cancel")" onclick="javascript:document.reviseForm.onsubmit();document.getElementById('option').value='cancel';document.reviseForm.submit();return false;" />   
-				<span id="submitnotif" style="visibility:hidden" >$tlang.getString("label.proces")</span>
+				 onclick="SPNR.disableControlsAndSpin( this, null ); document.getElementById('option').value='post';document.reviseForm.submit();return false;" />
+				<input type="button" accesskey="v" name="preview" value="$tlang.getString("revise.preview")" onclick="document.getElementById('option').value='preview';document.reviseForm.submit();return false;" />
+				<input type="button" accesskey="x" name="cancel" value="$tlang.getString("gen.cancel")" onclick="document.getElementById('option').value='cancel';document.reviseForm.submit();return false;" />   
 		</p>
 		<input type="hidden" name="sakai_csrf_token" value="$sakai_csrf_token" />
 	</form>
@@ -502,18 +508,21 @@ function resizeFrame(){
 			var defaultText = "$tlang.getString("revise.notify_high")";
 			var groupsText  = "$tlang.getString("revise.notify_high_groups")";
 
-			var options = document.getElementById('notify').children;
-			for (var i = 0; i < options.length; i++) {
-				if (options[i].text == defaultText || options[i].text == groupsText) {
-					var highOption = options[i];
-					break;
-				}
-			}
+			//Checks for #notify to prevent errors on MOTD
+			if (document.getElementById('notify') !== null) {
 
-			if (theAnnouncementIsForGroups()) {
-				highOption.text = groupsText;
-			} else {
-				highOption.text = defaultText;
+				var options = document.getElementById('notify').children;
+				for (var i = 0; i < options.length; i++) {
+					if (options[i].text == defaultText || options[i].text == groupsText) {
+						var highOption = options[i];
+						break;
+					}
+				}
+				if (theAnnouncementIsForGroups()) {
+					highOption.text = groupsText;
+				} else {
+					highOption.text = defaultText;
+				}
 			}
 		}
 

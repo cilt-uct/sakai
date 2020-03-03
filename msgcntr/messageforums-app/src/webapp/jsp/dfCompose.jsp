@@ -1,6 +1,6 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://sakaiproject.org/jsf/messageforums" prefix="mf" %>
 <jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
    <jsp:setProperty name="msgs" property="baseName" value="org.sakaiproject.api.app.messagecenter.bundle.Messages"/>
@@ -12,20 +12,10 @@
     <h:form id="dfCompose">
 			<f:verbatim><input type="hidden" id="currentTopicId" name="currentTopicId" value="</f:verbatim><h:outputText value="#{ForumTool.selectedTopic.topic.id}"/><f:verbatim>"/></f:verbatim>
 			<f:verbatim><input type="hidden" id="currentForumId" name="currentForumId" value="</f:verbatim><h:outputText value="#{ForumTool.selectedForum.forum.id}"/><f:verbatim>"/></f:verbatim>
-           		<script type="text/javascript">includeLatestJQuery("msgcntr");</script>
-       		<sakai:script contextBase="/messageforums-tool" path="/js/sak-10625.js"/>
-       		<sakai:script contextBase="/messageforums-tool" path="/js/forum.js"/>
-       		<sakai:script contextBase="/messageforums-tool" path="/js/messages.js"/>
-			<script type="text/javascript">
-				$(document).ready(function() {
-					$('#openLinkBlock').hide();
-					jQuery('.toggle').click(function(e) { 
-						$('#fullTopicDescription').toggle('slow');
-						$('.toggleParent').toggle();					
-						 resizeFrame('grow')
-				});						
-				});			
-			</script>
+           		<script>includeLatestJQuery("msgcntr");</script>
+       		<script src="/messageforums-tool/js/sak-10625.js"></script>
+       		<script src="/messageforums-tool/js/forum.js"></script>
+       		<script src="/messageforums-tool/js/messages.js"></script>
 
 
 
@@ -38,28 +28,24 @@
 	  <h:outputText value="#{ForumTool.selectedTopic.topic.shortDescription}" />
 	  </div>
 						<div>
-		     <p style="padding:0;margin:.5em 0" id="openLinkBlock" class="toggleParent">
-					<a href="#" id="showMessage" class="toggle show">
-						<h:graphicImage url="/images/expand.gif" alt=""/>	
-						<h:outputText value=" #{msgs.cdfm_hide_full_description}" />
-					</a>
-				</p>
-				<p style="padding:0;margin:.5em 0" id="hideLinkBlock" class="toggleParent">
-					<a href="#" id="hideMessage" class="toggle show">
-						<h:graphicImage url="/images/collapse.gif" alt="" />					
-						<h:outputText value=" #{msgs.cdfm_read_full_description}"/>
-					</a>
-				</p>
-		     
-		     
+							<p id="openLinkBlock" class="toggleParent openLinkBlock display-none">
+								<a href="#" id="showMessage" class="toggle show">
+									<h:graphicImage url="/images/expand.gif" alt=""/>
+									<h:outputText value=" #{msgs.cdfm_read_full_description}" />
+								</a>
+							</p>
+							<p id="hideLinkBlock" class="toggleParent hideLinkBlock">
+								<a href="#" id="hideMessage" class="toggle show">
+									<h:graphicImage url="/images/collapse.gif" alt="" />
+									<h:outputText value=" #{msgs.cdfm_hide_full_description}"/>
+								</a>
+							</p>
 							<%-- //designNote: am assuming that the thinking is that once the user is here 
 								there is no longer need for the long description context (or as much), so do not put it in
 								the response by default - same goes for attachment list if any --%>
-			<div id="fullTopicDescription" style="display: none">
-			<mf:htmlShowArea value="#{ForumTool.selectedTopic.topic.extendedDescription}" 
-		                   id="topic_extended_description" 
-									hideBorder="true" />
-			</div>
+							<div id="fullTopicDescription" class="textPanel">
+								<h:outputText escape="false" value="#{ForumTool.selectedTopic.topic.extendedDescription}" />
+							</div>
 						</div>
 					</td>
 				</tr>
@@ -78,7 +64,7 @@
 				     <h:outputText value="#{msgs.cdfm_info_required_sign}" styleClass="reqStar"/>
 					<h:outputText value="#{msgs.cdfm_title}"/>
 				</h:outputLabel>
-					   <h:inputText value="#{ForumTool.composeTitle}" style="width:30em;" maxlength="250" required="true" id="df_compose_title">
+					   <h:inputText value="#{ForumTool.composeTitle}" style="width:30em;" maxlength="250" required="true" id="df_compose_title" requiredMessage="#{msgs.cdfm_invalidMessageTitleString}">
 					     <f:validator validatorId="MessageTitle" />
 						 <f:validateLength minimum="1" maximum="255"/>
 					   </h:inputText>
@@ -163,14 +149,13 @@
 			<h:outputText value="#{msgs.cdfm_reply_message_note}" styleClass="highlight" rendered="#{ForumTool.selectedTopic.moderated == 'true' }" /><h:outputText value="#{msgs.cdfm_reply_message_mod_inst}" styleClass="instruction" rendered="#{ForumTool.selectedTopic.moderated == 'true' }" />
 			<p style="padding:0" class="act">
 				<h:commandButton id="post" action="#{ForumTool.processDfMsgPost}" value="#{msgs.cdfm_button_bar_post_message}" accesskey="s" styleClass="active blockMeOnClick"/>
-				<%--  <sakai:button_bar_item action="#{ForumTool.processDfMsgSaveDraft}" value="#{msgs.cdfm_button_bar_save_draft}" /> --%>
 				<h:commandButton action="#{ForumTool.processDfMsgCancel}" value="#{msgs.cdfm_button_bar_cancel}" immediate="true" accesskey="x" />
-                <h:outputText styleClass="messageProgress" style="display:none" value="#{msgs.cdfm_processing_submit_message}" />
+                <h:outputText styleClass="sak-banner-info" style="display:none" value="#{msgs.cdfm_processing_submit_message}" />
 			</p>
 			<%--
       <sakai:button_bar>
-        <sakai:button_bar_item action="#{ForumTool.processDfMsgPost}" value="#{msgs.cdfm_button_bar_post_message}" accesskey="s" styleClass="active"/>
-        <sakai:button_bar_item action="#{ForumTool.processDfMsgCancel}" value="#{msgs.cdfm_button_bar_cancel}" immediate="true" accesskey="x" />
+        <h:commandButton action="#{ForumTool.processDfMsgPost}" value="#{msgs.cdfm_button_bar_post_message}" accesskey="s" styleClass="active"/>
+        <h:commandButton action="#{ForumTool.processDfMsgCancel}" value="#{msgs.cdfm_button_bar_cancel}" immediate="true" accesskey="x" />
       </sakai:button_bar>
 			--%>
      
@@ -180,4 +165,3 @@
 		</h:form>
   </sakai:view>
 </f:view> 
-

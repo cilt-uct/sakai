@@ -4,22 +4,21 @@
   <parent>
     <artifactId>common</artifactId>
     <groupId>org.sakaiproject.common</groupId>
-    <version>12-SNAPSHOT</version><!-- ProjectVersion -->
+    <version>21-SNAPSHOT</version><!-- ProjectVersion -->
     <relativePath>../pom.xml</relativePath>
   </parent>
   <name>Sakai Privacy Pack</name>
   <groupId>org.sakaiproject.common</groupId>
   <artifactId>sakai-privacy-pack</artifactId>
-  <organization>
-    <name>Sakai Project</name>
-    <url>http://sakaiproject.org/</url>
-  </organization>
-  <inceptionYear>2004</inceptionYear>
   <packaging>sakai-component</packaging>
   <properties>
     <deploy.target>components</deploy.target>
   </properties>
   <dependencies>
+    <dependency>
+      <groupId>org.sakaiproject.kernel</groupId>
+      <artifactId>sakai-kernel-private</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.sakaiproject.common</groupId>
       <artifactId>sakai-privacy-impl</artifactId>

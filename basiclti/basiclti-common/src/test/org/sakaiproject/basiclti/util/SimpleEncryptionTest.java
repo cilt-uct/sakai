@@ -1,17 +1,30 @@
+/**
+ * Copyright (c) 2009-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.basiclti.util;
 import static org.junit.Assert.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 
-import java.util.Random;
-
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
-import org.sakaiproject.basiclti.util.SimpleEncryption;
-
 
 public class SimpleEncryptionTest {
+
 
 	private String CIPHER = "AES/CBC/PKCS5Padding";
 	// Result of SimpleEncryption.encrypt("key", "plain text"));
@@ -56,10 +69,21 @@ public class SimpleEncryptionTest {
 	public void testBadDecryptNotHex() {
 		SimpleEncryption.decrypt("key", badEncryptNotHex);
 	}
-	
-	@Test(expected=Exception.class)
+
+	@Test()
 	public void testBadKey() {
-		SimpleEncryption.decrypt("badkey", SimpleEncryption.encrypt("goodkey", "Hello"));
+		String encrypt;
+		// W
+		for (int i = 0; i < 100; i++) {
+			try {
+				encrypt = SimpleEncryption.encrypt("goodkey", "Hello");
+				// Sometimes this won't fail but the data we get out isn't good.
+				String decrypt = SimpleEncryption.decrypt("badkey", encrypt);
+				assertNotEquals("Hello", decrypt);
+			} catch (Exception e) {
+				// This is expected.
+			}
+		}
 	}
 
 	@Test

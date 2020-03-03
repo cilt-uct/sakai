@@ -28,7 +28,7 @@
     <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
       <head><%= request.getAttribute("html.head") %>
       <title><h:outputText value="#{authorImportExport.export_a} #{authorImportExport.dash} #{assessmentBean.title}" /></title>
-<script type="text/JavaScript">
+<script>
 function getSelectedType(qtiUrl, cpUrl, emtUrl, e2mt){
   if ( $("#exportAssessmentForm\\:exportType\\:0").prop("checked") ) {
     window.open( qtiUrl, '_qti_export', 'toolbar=yes,menubar=yes,personalbar=no,width=600,height=500,scrollbars=yes,resizable=yes');
@@ -63,7 +63,7 @@ function getSelectedType(qtiUrl, cpUrl, emtUrl, e2mt){
 
   <div class="tier1">
     <div class="form_label">
-      <h:messages styleClass="messageSamigo" rendered="#{! empty facesContext.maximumSeverity}" layout="table"/>
+      <h:messages styleClass="sak-banner-error" rendered="#{! empty facesContext.maximumSeverity}" layout="table"/>
       <p class="text-info">
         <h:outputText value="#{authorImportExport.choose_type_1}" escape="true" />
         <h:outputText value="&#160;" escape="false" />
@@ -83,7 +83,11 @@ function getSelectedType(qtiUrl, cpUrl, emtUrl, e2mt){
 		<br />
       </p>
       <p class="text-warning">
-        <h:outputText value="#{authorImportExport.export_imagemap_message}" escape="false" />
+        <h:outputText value="#{authorImportExport.importExport_warningHeader}" escape="false" />
+        <ul class="text-warning">
+            <li><h:outputText value="#{authorImportExport.importExport_warning1}" escape="false" /></li>
+            <li><h:outputText value="#{authorImportExport.importExport_warning2}" escape="false" /></li>
+        </ul>
       </p>
     </div>
     <br />
@@ -95,14 +99,15 @@ function getSelectedType(qtiUrl, cpUrl, emtUrl, e2mt){
        <f:selectItem itemLabel="#{authorImportExport.markup_text}" itemValue="3"/>
      </t:selectOneRadio>
      <h:panelGrid>
-     	<t:radio for="exportType" index="0" />
-     	<t:radio for="exportType" index="1" />
-     	<t:radio for="exportType" index="2" />
+     	<t:radio renderLogicalId="true" for="exportType" index="0" />
+     	<t:radio renderLogicalId="true" for="exportType" index="1" />
+     	<t:radio renderLogicalId="true" for="exportType" index="2" />
      </h:panelGrid>
      <!-- For formatting -->
      <div class="text-warning">
        <h:outputText value="#{authorImportExport.cp_message}"/>
      </div>
+     <br/>
     </h:panelGroup>
 
     <br/>

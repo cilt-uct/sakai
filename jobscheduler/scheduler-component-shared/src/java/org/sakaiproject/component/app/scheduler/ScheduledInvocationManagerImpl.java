@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.component.app.scheduler;
 
 import java.time.Instant;
@@ -6,18 +21,33 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
-import org.hibernate.NonUniqueObjectException;
-import org.quartz.*;
+import lombok.extern.slf4j.Slf4j;
+
+import org.quartz.JobBuilder;
+import org.quartz.JobDetail;
+import org.quartz.JobExecutionContext;
+import org.quartz.JobKey;
+import org.quartz.ListenerManager;
+import org.quartz.ObjectAlreadyExistsException;
+import org.quartz.Scheduler;
+import org.quartz.SchedulerException;
+import org.quartz.SchedulerFactory;
+import org.quartz.Trigger;
+import org.quartz.TriggerBuilder;
+import org.quartz.TriggerKey;
+import org.quartz.TriggerListener;
 import org.quartz.impl.matchers.GroupMatcher;
 import org.quartz.listeners.TriggerListenerSupport;
-import org.sakaiproject.component.app.scheduler.jobs.ScheduledInvocationJob;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import org.springframework.transaction.annotation.Transactional;
+
 import org.sakaiproject.api.app.scheduler.DelayedInvocation;
 import org.sakaiproject.api.app.scheduler.ScheduledInvocationManager;
+import org.sakaiproject.component.app.scheduler.jobs.ScheduledInvocationJob;
 import org.sakaiproject.id.api.IdManager;
 import org.sakaiproject.time.api.Time;
-import org.springframework.transaction.annotation.Transactional;
+
+import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
 /**
  * componentId -> job key (name)
@@ -27,9 +57,8 @@ import org.springframework.transaction.annotation.Transactional;
  * matching by quartz can be done on both of them and supports equals/startswith.
  * possiblity to have another table that does the opaqueID to UUID mapping?
  */
+@Slf4j
 public class ScheduledInvocationManagerImpl implements ScheduledInvocationManager {
-
-	private static final Logger LOG = LoggerFactory.getLogger(ScheduledInvocationManagerImpl.class);
 
 	// The Quartz group name that contains all our Jobs and Triggers.
 	public static final String GROUP_NAME = "org.sakaiproject.component.app.scheduler.jobs.ScheduledInvocationJob";
@@ -62,7 +91,7 @@ public class ScheduledInvocationManagerImpl implements ScheduledInvocationManage
 	protected TriggerListener triggerListener;
 
 	public void init() throws SchedulerException {
-		LOG.info("init()");
+		log.info("init()");
 		triggerListener = new ContextTriggerListener("ContextTriggerListener");
 		ListenerManager listenerManager = schedulerFactory.getScheduler().getListenerManager();
 		// Just filter on our group.
@@ -70,20 +99,20 @@ public class ScheduledInvocationManagerImpl implements ScheduledInvocationManage
 	}
 
 	public void destroy() throws SchedulerException {
-		LOG.info("destroy()");
+		log.info("destroy()");
 		ListenerManager listenerManager = schedulerFactory.getScheduler().getListenerManager();
 		listenerManager.removeTriggerListener(triggerListener.getName());
 	}
 
 	@Override
-	@Transactional
+	@Transactional(propagation = REQUIRES_NEW)
 	public String createDelayedInvocation(Time  time, String componentId, String opaqueContext) {
 		Instant instant = Instant.ofEpochMilli(time.getTime());
 		return createDelayedInvocation(instant, componentId, opaqueContext);
 	}
 
 	@Override
-	@Transactional
+	@Transactional(propagation = REQUIRES_NEW)
 	public String createDelayedInvocation(Instant instant, String componentId, String opaqueContext) {
 		String uuid = m_idManager.createUuid();
 		createDelayedInvocation(instant, componentId, opaqueContext, uuid);
@@ -95,15 +124,14 @@ public class ScheduledInvocationManagerImpl implements ScheduledInvocationManage
 	 * and specify the UUID that should be used.
 	 * @see org.sakaiproject.component.app.scheduler.jobs.SchedulerMigrationJob
 	 */
-	@Transactional
+	@Transactional(propagation = REQUIRES_NEW)
 	public void createDelayedInvocation(Instant instant, String componentId, String opaqueContext, String uuid) {
-		try {
-			dao.add(uuid, componentId, opaqueContext);
-		} catch (NonUniqueObjectException nuoe) {
-			// Delete the existing one.
+		String oldUuid = dao.get(componentId, opaqueContext);
+		// Delete the existing one.
+		if (oldUuid != null) {
 			deleteDelayedInvocation(componentId, opaqueContext);
-			dao.add(uuid, componentId, opaqueContext);
 		}
+		dao.add(uuid, componentId, opaqueContext);
 		try {
 			Scheduler scheduler = schedulerFactory.getScheduler();
 			JobKey key = new JobKey(componentId, GROUP_NAME);
@@ -118,7 +146,7 @@ public class ScheduledInvocationManagerImpl implements ScheduledInvocationManage
 				} catch (ObjectAlreadyExistsException se) {
 					// We can ignore this one as it means the job is already present. This should only happen
 					// due concurrent inserting of the job
-					LOG.debug("Failed to add job {} as it already exists ", key, se);
+					log.debug("Failed to add job {} as it already exists ", key, se);
 				}
 			}
 			// Non-repeating trigger.
@@ -130,10 +158,10 @@ public class ScheduledInvocationManagerImpl implements ScheduledInvocationManage
 					.build();
 			scheduler.scheduleJob(trigger);
 			// This is so that we can do fast lookups.
-			LOG.info("Created new Delayed Invocation: uuid=" + uuid);
+			log.info("Created new Delayed Invocation: uuid=" + uuid);
 		} catch (SchedulerException se) {
 			dao.remove(uuid);
-			LOG.error("Failed to create new Delayed Invocation: componentId=" + componentId +
+			log.error("Failed to create new Delayed Invocation: componentId=" + componentId +
 					", opaqueContext=" + opaqueContext, se);
 		}
 	}
@@ -141,16 +169,16 @@ public class ScheduledInvocationManagerImpl implements ScheduledInvocationManage
 	/* (non-Javadoc)
 	 * @see org.sakaiproject.api.app.scheduler.ScheduledInvocationManager#deleteDelayedInvocation(java.lang.String)
 	 */
-	@Transactional
+	@Transactional(propagation = REQUIRES_NEW)
 	public void deleteDelayedInvocation(String uuid) {
 
-		LOG.debug("Removing Delayed Invocation: " + uuid);
+		log.debug("Removing Delayed Invocation: " + uuid);
 		try {
 			TriggerKey key = new TriggerKey(uuid, GROUP_NAME);
 			schedulerFactory.getScheduler().unscheduleJob(key);
 			dao.remove(uuid);
 		} catch (SchedulerException e) {
-			LOG.error("Failed to remove Delayed Invocation: uuid="+ uuid, e);
+			log.error("Failed to remove Delayed Invocation: uuid="+ uuid, e);
 		}
 
 	}
@@ -158,34 +186,35 @@ public class ScheduledInvocationManagerImpl implements ScheduledInvocationManage
 	/* (non-Javadoc)
 	 * @see org.sakaiproject.api.app.scheduler.ScheduledInvocationManager#deleteDelayedInvocation(java.lang.String, java.lang.String)
 	 */
-	@Transactional
+	@Transactional(propagation = REQUIRES_NEW)
 	public void deleteDelayedInvocation(String componentId, String opaqueContext) {
-		LOG.debug("componentId=" + componentId + ", opaqueContext=" + opaqueContext);
+		log.debug("componentId=" + componentId + ", opaqueContext=" + opaqueContext);
 
-		DelayedInvocation[] delayedInvocations = findDelayedInvocations(componentId, opaqueContext);
-		if (delayedInvocations != null) {
-			for (DelayedInvocation delayedInvocation : delayedInvocations) {
-				deleteDelayedInvocation(delayedInvocation.uuid);
-			}
+		Collection<String> uuids = dao.find(componentId, opaqueContext);
+		for (String uuid: uuids) {
+			deleteDelayedInvocation(uuid);
 		}
 	}
 
 	/* (non-Javadoc)
 	 * @see org.sakaiproject.api.app.scheduler.ScheduledInvocationManager#findDelayedInvocations(java.lang.String, java.lang.String)
 	 */
-	@Transactional
+	@Transactional(propagation = REQUIRES_NEW)
 	public DelayedInvocation[] findDelayedInvocations(String componentId, String opaqueContext) {
-		LOG.debug("componentId=" + componentId + ", opaqueContext=" + opaqueContext);
+		log.debug("componentId=" + componentId + ", opaqueContext=" + opaqueContext);
 		Collection<String> uuids = dao.find(componentId, opaqueContext);
 		List<DelayedInvocation> invocations = new ArrayList<>();
 		for (String uuid: uuids) {
 			TriggerKey key = new TriggerKey(uuid, GROUP_NAME);
 			try {
 				Trigger trigger = schedulerFactory.getScheduler().getTrigger(key);
-				invocations.add(new DelayedInvocation(trigger.getKey().getName(), trigger.getNextFireTime(), key.getName(), opaqueContext));
-
+				if (trigger == null) {
+					log.error("Failed to trigger with key: {}", key);
+				} else {
+					invocations.add(new DelayedInvocation(trigger.getKey().getName(), trigger.getNextFireTime(), key.getName(), opaqueContext));
+				}
 			} catch (SchedulerException e) {
-				LOG.warn("Problem finding delayed invocations.", e);
+				log.warn("Problem finding delayed invocations.", e);
 				return null;
 			}
 		}
@@ -216,7 +245,7 @@ public class ScheduledInvocationManagerImpl implements ScheduledInvocationManage
 			if (GROUP_NAME.equals(trigger.getKey().getGroup())) {
 				String contextId = trigger.getJobDataMap().getString(CONTEXT_ID);
 				if (contextId == null) {
-					LOG.warn("One of our triggers ({}) didn't have a context ID", trigger.getKey());
+					log.warn("One of our triggers ({}) didn't have a context ID", trigger.getKey());
 				} else {
 					dao.remove(trigger.getJobKey().getName(), contextId);
 				}

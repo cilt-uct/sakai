@@ -28,11 +28,13 @@ import java.util.Iterator;
 import java.util.List;
 
 import javax.faces.application.FacesMessage;
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.SessionScoped;
 import javax.faces.context.ExternalContext;
 import javax.faces.context.FacesContext;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
 import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.content.api.ContentResource;
 import org.sakaiproject.content.api.FilePickerHelper;
@@ -42,6 +44,7 @@ import org.sakaiproject.event.cover.EventTrackingService;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.exception.TypeException;
+import org.sakaiproject.samigo.util.SamigoConstants;
 import org.sakaiproject.tool.api.ToolSession;
 import org.sakaiproject.tool.assessment.data.dao.assessment.AttachmentData;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AttachmentIfc;
@@ -51,8 +54,11 @@ import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 import org.sakaiproject.tool.assessment.util.SamigoEmailService;
 import org.sakaiproject.tool.cover.SessionManager;
 
+/* For util Email backing bean. */
+@Slf4j
+@ManagedBean(name="email")
+@SessionScoped
 public class EmailBean implements Serializable {
-	private static Logger log = LoggerFactory.getLogger(EmailBean.class);
 
 	private String fromName;
 
@@ -312,13 +318,13 @@ public class EmailBean implements Serializable {
 		if ("send".equals(result)) {
 			String msgSent = ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.EvaluationMessages","sent_email_confirmation");
 			FacesContext.getCurrentInstance().addMessage(null,new FacesMessage(msgSent));
-			EventTrackingService.post(EventTrackingService.newEvent("sam.email", "siteId=" + AgentFacade.getCurrentSiteId() + ", Email sent ok: toName=" + toName + ", toEmail=" + toEmailAddress, true));       
+			EventTrackingService.post(EventTrackingService.newEvent(SamigoConstants.EVENT_EMAIL, "siteId=" + AgentFacade.getCurrentSiteId() + ", Email sent ok: toName=" + toName + ", toEmail=" + toEmailAddress, true));
 			return "confirmEmailSent";
 		}
 		else {
 			String msgError = ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.EvaluationMessages","sent_email_error");
 			FacesContext.getCurrentInstance().addMessage(null,new FacesMessage(msgError));
-			EventTrackingService.post(EventTrackingService.newEvent("sam.email", "siteId=" + AgentFacade.getCurrentSiteId() + ", Email sent error: toName=" + toName + ", toEmail=" + toEmailAddress, true));			
+			EventTrackingService.post(EventTrackingService.newEvent(SamigoConstants.EVENT_EMAIL, "siteId=" + AgentFacade.getCurrentSiteId() + ", Email sent error: toName=" + toName + ", toEmail=" + toEmailAddress, true));
 			return "emailError";
 		}
 	}

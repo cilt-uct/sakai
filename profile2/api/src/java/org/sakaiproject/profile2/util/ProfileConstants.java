@@ -79,6 +79,12 @@ public class ProfileConstants {
 	public static final String UNAVAILABLE_IMAGE_FULL = "/profile2-tool/images/no_image.gif";
 	public static final String CLOSE_IMAGE = "/library/image/silk/cross.png";
 	public static final String INFO_IMAGE = "/library/image/silk/information.png";
+	public static final String DFLT_PROFILE_AVATAR_COLORS = "#1abc9c,#16a085,#f1c40f,#f39c12,#2ecc71,#27ae60,#e67e22,#d35400,#3498db,#2980b9,#e74c3c,#c0392b,#9b59b6,#8e44ad,#bdc3c7,#34495e,#2c3e50,#95a5a6,#7f8c8d,#ec87bf,#d870ad,#f69785,#9ba37e,#b49255,#b49255,#a94136";
+	public static final int PROFILE_AVATAR_WIDTH = 200;
+	public static final int PROFILE_AVATAR_HEIGHT = 200;
+	public static final String DFLT_PROFILE_AVATAR_FONT_FAMILY = "sans-serif";
+	public static final String DFLT_PROFILE_AVATAR_FONT_SIZE_1_CHAR = "120";
+	public static final String DFLT_PROFILE_AVATAR_FONT_SIZE_2_CHAR = "90";
 	
 	public static final String RSS_IMG = "/library/image/silk/feed.png";
 	public static final String ACCEPT_IMG = "/library/image/silk/accept.png";
@@ -210,9 +216,10 @@ public class ProfileConstants {
 	public static final boolean SAKAI_PROP_PROFILE2_PROFILE_STAFF_ENABLED = true; //profile2.profile.staff.enabled
 	public static final boolean SAKAI_PROP_PROFILE2_PROFILE_STUDENT_ENABLED = true; //profile2.profile.student.enabled
 	public static final boolean SAKAI_PROP_PROFILE2_PROFILE_INTERESTS_ENABLED = true; //profile2.profile.interests.enabled
+	public static final boolean SAKAI_PROP_PROFILE2_PROFILE_PRONUNCIATION_ENABLED = false; //profile2.profile.name.pronunciation.enabled
 	public static final boolean SAKAI_PROP_PROFILE2_OFFICIAL_IMAGE_ENABLED = false; //profile2.official.image.enabled
 	public static final boolean SAKAI_PROP_PROFILE2_GRAVATAR_IMAGE_ENABLED = true; //profile2.gravatar.image.enabled
-	public static final boolean SAKAI_PROP_PROFILE2_WALL_ENABLED = true; //profile2.wall.enabled
+	public static final boolean SAKAI_PROP_PROFILE2_WALL_ENABLED = false; //profile2.wall.enabled
 	public static final boolean SAKAI_PROP_PROFILE2_WALL_DEFAULT = false; //profile2.wall.default
 	public static final boolean SAKAI_PROP_PROFILE2_GOOGLE_INTEGRATION_ENABLED = false; //profile2.integration.google.enabled
 	public static final boolean SAKAI_PROP_PROFILE2_IMPORT_ENABLED = false; //profile2.import
@@ -306,6 +313,7 @@ public class ProfileConstants {
 	public static final String EVENT_PROFILE_NEW = "profile.new";
 		
 	public static final String EVENT_PROFILE_INFO_UPDATE = "profile.info.update";
+	public static final String EVENT_PROFILE_NAME_PRONUN_UPDATE = "profile.name.pronunciation.update";
 	public static final String EVENT_PROFILE_CONTACT_UPDATE = "profile.contact.update";
 	public static final String EVENT_PROFILE_INTERESTS_UPDATE = "profile.interests.update";
 	public static final String EVENT_PROFILE_STAFF_UPDATE = "profile.staff.update";

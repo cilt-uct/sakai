@@ -1,10 +1,24 @@
+/**
+ * Copyright (c) 2005-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.component.app.messageforums;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -15,12 +29,12 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.hibernate.Hibernate;
-import org.hibernate.HibernateException;
+import lombok.extern.slf4j.Slf4j;
 import org.hibernate.Query;
-import org.hibernate.Session;
+import org.hibernate.type.StringType;
+import org.springframework.orm.hibernate4.HibernateCallback;
+import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
+
 import org.sakaiproject.api.app.messageforums.Area;
 import org.sakaiproject.api.app.messageforums.DiscussionForumService;
 import org.sakaiproject.api.app.messageforums.MessageForumsMessageManager;
@@ -31,19 +45,16 @@ import org.sakaiproject.api.app.messageforums.ui.DiscussionForumManager;
 import org.sakaiproject.api.app.messageforums.ui.PrivateMessageManager;
 import org.sakaiproject.api.app.messageforums.ui.UIPermissionsManager;
 import org.sakaiproject.authz.api.Member;
-import org.sakaiproject.authz.cover.SecurityService;
+import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.component.app.messageforums.dao.hibernate.SynopticMsgcntrItemImpl;
-import org.sakaiproject.db.cover.SqlService;
+import org.sakaiproject.db.api.SqlService;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.site.api.Site;
-import org.sakaiproject.site.cover.SiteService;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.orm.hibernate3.HibernateCallback;
-import org.springframework.orm.hibernate3.support.HibernateDaoSupport;
+import org.sakaiproject.site.api.SiteService;
 
+@Slf4j
 public class SynopticMsgcntrManagerImpl extends HibernateDaoSupport implements SynopticMsgcntrManager {
-	
-	private static final Logger LOG = LoggerFactory.getLogger(SynopticMsgcntrManagerImpl.class);
+
 	private static final String QUERY_WORKSPACE_SYNOPTIC_ITEMS = "findWorkspaceSynopticMsgcntrItems";
 	private static final String QUERY_SITE_SYNOPTIC_ITEMS = "findSiteSynopticMsgcntrItems";
 	private static final String QUERY_UPDATE_ALL_SITE_TITLES = "updateSiteTitles";
@@ -57,46 +68,59 @@ public class SynopticMsgcntrManagerImpl extends HibernateDaoSupport implements S
 	private MessageForumsTypeManager typeManager;
 	private DiscussionForumManager forumManager;
 	
+	/* Kernel */
+	private SqlService sqlService;
+	private SecurityService securityService;
+	private SiteService siteService;
+
+	public void setSecurityService(SecurityService securityService) {
+		this.securityService = securityService;
+	}
+
+	public void setSiteService(SiteService siteService) {
+		this.siteService = siteService;
+	}
+
+	public void setSqlService(SqlService sqlService) {
+		this.sqlService = sqlService;
+	}
+	
 	private static int ORACLE_IN_CLAUSE_SIZE_LIMIT = 1000;
 
 	
 	public SynopticMsgcntrManagerImpl() {}
 	
 	public void init() {
-		LOG.info("init()");
+		log.info("init()");
 	}
 
 	public List<SynopticMsgcntrItem> getWorkspaceSynopticMsgcntrItems(final String userId) {
 
-		HibernateCallback hcb = new HibernateCallback() {
-			public Object doInHibernate(Session session) throws HibernateException, SQLException {
-				Query q = session.getNamedQuery(QUERY_WORKSPACE_SYNOPTIC_ITEMS);
-				q.setParameter("userId", userId, Hibernate.STRING);
-				return q.list();
-			}
-		};
+		HibernateCallback<List<SynopticMsgcntrItem>> hcb = session -> {
+            Query q = session.getNamedQuery(QUERY_WORKSPACE_SYNOPTIC_ITEMS);
+            q.setParameter("userId", userId, StringType.INSTANCE);
+            return q.list();
+        };
 
-		return (List<SynopticMsgcntrItem>) getHibernateTemplate().execute(hcb);	  
+		return getHibernateTemplate().execute(hcb);
 	}
 
 	public List<SynopticMsgcntrItem> getSiteSynopticMsgcntrItems(final List<String> userIds, final String siteId) {
 		if(userIds == null || userIds.size() == 0){
 			return new ArrayList<SynopticMsgcntrItem>();
 		}
-		HibernateCallback hcb = new HibernateCallback() {
-			public Object doInHibernate(Session session) throws HibernateException, SQLException {
-				List rtn = new ArrayList();
-				Query q = session.getNamedQuery(QUERY_SITE_SYNOPTIC_ITEMS);
-				q.setParameter("siteId", siteId, Hibernate.STRING);
-				for (int initIndex = 0; initIndex < userIds.size(); initIndex+=ORACLE_IN_CLAUSE_SIZE_LIMIT) {
-					q.setParameterList("userIds", userIds.subList(initIndex, Math.min(initIndex+ORACLE_IN_CLAUSE_SIZE_LIMIT, userIds.size())));
-					rtn.addAll(q.list());
-				}
-				return rtn;
-			}
-		};
+		HibernateCallback<List<SynopticMsgcntrItem>> hcb = session -> {
+            List rtn = new ArrayList();
+            Query q = session.getNamedQuery(QUERY_SITE_SYNOPTIC_ITEMS);
+            q.setParameter("siteId", siteId, StringType.INSTANCE);
+            for (int initIndex = 0; initIndex < userIds.size(); initIndex+=ORACLE_IN_CLAUSE_SIZE_LIMIT) {
+                q.setParameterList("userIds", userIds.subList(initIndex, Math.min(initIndex+ORACLE_IN_CLAUSE_SIZE_LIMIT, userIds.size())));
+                rtn.addAll(q.list());
+            }
+            return rtn;
+        };
 
-		return (List<SynopticMsgcntrItem>) getHibernateTemplate().execute(hcb);	  
+		return getHibernateTemplate().execute(hcb);
 	}
 
 	public SynopticMsgcntrItem createSynopticMsgcntrItem(String userId, String siteId, String siteTitle){
@@ -110,7 +134,7 @@ public class SynopticMsgcntrManagerImpl extends HibernateDaoSupport implements S
 	}
 	
 	public void deleteSynopticMsgcntrItem(SynopticMsgcntrItem item){
-		getHibernateTemplate().delete(item);
+		getHibernateTemplate().delete(getHibernateTemplate().merge(item));
 	}
 	
 	public void incrementMessagesSynopticToolInfo(List<String> userIds, String siteId){
@@ -174,22 +198,22 @@ public class SynopticMsgcntrManagerImpl extends HibernateDaoSupport implements S
 					//Statement statement = null;
 					PreparedStatement updateStatement = null;
 					try {
-						clConnection = SqlService.borrowConnection();
+						clConnection = sqlService.borrowConnection();
 						updateStatement = clConnection.prepareStatement(query);
 						updateStatement.execute();
 						//in case autosubmit isn't true, commit this right away
 						clConnection.commit();
 					}catch(Exception e){
-						LOG.error(e.getMessage(), e);
+						log.error(e.getMessage(), e);
 					}finally{
 						if(updateStatement != null){
 							try {
 								updateStatement.close();
 							} catch (SQLException e) {
-								LOG.error(e.getMessage(), e);
+								log.error(e.getMessage(), e);
 							}
 						}
-						SqlService.returnConnection(clConnection);
+						sqlService.returnConnection(clConnection);
 					}					
 					
 					subArrayIndex = subArrayIndex + subArraySize;
@@ -398,8 +422,7 @@ public class SynopticMsgcntrManagerImpl extends HibernateDaoSupport implements S
 			resetAllUsersSynopticInfoInSite(siteId, users);
 			
 		} catch (IdUnusedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 		}
 	}
 	
@@ -423,7 +446,7 @@ public class SynopticMsgcntrManagerImpl extends HibernateDaoSupport implements S
 			Site site = getSite(siteId);
 			
 			
-			clConnection = SqlService.borrowConnection();
+			clConnection = sqlService.borrowConnection();
 						
 			//setup prepared statements:
 			newMessageCountForAllUsers = clConnection.prepareStatement(NEW_MESSAGE_COUNT_FOR_ALL_USERS_SQL);
@@ -445,37 +468,37 @@ public class SynopticMsgcntrManagerImpl extends HibernateDaoSupport implements S
 			}
 			createOrUpdateSynopticToolInfo(users, siteId, site.getTitle(), unreadCounts);		
 		} catch (IdUnusedException e) {
-			LOG.error(e.getMessage());
+			log.error(e.getMessage());
 		} catch (SQLException e) {
-			LOG.error(e.getMessage(), e);
+			log.error(e.getMessage(), e);
 		} finally{
 
 			try {
 				if(forumsAndTopicsRS != null)
 					forumsAndTopicsRS.close();
 			} catch (Exception e) {
-				LOG.warn(e.getMessage(), e);
+				log.warn(e.getMessage(), e);
 			}
 
 			try {
 				if(newMessagesCountRS != null)
 					newMessagesCountRS.close();
 			} catch (Exception e) {
-				LOG.warn(e.getMessage(), e);
+				log.warn(e.getMessage(), e);
 			}
 			try {
 				if(newMessageCountForAllUsers != null)
 					newMessageCountForAllUsers.close();
 			} catch (Exception e) {
-				LOG.warn(e.getMessage(), e);
+				log.warn(e.getMessage(), e);
 			}
 			try {
 				if(returnAllForumsAndTopics != null)
 					returnAllForumsAndTopics.close();
 			} catch (Exception e) {
-				LOG.warn(e.getMessage(), e);
+				log.warn(e.getMessage(), e);
 			}
-			SqlService.returnConnection(clConnection);
+			sqlService.returnConnection(clConnection);
 		}
 		
 	}
@@ -523,7 +546,7 @@ public class SynopticMsgcntrManagerImpl extends HibernateDaoSupport implements S
 			
 			
 			
-			clConnection = SqlService.borrowConnection();
+			clConnection = sqlService.borrowConnection();
 			returnAllTopicsForForum = clConnection.prepareStatement(RETURN_ALL_TOPICS_FOR_FORUM_SQL);
 			returnAllTopicsForForum.setString(1, siteId);
 			returnAllTopicsForForum.setString(2, "" +forumId);
@@ -544,24 +567,24 @@ public class SynopticMsgcntrManagerImpl extends HibernateDaoSupport implements S
 			}
 						
 		} catch (IdUnusedException e) {
-			LOG.error(e.getMessage(), e);
+			log.error(e.getMessage(), e);
 		} catch (SQLException e) {
-			LOG.error(e.getMessage(), e);
+			log.error(e.getMessage(), e);
 		} finally{
 			try {
 				if(forumsAndTopicsRS != null)
 					forumsAndTopicsRS.close();
 			} catch (Exception e) {
-				LOG.warn(e.getMessage(), e);
+				log.warn(e.getMessage(), e);
 			}
 			try {
 				if(returnAllTopicsForForum != null)
 					returnAllTopicsForForum.close();
 			} catch (Exception e) {
-				LOG.warn(e.getMessage(), e);
+				log.warn(e.getMessage(), e);
 			}
 			
-			SqlService.returnConnection(clConnection);
+			sqlService.returnConnection(clConnection);
 		}
 		
 		return returnHM;
@@ -664,7 +687,7 @@ public class SynopticMsgcntrManagerImpl extends HibernateDaoSupport implements S
 			if(dfHM != null){
 				Map<String, Boolean> overridingPermissionMap = new HashMap<String, Boolean>();
 				for(String user : userIds){
-					boolean hasOverridingPermission = SecurityService.isSuperUser(user) || getForumManager().isInstructor(user, "/site/" + siteId);
+					boolean hasOverridingPermission = securityService.isSuperUser(user) || getForumManager().isInstructor(user, "/site/" + siteId);
 					overridingPermissionMap.put(user, hasOverridingPermission);
 				}
 
@@ -757,7 +780,7 @@ public class SynopticMsgcntrManagerImpl extends HibernateDaoSupport implements S
 		Map<String, DecoratedCompiledMessageStats> stats = new HashMap<String, DecoratedCompiledMessageStats>();
 		Map<String, Integer> unreadMessagesHM = new HashMap<String, Integer>();
 		try{
-			clConnection = SqlService.borrowConnection();
+			clConnection = sqlService.borrowConnection();
 			
 			//First create the messages map:
 			String[] userIdsArr = userIds.toArray(new String[]{});
@@ -786,20 +809,20 @@ public class SynopticMsgcntrManagerImpl extends HibernateDaoSupport implements S
 					newMessagesCountRS = newMessageCount.executeQuery();
 					unreadMessagesHM.putAll(getUnreadMessagesHM(newMessagesCountRS));
 				}catch(Exception e){
-					LOG.error(e.getMessage(), e);
+					log.error(e.getMessage(), e);
 				}finally{
 					if(newMessageCount != null){
 						try {
 							newMessageCount.close();
 						} catch (SQLException e) {
-							LOG.error(e.getMessage(), e);
+							log.error(e.getMessage(), e);
 						}
 					}
 					try {
 						if(newMessagesCountRS != null)
 							newMessagesCountRS.close();
 					} catch (Exception e) {
-						LOG.warn(e.getMessage(), e);
+						log.warn(e.getMessage(), e);
 					}
 					
 				}		
@@ -819,26 +842,26 @@ public class SynopticMsgcntrManagerImpl extends HibernateDaoSupport implements S
 			stats.putAll(getDMessageStats(userIds, siteId, site, dfHM, unreadMessagesHM));
 			
 		}catch(IdUnusedException e) {
-			LOG.error("IdUnusedException while trying to check if site has MF tool.");
+			log.error("IdUnusedException while trying to check if site has MF tool.");
 		} catch (SQLException e) {
-			LOG.error(e.getMessage(), e);
+			log.error(e.getMessage(), e);
 		} finally{
 			
 			try {
 				if(forumsAndTopicsRS != null)
 					forumsAndTopicsRS.close();
 			} catch (Exception e) {
-				LOG.warn(e.getMessage(), e);
+				log.warn(e.getMessage(), e);
 			}
 
 			try {
 				if(returnAllForumsAndTopics != null)
 					returnAllForumsAndTopics.close();
 			} catch (Exception e) {
-				LOG.warn(e.getMessage(), e);
+				log.warn(e.getMessage(), e);
 			}	
 			
-			SqlService.returnConnection(clConnection);
+			sqlService.returnConnection(clConnection);
 		}
 		
 		return stats;
@@ -881,7 +904,7 @@ public class SynopticMsgcntrManagerImpl extends HibernateDaoSupport implements S
 				}												
 			}
 		} catch (SQLException e) {
-			LOG.error(e.getMessage(), e);
+			log.error(e.getMessage(), e);
 		}
 		
 		return returnHM;
@@ -901,7 +924,7 @@ public class SynopticMsgcntrManagerImpl extends HibernateDaoSupport implements S
 				returnHM.put(userId, messageCount);		
 			}
 			}catch(Exception e){
-				LOG.error(e.getMessage(), e);
+				log.error(e.getMessage(), e);
 			}
 		}
 		
@@ -961,7 +984,7 @@ public class SynopticMsgcntrManagerImpl extends HibernateDaoSupport implements S
 		}
 	
 		if (sitesMap.get(siteId) == null) {
-			Site site = SiteService.getSite(siteId);
+			Site site = siteService.getSite(siteId);
 			sitesMap.put(site.getId(), site);
 			return site;
 		}
@@ -1259,14 +1282,12 @@ public class DecoratedForumInfo{
 	}
 
 	public void updateAllSiteTitles(final String siteId, final String siteTitle) {
-		HibernateCallback hcb = new HibernateCallback() {
-			public Object doInHibernate(Session session) throws HibernateException, SQLException {
-				Query q = session.getNamedQuery(QUERY_UPDATE_ALL_SITE_TITLES);
-				q.setParameter("siteTitle", siteTitle, Hibernate.STRING);
-				q.setParameter("siteId", siteId, Hibernate.STRING);
-				return q.executeUpdate();
-			}
-		};
+		HibernateCallback<Integer> hcb = session -> {
+            Query q = session.getNamedQuery(QUERY_UPDATE_ALL_SITE_TITLES);
+            q.setParameter("siteTitle", siteTitle, StringType.INSTANCE);
+            q.setParameter("siteId", siteId, StringType.INSTANCE);
+            return q.executeUpdate();
+        };
 
 		getHibernateTemplate().execute(hcb);
 	}

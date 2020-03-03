@@ -19,16 +19,14 @@
  *
  **********************************************************************************/
 
-
-
 package org.sakaiproject.tool.assessment.ui.bean.delivery;
 
-
-
 import java.io.Serializable;
+import java.util.Date;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.sakaiproject.tool.assessment.ui.bean.util.Validator;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 import org.sakaiproject.tool.assessment.ui.listener.util.TimeUtil;
@@ -41,6 +39,7 @@ import org.sakaiproject.tool.assessment.ui.listener.util.TimeUtil;
  *
  * Used to be org.navigoproject.ui.web.asi.delivery.XmlDeliveryForm.java
  */
+@Slf4j
 public class DeliveryBeanie
   implements Serializable
 {
@@ -48,8 +47,6 @@ public class DeliveryBeanie
 	 * 
 	 */
 	private static final long serialVersionUID = 3740101653033385370L;
-
-private static Logger log = LoggerFactory.getLogger(DeliveryBeanie.class);
 
   private String assessmentId;
   private String assessmentTitle;
@@ -65,6 +62,8 @@ private static Logger log = LoggerFactory.getLogger(DeliveryBeanie.class);
   private long raw;
   private String rawScore;
   private java.util.Date feedbackDate;
+  @Getter @Setter private Date feedbackEndDate;
+  @Getter @Setter private Double feedbackScoreThreshold;
   private String feedbackDelivery;
   private String feedbackComponentOption;
   private String showScore;
@@ -265,6 +264,24 @@ private static Logger log = LoggerFactory.getLogger(DeliveryBeanie.class);
     this.feedbackDate = feedbackDate;
   }
 
+  public String getFeedbackEndDateString()
+  {
+    String dateString = "";
+    if (feedbackEndDate== null) {
+      return dateString;
+    }
+
+    try {
+      TimeUtil tu = new TimeUtil();
+      dateString = tu.getIsoDateWithLocalTime(feedbackEndDate);
+    }
+    catch (Exception ex) {
+      // we will leave it as an empty string
+      log.warn("Unable to format date.", ex);
+    }
+    return dateString;
+  }
+
   public String getFeedbackDelivery()
   {
     return feedbackDelivery;
@@ -385,7 +402,7 @@ private static Logger log = LoggerFactory.getLogger(DeliveryBeanie.class);
 
   public String getRoundedRawScore() {
    try {
-      String newscore= ContextUtil.getRoundedValue(rawScore, 2);
+      String newscore=rawScore;
       return Validator.check(newscore, "N/A");
     }
     catch (Exception e) {
@@ -393,6 +410,17 @@ private static Logger log = LoggerFactory.getLogger(DeliveryBeanie.class);
       return Validator.check(rawScore, "0");
     }
 
+  }
+  
+  public String getRoundedRawScoreToDisplay() {
+   try {
+      String newscore= ContextUtil.getRoundedValue(rawScore, 2);	      
+      return Validator.check(newscore, "N/A");
+   }
+   catch (Exception e) {
+     // encountered some weird number format/locale
+     return Validator.check(rawScore, "0");
+   }
   }
 
   public String getSubmissionDateString()

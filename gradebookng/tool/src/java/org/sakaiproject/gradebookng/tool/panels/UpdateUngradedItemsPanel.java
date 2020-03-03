@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.gradebookng.tool.panels;
 
 import java.io.Serializable;
@@ -15,26 +30,27 @@ import org.apache.wicket.markup.html.form.DropDownChoice;
 import org.apache.wicket.markup.html.form.Form;
 import org.apache.wicket.markup.html.form.TextField;
 import org.apache.wicket.markup.html.panel.FeedbackPanel;
-import org.apache.wicket.markup.html.panel.Panel;
 import org.apache.wicket.model.CompoundPropertyModel;
 import org.apache.wicket.model.IModel;
 import org.apache.wicket.model.PropertyModel;
 import org.apache.wicket.model.StringResourceModel;
-import org.apache.wicket.spring.injection.annot.SpringBean;
-import org.sakaiproject.gradebookng.business.GbGradingType;
+import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.gradebookng.business.GbRole;
-import org.sakaiproject.gradebookng.business.GradebookNgBusinessService;
 import org.sakaiproject.gradebookng.business.model.GbGroup;
+import org.sakaiproject.gradebookng.business.util.FormatHelper;
 import org.sakaiproject.gradebookng.tool.component.GbAjaxButton;
 import org.sakaiproject.gradebookng.tool.component.GbFeedbackPanel;
 import org.sakaiproject.gradebookng.tool.model.GradebookUiSettings;
 import org.sakaiproject.gradebookng.tool.pages.GradebookPage;
 import org.sakaiproject.service.gradebook.shared.Assignment;
+import org.sakaiproject.service.gradebook.shared.GraderPermission;
+import org.sakaiproject.service.gradebook.shared.GradingType;
+import org.sakaiproject.service.gradebook.shared.PermissionDefinition;
+import org.sakaiproject.util.NumberUtil;
+import org.sakaiproject.util.api.FormattedText;
 
 import lombok.Getter;
 import lombok.Setter;
-import org.sakaiproject.service.gradebook.shared.GraderPermission;
-import org.sakaiproject.service.gradebook.shared.PermissionDefinition;
 
 /**
  *
@@ -43,22 +59,14 @@ import org.sakaiproject.service.gradebook.shared.PermissionDefinition;
  * @author Steve Swinsburg (steve.swinsburg@gmail.com)
  *
  */
-public class UpdateUngradedItemsPanel extends Panel {
+public class UpdateUngradedItemsPanel extends BasePanel {
 
 	private static final long serialVersionUID = 1L;
 
-	@SpringBean(name = "org.sakaiproject.gradebookng.business.GradebookNgBusinessService")
-	protected GradebookNgBusinessService businessService;
-
 	private final ModalWindow window;
 
-	private final IModel<Long> model;
-
-	private static final double DEFAULT_GRADE = 0;
-
 	public UpdateUngradedItemsPanel(final String id, final IModel<Long> model, final ModalWindow window) {
-		super(id);
-		this.model = model;
+		super(id, model);
 		this.window = window;
 	}
 
@@ -67,15 +75,15 @@ public class UpdateUngradedItemsPanel extends Panel {
 		super.onInitialize();
 
 		// unpack model
-		final Long assignmentId = this.model.getObject();
+		final Long assignmentId = (Long) getDefaultModelObject();
 
 		final Assignment assignment = this.businessService.getAssignment(assignmentId);
 
-		final GbGradingType gradingType = GbGradingType.valueOf(this.businessService.getGradebook().getGrade_type());
+		final GradingType gradingType = GradingType.valueOf(this.businessService.getGradebook().getGrade_type());
 
 		// form model
 		final GradeOverride override = new GradeOverride();
-		override.setGrade(String.valueOf(DEFAULT_GRADE));
+		override.setGrade(",".equals(ComponentManager.get(FormattedText.class).getDecimalSeparator()) ? "0,0" : "0.0");
 		final CompoundPropertyModel<GradeOverride> formModel = new CompoundPropertyModel<GradeOverride>(override);
 
 		// build form
@@ -93,14 +101,18 @@ public class UpdateUngradedItemsPanel extends Panel {
 				final Assignment assignment = UpdateUngradedItemsPanel.this.businessService.getAssignment(assignmentId);
 
 				try {
-					final Double overrideValue = Double.valueOf(override.getGrade());
+					if(!NumberUtil.isValidLocaleDouble(override.getGrade())){
+						throw new NumberFormatException();
+					}
+					final Double overrideValue = FormatHelper.validateDouble(override.getGrade());
 					final GbGroup group = override.getGroup();
 
 					if (isExtraCredit(overrideValue, assignment, gradingType)) {
 						target.addChildren(form, FeedbackPanel.class);
 					}
 
-					final boolean success = UpdateUngradedItemsPanel.this.businessService.updateUngradedItems(assignmentId, overrideValue, group);
+					final boolean success = UpdateUngradedItemsPanel.this.businessService.updateUngradedItems(assignmentId, overrideValue,
+							group);
 
 					if (success) {
 						UpdateUngradedItemsPanel.this.window.close(target);
@@ -109,7 +121,7 @@ public class UpdateUngradedItemsPanel extends Panel {
 						// InvalidGradeException
 						error(getString("grade.notifications.invalid"));
 						target.addChildren(form, FeedbackPanel.class);
-						target.appendJavaScript("new GradebookUpdateUngraded($(\"#" + getParent().getMarkupId() + "\"));");
+						target.appendJavaScript("new GradebookUpdateUngraded($(\"#" + getParent().getMarkupId() + "\", /* dontDisableInputs = */ true));");
 					}
 				} catch (final NumberFormatException e) {
 					// InvalidGradeException
@@ -134,16 +146,16 @@ public class UpdateUngradedItemsPanel extends Panel {
 
 		form.add(new TextField<Double>("grade").setRequired(true));
 
-		if (GbGradingType.PERCENTAGE.equals(gradingType)) {
+		if (GradingType.PERCENTAGE.equals(gradingType)) {
 			form.add(new Label("points", getString("label.percentage.plain")));
 		} else {
 			form.add(new Label("points",
-				new StringResourceModel("label.studentsummary.outof", null,
-					new Object[] { assignment.getPoints() })));
+					new StringResourceModel("label.studentsummary.outof", null,
+							new Object[] { assignment.getPoints() })));
 		}
 
 		final WebMarkupContainer hiddenGradePoints = new WebMarkupContainer("gradePoints");
-		if (GbGradingType.PERCENTAGE.equals(gradingType)) {
+		if (GradingType.PERCENTAGE.equals(gradingType)) {
 			hiddenGradePoints.add(new AttributeModifier("value", 100));
 		} else {
 			hiddenGradePoints.add(new AttributeModifier("value", assignment.getPoints()));
@@ -153,15 +165,15 @@ public class UpdateUngradedItemsPanel extends Panel {
 		final List<GbGroup> groups = this.businessService.getSiteSectionsAndGroups();
 		groups.add(0, new GbGroup(null, getString("groups.all"), null, GbGroup.Type.ALL));
 
-		if (this.businessService.getUserRole() == GbRole.TA) {
-			boolean categoriesEnabled = this.businessService.categoriesAreEnabled();
-			List<PermissionDefinition> permissions = this.businessService.getPermissionsForUser(
-				this.businessService.getCurrentUser().getId());
+		if (getUserRole() == GbRole.TA) {
+			final boolean categoriesEnabled = this.businessService.categoriesAreEnabled();
+			final List<PermissionDefinition> permissions = this.businessService.getPermissionsForUser(
+					this.businessService.getCurrentUser().getId());
 
-			List<String> gradableGroupIds = new ArrayList<>();
+			final List<String> gradableGroupIds = new ArrayList<>();
 			boolean canGradeAllGroups = false;
 
-			for (PermissionDefinition permission : permissions) {
+			for (final PermissionDefinition permission : permissions) {
 				if (permission.getFunction().equals(GraderPermission.GRADE.toString())) {
 					if (categoriesEnabled && permission.getCategoryId() != null) {
 						if (permission.getCategoryId().equals(assignment.getCategoryId())) {
@@ -195,27 +207,27 @@ public class UpdateUngradedItemsPanel extends Panel {
 		final GradebookUiSettings settings = ((GradebookPage) getPage()).getUiSettings();
 
 		final DropDownChoice<GbGroup> groupAndSectionFilter = new DropDownChoice<GbGroup>(
-			"group",
-			new PropertyModel<GbGroup>(override, "group"),
-			groups,
-			new ChoiceRenderer<GbGroup>() {
-				private static final long serialVersionUID = 1L;
+				"group",
+				new PropertyModel<GbGroup>(override, "group"),
+				groups,
+				new ChoiceRenderer<GbGroup>() {
+					private static final long serialVersionUID = 1L;
 
-				@Override
-				public Object getDisplayValue(final GbGroup g) {
-					return g.getTitle();
-				}
+					@Override
+					public Object getDisplayValue(final GbGroup g) {
+						return g.getTitle();
+					}
 
-				@Override
-				public String getIdValue(final GbGroup g, final int index) {
-					return g.getId();
-				}
-			});
+					@Override
+					public String getIdValue(final GbGroup g, final int index) {
+						return g.getId();
+					}
+				});
 
 		groupAndSectionFilter.setNullValid(false);
 		if (!groups.isEmpty()) {
 			groupAndSectionFilter.setModelObject(
-				(settings.getGroupFilter() != null) ? settings.getGroupFilter() : groups.get(0));
+					(settings.getGroupFilter() != null) ? settings.getGroupFilter() : groups.get(0));
 		}
 		form.add(groupAndSectionFilter);
 
@@ -226,14 +238,14 @@ public class UpdateUngradedItemsPanel extends Panel {
 
 		// confirmation dialog
 		add(new Label("confirmationMessage",
-			new StringResourceModel(
-				"label.updateungradeditems.confirmation.general", null,
-				new Object[]{"${score}", "${group}"})).setEscapeModelStrings(false));
+				new StringResourceModel(
+						"label.updateungradeditems.confirmation.general", null,
+						new Object[] { "${score}", "${group}" })).setEscapeModelStrings(false));
 	}
 
-	private boolean isExtraCredit(Double grade, Assignment assignment, GbGradingType gradingType) {
-		return (GbGradingType.PERCENTAGE.equals(gradingType) && grade > 100) ||
-			(GbGradingType.POINTS.equals(gradingType) && grade > assignment.getPoints());
+	private boolean isExtraCredit(final Double grade, final Assignment assignment, final GradingType gradingType) {
+		return (GradingType.PERCENTAGE.equals(gradingType) && grade > 100) ||
+				(GradingType.POINTS.equals(gradingType) && grade > assignment.getPoints());
 	}
 
 	/**

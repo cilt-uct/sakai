@@ -22,16 +22,21 @@ package org.sakaiproject.conditions.impl;
 
 import java.util.List;
 
-import org.apache.commons.collections.Predicate;
-import org.apache.commons.collections.PredicateUtils;
+import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.collections4.Predicate;
+import org.apache.commons.collections4.PredicateUtils;
+
+import org.w3c.dom.Element;
+
 import org.sakaiproject.conditions.api.EvaluationAction;
 import org.sakaiproject.conditions.api.Rule;
 import org.sakaiproject.conditions.api.Condition;
 import org.sakaiproject.event.api.Event;
 import org.sakaiproject.event.api.Notification;
 import org.sakaiproject.event.api.NotificationAction;
-import org.w3c.dom.Element;
 
+@Slf4j
 public class BaseRule implements Rule, NotificationAction {
 	
 	private String resourceId;
@@ -45,9 +50,10 @@ public class BaseRule implements Rule, NotificationAction {
 		this.command = command;
 		this.conj = conj;
 	}
-
+	
+	@Override
 	public boolean evaluate(Object arg0) {
-		Predicate judgement = new NullPredicate();
+		Predicate judgement = (Predicate) new NullPredicate();
 		if (predicates.size() == 1) {
 			judgement = predicates.get(0);
 		} else {
@@ -62,30 +68,34 @@ public class BaseRule implements Rule, NotificationAction {
 		return judgement.evaluate(arg0);
 	}
 
+	@Override
 	public NotificationAction getClone() {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
+	@Override
 	public void notify(Notification notification, Event event) {
 			try {
 				command.execute(event, this.evaluate(event));
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				log.error(e.getMessage(), e);
 			}
 	}
 
+	@Override
 	public void set(Element el) {
 		// TODO Auto-generated method stub
 
 	}
 
+	@Override
 	public void set(NotificationAction other) {
 		// TODO Auto-generated method stub
 
 	}
 
+	@Override
 	public void toXml(Element el) {
 		el.setAttribute("resourceId", this.resourceId);
 		

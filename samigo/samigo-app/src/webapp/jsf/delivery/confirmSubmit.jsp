@@ -66,20 +66,23 @@ remove the javascript onclick stuff.
 <h:panelGroup rendered="#{delivery.actionString=='previewAssessment'}">
  <f:verbatim><div class="previewMessage"></f:verbatim>
      <h:outputText value="#{deliveryMessages.ass_preview}" />
-     <h:commandButton value="#{deliveryMessages.done}" action="#{person.cleanResourceIdListInPreview}" type="submit"/>
+     <h:commandButton value="#{deliveryMessages.done}"
+        action="#{person.cleanResourceIdListInPreview}"
+        type="submit"
+        onclick="return returnToHostUrl(\"#{delivery.selectURL}\");"/>
  <f:verbatim></div></f:verbatim>
 </h:panelGroup>
 
 <!-- JAVASCRIPT -->
 <%@ include file="/js/delivery.js" %>
 
-<script type="text/JavaScript">
+<script>
 
 function saveTime()
 {
   if((typeof (document.forms[0].elements['takeAssessmentForm:assessmentDeliveryHeading:elapsed'])!=undefined) && ((document.forms[0].elements['takeAssessmentForm:assessmentDeliveryHeading:elapsed'])!=null) ){
   pauseTiming = 'false';
-  document.forms[0].elements['takeAssessmentForm:assessmentDeliveryHeading:elapsed'].value=loaded/10;
+  document.forms[0].elements['takeAssessmentForm:assessmentDeliveryHeading:elapsed'].value=${delivery.timeElapse};
  }
 }
 
@@ -112,26 +115,39 @@ function saveTime()
 <h:inputHidden id="assessTitle" value="#{delivery.assessmentTitle}" />
 <%-- PART/ITEM DATA TABLES --%>
 
-  <h:panelGroup styleClass="messageSamigo2">
-    <h:panelGrid border="0">
-	  <h:outputText value="#{deliveryMessages.submit_warning_1}" escape="false"/>
-	  <h:outputText value="#{deliveryMessages.submit_warning_2}" escape="false"/>
-	  <h:outputText value="#{deliveryMessages.submit_warning_3_non_linear}" rendered="#{delivery.navigation ne '1'}" escape="false"/>
-	  <h:outputText value="#{deliveryMessages.submit_warning_3_linear}" rendered="#{delivery.navigation eq '1'}" escape="false"/>
-	</h:panelGrid>
+  <h:panelGroup styleClass="sak-banner-warn">
+	  <h:outputText value="#{deliveryMessages.submit_warning_1} " escape="false"/>
+	  <h:outputText value="#{deliveryMessages.submit_warning_2} " escape="false"/>
+	  <h:outputText value="#{deliveryMessages.submit_warning_3_non_linear} " rendered="#{delivery.navigation ne '1'}" escape="false"/>
+	  <h:outputText value="#{deliveryMessages.submit_warning_3_linear} " rendered="#{delivery.navigation eq '1'}" escape="false"/>
   </h:panelGroup>
 
-  <h:panelGrid columns="2">
-
-    <h:outputLabel value="#{deliveryMessages.course_name}"/>
-    <h:outputText value="#{delivery.courseName}" />
-
-    <h:outputLabel  value="#{deliveryMessages.creator}" />
-    <h:outputText value="#{delivery.creatorName}"/>
-
-    <h:outputLabel value="#{deliveryMessages.assessment_title}"/>
-    <h:outputText value="#{delivery.assessmentTitle}" escape="false"/>
-  </h:panelGrid>
+  <h:panelGroup layout="block">
+    <h:panelGroup layout="block" styleClass="row">
+        <h:panelGroup layout="block" styleClass="col-sm-2">
+            <h:outputLabel value="#{deliveryMessages.course_name}"/>
+        </h:panelGroup>
+        <h:panelGroup layout="block" styleClass="col-sm-10">
+            <h:outputText value="#{delivery.courseName}" />
+        </h:panelGroup>
+    </h:panelGroup>
+    <h:panelGroup layout="block" styleClass="row">
+        <h:panelGroup layout="block" styleClass="col-sm-2">
+            <h:outputLabel  value="#{deliveryMessages.creator}" />
+        </h:panelGroup>
+        <h:panelGroup layout="block" styleClass="col-sm-10">
+            <h:outputText value="#{delivery.creatorName}"/>
+        </h:panelGroup>
+    </h:panelGroup>
+    <h:panelGroup layout="block" styleClass="row">
+        <h:panelGroup layout="block" styleClass="col-sm-2">
+            <h:outputLabel value="#{deliveryMessages.assessment_title}"/>
+        </h:panelGroup>
+        <h:panelGroup layout="block" styleClass="col-sm-10">
+            <h:outputText value="#{delivery.assessmentTitle}" escape="false"/>
+        </h:panelGroup>
+    </h:panelGroup>
+  </h:panelGroup>
 
 <p class="act">
 
@@ -143,11 +159,6 @@ function saveTime()
              && !delivery.doContinue}"
 	disabled="#{delivery.actionString=='previewAssessment'}" 
     />
-
-    <h:commandButton value="#{deliveryMessages.button_close_window}" type="button" 
-       rendered="#{delivery.actionString=='takeAssessmentViaUrl' && !delivery.anonymousLogin}"
-       style="act" onclick="javascript:window.close();" />
-    
 
   <%-- SUBMIT FOR GRADE FOR LINEAR ACCESS --%>
   <h:commandButton type="submit" value="#{deliveryMessages.button_submit_grading}"
@@ -172,7 +183,12 @@ function saveTime()
                  || delivery.actionString=='takeAssessmentViaUrl')
               && delivery.navigation ne '1'}" 
     />
-
+  <h:commandButton id="save" type="submit" value="#{commonMessages.action_save}"
+     action="#{delivery.saveWork}"
+     style="display:none"
+     rendered="#{delivery.actionString=='previewAssessment'
+                  || delivery.actionString=='takeAssessment'
+                  || delivery.actionString=='takeAssessmentViaUrl'}" />
   <!-- Previous button for linear assessments -->
   <h:commandButton type="submit" value="#{commonMessages.cancel_action}"
     action="select" id="cancel"
@@ -187,7 +203,9 @@ function saveTime()
 <h:panelGroup rendered="#{delivery.actionString=='previewAssessment'}">
  <f:verbatim><div class="previewMessage"></f:verbatim>
      <h:outputText value="#{deliveryMessages.ass_preview}" />
-     <h:commandButton value="#{deliveryMessages.done}" action="#{person.cleanResourceIdListInPreview}" type="submit"/>
+     <h:commandButton type="submit" value="#{deliveryMessages.done}"
+        action="#{person.cleanResourceIdListInPreview}"
+        onclick="return returnToHostUrl(\"#{delivery.selectURL}\");"/>
  <f:verbatim></div></f:verbatim>
 </h:panelGroup>
 

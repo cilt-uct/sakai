@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.sakaiproject.polls</groupId>
         <artifactId>polls</artifactId>
-        <version>12-SNAPSHOT</version>
+        <version>21-SNAPSHOT</version>
     </parent>
     
     <name>Sakai Polls Tool Module (polls-tool)</name>
@@ -43,8 +43,12 @@
             <artifactId>sakai-component-manager</artifactId>
         </dependency>
         <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
+           <groupId>org.apache.commons</groupId>
+           <artifactId>commons-lang3</artifactId>
+        </dependency>
+        <dependency>
+           <groupId>org.apache.commons</groupId>
+           <artifactId>commons-text</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
@@ -56,12 +60,22 @@
         </dependency>
 		<dependency>
             <groupId>javax.servlet</groupId>
-            <artifactId>servlet-api</artifactId>
+            <artifactId>javax.servlet-api</artifactId>
         </dependency>
 		<dependency>
 			<groupId>commons-beanutils</groupId>
 			<artifactId>commons-beanutils</artifactId>
 		</dependency>
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi</artifactId>
+            <version>${sakai.poi.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>${sakai.poi.version}</version>
+        </dependency>
         <!-- RSF dependencies -->
         <dependency>
             <groupId>org.sakaiproject.rsf</groupId>

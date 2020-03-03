@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.sakaiproject</groupId>
 		<artifactId>master</artifactId>
-		<version>12-SNAPSHOT</version>
+		<version>21-SNAPSHOT</version>
 		<relativePath>../master/pom.xml</relativePath>
 	</parent>
 
@@ -13,11 +13,6 @@
 	<groupId>org.sakaiproject.signup</groupId>
 	<artifactId>signup</artifactId>
 
-	<organization>
-		<name>Sakai Project</name>
-		<url>http://sakaiproject.org/</url>
-	</organization>
-	<inceptionYear>2007</inceptionYear>
 	<packaging>pom</packaging>
 
 	<developers>
@@ -47,17 +42,8 @@
 	<modules>
 		<module>api</module>
 		<module>impl</module>
-		<module>pack</module>
 		<module>tool</module>
 	</modules>
-
-	<distributionManagement>
-		<site>
-			<id>sakai-site</id>
-			<name>Sakai release Site</name>
-			<url>scpexe://source.sakaiproject.org/var/www/html/release/signup/${project.version}</url>
-		</site>
-	</distributionManagement>
 
 	<dependencyManagement>
 		<dependencies>
@@ -114,16 +100,10 @@
 				<version>${reflectutils.version}</version>
 			</dependency>
 			<dependency>
-				<groupId>easymock</groupId>
+				<groupId>org.easymock</groupId>
 				<artifactId>easymock</artifactId>
-				<version>1.2_Java1.3</version>
+				<version>3.4</version>
 				<scope>test</scope>
-			</dependency>
-			<dependency>
-				<groupId>jta</groupId>
-				<artifactId>jta</artifactId>
-				<version>h2.1.8</version>
-				<scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.myfaces.tomahawk</groupId>
@@ -138,10 +118,14 @@
 				<scope>compile</scope>
 			</dependency>
 			<dependency>
+				<groupId>org.apache.poi</groupId>
+				<artifactId>poi-ooxml</artifactId>
+				<version>${sakai.poi.version}</version>
+			</dependency>
+			<dependency>
 				<groupId>javax.servlet</groupId>
 				<artifactId>jstl</artifactId>
 				<version>1.1.2</version>
-				<scope>compile</scope>
 			</dependency>
 			<dependency>
 				<groupId>taglibs</groupId>

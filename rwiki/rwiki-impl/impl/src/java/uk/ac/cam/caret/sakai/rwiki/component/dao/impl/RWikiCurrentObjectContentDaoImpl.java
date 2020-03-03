@@ -22,13 +22,10 @@ package uk.ac.cam.caret.sakai.rwiki.component.dao.impl;
 
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.hibernate.HibernateException;
-import org.hibernate.Session;
+import lombok.extern.slf4j.Slf4j;
 import org.hibernate.criterion.Expression;
-import org.springframework.orm.hibernate3.HibernateCallback;
-import org.springframework.orm.hibernate3.support.HibernateDaoSupport;
+import org.springframework.orm.hibernate4.HibernateCallback;
+import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
 
 import uk.ac.cam.caret.sakai.rwiki.model.RWikiCurrentObjectContentImpl;
 import uk.ac.cam.caret.sakai.rwiki.service.api.dao.RWikiObjectContentDao;
@@ -38,29 +35,19 @@ import uk.ac.cam.caret.sakai.rwiki.service.api.model.RWikiObjectContent;
 import uk.ac.cam.caret.sakai.rwiki.utils.TimeLogger;
 
 // FIXME: Component
-
+@Slf4j
 public class RWikiCurrentObjectContentDaoImpl extends HibernateDaoSupport
 		implements RWikiObjectContentDao
 {
-	private static Logger log = LoggerFactory.getLogger(RWikiCurrentObjectContentDaoImpl.class);
-
 	public RWikiObjectContent getContentObject(final RWikiObject parent)
 	{
 		long start = System.currentTimeMillis();
 		try
 		{
-			HibernateCallback callback = new HibernateCallback()
-			{
-				public Object doInHibernate(Session session)
-						throws HibernateException
-				{
-					return session.createCriteria(
-							RWikiCurrentObjectContent.class).add(
-							Expression.eq("rwikiid", parent.getId())).list();
-				}
-
-			};
-			List found = (List) getHibernateTemplate().execute(callback);
+			HibernateCallback<List> callback = session -> session.createCriteria(
+                    RWikiCurrentObjectContent.class).add(
+                    Expression.eq("rwikiid", parent.getId())).list();
+			List found = getHibernateTemplate().execute(callback);
 			if (found.size() == 0)
 			{
 				log.debug("Found {} objects with id {}", found.size(), parent.getId());

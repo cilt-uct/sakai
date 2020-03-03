@@ -24,7 +24,7 @@ package org.sakaiproject.chat2.tool;
 import java.util.Calendar;
 import java.util.Date;
 
-import org.apache.commons.lang.time.DateUtils;
+import org.apache.commons.lang3.time.DateUtils;
 import org.sakaiproject.chat2.model.ChatChannel;
 
 public class DecoratedChatChannel {
@@ -38,6 +38,8 @@ public class DecoratedChatChannel {
    private boolean newChannel = false;
    private Date startDate = null;
    private Date endDate = null;
+   private String startDateString = null;
+   private String endDateString = null;
 
    public DecoratedChatChannel(ChatTool chatTool, ChatChannel chatChannel)
    {
@@ -208,4 +210,19 @@ public class DecoratedChatChannel {
        this.endDate = endDate;
    }
 
+   public String getStartDateString() {
+       return startDateString;
+   }
+
+   public void setStartDateString(String startDateString) {
+       this.startDateString = startDateString;
+   }
+
+   public String getEndDateString() {
+       return endDateString;
+   }
+
+   public void setEndDateString(String endDateString) {
+       this.endDateString = endDateString;
+   }
 }

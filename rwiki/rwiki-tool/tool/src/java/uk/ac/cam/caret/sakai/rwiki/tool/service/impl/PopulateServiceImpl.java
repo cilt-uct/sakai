@@ -28,8 +28,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.component.api.ComponentManager;
 import org.sakaiproject.event.cover.EventTrackingService;
 import org.sakaiproject.site.api.Site;
@@ -37,7 +36,9 @@ import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.tool.cover.ToolManager;
 import org.sakaiproject.util.ResourceLoader;
 
+import lombok.extern.slf4j.Slf4j;
 import uk.ac.cam.caret.sakai.rwiki.service.api.PageLinkRenderer;
+import uk.ac.cam.caret.sakai.rwiki.service.api.RWikiSecurityService;
 import uk.ac.cam.caret.sakai.rwiki.service.api.RenderService;
 import uk.ac.cam.caret.sakai.rwiki.service.api.dao.RWikiCurrentObjectDao;
 import uk.ac.cam.caret.sakai.rwiki.service.api.model.RWikiCurrentObject;
@@ -48,14 +49,15 @@ import uk.ac.cam.caret.sakai.rwiki.utils.NameHelper;
 /**
  * @author andrew
  */
-
+@Slf4j
 public class PopulateServiceImpl implements PopulateService
 {
-	private static Logger log = LoggerFactory.getLogger(PopulateServiceImpl.class);
 
 	private List seedPages;
 
 	private RWikiCurrentObjectDao dao;
+
+	private RWikiSecurityService securityService;
 
 	private RenderService renderService = null;
 
@@ -68,6 +70,7 @@ public class PopulateServiceImpl implements PopulateService
 
 		renderService = (RenderService) load(cm, RenderService.class.getName());
 		siteService = (SiteService) load(cm, SiteService.class.getName());
+		securityService = (RWikiSecurityService) load(cm, RWikiSecurityService.class.getName());
 
 		for (Iterator i = seedPages.iterator(); i.hasNext();)
 		{
@@ -133,19 +136,21 @@ public class PopulateServiceImpl implements PopulateService
 		}
 		catch (Exception e)
 		{
-			log
-					.warn("Cant find who created this site, defaulting to current user for prepopulate ownership :"
-							+ owner);
+			log.warn("Can't find who created this site, defaulting to current user for prepopulate ownership: {}", owner);
 		}
 		if (s == null)
 		{
-			log
-					.error("Cant Locate current site, will populate only global pages with no restrictions");
+			log.error("Can't Locate current site, will populate only global pages with no restrictions");
 		}
-		if (log.isDebugEnabled())
-		{
-			log.debug("Populating space: " + space);
+
+		boolean subspace = (StringUtils.countMatches(space, "/") > 2);
+
+		if (subspace && !securityService.checkCreatePermission(group)) {
+			throw new PermissionException("Not authorized to create subspaces in this site");
 		}
+
+		log.debug("Populating space: {} user: {} owner: {} group: {} subspace: {}",
+			space, user, owner, group, subspace);
 
 		for (Iterator i = seedPages.iterator(); i.hasNext();)
 		{

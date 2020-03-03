@@ -1,6 +1,6 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://sakaiproject.org/jsf/messageforums" prefix="mf" %>
 <jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
    <jsp:setProperty name="msgs" property="baseName" value="org.sakaiproject.api.app.messagecenter.bundle.Messages"/>
@@ -17,24 +17,24 @@
 	<h:form id="msgForum" rendered="#{!ForumTool.selectedTopic.topic.draft || ForumTool.selectedTopic.topic.createdBy == ForumTool.userId}">
 
 		<!--jsp/discussionForum/message/dfViewThread.jsp-->
-       		<script type="text/javascript">includeLatestJQuery("msgcntr");</script>
-  			<sakai:script contextBase="/messageforums-tool" path="/js/dialog.js"/>
-			<script type="text/javascript" src="/library/js/jquery/qtip/jquery.qtip-latest.min.js"></script>
-			<link rel="stylesheet" type="text/css" href="/library/js/jquery/qtip/jquery.qtip-latest.min.css" />
+       		<script>includeLatestJQuery("msgcntr");</script>
+  			<script src="/messageforums-tool/js/dialog.js"></script>
+			<script src="/library/webjars/qtip2/3.0.3/jquery.qtip.min.js"></script>
+			<link rel="stylesheet" type="text/css" href="/library/webjars/qtip2/3.0.3/jquery.qtip.min.css" />
   			<link rel="stylesheet" type="text/css" href="/messageforums-tool/css/dialog.css" />	
-       		<sakai:script contextBase="/messageforums-tool" path="/js/sak-10625.js"/>
-		<sakai:script contextBase="/messageforums-tool" path="/js/forum.js"/>
+       		<script src="/messageforums-tool/js/sak-10625.js"></script>
+		<script src="/messageforums-tool/js/forum.js"></script>
 		
 	<%--//
 		//plugin required below
-		<sakai:script contextBase="/messageforums-tool" path="/js/pxToEm.js"/>
+		<script src="/messageforums-tool/js/pxToEm.js"></script>
 
 		/*
 		gsilver: get a value representing max indents
 	 	from the server configuraiton service or the language bundle, parse 
 		all the indented items, and if the item indent goes over the value, flatten to the value 
 		*/
-		<script type="text/javascript">
+		<script>
 		$(document).ready(function() {
 			// pick value from element (that gets it from language bundle)
 			maxThreadDepth =$('#maxthreaddepth').text()
@@ -57,7 +57,7 @@
 		<span class="highlight"  id="maxthreaddepth" class="skip"><h:outputText value="#{msgs.cdfm_maxthreaddepth}" /></span>
 //--%>
 
-<script type="text/javascript">
+<script>
  			$(document).ready(function() {
 				setupMessageNav('messagePending');
 				setupMessageNav('messageNew');
@@ -68,20 +68,16 @@
 			});
 </script>		
 		<sakai:tool_bar separator="#{msgs.cdfm_toolbar_separator}" rendered="#{!ForumTool.threadMoved}">
-				<sakai:tool_bar_item action="#{ForumTool.processDfMsgReplyThread}" value="#{msgs.cdfm_reply_thread}" 
-		  			rendered="#{ForumTool.selectedTopic.isNewResponseToResponse && ForumTool.selectedThreadHead.msgApproved && !ForumTool.selectedTopic.locked && !ForumTool.selectedForum.locked == 'true'}" />
-		  		
-		  		<h:commandLink action="#{ForumTool.processActionMarkAllThreadAsRead}" rendered="#{ForumTool.selectedTopic.isMarkAsRead and not ForumTool.selectedTopic.topic.autoMarkThreadsRead}"> 
-   	        		<h:outputText value=" #{msgs.cdfm_mark_all_as_read}" />
-                </h:commandLink>
-                <%--
-		  		<sakai:tool_bar_item action="#{ForumTool.processActionMarkAllThreadAsRead}" value="#{msgs.cdfm_mark_all_as_read}" 
-					rendered="#{ForumTool.selectedTopic.isMarkAsRead}" />
-					--%>
-					
-				<h:outputLink id="print" value="javascript:printFriendly('#{ForumTool.printFriendlyUrlThread}');">
-					<h:graphicImage url="/../../library/image/silk/printer.png" alt="#{msgs.print_friendly}" title="#{msgs.print_friendly}" />
-				</h:outputLink>
+			<h:commandLink id="replyThread" rendered="#{ForumTool.selectedTopic.isNewResponseToResponse && ForumTool.selectedThreadHead.msgApproved && !ForumTool.selectedTopic.locked && !ForumTool.selectedForum.locked == 'true'}"
+				action="#{ForumTool.processDfMsgReplyThread}" immediate="true">
+					<h:outputText value="#{msgs.cdfm_reply_thread}" />
+			</h:commandLink>
+			<h:commandLink id="markAllRead" action="#{ForumTool.processActionMarkAllThreadAsRead}" rendered="#{ForumTool.selectedTopic.isMarkAsRead and not ForumTool.selectedTopic.topic.autoMarkThreadsRead}"> 
+				<h:outputText value=" #{msgs.cdfm_mark_all_as_read}" />
+			</h:commandLink>
+			<h:outputLink id="print" value="javascript:printFriendly('#{ForumTool.printFriendlyUrlThread}');">
+				<h:graphicImage url="/../../library/image/silk/printer.png" alt="#{msgs.print_friendly}" title="#{msgs.print_friendly}" />
+			</h:outputLink>
  		</sakai:tool_bar>
 			<h:panelGrid columns="2" width="100%" styleClass="specialLink">
 			    <h:panelGroup>
@@ -90,19 +86,19 @@
 			      		rendered="#{ForumTool.messagesandForums}" />
 			      <h:commandLink action="#{ForumTool.processActionHome}" value="#{msgs.cdfm_discussion_forums}" title=" #{msgs.cdfm_discussion_forums}"
 			      		rendered="#{ForumTool.forumsTool}" />
-      			  <f:verbatim><h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " /></f:verbatim>
+      			  <h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " />
 					  <h:commandLink action="#{ForumTool.processActionDisplayForum}" title=" #{ForumTool.selectedForum.forum.title}" rendered="#{ForumTool.showForumLinksInNav}">
 						  <f:param value="#{ForumTool.selectedForum.forum.id}" name="forumId"/>
 						  <h:outputText value="#{ForumTool.selectedForum.forum.title}"/>
 					  </h:commandLink>
 					  <h:outputText value="#{ForumTool.selectedForum.forum.title}" rendered="#{!ForumTool.showForumLinksInNav}"/>
-				  <f:verbatim><h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " /></f:verbatim>
+				  <h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " />
 				  	  <h:commandLink action="#{ForumTool.processActionDisplayTopic}" title="#{ForumTool.selectedTopic.topic.title}">
 					  	  <f:param value="#{ForumTool.selectedForum.forum.id}" name="forumId"/>
 					  	  <f:param value="#{ForumTool.selectedTopic.topic.id}" name="topicId"/>
 					  	  <h:outputText value="#{ForumTool.selectedTopic.topic.title}"/>
 				  	  </h:commandLink>
-				  <f:verbatim><h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " /></f:verbatim>
+				  <h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " />
 				  	<h:graphicImage url="/images/silk/date_delete.png" title="#{msgs.topic_restricted_message}" alt="#{msgs.topic_restricted_message}" rendered="#{ForumTool.selectedTopic.availability == 'false'}" style="margin-right:.5em"/>
 				  	<h:graphicImage url="/images/silk/lock.png" alt="#{msgs.cdfm_forum_locked}" 
 						 rendered="#{ForumTool.selectedTopic.locked =='true'}" style="margin-right:.5em"/>
@@ -155,7 +151,7 @@
         </h:panelGroup>
 		<div id="messNavHolder" style="clear:both;"></div>
 		<%--rjlowe: Expanded View to show the message bodies, but not threaded --%>
-		<div class="table-responsive">
+		<div>
 		<h:dataTable id="expandedMessages" value="#{ForumTool.selectedThread}" var="message" rendered="#{!ForumTool.threaded}"
    	 		styleClass="table table-hover table-striped table-bordered messagesFlat specialLink" cellpadding="0" cellspacing="0" width="100%" columnClasses="bogus">
 			<h:column>
@@ -166,7 +162,7 @@
 		</div>
 		
 		<%--rjlowe: Expanded View to show the message bodies, threaded --%>
-		<div class="table-responsive">
+		<div>
 		<mf:hierDataTable id="expandedThreadedMessages" value="#{ForumTool.selectedThread}" var="message" rendered="#{ForumTool.threaded}"
    	 		noarrows="true" styleClass="table table-hover table-striped table-bordered messagesThreaded specialLink" border="0" cellpadding="0" cellspacing="0" width="100%" columnClasses="bogus">
 			<h:column id="_msg_subject">
@@ -185,7 +181,7 @@
     		thisId = "Main" + org.sakaiproject.tool.cover.ToolManager.getCurrentPlacement().getId();
   		}
 	%>
-	<script type="text/javascript">
+	<script>
 		function resize(){
   			mySetMainFrameHeight('<%= org.sakaiproject.util.Web.escapeJavascript(thisId)%>');
   		}

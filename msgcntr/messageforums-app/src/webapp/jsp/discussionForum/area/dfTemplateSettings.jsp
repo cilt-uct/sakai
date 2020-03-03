@@ -2,23 +2,23 @@
                  javax.faces.el.*, org.sakaiproject.tool.messageforums.*"%>
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://sakaiproject.org/jsf/messageforums" prefix="mf" %>
 <jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
    <jsp:setProperty name="msgs" property="baseName" value="org.sakaiproject.api.app.messageforums.bundle.Messages"/>
 </jsp:useBean>
 
 <f:view>
-   <sakai:view title="#{msgs.cdfm_default_template_settings}" toolCssHref="/messageforums-tool/css/msgcntr.css">           
-      <h:form id="revise">
-        <script type="text/javascript">includeLatestJQuery("msgcntr");</script>
-		<sakai:script contextBase="/messageforums-tool" path="/js/datetimepicker.js"/>             		             		
-       		<sakai:script contextBase="/messageforums-tool" path="/js/sak-10625.js"/>
-		<sakai:script contextBase="/messageforums-tool" path="/js/permissions_header.js"/>
-		<sakai:script contextBase="/messageforums-tool" path="/js/forum.js"/>
-		<sakai:script contextBase="/messageforums-tool" path="/js/messages.js"/>
-		<link href="/library/webjars/jquery-ui/1.11.3/jquery-ui.min.css" rel="stylesheet" type="text/css" />
-		<script type="text/javascript" src="/library/js/lang-datepicker/lang-datepicker.js"></script>
+	<sakai:view title="#{msgs.cdfm_default_template_settings}" toolCssHref="/messageforums-tool/css/msgcntr.css">
+	<h:form id="revise">
+        <script>includeLatestJQuery("msgcntr");</script>
+		<script src="/messageforums-tool/js/datetimepicker.js"></script>             		             		
+       		<script src="/messageforums-tool/js/sak-10625.js"></script>
+		<script src="/messageforums-tool/js/permissions_header.js"></script>
+		<script src="/messageforums-tool/js/forum.js"></script>
+		<script src="/messageforums-tool/js/messages.js"></script>
+		<link href="/library/webjars/jquery-ui/1.12.1/jquery-ui.min.css" rel="stylesheet" type="text/css" />
+		<script src="/library/js/lang-datepicker/lang-datepicker.js"></script>
 
 <%
 	  	String thisId = request.getParameter("panel");
@@ -27,12 +27,12 @@
     		thisId = "Main" + org.sakaiproject.tool.cover.ToolManager.getCurrentPlacement().getId();
   		}
 	%>
-	<script type="text/javascript">
+	<script>
 		function resize(){
   			mySetMainFrameHeight('<%= org.sakaiproject.util.Web.escapeJavascript(thisId)%>');
   		}
 	</script> 
-<script type="text/javascript">
+<script>
 	function setDatesEnabled(radioButton){
 		$(".openDateSpan").toggle();
 		$(".closeDateSpan").toggle();
@@ -51,7 +51,9 @@
 <!--jsp/discussionForum/area/dfTemplateSettings.jsp-->
 
 
-        <sakai:tool_bar_message value="#{msgs.cdfm_default_template_settings}" />
+				<div class="page-header">
+					<h1><h:outputText value="#{msgs.cdfm_default_template_settings}" /></h1>
+				</div>
 		 		<div class="instruction">
 		  		  <h:outputText id="instruction" value="#{msgs.cdfm_default_template_settings_instruction}"/>
 				</div>
@@ -98,7 +100,7 @@
            </h:panelGrid>
 
            
-            <script type="text/javascript">
+            <script>
                   localDatePicker({
                   	input:'.openDate',
                   	allowEmptyDate:true,

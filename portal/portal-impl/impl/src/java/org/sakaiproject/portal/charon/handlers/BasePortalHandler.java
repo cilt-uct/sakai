@@ -21,14 +21,15 @@
 
 package org.sakaiproject.portal.charon.handlers;
 
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Locale;
+import java.util.TimeZone;
 
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.sakaiproject.entity.api.ResourcePropertiesEdit;
 import org.sakaiproject.portal.api.Portal;
 import org.sakaiproject.portal.api.PortalHandler;
@@ -40,6 +41,8 @@ import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.time.api.TimeService;
 import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.util.ResourceLoader;
+import lombok.extern.slf4j.Slf4j;
+
 
 /**
  * Abstract class to hold common base methods for portal handlers.
@@ -49,14 +52,13 @@ import org.sakaiproject.util.ResourceLoader;
  * @version $Rev$
  * 
  */
+@Slf4j
 public abstract class BasePortalHandler implements PortalHandler
 {
-	private static final Logger log = LoggerFactory.getLogger(BasePortalHandler.class);
-
 	public BasePortalHandler()
 	{
 		urlFragment = "none";
-		timeService = (TimeService) ComponentManager.get(TimeService.class);
+		timeService = ComponentManager.get(TimeService.class);
 	}
 
 	private TimeService timeService;
@@ -166,26 +168,20 @@ public abstract class BasePortalHandler implements PortalHandler
 
 			locale_string = props.getProperty("locale_string");
 
-			if (log.isDebugEnabled()) {
-				log.debug("setSiteLanguage - locale_string property: " + locale_string);
-			}
+			log.debug("setSiteLanguage - locale_string property: {}", locale_string);
 		}
 		Locale loc = null;
 		// if no language was specified when creating the site, set default language to session
 		if(locale_string == null || locale_string == "")
 		{
-			if(log.isDebugEnabled()){
-				log.debug("setSiteLanguage - no locale, setting null.");
-			}
+			log.debug("setSiteLanguage - no locale, setting null.");
 		}
 		
 		// if you have indicated a language when creating the site, set selected language to session
 		else
 		{
 			loc = getLocaleFromString(locale_string);
-			if(log.isDebugEnabled()){
-				log.debug("setSiteLanguage - locale: " + loc.toString());
-			}
+			log.debug("setSiteLanguage - locale: {}", loc);
 		}
 
 		loc = rl.setContextLocale(loc);
@@ -204,9 +200,7 @@ public abstract class BasePortalHandler implements PortalHandler
 		}
 
 		Locale locale = setSiteLanguage(site);
-		if(log.isDebugEnabled()) {
-			log.debug("Locale for site " + site.getId() + " = " + locale.toString());
-		}
+		log.debug("Locale for site {} = {}", site.getId(), locale);
 		String localeString = locale.getLanguage();
 		String country = locale.getCountry();
 		if(country.length() > 0) localeString += "-" + country;
@@ -217,5 +211,16 @@ public abstract class BasePortalHandler implements PortalHandler
 			// if the locale was changed, clear the date/time format which was cached in the previous locale
 			timeService.clearLocalTimeZone(userId);
 		}
+	}
+
+	protected void addTimeInfo(PortalRenderContext rcontext) {
+
+		long now = Instant.now().toEpochMilli();
+		rcontext.put("serverTimeMillis", now);
+		TimeZone userTz = timeService.getLocalTimeZone();
+		rcontext.put("userTimezone", userTz.getID());
+		rcontext.put("userTimezoneOffsetMillis", userTz.getOffset(now));
+		String iso8601 = Instant.now().atZone(ZoneId.of(userTz.getID())).toLocalDateTime().toString();
+		rcontext.put("userISO8601Timestamp", iso8601);
 	}
 }

@@ -1,46 +1,20 @@
 ##<!-- $Header: /cvs/sakai2/legacy/tools/src/webapp/vm/sitesetup/chef_site-siteInfo-editInfo.vm,v 1.3 2005/05/23 04:04:12 ggolden.umich.edu Exp $ -->
 ## Edit Site Information
 <div class="portletBody container-fluid">
-	## definie form
+	#if($menu)#toolbar($menu)#end
+	## header for edit site information page
+	<div class="page-header">
+		<h1>$tlang.getString("java.editsite")</h1>
+	</div>
 	<form name="classInformationForm" id="classInformationForm" method="post" action="#toolForm("SiteAction")">
+	## definie form
 	#if(!$existingSite)
 		## adding new site
-		#if ($!isProjectSite)
-			<h3>
-				$tlang.getString("sinfo.pi")
-			</h3>
-			<p class="step">
-				$tlang.getString("sinfo.enter")
-			</p>
-		#elseif ($!isCourseSite)
-			<h3>
-				$tlang.getString("sinfo.class")
-			</h3>
-			<p class="step">
-				$tlang.getString("sinfo.enter2")
-			</p>
-		#elseif ($type && $type=='portfolio')
-			<h3>
-				$tlang.getString("sinfo.portfolio")
-			</h3>
-			<p class="step">
-				$tlang.getString("sinfo.enter3")
-			</p>
-		#else
-			<h3>
-				$tlang.getString("sinfo.other")
-			</h3>
-			<p class="step">
-				$tlang.getString("sinfo.enter3")
-			</p>
-		#end
-	#else
-		## editing existing site
 		<h3>
-			$tlang.getString("sitediinf.rev") <span class="highlight">$validator.escapeHtml($title)</span>
+			$tlang.getString("sinfo.other")
 		</h3>
 	#end
-	#if ($alertMessage)<div class="alertMessage">$tlang.getString("sitediinf.alert") $alertMessage</div><div class="clear"></div>#end
+	#if ($alertMessage)<div class="sak-banner-error">$tlang.getString("sitediinf.alert") $alertMessage</div>#end
 	## adding a new course site
 	#if ($isCourseSite)
 	<table class="listHier lines nolines indnt1" style="width:auto" summary="$tlang.getString("sinfo.rosterlist.summary")" border="0">
@@ -64,7 +38,7 @@
 						<script type="text/javascript">document.getElementById('selectedProviderCourse-head').style.display='none'</script>
 				</td>
 			</tr>
-			#end								
+			#end
 		#end
 		#foreach($id in $!providerCourseTitles.keys())
 			<tr>
@@ -126,16 +100,18 @@
 		</p>
 	#end
 		## Title ##
-		<div class="form-group row ">
+		<div class="form-group row">
 			<label for="title" class="col-sm-2 form-control-label">
-                <span class="reqStar">*</span>
+				#if ($siteTitleEditable || (!$!existingSite && !$hasRosterAttached))
+					<span class="reqStar">*</span>
+				#end
 				$tlang.getString("sitediinf.sittit")
 			</label>
 			<div class="col-sm-6">
-				#if ($siteTitleEditable || !$!existingSite)
-					<input type="text" name="title" id="title" size="20" maxlength="$!titleMaxLength" value="$validator.escapeHtml($!title)" />
+				#if ($siteTitleEditable || (!$!existingSite && !$hasRosterAttached))
+					<input type="text" name="title" id="title" size="20" maxlength="$!titleMaxLength" value="$formattedText.escapeHtml($!title)" />
 				#else
-					$validator.escapeHtml($!title)
+					$formattedText.escapeHtml($!title)
 				#end
 			</div>
 		</div>
@@ -147,7 +123,7 @@
 		 			<label for="alias_0">
 						$tlang.getString("sinfo.url")
 		 			</label>
-		 				$!form_site_url_base<input type="text" name="alias_0" id="alias_0" maxlength="40" size="20" value="$validator.escapeHtml($form_site_alias)" />
+		 				$!form_site_url_base<input type="text" name="alias_0" id="alias_0" maxlength="40" size="20" value="$formattedText.escapeHtml($form_site_alias)" />
 				</div>
 				<input type="hidden" name="alias_count" id="alias_count" value="1" />
 			#else
@@ -163,15 +139,15 @@
 		 					$tlang.getString("sitediinf.editurl")
 		 				</label>
 		 				<div class="col-sm-6">
-		 					$!site_url_base<input type="text" name="alias_$aliasIdx" id="alias_$aliasIdx" maxlength="40" size="20" value="$validator.escapeHtml($!siteAlias)" />
+		 					$!site_url_base<input type="text" name="alias_$aliasIdx" id="alias_$aliasIdx" maxlength="40" size="20" value="$formattedText.escapeHtml($!siteAlias)" />
 		 				</div>
 		 			#else
 		 				<label for="alias_$aliasIdx" class="col-sm-2 form-control-label">
 		 					$tlang.getString("sinfo.url")
 		 				</label>
 		 				<div class="col-sm-6">
-		 					$!site_url_base$validator.escapeHtml($!siteAlias)
-		 					<input type="hidden" name="alias_$aliasIdx" id="alias_$aliasIdx" value="$validator.escapeHtml($!siteAlias)" />
+		 					$!site_url_base$formattedText.escapeHtml($!siteAlias)
+		 					<input type="hidden" name="alias_$aliasIdx" id="alias_$aliasIdx" value="$formattedText.escapeHtml($!siteAlias)" />
 		 				</div>
 		 			#end
 		 			#set ( $aliasIdx = $aliasIdx + 1 )
@@ -205,10 +181,10 @@
  				$tlang.getString("sinfo.language")
  			</label> 
  			<div class="col-sm-6">
-				<select name="locales" class="indnt2" id="locales" size="5">
+				<select name="locales" class="indnt2" id="locales" >
 					<option value="" #if ($locale_string == "")selected="true" #end>$tlang.getString("sinfo.language.defaultUserLanguage")</option>			
 					#foreach($locale in $locales)			
-						<option value="$locale.toString()" #if ($locale.toString() == $locale_string)selected="true" #end>$validator.escapeHtml($tlang.getLocaleDisplayName($locale))</option>	
+						<option value="$locale.toString()" #if ($locale.toString() == $locale_string)selected="true" #end>$formattedText.escapeHtml($tlang.getLocaleDisplayName($locale))</option>	
 					#end			
 				</select>
 			</div>
@@ -224,7 +200,7 @@
 			<table border="0" cellpadding="0" cellspacing="0" >
 					<tr>
 						<td>
-							<textarea name="description" id="description" cols="65" rows="30" wrap="virtual">$validator.escapeHtmlFormattedTextarea($!description)</textarea>
+							<textarea name="description" id="description" cols="65" rows="30" wrap="virtual">$formattedText.escapeHtmlFormattedTextarea($!description)</textarea>
 							#chef_setupformattedtextarea("description")
 						</td>
 					</tr>
@@ -240,11 +216,11 @@
 				</span>
 			</label>
 			<div class="col-sm-6">
-				<textarea  name="short_description" id="short_description" tabindex="2" rows="2" cols="45" onkeyup="LimitText(this,80)">$validator.escapeHtmlTextarea($!short_description)</textarea>
+				<textarea  name="short_description" id="short_description" rows="2" cols="45" onkeyup="LimitText(this,80)">$validator.escapeHtmlTextarea($!short_description)</textarea>
 			</div>
 		</div>	
-		## Skin  & Site Icon ##
-		#if($allowSkinChoice)
+		## Skin & Site Icon ##
+		#if($allowSkinChoice && !$!skins.isEmpty())
 			<div class ="form-group row ">
 				<label for="skin" class="col-sm-2 form-control-label">
 					$tlang.getString("sitediinf.app")
@@ -293,14 +269,11 @@
 				<input type="text" name="siteContactEmail" id="siteContactEmail" size="20" maxlength="99" value="$!form_site_contact_email" />
 			</div>
 		</div>
-        #if ($isMathJaxInstalled)
-        <div>
-            <input type="checkbox" name="allowMathJax" id="allowMathJax" value="true" #if ($isMathJaxAllowedInSite)checked#end/>
-            <label for="allowMathJax">
-                $tlang.getString("sinfo.mathjax.allowForSite")
-            </label>
-        </div>
-        #end
+		#if ($isMathJaxInstalled)
+			#if ($isMathJaxEnabledForSite)
+				<input type="hidden" name="isMathJaxEnabledForSite" id="isMathJaxEnabledForSite" value="on"/>
+			#end
+		#end
 		<input type="hidden" name="back" value="$!backIndex" />
 		<input type="hidden" name="templateIndex" value="$!templateIndex" />
 		<input type="hidden" name="continue" value="$!continue" />

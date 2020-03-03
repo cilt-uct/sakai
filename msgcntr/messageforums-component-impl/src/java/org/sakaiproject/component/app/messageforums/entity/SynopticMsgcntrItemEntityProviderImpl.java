@@ -1,12 +1,26 @@
+/**
+ * Copyright (c) 2005-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.component.app.messageforums.entity;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
 import org.sakaiproject.api.app.messageforums.SynopticMsgcntrItem;
 import org.sakaiproject.api.app.messageforums.SynopticMsgcntrManager;
 import org.sakaiproject.api.app.messageforums.entity.SynopticMsgcntrItemEntityProvider;
@@ -21,20 +35,24 @@ import org.sakaiproject.entitybroker.entityprovider.extension.Formats;
 import org.sakaiproject.entitybroker.entityprovider.extension.RequestGetter;
 import org.sakaiproject.entitybroker.entityprovider.extension.RequestStorage;
 import org.sakaiproject.entitybroker.entityprovider.search.Search;
-import org.sakaiproject.user.cover.UserDirectoryService;
+import org.sakaiproject.user.api.UserDirectoryService;
 
-
+@Slf4j
 public class SynopticMsgcntrItemEntityProviderImpl 
 implements SynopticMsgcntrItemEntityProvider, CoreEntityProvider, AutoRegisterEntityProvider, PropertyProvideable, RequestStorable, RESTful, RequestAware{
 
-	private SynopticMsgcntrManager synopticMsgcntrManager;
-	private static final Logger LOG = LoggerFactory.getLogger(SynopticMsgcntrItemEntityProviderImpl.class);
+    private SynopticMsgcntrManager synopticMsgcntrManager;
 
     private RequestStorage requestStorage;
     public void setRequestStorage(RequestStorage requestStorage) {
         this.requestStorage = requestStorage;
     }
-	
+    
+    private UserDirectoryService userDirectoryService;	
+    public void setUserDirectoryService(UserDirectoryService userDirectoryService) {
+        this.userDirectoryService = userDirectoryService;
+    }
+
     private RequestGetter requestGetter;
     public void setRequestGetter(RequestGetter requestGetter){
     	this.requestGetter = requestGetter;
@@ -98,7 +116,7 @@ implements SynopticMsgcntrItemEntityProvider, CoreEntityProvider, AutoRegisterEn
 		if (siteId == null) {
 			return null;
 		}
-		String userId = UserDirectoryService.getCurrentUser().getId();
+		String userId = userDirectoryService.getCurrentUser().getId();
 		if(userId == null || "".equals(userId)){
 			return null;
 		}
@@ -120,7 +138,7 @@ implements SynopticMsgcntrItemEntityProvider, CoreEntityProvider, AutoRegisterEn
 	}
 
 	public List<?> getEntities(EntityReference ref, Search search) {		
-		String userId = UserDirectoryService.getCurrentUser().getId();
+		String userId = userDirectoryService.getCurrentUser().getId();
 		if(userId == null){
 			return null;
 		}

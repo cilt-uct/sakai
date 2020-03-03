@@ -1,0 +1,563 @@
+<!-- start:  assignment_macros.vm -->
+#macro( propertyDetails $props )
+    <span class="textPanelFooter">(
+    #if (!$props.getBooleanProperty($props.NamePropIsCollection))
+        $props.getPropertyFormatted($props.NamePropContentLength);
+    #end
+    $props.getPropertyFormatted($props.NamePropCreationDate)
+    )</span>
+#end
+
+##defines a macro to display attachment details
+#macro( attachmentDetails )
+    #if ($props.getBooleanProperty($props.NamePropIsCollection))
+        <img src = "#imageLink($contentTypeImageService.getContentTypeImage("folder"))" border="0" alt="$tlang.getString("gen.folatt")"/>
+    #else
+        <img src = "#imageLink($contentTypeImageService.getContentTypeImage($props.getProperty($props.NamePropContentType)))" border="0" alt="$tlang.getString("gen.filatt")" />
+    #end
+    <a href="$attachment.Url" target="_blank">$formattedText.escapeHtml($props.getPropertyFormatted($props.NamePropDisplayName))</a>
+    #propertyDetails($props)
+#end
+
+#macro( assignmentTitleIcon $assignment )
+    #if ($!assignment.IsGroup)
+        <i class="fa fa-users" aria-hidden="true" title="$tlang.getString('gen.groupassignment')"></i>
+    #end
+#end
+
+#macro( sectionIcon $group )
+    #if ($!group.getProperties().get("sections_category"))
+        <i class="fa fa-users" aria-hidden="true" title="$tlang.getString('gen.section.info')"></i>
+    #end
+#end
+
+## Defining macro to repeat buttons at the top and bottom of the page
+#macro( buttonBar )
+    <div class="act">
+        <input accesskey="s" type="button" class="active" name="post" value="$tlang.getString("gen.pos")" onclick="SPNR.disableControlsAndSpin( this, null ); ASN.submitForm( 'newAssignmentForm', 'post', null, null ); return false;" />
+        <input accesskey="v" type="button" name="preview" value="$tlang.getString("gen.pre")" onclick="SPNR.disableControlsAndSpin( this, null ); ASN.submitForm( 'newAssignmentForm', 'preview', null, null ); return false;" />
+        #if (!($!assignment && !$assignment.draft))
+            <input accesskey="d" type="button" name="save" value="$tlang.getString("gen.savdra")" onclick="SPNR.disableControlsAndSpin( this, null ); ASN.submitForm( 'newAssignmentForm', 'save', null, null ); return false;" />
+        #end
+        <input accesskey="x" type="button" name="cancel" value="$tlang.getString("gen.can")" onclick="SPNR.disableControlsAndSpin( this, null ); ASN.submitForm( 'newAssignmentForm', 'canceledit', null, null ); return false;" />
+    </div>
+#end
+
+## Macro for the paginator
+#macro( paginator $topMsgPos $btmMsgPos $allMsgNumber $pagesize $goFPButton $goPPButton $goNPButton $goLPButton $sakai_csrf_token $pagesizes )
+    <nav class="assignment-pager panel panel-default">
+        <div class="panel-heading" id="pagingHeader">
+            $tlang.getString( "gen.viewing" ) $topMsgPos - $btmMsgPos $tlang.getString( "gen.of" ) $allMsgNumber $tlang.getString( "gen.items" )
+        </div>
+        <div class="panel-body">
+        #if( $pagesize != 0 )
+            <form name="firstpageForm" class="inlineForm" method="post" action="#toolForm("$action")">
+                    <span class="skip">$tlang.getString( "gen.first" )</span>
+                    <input type="submit" name="eventSubmit_doList_first" value="|&lt;" title="$tlang.getString("gen.first")"
+                        onclick="SPNR.disableControlsAndSpin( this, null ); ASN.resizeFrame();"
+                        #if( $goFPButton != "true" ) disabled="disabled" #end />
+                    <span class="skip">$tlang.getString( "gen.previous" ) $pagesize</span>
+                    <input type="submit" name="eventSubmit_doList_prev" value="&lt;" title="$tlang.getString( "gen.previous" ) $pagesize" accesskey="p"
+                        onclick="SPNR.disableControlsAndSpin( this, null ); ASN.resizeFrame();"
+                        #if( $goPPButton != "true" ) disabled="disabled" #end />
+                <input type="hidden" name="sakai_csrf_token" value="$sakai_csrf_token" />
+            </form>
+        #end
+        <form id="pagesizeForm" name="pagesizeForm" class="inlineForm" method="post" action="#toolForm("$action")">
+            <input type="hidden" name="eventSubmit_doChange_pagesize" value="changepagesize" />
+            <label for="selectPageSize" class="skip">$tlang.getString("newassig.selectmessage")</label>
+            <select id="selectPageSize" name="selectPageSize" onchange="SPNR.insertSpinnerAfter( this, null, 'pagingHeader' ); ASN.submitForm( 'pagesizeForm', null, null, null );">
+                #foreach( $i in $!pagesizes )
+                    <option value="$i" #if( $pagesize == $i ) selected="selected" #end>$tlang.getString( "list.show" ) $i $tlang.getString( "list.itemsper" )</option>
+                #end
+            </select>
+            <input type="hidden" name="sakai_csrf_token" value="$sakai_csrf_token" />
+        </form>
+        #if( $pagesize != 0 )
+            <form name="nextpageForm" class="inlineForm" method="post" action="#toolForm( "$action" )">
+                    <span class="skip">$tlang.getString( "gen.next" ) $pagesize</span>
+                    <input type="submit" name="eventSubmit_doList_next" value="&gt;" title="$tlang.getString( "gen.next" ) $pagesize" accesskey="n"
+                        onclick="SPNR.disableControlsAndSpin( this, null ); ASN.resizeFrame();"
+                        #if( $goNPButton != "true" ) disabled="disabled" #end />
+                    <span class="skip">$tlang.getString( "gen.last" )</span>
+                    <input type="submit" name="eventSubmit_doList_last" value="&gt;|" title="$tlang.getString( "gen.last" )"
+                        onclick="SPNR.disableControlsAndSpin( this, null ); ASN.resizeFrame();"
+                        #if( $goLPButton != "true" ) disabled="disabled" #end />
+                <input type="hidden" name="sakai_csrf_token" value="$sakai_csrf_token" />
+            </form>
+        #end
+        </div>
+    </nav>
+#end
+
+## Macro for the top nav bar HREF and #toolLink/#toolLinkParam
+#macro( navBarHREF $allowAddAssignment $withGrade $allowGradeSubmission $allowAddAssignment $allowRecoverAssignment $allowAllGroups $assignmentscheck $allowUpdateSite $enableViewOption $view $current )
+    <ul class="navIntraTool actionToolBar">
+        #set( $prevAction = false )
+        #if( $allowAddAssignment )
+            #set( $prevAction = true )
+            <li class="firstToolBarItem">
+                <span>
+                    <a href="#toolLink( "$action" "doNew_assignment" )" title="$!tlang.getString( "new" )">$!tlang.getString( "new" )</a>
+                </span>
+            </li>
+        #end
+        <li #if( $prevAction == false ) class="firstToolBarItem" #set( $prevAction = true ) #end>
+            #if( !$!view.equals( "lisofass1" ) )
+                <span>
+                    <a href="#toolLinkParam( "$action" "doView" "view=lisofass1" )" title="$!tlang.getString( "lisofass1" )">$!tlang.getString( "lisofass1" )</a>
+                </span>
+            #else
+                <span class="current">$!tlang.getString( "lisofass1" )</span>
+            #end
+        </li>
+        <li>
+            #if( !$!view.equals( "lisofass2" ) )
+                <span>
+                    <a href="#toolLinkParam( "$action" "doView" "view=lisofass2" )" title="$!tlang.getString( "lisofass2" )">$!tlang.getString( "lisofass2" )</a>
+                </span>
+            #else
+                <span class="current">$!tlang.getString( "lisofass2" )</span>
+            #end
+        </li>
+
+        #if( $withGrade && $!allowGradeSubmission )
+            <li #if( $prevAction == false ) class="firstToolBarItem" #set( $prevAction = true ) #end>
+                #if( !$!view.equals( "grarep" ) )
+                    <span>
+                        <a href="#toolLinkParam( "$action" "doView" "view=grarep" )" title="$!tlang.getString( "gen.grarep" )">$!tlang.getString( "gen.grarep" )</a>
+                    </span>
+                #else
+                    <span class="current">$!tlang.getString( "gen.grarep" )</span>
+                #end
+            </li>
+        #end
+
+        #if( $allowAddAssignment )
+            <li #if( $prevAction == false ) class="firstToolBarItem" #set( $prevAction = true ) #end>
+                #if( !$!view.equals( "stuvie" ) )
+                    <span>
+                        <a href="#toolLinkParam( "$action" "doView" "view=stuvie" )" title="$!tlang.getString( "gen.stuvie" )">$!tlang.getString( "gen.stuvie" )</a>
+                    </span>
+                #else
+                    <span class="current">$!tlang.getString( "gen.stuvie" )</span>
+                #end
+            </li>
+        #end
+        #if( ($allowAllGroups) && ($assignmentscheck) )
+            <li #if( $prevAction == false ) class="firstToolBarItem" #set( $prevAction = true ) #end>
+                #if( !$!current.equals( "reorder" ) )
+                    <span>
+                        <a href="#toolLink( "$action" "doReorder" )" title="$tlang.getString( "gen.reorder" )">$tlang.getString( "gen.reorder" )</a>
+                    </span>
+                #else
+                    <span class="current">$!tlang.getString( "gen.reorder" )</span>
+                #end
+            </li>
+        #end
+        #if( $allowUpdateSite )
+            <li #if( $prevAction == false ) class="firstToolBarItem" #set( $prevAction = true ) #end>
+                <span>
+                    <a href="#toolLink( "$action" "doPermissions" )" title="$tlang.getString( "permis" )">$tlang.getString( "permis" )</a>
+                </span>
+            </li>
+            #if( $enableViewOption )
+                <li #if( $prevAction == false ) class="firstToolBarItem" #set( $prevAction = true ) #end>
+                    #if( !$!current.equals( "options" ) )
+                        <span>
+                            <a href="#toolLink( "$action" "doOptions" )" title="$tlang.getString( "options" )">$tlang.getString( "options" )</a>
+                        </span>
+                    #else
+                        <span class="current">$!tlang.getString( "options" )</span>
+                    #end
+                </li>
+            #end
+        #end
+        #if( $allowRecoverAssignment )
+            <li #if( $prevAction == false ) class="firstToolBarItem" #set( $prevAction = true ) #end>
+                #if( !$!current.equals("Assignment.mode_list_removed_assignments"))
+                    <span>
+                        <a href="#toolLinkParam( "$action" "doView" "view=Assignment.mode_list_removed_assignments" )" title="$!tlang.getString( "removedAssignmentList" )">$!tlang.getString( "removedAssignmentList" )</a>
+                    </span>
+                #else
+                    <span class="current">$!tlang.getString( "removedAssignmentList" )</span>
+                #end
+            </li>
+        #end
+    </ul>
+#end
+
+## Macro for the top nav bar using onclick JavaScript
+#macro( navBarOnClick $allowAddAssignment $withGrade $allowGradeSubmission $allowAddAssignment $allowRecoverAssignment $allowAllGroups $assignmentscheck $allowUpdateSite $enableViewOption $view $formID $current )
+    <ul class="navIntraTool actionToolBar">
+        #set( $prevAction = false )
+        #if( $allowAddAssignment )
+            #set( $prevAction = true )
+            <li class="firstToolBarItem">
+                #if( $current == "new" )
+                    <span class="current">$!tlang.getString( "new" )</span>
+                #else
+                    <span>
+                        <a href="javascript:void(0)" title="$!tlang.getString( "new" )" onclick="ASN.submitForm( '$formID', 'new', null, 'new' ); return false;">
+                            $!tlang.getString( "new" )
+                        </a>
+                    </span
+                #end
+            </li>
+        #end
+        #if( !$!view.equals( "lisofass1" ) )
+            #set( $prevAction = true )
+            <li #if( $prevAction == false ) class="firstToolBarItem" #set( $prevAction = true ) #end>
+                <span>
+                    <a href="javascript:void(0)" title="$!tlang.getString( "lisofass1" )" onclick="ASN.submitForm( '$formID', 'view', null, 'lisofass1' ); return false;">
+                        $!tlang.getString( "lisofass1" )
+                    </a>
+                </span>
+            </li>
+        #elseif( $current == "list" )
+            <li>
+                <span class="current">$!tlang.getString( "lisofass1" )</span>
+            </li>
+        #else
+            <li>
+                <span class="disabled">$!tlang.getString( "lisofass1" )</span>
+            </li>
+        #end
+        #if( !$!view.equals( "lisofass2" ) )
+            <li>
+                <span>
+                    <a href="javascript:void(0)" title="$!tlang.getString( "lisofass2" )" onclick="ASN.submitForm( '$formID', 'view', null, 'lisofass2' ); return false;">
+                        $!tlang.getString( "lisofass2" )
+                    </a>
+                </span>
+            </li>
+        #elseif( $current == "list" )
+            <li>
+                <span class="current">$!tlang.getString( "lisofass2" )</span>
+            </li>
+        #else
+            <li>
+                <span class="disabled">$!tlang.getString( "lisofass2" )</span>
+            </li>
+        #end
+        #if( $withGrade && $!allowGradeSubmission )
+            <li #if( $prevAction == false ) class="firstToolBarItem" #set( $prevAction = true ) #end>
+                #if( $current == "gradeReport" )
+                    <span class="current">$!tlang.getString( "gen.grarep" )</span>
+                #else
+                    <span>
+                        <a href="javascript:void(0)" title="$!tlang.getString( "gen.grarep" )" onclick="ASN.submitForm( '$formID', 'view', null, 'grarep' ); return false;">
+                            $!tlang.getString( "gen.grarep" )
+                        </a>
+                    </span>
+                #end
+            </li>
+        #end
+        #if( $allowAddAssignment )
+            <li #if( $prevAction == false ) class="firstToolBarItem" #set( $prevAction = true ) #end>
+                #if( !$!view.equals( "stuvie" ) )
+                    <span>
+                        <a href="javascript:void(0)" title="$!tlang.getString( "gen.stuvie" )" onclick="ASN.submitForm( '$formID', 'view', null, 'stuvie' ); return false;">
+                            $!tlang.getString( "gen.stuvie" )
+                        </a>
+                    </span>
+                #elseif( $current == "studentView" )
+                    <span class="current">$!tlang.getString( "gen.stuvie" )</span>
+                #else
+                    <span class="disabled">$!tlang.getString( "gen.stuvie" )</span>
+                #end
+            </li>
+        #end
+        #if( ($allowAllGroups) && ($assignmentscheck) )
+            <li #if( $prevAction == false ) class="firstToolBarItem" #set( $prevAction = true ) #end>
+                #if( $current == "reorder" )
+                    <span class="current">$tlang.getString( "gen.reorder" )</span>
+                #else
+                    <span>
+                        <a href="javascript:void(0)" title="$tlang.getString( "gen.reorder" )" onclick="ASN.submitForm( '$formID', 'reorderNavigation', null, null ); return false;">
+                            $tlang.getString( "gen.reorder" )
+                        </a>
+                    </span>
+                #end
+            </li>
+        #end
+        #if( $allowUpdateSite )
+            <li #if( $prevAction == false ) class="firstToolBarItem" #set( $prevAction = true ) #end>
+                <span>
+                    <a href="javascript:void(0)" title="$tlang.getString( "permis" )" onclick="ASN.submitForm( '$formID', 'permissions', null, null ); return false;">
+                        $tlang.getString( "permis" )
+                    </a>
+                </span>
+            </li>
+            #if( $enableViewOption )
+                <li #if( $prevAction == false ) class="firstToolBarItem" #set( $prevAction = true ) #end>
+                    <span>
+                        <a href="javascript:void(0)" title="$tlang.getString( "options" )" onclick="ASN.submitForm( '$formID', 'options', null, null ); return false;">
+                            $tlang.getString( "options" )
+                        </a>
+                    </span>
+                </li>
+            #end
+        #end
+        #if( $allowRecoverAssignment )
+            <li #if( $prevAction == false ) class="firstToolBarItem" #set( $prevAction = true ) #end>
+                #if( $current == "Assignment.mode_list_removed_assignments")
+                    <span class="current">$tlang.getString( "removedAssignmentList" )</span>
+                #else
+                    <span>
+                        <a href="javascript:void(0)" title="$tlang.getString( "removedAssignmentList" )" onclick="ASN.submitForm( '$formID', 'view', null, 'Assignment.mode_list_removed_assignments' ); return false;">
+                            $tlang.getString( "removedAssignmentList" )
+                        </a>
+                    </span>
+                #end
+            </li>
+        #end
+    </ul>
+#end
+
+## macro for rendering attachment ui
+#macro( attachmentFragment $attachmentsSet $attachmentReferencesMap $decoratedUrlMap $forSubmission )
+    #if (!$forSubmission)
+        <h4>$tlang.getString("gen.addres2")</h4>
+    #end
+    #if ($attachmentsSet)
+        #set ($size = $attachmentsSet.size())
+        #if ($size < 1)
+            <p class="instruction">
+                #if ($submissionType == 5)
+                    $tlang.getString("gen.noatt.single")
+                #else
+                    $tlang.getString("gen.noatt")
+                #end
+            </p>
+        #else
+            #if ($forSubmission)
+                <h4>
+                    #if ($submissionType == 5)
+        				$tlang.getString("gen.att.single")
+			        #else
+                        $tlang.getString("gen.att")
+                    #end
+                </h4>
+            #end
+            <ul class="attachList">
+                #foreach ($attachmentReference in $attachmentsSet)
+                    #set ($reference = $attachmentReferencesMap.get($attachmentReference))
+                    #if ($reference)
+                        #set ($props = false)
+                        #set ($props = $reference.Properties)
+                        #if ($!props)
+                            <li>
+                                #if ($props.getBooleanProperty($props.NamePropIsCollection))
+                                    <img src = "#imageLink($contentTypeImageService.getContentTypeImage("folder"))" border="0" alt="$tlang.getString("gen.folatt")" />
+                                #else
+                                    <img src = "#imageLink($contentTypeImageService.getContentTypeImage($props.getProperty($props.NamePropContentType)))" border="0" alt="$tlang.getString("gen.filatt")" />
+                                #end
+                                #if ($decoratedUrlMap)
+                                    <a href="$decoratedUrlMap.get($reference.Url)" target="_blank">$formattedText.escapeHtml($props.getPropertyFormatted($props.NamePropDisplayName))</a>
+                                #else
+                                    <a href="$reference.Url" target="_blank">$formattedText.escapeHtml($props.getPropertyFormatted($props.NamePropDisplayName))</a>
+                                #end
+                                #propertyDetails($props)
+                            </li>
+                        #end
+                    #end
+                #end
+            </ul>
+        #end
+    #end
+#end
+
+## macro for rendering student's progress bar
+#macro( progressBar $progressStatus)
+    #if (!$!progressStatus.isEmpty())
+        #set($dynWidth = 100.0 / $!progressStatus.size())
+        #set($totalWidthBg = 0)
+        #set($statusSet = $!progressStatus.keySet())
+        <div class="progress-container">
+            <div class="progress progress-cols">
+                #foreach ($status in $!statusSet.iterator())
+                    #if($!progressStatus.get($status))
+                        <div class="progress-bar progress-bar-empty progress-bar-active" role="progressbar" style="width: $dynWidth%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="$dynWidth">$status</div>
+                        #set($totalWidthBg = $totalWidthBg + $dynWidth)
+                    #else
+                        <div class="progress-bar progress-bar-empty" role="progressbar" style="width: $dynWidth%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="$dynWidth">$status</div>
+                    #end
+                #end
+            </div>
+            <div class="progress">
+                #set($minWidth = $totalWidthBg - $dynWidth)
+                <div class="progress-bar progress-bar-striped active" role="progressbar" style="width: $minWidth%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="$totalWidthBg"></div>
+            </div>
+            <script>
+                $(document).ready(function() {
+                    $('.progress-bar.progress-bar-striped').css('width', $totalWidthBg + '%');
+                });
+            </script>
+        </div>
+    #end
+#end
+
+## macro to display content review results; assumes they're visible (caller must do the required checks / provide appropriate messaging)
+#macro(contentReviewReports $submission $inTable $displayUrkundOptOut)
+	#set($reviewResults=$!service.getSortedContentReviewResults($!submission))
+	#if ($reviewResults.size() >= 3)
+		#if (!$inTable)
+			<div class="contentReviewDisclosure discTria">
+		#else
+			<div class="contentReviewDisclosure">
+		#end
+			<a href="#" class="contentReviewDisclosure" onclick="ASN.handleReportsTriangleDisclosure(this, this.children[0], this.parentNode.parentNode.children[1], '$tlang.getString('review.report.expand')', '$tlang.getString('review.report.collapse')'); return false;" aria-label="$tlang.getString('review.report.expand')" aria-expanded="false" aria-controls="reportsDiv_$submission.id" >
+				<img class="disclosureTriangle" src="#imageLink("sakai/expand.gif")" alt="" />
+				$tlang.getFormattedMessage("review.reports", $reviewResults.size())
+			</a>
+		</div>
+		<div id="reportsDiv_$submission.id" style="display:none;">
+	#end
+	#foreach($reviewResult in $reviewResults)
+	<div>
+		<div class="contentReviewDisclosure">
+			#set ($props = $reviewResult.getContentResource().Properties)
+			#set ($hasScore = !$reviewResult.getReviewReport().equals("Error"))
+			<span class="reportIcon">
+				#if ($hasScore)
+					<a href="$reviewResult.getReviewReport()" target="_blank">
+				#end
+				<span class="$reviewResult.getReviewIconCssClass()" title="#if(!$hasScore)$reviewResult.getReviewError()#{else}$reviewResult.getReviewScore()#end"></span>
+				#if ($hasScore)
+					</a>
+				#end
+			</span>
+			#if ($hasScore)
+				$tlang.getFormattedMessage("content_review.score.display", $reviewResult.getReviewScore())
+			#else
+				<a href="#" class="contentReviewDisclosure" onclick="ASN.handleReportsTriangleDisclosure(this, this.children[0], this.parentNode.parentNode.children[1], '$tlang.getString('review.report.error.expand')', '$tlang.getString('review.report.error.collapse')'); return false;" aria-label="$tlang.getString('review.report.error.expand')" aria-expanded="false" aria-controls="contentReviewMessage_$reviewResult.id">
+					<img class="disclosureTriangle" src="#imageLink("sakai/expand.gif")" alt="" />
+					#if ($reviewResult.isPending())
+						$tlang.getString("content_review.disclosure.pending")
+					#else
+						$tlang.getString("content_review.disclosure.error")
+					#end
+				</a>
+			#end
+			$tlang.getString("content_review.delimiter")
+			#if ($reviewResult.isInline())
+				$tlang.getString("submission.inline")
+			#else
+				$formattedText.escapeHtml($props.getPropertyFormatted($props.NamePropDisplayName))
+			#end
+			#if ($displayUrkundOptOut && $hasScore && $reviewResult.contentReviewItem.Properties.get($NamePropContentReviewOptoutUrl))
+					(<a href="$!reviewResult.contentReviewItem.Properties.get($NamePropContentReviewOptoutUrl)" target="_blank">$tlang.getString("review.report.urkund.optoutlink")</a>)
+			#end
+		</div>
+	#if (!$hasScore)
+		<div id="contentReviewMessage_$reviewResult.id" class="contentReviewMessage" style="display:none;">
+			$reviewResult.getReviewError()
+		</div>
+	#end
+	</div>
+	#end
+	#if ($reviewResults.size() >= 3)
+		</div>
+	#end
+#end
+
+## macro for rendering supplement items ui
+#macro( supplementItems $!allowViewModelAnswer $!allowReadAssignmentNoteItem $!allowViewAllPurposeItem $!assignmentModelAnswerItem $!assignmentNoteItem $!assignmentAllPurposeItem )
+	<script>
+		$(document).ready(function(){
+			ASN.setupToggleAreas('toggleAnchor', 'toggledContent', false, 'fast');
+		});
+	</script>
+	## Model Answer
+	#if($!allowViewModelAnswer)
+		<h4 id="toggleModel" class="toggleAnchor specialLink">
+			<img alt="expand" class="expand" src="/library/image/sakai/expand.gif" />
+			<img alt="collapse" class="collapse" src="/library/image/sakai/collapse.gif" />
+			$tlang.getString('modelAnswer')
+		</h4>
+		<div class="toggledContent model">
+			<p>$formattedText.escapeHtml($!assignmentModelAnswerItem.getText())</p>
+			#set ($mAttachments = $!assignmentModelAnswerItem.getAttachmentObjectSet())
+			<ul class="attachList">
+				#set ($size = 0)
+				#set ($props = false)
+				#foreach ($attachment in $!mAttachments) 
+					#set ($props = $attachment.Properties) 
+					#if ($!props)
+						#set ($size = $size + 1)
+					#end
+				#end
+				#if ($size > 0)
+					#foreach ($attachment in $mAttachments)
+						#set ($props = false)
+						#set ($props = $attachment.Properties) 
+						#if ($!props)
+							<li>
+								#if ($props.getBooleanProperty($props.NamePropIsCollection))
+									<img src = "#imageLink($contentTypeImageService.getContentTypeImage("folder"))" border="0" alt="$tlang.getString("gen.folatt")" />
+								#else
+									<img src = "#imageLink($contentTypeImageService.getContentTypeImage($props.getProperty($props.NamePropContentType)))" border="0" alt="$tlang.getString("gen.filatt")" />
+								#end
+								<a href="$attachment.Url" target="_blank">$formattedText.escapeHtml($props.getPropertyFormatted($props.NamePropDisplayName))</a>						
+								#propertyDetails($props)
+							</li>
+						#end
+					#end
+				#end
+			</ul>
+		</div>
+	#end
+	## Private Note	
+	#if ($!allowReadAssignmentNoteItem)
+		<h4 id="toggleNotes" class="toggleAnchor specialLink">
+			<img alt="expand" class="expand" src="/library/image/sakai/expand.gif" />
+			<img alt="collapse" class="collapse" src="/library/image/sakai/collapse.gif" />
+			$tlang.getString('note.label')
+		</h4>
+		<div class="toggledContent notes">
+			$formattedText.escapeHtml($!assignmentNoteItem.getNote())
+		</div>
+	#end
+	## All Purpose
+	#if ($!allowViewAllPurposeItem)
+		<h4 id="toggleAllPurpose" class="toggleAnchor specialLink">
+			<img alt="expand" class="expand" src="/library/image/sakai/expand.gif" />
+			<img alt="collapse" class="collapse" src="/library/image/sakai/collapse.gif" />
+			$tlang.getString('allPurpose')
+		</h4>
+		<div class="toggledContent allPurpose">
+			<p>$formattedText.escapeHtml($!assignmentAllPurposeItem.getTitle())</p>
+			<p>$formattedText.escapeHtml($!assignmentAllPurposeItem.getText())</p>
+			#set ($aAttachments = $!assignmentAllPurposeItem.getAttachmentObjectSet())
+			<ul class="attachList">
+				#set ($size = 0)
+				#set ($props = false)
+				#foreach ($attachment in $!aAttachments) 
+					#set ($props = $attachment.Properties) 
+					#if ($!props)
+						#set ($size = $size + 1)
+					#end
+				#end
+				#if ($size > 0)
+					#foreach ($attachment in $aAttachments)
+						#set ($props = false)
+						#set ($props = $attachment.Properties) 
+						#if ($!props)
+							<li>
+								#if ($props.getBooleanProperty($props.NamePropIsCollection))
+									<img src = "#imageLink($contentTypeImageService.getContentTypeImage("folder"))" border="0" alt="$tlang.getString("gen.folatt")" />
+								#else
+									<img src = "#imageLink($contentTypeImageService.getContentTypeImage($props.getProperty($props.NamePropContentType)))" border="0" alt="$tlang.getString("gen.filatt")" />
+								#end
+								<a href="$attachment.Url" target="_blank">$formattedText.escapeHtml($props.getPropertyFormatted($props.NamePropDisplayName))</a>						
+								#propertyDetails($props)
+							</li>
+						#end
+					#end
+				#end
+			</ul>
+		</div>
+	#end
+#end
+<!-- end: assignment_macros.vm -->

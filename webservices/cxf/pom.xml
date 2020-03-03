@@ -12,11 +12,11 @@
     <parent>
         <groupId>org.sakaiproject.webservices</groupId>
         <artifactId>webservices</artifactId>
-        <version>12-SNAPSHOT</version>
+        <version>21-SNAPSHOT</version>
     </parent>
 
     <properties>
-        <cxf.version>3.1.7</cxf.version>
+        <cxf.version>3.3.5</cxf.version>
     </properties>
 
     <dependencies>
@@ -64,7 +64,7 @@
         </dependency>
         <dependency>
             <groupId>javax.servlet</groupId>
-            <artifactId>servlet-api</artifactId>
+            <artifactId>javax.servlet-api</artifactId>
         </dependency>
 
         <!--  Sakai dependencies -->
@@ -135,13 +135,9 @@
             <artifactId>commons-codec</artifactId>
         </dependency>
         <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
-            <version>20090211</version>
+            <version>${sakai.org.json.version}</version>
         </dependency>
         <dependency>
             <groupId>org.jumpmind.symmetric</groupId>
@@ -157,7 +153,6 @@
         <dependency>
             <groupId>aopalliance</groupId>
             <artifactId>aopalliance</artifactId>
-            <version>1.0</version>
             <scope>provided</scope>
         </dependency>
 
@@ -170,7 +165,6 @@
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
-            <version>2.0.31-beta</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -182,6 +176,16 @@
             <groupId>OKI</groupId>
             <artifactId>OkiSID</artifactId>
             <version>rc6.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
 

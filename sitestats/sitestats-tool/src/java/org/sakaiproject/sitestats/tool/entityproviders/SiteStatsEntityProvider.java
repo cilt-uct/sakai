@@ -24,8 +24,9 @@ import java.util.Map;
 
 import javax.servlet.http.HttpServletResponse;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+import lombok.Setter;
+import org.apache.commons.lang3.StringUtils;
 
 import org.sakaiproject.entitybroker.exception.EntityException;
 import org.sakaiproject.entitybroker.EntityView;
@@ -43,17 +44,14 @@ import org.sakaiproject.sitestats.api.report.Report;
 import org.sakaiproject.sitestats.api.report.ReportDef;
 import org.sakaiproject.sitestats.api.report.ReportManager;
 
-import lombok.Setter;
-
 /**
  * Provides some JSON targets as custom actions.
  *
  * @author Adrian Fish <adrian.r.fish@gmail.com>
  */
 @Setter
+@Slf4j
 public class SiteStatsEntityProvider extends AbstractEntityProvider implements AutoRegisterEntityProvider, ActionsExecutable, Outputable, Describeable {
-
-    private final Logger logger = LoggerFactory.getLogger(SiteStatsEntityProvider.class);
 
     public static final String PREFIX = "sitestats";
 
@@ -90,8 +88,8 @@ public class SiteStatsEntityProvider extends AbstractEntityProvider implements A
             throw new EntityException("The reports request must include the site id", "", HttpServletResponse.SC_BAD_REQUEST);
         }
 
-        if (logger.isDebugEnabled()) {
-            logger.debug("SITE ID:" + siteId);
+        if (log.isDebugEnabled()) {
+            log.debug("SITE ID:" + siteId);
         }
 
         if (!developerHelperService.isUserAllowedInEntityReference("/user/" + userId, "sitestats.view", "/site/" + siteId)) {
@@ -121,8 +119,8 @@ public class SiteStatsEntityProvider extends AbstractEntityProvider implements A
 
         String siteId = view.getPathSegment(2);
 
-        if (logger.isDebugEnabled()) {
-            logger.debug("SITE ID:" + siteId);
+        if (log.isDebugEnabled()) {
+            log.debug("SITE ID:" + siteId);
         }
 
         if (!developerHelperService.isUserAllowedInEntityReference("/user/" + userId, "sitestats.view", "/site/" + siteId)) {
@@ -135,8 +133,8 @@ public class SiteStatsEntityProvider extends AbstractEntityProvider implements A
             throw new EntityException("You must supply a numeric report id", "", HttpServletResponse.SC_BAD_REQUEST);
         }
 
-        if (logger.isDebugEnabled()) {
-            logger.debug("REPORT ID:" + reportIdString);
+        if (log.isDebugEnabled()) {
+            log.debug("REPORT ID:" + reportIdString);
         }
 
         long reportId = -1;
@@ -152,7 +150,12 @@ public class SiteStatsEntityProvider extends AbstractEntityProvider implements A
         if (reportDef == null) {
             throw new EntityException("Report with id '" + reportId + "' doesn't exist.", "", HttpServletResponse.SC_BAD_REQUEST);
         }
-
+        
+        // system-wide reports will not have siteID set, and will try to run across all sites--which is bad
+        if (StringUtils.isBlank(reportDef.getReportParams().getSiteId())) {
+            reportDef.getReportParams().setSiteId(siteId);
+        }
+        
         Report report = reportManager.getReport(reportDef, true);
 
         List<StrippedStat> stripped = new ArrayList<StrippedStat>();
@@ -179,8 +182,8 @@ public class SiteStatsEntityProvider extends AbstractEntityProvider implements A
             throw new EntityException("The totals request must include the site id", "", HttpServletResponse.SC_BAD_REQUEST);
         }
 
-        if (logger.isDebugEnabled()) {
-            logger.debug("SITE ID:" + siteId);
+        if (log.isDebugEnabled()) {
+            log.debug("SITE ID:" + siteId);
         }
 
         if (!developerHelperService.isUserAllowedInEntityReference("/user/" + userId, "sitestats.view", "/site/" + siteId)) {

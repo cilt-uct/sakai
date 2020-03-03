@@ -3,6 +3,39 @@ var editing = false;
 var editorIndex = 1;
 var bodiesLoaded = false;
 
+//https://gist.github.com/Reinmar/b9df3f30a05786511a42
+$.widget( 'ui.dialog', $.ui.dialog, {
+    _allowInteraction: function( event ) {
+        if ( this._super( event ) ) {
+            return true;
+        }
+
+        // Address interaction issues with general iframes with the dialog.
+        // Fixes errors thrown in IE when clicking CKEditor magicline's "Insert paragraph here" button.
+        if ( event.target.ownerDocument != this.document[ 0 ] ) {
+            return true;
+        }
+
+        // Address interaction issues with dialog window.
+        if ( $( event.target ).closest( '.cke_dialog' ).length ) {
+            return true;
+        }
+
+        // Address interaction issues with iframe based drop downs in IE.
+        if ( $( event.target ).closest( '.cke' ).length ) {
+            return true;
+        }
+    },
+
+    // Uncomment this code when using jQuery UI 1.10.*.
+    // Addresses http://dev.ckeditor.com/ticket/10269
+    _moveToTop: function ( event, silent ) {
+        if ( !event || !this.options.modal ) {
+            this._super( event, silent );
+        }
+    }
+} );
+
 function setupAccordion(iframId, isInstructor, msgs, openDataId){
 	var activeVar = false;
 	if($( "#accordion .group" ).children("h3").size() <= 1){
@@ -17,22 +50,11 @@ function setupAccordion(iframId, isInstructor, msgs, openDataId){
 		autoHeight: false,
 		collapsible: true,
 		heightStyle: "content",
-		activate: function( event, ui ) {
-			if(ui.newHeader[0]){
-				if($("#" + iframId, window.parent.document).parents('html, body').size() > 0){
-					//we are in the portal, grab parent
-					$("#" + iframId, window.parent.document).parents('html, body').animate({scrollTop: $(ui.newHeader[0]).offset().top});
-				}else{
-					//we are in tool view w/o portal, grab html/body
-					$('html, body').animate({scrollTop: $(ui.newHeader[0]).offset().top});
-				}
-			}
-		}
 	});
 	if(isInstructor){
 		$( "#accordion span" ).sortable({
 			axis: "y",
-			handle: "h3",
+			handle: ".group",
 			start: function(event, ui){
 			dragStartIndex = ui.item.index();
 		},
@@ -47,10 +69,56 @@ function setupAccordion(iframId, isInstructor, msgs, openDataId){
 			if(moved !== 0){
 				//update the position:
 				postAjax($(ui.item).children(":first").attr("syllabusItem"), {"move": moved}, msgs);
+				updatePositions();
 			}
 		}
 		});
+		var itemsOrder = [];
+		function updatePositions() {
+			itemsOrder = [];
+			$('.reorder-element .group').each(function() {
+				itemsOrder.push($(this).attr('syllabusitem'));
+			});
+		}
+		updatePositions()
+		var saveTimeout;
+		$('#lastItemMoved').change(function() {
+			// Clear the enqueued positions save
+			clearTimeout(saveTimeout);
+			syllabusId = $(this).text();
+			syllabusItem = $('#' + syllabusId).parent().attr('syllabusitem');
+			saveTimeout = setTimeout(function(){
+				// Save the positions after 500ms with no more changes
+				// First of all save the selected item
+				var positionBefore = itemsOrder.indexOf(syllabusItem);
+				var index = $('#' + syllabusId).parent().parent().index();
+				var move = positionBefore - index;
+				if (move !== 0) {
+					postAjax(syllabusItem, {"move": move}, msgs);
+					itemsOrder.move(positionBefore, index);
+				}
+				var index = 0;
+				// After this, check if other elements also should be saved (mulitple changes)
+				$('.reorder-element .group').each(function() {
+					var syllabusItem = $(this).attr('syllabusitem');
+					var positionBefore = itemsOrder.indexOf(syllabusItem);
+					var move = positionBefore - index;
+					if (move === 0) {
+						index++;
+						return;
+					}
+					// This request should send all the array of positions in order to make it asynchronous (this logic will need a change)
+					postAjax(syllabusItem, {"move": move}, msgs);
+					itemsOrder.move(positionBefore, index);
+					index++;
+				});
+			}, 500);
+		});
 	}
+	Array.prototype.move = function(from,to){
+		this.splice(to,0,this.splice(from,1)[0]);
+		return this;
+	};
 	if(activeVar === false && openDataId && openDataId !== ''){
 		//instructor is working on this data item, keep it open and focused on when refreshing
 		$( "#accordion div[syllabusItem=" + openDataId + "].group .ui-accordion-header").click().focus();
@@ -81,165 +149,6 @@ function collapseAccordion(iframId){
 	});
 	$("#collapseLink").hide();
 	$("#expandLink").show();
-}
-
-//http://vitalets.github.io/x-editable/
-function setupEditable(msgs, iframId){
-	//setup editables:
-	$(".editItemTitle").editable({
-		name: "title",
-		type: 'text',
-		title: msgs.syllabus_title,
-		emptytext: msgs.clickToAddTitle,
-		placement: "right",
-		url: function(params) {
-			postAjax($(this).parents('div.group').attr("syllabusItem"), params, msgs);
-		},
-		validate: function(value) {
-		    if($.trim(value) === '') {
-		        return msgs.required;
-		    }
-		}
-	}).click(function (event){
-		event.stopPropagation();
-	});
-	
-	$(".startTimeInput").editable({
-		name: "startDate",
-		type: "combodate",
-		title: msgs.startdatetitle,
-		emptytext: msgs.clickToAddStartDate,
-		combodate: {
-			minYear: new Date().getFullYear() - 5,
-			maxYear: new Date().getFullYear() + 5
-		},
-		format: 'YYYY-MM-DD HH:mm',
-		viewformat: 'YYYY/MM/DD h:mm a',
-		template: 'YYYY / MM / DD hh:mm a',
-		placement: "left",
-		url: function(params) {
-			postAjax($(this).parents('div.group').attr("syllabusItem"), params, msgs);
-		},
-		validate: function(value){
-			if(value && "" !== $.trim(value)){
-				endTime = $(this).parents('div.group').find(".endTimeInput").text();
-				if(endTime && "" !== $.trim(endTime) && $.trim(endTime) !== $.trim(msgs.clickToAddEndDate) && value > getDateTime(endTime)){
-					return msgs.startBeforeEndDate + "  " + msgs.enddatetitle + ": " + endTime;
-				}
-			}
-		}
-	}).click(function (event){
-		event.stopPropagation();
-	});
-	$(".endTimeInput").editable({
-		name: "endDate",
-		type: "combodate",
-		title: msgs.enddatetitle,
-		emptytext: msgs.clickToAddEndDate,
-		combodate: {
-			minYear: new Date().getFullYear() - 5,
-			maxYear: new Date().getFullYear() + 5
-		},
-		format: 'YYYY-MM-DD HH:mm',
-		viewformat: 'YYYY/MM/DD h:mm a',
-		template: 'YYYY / MM / DD hh:mm a',
-		placement: "left",
-		url: function(params) {
-			postAjax($(this).parents('div.group').attr("syllabusItem"), params, msgs);
-		},
-		validate: function(value){
-			if(value && "" !== $.trim(value)){
-				startTime = $(this).parents('div.group').find(".startTimeInput").text();
-				if(startTime && "" !== $.trim(startTime) && $.trim(startTime) !== $.trim(msgs.clickToAddStartDate) && getDateTime(startTime) > value){
-					return msgs.startBeforeEndDate + "  " + msgs.startdatetitle + ": " + startTime;
-				}
-			}
-		}
-	}).click(function (event){
-		event.stopPropagation();
-	});
-	
-	$(".bodyInput").editable({
-		name: "body",
-		type: 'textarea',
-		title: msgs.syllabus_content,
-		emptytext: msgs.clickToAddBody,
-		onblur: "ignore",
-		display: function(value, sourceData) {
-			//when the display is first displayed (loading the page), the value is plain text (no html),
-			//do so not change anything for the first load (use a boolean set after this jquery: bodiesLoaded)
-			//after it's been loaded and the value changes, we need to update the html with the new value to display the
-			//change properly to the user
-			if(bodiesLoaded){
-				//clear out old html
-				$(this).html("");
-				//set the new html
-				$(this).append(value);
-				//we want the user's to be able to click links in their body text without
-				//having the edit popup
-				$(this).find("a").click(function (event){
-					event.stopPropagation();
-				});
-			}else{
-				//there is a bug in x-editable that, when an element hasn't loaded (i.e. just a youtube video (nothing else))
-				//and has a width of 0, will consider the element empty and put in the default empty text and not
-				//display the real value.  Work around is to set the width/height to a number > 0
-				//https://github.com/vitalets/x-editable/issues/344
-				$(this).width(1);
-				$(this).height(1);
-			}
-		},
-		url: function(params) {
-			postAjax($(this).parents('div.group').attr("syllabusItem"), params, msgs);
-		}
-	}).on( "tooltipopen", function( event, ui ) {
-		var innerHtml = $(this).closest(".bodyInput").html();
-		setTimeout(function(){
-					//scroll user to top of the section so they will see the popup box if the
-					//item is very large:
-					var topOffset = $(".ui-tooltip").offset().top;
-					if($("#" + iframId, window.parent.document).parents('html, body').size() > 0){
-						//we are in the portal, grab parent
-						$("#" + iframId, window.parent.document).parents('html, body').animate({scrollTop: topOffset});
-					}else{
-						//we are in tool view w/o portal, grab html/body
-						$('html, body').animate({scrollTop: topOffset});
-					}
-					
-					$("#textAreaWysiwyg").attr("id","textAreaWysiwyg" + editorIndex).focus();
-					$("#textAreaWysiwyg" + editorIndex).val(innerHtml);
-					$("#loading").hide();
-					$(".editable-submit").click(function(event) {
-						editorClick(event);
-					});
-					var toolTipLeft = $("#loading").closest(".ui-tooltip").position().left;
-					var accordionLeft = $( "#accordion" ).position().left;
-					var moveLeft = toolTipLeft - accordionLeft - 50;
-					$("#loading").closest(".ui-tooltip").animate({left: "-=" + moveLeft, top: (topOffset)}, 10);
-					var width = $( "#accordion" ).width() - 100;
-					sakai.editor.launch("textAreaWysiwyg" + editorIndex, {}, width, 300);
-					editorIndex++;
-					$(".editable-buttons").css({"display":"block", "margin-left":"0px","margin-top":"7px"});
-					//CKEditor needs to run some final functions when the checkbox is clicked:
-					$("button.editable-submit").click(function(event){
-						for ( instance in CKEDITOR.instances ){
-					        CKEDITOR.instances[instance].updateElement();
-					        CKEDITOR.instances[instance].destroy();
-						}
-					});
-			}, 1000);
-	});
-	//since we set the width/height to 1 to work around a bug, we need to set it back to auto:
-	//https://github.com/vitalets/x-editable/issues/344
-	$(".bodyInput").css('width', 'auto');
-	$(".bodyInput").css('height', 'auto');
-	
-	//we want the user's to be able to click links in their body text without
-	//having the edit popup
-	$(".bodyInput a").click(function (event){
-		event.stopPropagation();
-	});
-	bodiesLoaded = true;
 }
 
 function editorClick(event){
@@ -371,7 +280,7 @@ function setupToggleImages(action, imgClass, classOn, classOff, msgs){
 function showConfirmDeleteAttachment(deleteButton, msgs, event){
 	var title = $(deleteButton).parent().find(".attachment").html();
 	$('<div></div>').appendTo('body')
-		.html('<div><h6>' + msgs.confirmDelete + " '" + title + "'?</h6></div>")
+		.html('<div><div class="messageError">' + msgs.noUndoWarning + '</div><h6>' + msgs.confirmDelete + " '" + title + "'?</h6></div>")
 		.dialog({
 			position: { my: 'left center', at: 'right center', of: $(deleteButton)},
 			modal: true, title: msgs.deleteAttachmentTitle, zIndex: 10000, autoOpen: true,
@@ -407,7 +316,7 @@ function showConfirmDeleteAttachment(deleteButton, msgs, event){
 function showConfirmDelete(deleteButton, msgs, event){
 	var title = $(deleteButton).parent().find(".editItemTitle").html();
 	$('<div></div>').appendTo('body')
-		.html('<div><h6>' + msgs.confirmDelete + " '" + title + "'?</h6></div>")
+		.html('<div><div class="messageError">' + msgs.noUndoWarning + '</div><h6>' + msgs.confirmDelete + " '" + title + "'?</h6></div>")
 		.dialog({
 			position: { my: 'left center', at: 'right center', of: $(deleteButton)},
 			modal: true, title: msgs.deleteItemTitle, zIndex: 10000, autoOpen: true,
@@ -468,14 +377,17 @@ function doAddItemButtonClick( msgs, published )
 		if( $( "#successInfo" ).is( ":visible" ) )
 		{
 			location.reload();
+			return true;
 		}
 	}
+
+	return false;
 }
 
 function showConfirmAdd(msgs, mainframeId){
 	$('#container', this.top.document).append("<div></div>");
 	$('<div></div>').appendTo('body')
-		.html("<div><h6>" + msgs.syllabus_title + "</h6><input type='text' id='newTitle'/></div><div style='display:none' id='requiredTitle' class='warning'>" + msgs.required + "</div>" +
+		.html("<div><h6><span class='reqStar'>* </span>" + msgs.syllabus_title + "</h6><input type='text' id='newTitle'/></div><div style='display:none' id='requiredTitle' class='messageError'>" + msgs.required + "</div>" +
 				"<h6>" + msgs.syllabus_content + "</h6><div class='bodyInput' id='newContentDiv'><textarea cols='120' id='newContentTextAreaWysiwyg'/></div>")
 		.dialog({
 			position: {
@@ -493,11 +405,11 @@ function showConfirmAdd(msgs, mainframeId){
 			buttons: [
 				{
 					text: msgs.bar_publish,
-					click: function() { doAddItemButtonClick( msgs, true ); $( this ).dialog( "close" ); }
+					click: function() { if (doAddItemButtonClick( msgs, true )) {$( this ).dialog( "close" );} }
 				},
 				{
 					text: msgs.bar_new,
-					click: function() { doAddItemButtonClick( msgs, false ); $( this ).dialog( "close" ); }
+					click: function() { if (doAddItemButtonClick( msgs, false )) {$( this ).dialog( "close" );} }
 				},
 				{
 					text: msgs.bar_cancel,

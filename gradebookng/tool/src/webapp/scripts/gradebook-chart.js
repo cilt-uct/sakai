@@ -1,0 +1,144 @@
+
+/**
+ * GradebookNG Chart JS.
+ * 
+ * Renders charts using the supplied {@link org.sakaiproject.gradebookng.tool.model.GbChartData} object (serialised to JSON).
+ * Draws charts using ChartJS.
+ */
+
+/**
+ * Render the chart from the given dataset.
+ * @param gbChartData the data for the chart. Must be a GbChartData object serialised to JSON.
+ * @returns
+ */
+
+var myChart;
+
+function renderChart(gbChartData) {
+	var chartData = JSON.parse(gbChartData);
+
+	var chartId = chartData.chartId;
+	var chartType = chartData.chartType;
+	var chartTitle = chartData.chartTitle;
+	var xAxisLabel = chartData.xAxisLabel;
+	var yAxisLabel = chartData.yAxisLabel;
+
+	var ctx = $('#'+chartId);
+	myChart = new Chart(ctx, {
+		type: chartType,
+		options: {
+			title: {
+				display: true,
+				text: chartTitle,
+				fontSize: 18,
+				fontStyle: 'bold'
+			},
+			legend: {
+				display: false
+			},
+			scales: {
+				xAxes: [{
+					ticks: {
+						beginAtZero:true,
+						fontStyle: 'bold',
+						autoSkip: true,
+						maxRotation: 0
+					},
+					scaleLabel: {
+						display: true,
+						labelString: xAxisLabel,
+						fontSize: 14,
+						fontStyle: 'bold'
+					}
+				}],
+				yAxes: [{
+					ticks: {
+						beginAtZero:true,
+						fontStyle: 'bold',
+						autoskip: true,
+						maxRotation: 0
+					},
+					scaleLabel: {
+						display: true,
+						labelString: yAxisLabel,
+						fontSize: 14,
+						fontStyle: 'bold'
+					}
+				}]
+			},
+			tooltips: {
+				displayColors: false,
+				callbacks: {
+					title: function(tooltipItem, data) {
+						switch(chartType) {
+						case 'bar':
+							return tooltipItem[0].yLabel + ' student(s): ' + tooltipItem[0].xLabel;
+							break;
+						case 'horizontalBar':
+							return tooltipItem[0].xLabel + ' student(s): ' + tooltipItem[0].yLabel;
+						}
+
+					},
+					label: function() {},
+					afterTitle: function(tooltipItem) {
+						if (typeof(window.studentGradeRange) !== "undefined") {
+							switch(chartType) {
+							case 'bar':
+								if (window.studentGradeRange != null && window.studentGradeRange == tooltipItem[0].xLabel) {
+									return 'Your grade';
+								}
+								break;
+							case 'horizontalBar':
+								if (window.studentGradeRange != null && window.studentGradeRange == tooltipItem[0].yLabel) {
+									return 'Your grade';
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	});
+	renderChartData(gbChartData);
+}
+
+function renderChartData(gbChartData) {
+	var chartData = JSON.parse(gbChartData);
+
+	var dataset = chartData.dataset;
+	var chartId = chartData.chartId;
+	var studentGradeRange = chartData.studentGradeRange;
+	if ( typeof(studentGradeRange) !== undefined ) {
+		window.studentGradeRange = studentGradeRange;
+	}
+	var backgroundColour = [];
+
+	var data = $.map(dataset, function(value, index) {
+		return value;
+	});
+	var labels = $.map(dataset, function(value, index) {
+		return index;
+	});
+
+	//If this chart is being viewed by a student, display the bar that
+	//includes their mark in a different colour
+	if (studentGradeRange != null) {
+		var index = labels.indexOf(studentGradeRange);
+		for (i = 0; i < labels.length; i++) {
+			backgroundColour.push('#15597e');
+		}
+		backgroundColour[index] = '#5bc0de'; // this is the highlight colour for the student's grade
+	} else {
+		backgroundColour = '#15597e';
+	}
+
+	myChart.data = {
+		labels: labels,
+		datasets: [{
+			data: data,
+			backgroundColor: backgroundColour,
+			borderWidth: 0
+		}]
+	};
+	myChart.update();
+}

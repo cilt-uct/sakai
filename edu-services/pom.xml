@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.sakaiproject</groupId>
     <artifactId>master</artifactId>
-    <version>12-SNAPSHOT</version>
+    <version>21-SNAPSHOT</version>
     <relativePath>../master/pom.xml</relativePath>
   </parent>
 
@@ -19,15 +19,6 @@
     <module>sections-service</module>
     <module>scoring-service</module>
   </modules>
-
-
-  <distributionManagement>
-    <site>
-      <id>sakai-site</id>
-      <name>Sakai release Site</name>
-      <url>scpexe://source.sakaiproject.org/var/www/html/release/edu-services/${project.version}</url>
-    </site>
-  </distributionManagement>
 
   <dependencyManagement>
     <dependencies>
@@ -73,12 +64,6 @@
           <version>${project.version}</version>
           <scope>provided</scope>
         </dependency>
-      <!-- Used only for test data. -->
-      <dependency>
-        <groupId>org.sakaiproject.edu-services.sections</groupId>
-        <artifactId>sections-integrationsupport</artifactId>
-        <version>${project.version}</version>
-      </dependency>
     </dependencies>
   </dependencyManagement>
 

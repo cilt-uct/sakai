@@ -4,23 +4,16 @@
 	<parent>
 		<artifactId>config</artifactId>
 		<groupId>org.sakaiproject</groupId>
-		<version>12-SNAPSHOT</version>
+		<version>21-SNAPSHOT</version>
 		<relativePath>../../pom.xml</relativePath>
 	</parent>
 	<name>shared-i18n-bundles</name>
 	<groupId>org.sakaiproject</groupId>
 	<artifactId>shared-i18n-bundles</artifactId>
-	<organization>
-		<name>Sakai Foundation</name>
-		<url>http://sakaiproject.org/</url>
-	</organization>
-	<inceptionYear>2003</inceptionYear>
-	<packaging>jar</packaging>
-	<!--
+	<packaging>sakai-component</packaging>
 	<properties>
-		<deploy.target>shared</deploy.target>
+		<deploy.target>components</deploy.target>
 	</properties>
-	-->
 	<build>
 		<resources>
 			<resource>

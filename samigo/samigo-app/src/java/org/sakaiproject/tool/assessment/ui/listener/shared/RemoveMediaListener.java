@@ -19,7 +19,6 @@
  *
  **********************************************************************************/
 
-
 package org.sakaiproject.tool.assessment.ui.listener.shared;
 
 import java.util.List;
@@ -28,15 +27,15 @@ import javax.faces.event.AbortProcessingException;
 import javax.faces.event.ActionEvent;
 import javax.faces.event.ActionListener;
 
+import org.sakaiproject.tool.assessment.data.dao.grading.MediaData;
+import org.sakaiproject.tool.assessment.data.dao.grading.ItemGradingData;
 import org.sakaiproject.tool.assessment.facade.AgentFacade;
+import org.sakaiproject.tool.assessment.services.PersistenceService;
 import org.sakaiproject.tool.assessment.services.shared.MediaService;
 import org.sakaiproject.tool.assessment.ui.bean.delivery.DeliveryBean;
 import org.sakaiproject.tool.assessment.ui.bean.shared.MediaBean;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 import org.sakaiproject.tool.assessment.ui.listener.delivery.DeliveryActionListener;
-import org.sakaiproject.tool.assessment.services.PersistenceService;
-import org.sakaiproject.tool.assessment.data.dao.grading.MediaData;
-import org.sakaiproject.tool.assessment.data.dao.grading.ItemGradingData;
 
 /**
  * <p>Title: Samigo</p>
@@ -47,7 +46,6 @@ import org.sakaiproject.tool.assessment.data.dao.grading.ItemGradingData;
 
 public class RemoveMediaListener implements ActionListener
 {
-  //private static Logger log = LoggerFactory.getLogger(RemoveMediaListener.class);
 
   public RemoveMediaListener()
   {
@@ -96,6 +94,7 @@ public class RemoveMediaListener implements ActionListener
       throw new IllegalArgumentException("Media id not associated with grading item " + mediaId + " " + itemGradingId);
     }
 
+    delivery.getSubmissionFiles().remove(itemGradingId+"_"+mediaId);
     mediaService.remove(mediaId, itemGradingId);
 
     // #2. update time based on server
@@ -115,5 +114,4 @@ public class RemoveMediaListener implements ActionListener
     // is attached to
     dlistener.processAction(null, false);
   }
-
 }

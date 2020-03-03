@@ -4,11 +4,6 @@
     <name>Sakai Entity Broker Tool (Direct Servlet)</name>
     <groupId>org.sakaiproject.entitybroker</groupId>
     <artifactId>direct</artifactId>
-    <organization>
-        <name>Sakai Project</name>
-        <url>http://sakaiproject.org/</url>
-    </organization>
-    <inceptionYear>2007</inceptionYear>
     <packaging>war</packaging>
     <!-- NOTE: the name of the generated war is controlled below -->
 
@@ -16,7 +11,7 @@
     <parent>
         <artifactId>entitybroker</artifactId>
         <groupId>org.sakaiproject</groupId>
-        <version>12-SNAPSHOT</version><!--entitybroker.version-->
+        <version>21-SNAPSHOT</version><!--entitybroker.version-->
     </parent>
 
     <dependencies>
@@ -36,7 +31,7 @@
         <!-- external dependencies -->
         <dependency>
             <groupId>javax.servlet</groupId>
-            <artifactId>servlet-api</artifactId>
+            <artifactId>javax.servlet-api</artifactId>
         </dependency>
         <!-- oAuth dependency -->
         <dependency>

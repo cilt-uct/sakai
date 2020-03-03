@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2003-2016 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.component.app.scheduler.jobs;
 
 import java.util.Calendar;
@@ -59,54 +74,67 @@ public class SoftSiteDeletionJob implements Job {
 			throws JobExecutionException {
 		log.info("SoftSiteDeletionJob started.");
 
-		Date graceDate = getGraceDate();
-
-		// get sites
-		List<Site> sites = siteService.getSites(SelectionType.ANY_DELETED, null, null, null, null, null);
-		log.info(sites.size() + " softly deleted site(s) will be processed");
-
-		// foreach site, check soft deletion time
-		// Note: we could do this in the SQL so we only get a list of sites that
-		// all need to be deleted.
-		// but this would no doubt be db specific so would add extra complexity
-		// to the SQL layer
-		// for now, just do it in code. There won't be many sites to process at
-		// once.
-		for (Site s : sites) {
-			log.debug("Looking at : " + s.getTitle() + " (" + s.getId() + ")");
-
-			if (!s.isSoftlyDeleted()) {
-				log.warn("Site was in returned list but isn't deleted: " + s.getId());
-				continue;
-			}
-
-			// get calendar for the softly deleted date
-			Date deletedDate = s.getSoftlyDeletedDate();
-			if (deletedDate == null) {
-				log.warn("Site doesn't have a deleted date: " + s.getId());
-				continue;
-			}
-
-			// if this deleted date is before the gracetime, delete the site.
-			if (deletedDate.before(graceDate)) {
-				log.info("Site: " + s.getId() + " is due for deletion");
-
-				try {
-					enableSecurityAdvisor();
-
-					siteService.removeSite(s);
-					log.info("Removed site: " + s.getId());
-
-				} catch (PermissionException e) {
-					log.error("Error removing site: " + s.getId() + ", " + e.getMessage());
-				} catch (IdUnusedException e) {
-					log.error("Error removing site: " + s.getId() + ", " + e.getMessage());
-				} finally {
-					disableSecurityAdvisor();
+		// Set a session because things like deleting content in sites will need a user id to track
+		Session session = sessionManager.getCurrentSession();
+		try {
+			session.setUserEid("admin");
+			session.setUserId("admin");
+	
+			boolean hardDelete = serverConfigurationService.getBoolean("expunge.sites.hard.delete", true);
+			Date graceDate = getGraceDate();
+	
+			// get sites
+			List<Site> sites = siteService.getSites(SelectionType.ANY_DELETED, null, null, null, null, null);
+			log.info(sites.size() + " softly deleted site(s) will be processed");
+	
+			// foreach site, check soft deletion time
+			// Note: we could do this in the SQL so we only get a list of sites that
+			// all need to be deleted.
+			// but this would no doubt be db specific so would add extra complexity
+			// to the SQL layer
+			// for now, just do it in code. There won't be many sites to process at
+			// once.
+			for (Site s : sites) {
+				log.debug("Looking at : " + s.getTitle() + " (" + s.getId() + ")");
+	
+				if (!s.isSoftlyDeleted()) {
+					log.warn("Site was in returned list but isn't deleted: " + s.getId());
+					continue;
 				}
-			} else {
-				log.info("Site: " + s.getId() + " has not passed the gracetime yet and will be skipped.");
+	
+				// get calendar for the softly deleted date
+				Date deletedDate = s.getSoftlyDeletedDate();
+				if (deletedDate == null) {
+					log.warn("Site doesn't have a deleted date: " + s.getId());
+					continue;
+				}
+	
+				// if this deleted date is before the gracetime, delete the site.
+				if (deletedDate.before(graceDate)) {
+					log.info("Site: " + s.getId() + " is due for deletion");
+	
+					try {
+						enableSecurityAdvisor();
+	
+						siteService.removeSite(s, hardDelete);
+						log.info("Removed site: " + s.getId());
+	
+					} catch (PermissionException e) {
+						log.error("Error removing site: " + s.getId() + ", " + e.getMessage());
+					} catch (IdUnusedException e) {
+						log.error("Error removing site: " + s.getId() + ", " + e.getMessage());
+					} finally {
+						disableSecurityAdvisor();
+					}
+				} else {
+					log.info("Site: " + s.getId() + " has not passed the gracetime yet and will be skipped.");
+				}
 			}
+		} catch (Exception e) {
+			log.error("Exception while running SoftSiteDeletionJob", e);
+		}
+		finally {
+			session.clear();
 		}
 		
 		log.info("SoftSiteDeletionJob completed.");
@@ -141,7 +169,7 @@ public class SoftSiteDeletionJob implements Job {
 	 * Remove security advisor
 	 */
 	private void disableSecurityAdvisor() {
-		securityService.popAdvisor();
+		securityService.popAdvisor(securityAdvisor);
 	}
 
 	@Setter
@@ -152,4 +180,7 @@ public class SoftSiteDeletionJob implements Job {
 
 	@Setter
 	private SecurityService securityService;
+
+	@Setter
+	private SessionManager sessionManager;
 }

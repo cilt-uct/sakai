@@ -1,10 +1,30 @@
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.tool.gradebook;
 
 import java.io.Serializable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
-public class LetterGradePercentMapping implements Serializable 
-{
+public class LetterGradePercentMapping implements Serializable {
+	
+	private static final long serialVersionUID = 1L;
 	private Long id;
 	private int version;
 
@@ -20,7 +40,7 @@ public class LetterGradePercentMapping implements Serializable
 	{
 		if(gradeMap != null && gradeMap.containsKey(grade))
 		{
-			return (Double) gradeMap.get(grade);
+			return gradeMap.get(grade);
 		}
 		return null;
 	}
@@ -32,7 +52,7 @@ public class LetterGradePercentMapping implements Serializable
 			List percentList = new ArrayList();
 			for(Iterator iter = gradeMap.keySet().iterator(); iter.hasNext();)
 			{
-				percentList.add(gradeMap.get((String)(iter.next())));
+				percentList.add(gradeMap.get((iter.next())));
 			}
 			Collections.sort(percentList);
 			for(int i=0; i<percentList.size(); i++)
@@ -60,7 +80,7 @@ public class LetterGradePercentMapping implements Serializable
 			while(iter.hasNext())
 			{
 				String key = (String) iter.next();
-				Double gradeValue = (Double)gradeMap.get(key);
+				Double gradeValue = gradeMap.get(key);
 				if(gradeValue.equals(value))
 				{
 					return key;

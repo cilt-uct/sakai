@@ -4,18 +4,17 @@
 		$tlang.getString("more.view")
 	</h3>
 	#if ($alertMessage)
-		<div class="alertMessage">$tlang.getString("gen.alert") $validator.escapeHtml($alertMessage)</div>
-		<div style="display:block;clear:both"></div>
+		<div class="sak-banner-error">$tlang.getString("gen.alert") $formattedText.escapeHtml($alertMessage)</div>
 	#end
 	<div class ="breadCrumb specialLink">
 		<h3>
 			$tlang.getString("gen.location")
-			<img src = "#imageLink($contentTypeImageService.getContentTypeImage("folder"))" border="0" />
+			<span class="$contentTypeImageService.getContentTypeImageClass("folder")" aria-hidden="true"></span>
 			#foreach ($i in $item.collectionPath)
 				#if($velocityCount > 1)
 					/
 				#end
-				$validator.escapeHtml("$i.name")
+				$formattedText.escapeHtml("$i.name")
 			#end
 		</h3>
 	</div>		
@@ -32,14 +31,14 @@
 					#elseif ($item.isFolder())
 						#if ($item.hasCopyrightAlert()) ## if there is a copyright alert, show the alert page first
 							<a href="" onclick="openCopyrightWindow('$item.url','copyrightAlertWindow','scrollbars=yes,menubar=yes,height=600,width=800,resizable=yes,toolbar=yes,location=yes,status=yes');return false;">
-								$validator.escapeHtml($item.name))
+								$formattedText.escapeHtml($item.name))
 							</a>
 							&#169;
 						#else
-							<a href="$item.url" target="_blank">$validator.escapeHtml($item.name)</a>
+							<a href="$item.url" target="_blank">$formattedText.escapeHtml($item.name)</a>
 						#end
 					#else
-						$validator.escapeHtml($item.name)
+						$formattedText.escapeHtml($item.name)
 					#end
 				</td>
 			</tr>
@@ -48,7 +47,7 @@
 					$tlang.getString("gen.description")
 				</th>
 				<td>
-					<span class="chefPre">$validator.escapeHtml($item.description)</span>
+					<span class="chefPre">$formattedText.escapeHtml($item.description)</span>
 				</td>
 			</tr>
 			#if (! $item.isFolder() && $!copyrightTypes)
@@ -58,8 +57,20 @@
 						$tlang.getString("gen.cpr")
 					</th>
 					<td>
-## special escape to fix the &#169; copyright symbol placed by ResourcesAction before 1.1.05 -ggolden
-						<span class="chefPre">$validator.escapeHtmlFixCopyright($item.copyrightInfo)</span>
+						#if (!$item.copyrightStatus.isEmpty() && $item.copyrightStatus != $publicdomain)
+							#set ($found = false)
+							#foreach ($copyrightType in $copyrightTypes)
+								#if ($item.copyrightStatus == $copyrightType.type)
+									#set ($found = true)
+									<span class="chefPre">$formattedText.escapeHtml($copyrightType.text)</span>
+								#end
+							#end
+							#if (!$found)
+								<span class="chefPre">$tlang.getString("copyright.notDefined")</span>
+							#end
+						#else
+							<span class="chefPre">$tlang.getString("copyright.notDefined")</span>
+						#end
 					</td>
 				</tr>
 			#end
@@ -86,7 +97,7 @@
 						$tlang.getString("gen.created")
 					</th>
 					<td> 
-						$validator.escapeHtml($item.createdBy)
+						$formattedText.escapeHtml($item.createdBy)
 					</td>
 				</tr>
 			#end
@@ -112,7 +123,7 @@
 						$tlang.getString("gen.lastby")
 					</th>
 					<td>
-						$validator.escapeHtml($item.modifiedBy)
+						$formattedText.escapeHtml($item.modifiedBy)
 					</td>
 				</tr>
 			#end
@@ -159,7 +170,7 @@
   	#parse("/vm/resources/sakai_metadata-display.vm")
 	<form name="moreForm" action="#toolForm("ResourcesAction")" method="post" >
 		<p class="act">
-			<input type="hidden" name="collectionId" value="$validator.escapeHtml($collectionId)" />
+			<input type="hidden" name="collectionId" value="$formattedText.escapeHtml($collectionId)" />
 			<input type="hidden" name="id" value="$id" />
 			<input type="hidden" name="from" value = "list" />
 			<input type="hidden" name="view" value="general" />

@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>org.sakaiproject</groupId>
 		<artifactId>master</artifactId>
-		<version>12-SNAPSHOT</version>
+		<version>21-SNAPSHOT</version>
 		<relativePath>../master/pom.xml</relativePath>
 	</parent>
 
@@ -17,6 +17,7 @@
 		<module>api</module>
 		<module>impl</module>
 		<module>pack</module>
+		<module>tool</module>
 	</modules>
 
 	<dependencyManagement>
@@ -48,8 +49,18 @@
 				<version>${project.version}</version>
 			</dependency>
 			<dependency>
+				<groupId>org.sakaiproject.contentreview.turnitin.oc</groupId>
+				<artifactId>content-review-turnitin-oc-impl</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
 				<groupId>org.sakaiproject.contentreview.compilatio</groupId>
 				<artifactId>content-review-compilatio-impl</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.sakaiproject.contentreview.urkund</groupId>
+				<artifactId>content-review-urkund-impl</artifactId>
 				<version>${project.version}</version>
 			</dependency>
 		</dependencies>

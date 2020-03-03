@@ -5,13 +5,17 @@
     <parent>
         <artifactId>external-calendaring-service</artifactId>
         <groupId>org.sakaiproject.calendaring</groupId>
-        <version>12-SNAPSHOT</version>
+        <version>21-SNAPSHOT</version>
     </parent>
     
 	<name>External Calendaring Service :: Implementation</name>
 	<groupId>org.sakaiproject.calendaring</groupId>
 	<artifactId>external-calendaring-service-impl</artifactId>
-	<packaging>jar</packaging>
+	<packaging>sakai-component</packaging>
+    <properties>
+        <deploy.target>components</deploy.target>
+    </properties>
+
 	
   	<dependencies>
     	<dependency>
@@ -51,26 +55,22 @@
 			<artifactId>commons-codec</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>commons-lang</groupId>
-			<artifactId>commons-lang</artifactId>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>commons-io</groupId>
 			<artifactId>commons-io</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>commons-collections</groupId>
-			<artifactId>commons-collections</artifactId>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-collections4</artifactId>
 		</dependency>
 		<dependency>
       		<groupId>org.mnode.ical4j</groupId>
       		<artifactId>ical4j</artifactId>
     	</dependency>
-    	<dependency>
-			<groupId>backport-util-concurrent</groupId>
-			<artifactId>backport-util-concurrent</artifactId>
-		</dependency>
-   
+
         <!--  test dependencies -->
     	<dependency>
     		<groupId>org.springframework</groupId>
@@ -78,8 +78,7 @@
     	</dependency>
         <dependency>
             <groupId>org.mockito</groupId>
-            <artifactId>mockito-all</artifactId>
-            <version>1.9.0</version>
+            <artifactId>mockito-core</artifactId>
             <scope>test</scope>
         </dependency>
 

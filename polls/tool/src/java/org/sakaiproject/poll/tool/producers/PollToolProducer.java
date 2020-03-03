@@ -29,8 +29,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
 import org.sakaiproject.poll.logic.ExternalLogic;
 import org.sakaiproject.poll.logic.PollListManager;
 import org.sakaiproject.poll.logic.PollVoteManager;
@@ -46,6 +46,7 @@ import uk.org.ponder.rsf.components.UICommand;
 import uk.org.ponder.rsf.components.UIContainer;
 import uk.org.ponder.rsf.components.UIELBinding;
 import uk.org.ponder.rsf.components.UIForm;
+import uk.org.ponder.rsf.components.UIInput;
 import uk.org.ponder.rsf.components.UIInternalLink;
 import uk.org.ponder.rsf.components.UILink;
 import uk.org.ponder.rsf.components.UIMessage;
@@ -66,7 +67,7 @@ import uk.org.ponder.rsf.viewstate.SimpleViewParameters;
 import uk.org.ponder.rsf.viewstate.ViewParameters;
 import uk.org.ponder.stringutil.StringList;
 
-
+@Slf4j
 public class PollToolProducer implements ViewComponentProducer,
 DefaultView,NavigationCaseReporter {
 	public static final String VIEW_ID = "votePolls";
@@ -80,12 +81,6 @@ DefaultView,NavigationCaseReporter {
 	private static final String NAVIGATE_ADD = "actions-add";
 	private static final String NAVIGATE_PERMISSIONS = "actions-permissions";
 	private static final String NAVIGATE_VOTE = "poll-vote";
-
-
-
-
-
-	private static final Logger LOG = LoggerFactory.getLogger(PollToolProducer.class);
 
 	public String getViewID() {
 		return VIEW_ID;
@@ -143,9 +138,9 @@ DefaultView,NavigationCaseReporter {
 		//populate the action links
 		if (this.isAllowedPollAdd() || this.isSiteOwner() ) {
 			UIBranchContainer actions = UIBranchContainer.make(tofill,"actions:",Integer.toString(0));
-			LOG.debug("this user has some admin functions");
+			log.debug("this user has some admin functions");
 			if (this.isAllowedPollAdd()) {
-				LOG.debug("User can add polls");
+				log.debug("User can add polls");
 				//UIOutput.make(tofill, "poll-add", messageLocator
 				//       .getMessage("action_add_poll"));
 				UIInternalLink.make(actions,NAVIGATE_ADD,UIMessage.make("action_add_poll"),
@@ -163,7 +158,7 @@ DefaultView,NavigationCaseReporter {
 		if (siteId != null) {
 			polls = pollListManager.findAllPolls(siteId);
 		} else {
-			LOG.warn("Unable to get siteid!");
+			log.warn("Unable to get siteid!");
 
 		}
 
@@ -208,7 +203,7 @@ DefaultView,NavigationCaseReporter {
 		UIMessage.make(deleteForm, "poll-open-title", "poll_open_title");
 		UIMessage.make(deleteForm, "poll-close-title", "poll_close_title");*/
 		UIMessage.make(deleteForm, "poll-result-title", "poll_result_title");
-		UIMessage.make(deleteForm, "poll-remove-title", "poll_remove_title");
+		UIMessage.make(deleteForm, "poll_select_title_all", "poll_select_title_all");
 		
 		UILink question = UILink.make(tofill,"poll-question-title",messageLocator.getMessage("poll_question_title"), "#");
 		question.decorators = new DecoratorList(new UITooltipDecorator(messageLocator.getMessage("poll_question_title_tooltip")));
@@ -217,7 +212,9 @@ DefaultView,NavigationCaseReporter {
 		UILink close = UILink.make(tofill,"poll-close-title",messageLocator.getMessage("poll_close_title"), "#");
 		close.decorators = new DecoratorList(new UITooltipDecorator(messageLocator.getMessage("poll_close_title_tooltip")));
 
-
+		UIInput removeAll = UIInput.make(deleteForm, "remove-all", null);
+ 		removeAll.decorators = new DecoratorList(new UITooltipDecorator(messageLocator.getMessage("poll_select_title_all")));
+		
 		StringList deletable = new StringList();
 		
 		
@@ -229,7 +226,7 @@ DefaultView,NavigationCaseReporter {
 			UIBranchContainer pollrow = UIBranchContainer.make(deleteForm,
 					canVote ? "poll-row:votable"
 							: "poll-row:nonvotable", poll.getPollId().toString());
-			LOG.debug("adding poll row for " + poll.getText());
+			log.debug("adding poll row for " + poll.getText());
 
 			if (canVote) {
 				UIInternalLink voteLink = UIInternalLink.make(pollrow, NAVIGATE_VOTE, poll.getText(),
@@ -242,7 +239,7 @@ DefaultView,NavigationCaseReporter {
 				poll.setOptions(pollListManager.getOptionsForPoll(poll.getPollId()));
 				
 				//is this not votable because of no options?
-				if (poll.getPollOptions().size() == 0 )
+				if (poll.getOptions().size() == 0 )
 					UIOutput.make(pollrow,"poll-text",poll.getText() + " (" + messageLocator.getMessage("poll_no_options") + ")");
 				else
 					UIOutput.make(pollrow,"poll-text",poll.getText());
@@ -281,7 +278,7 @@ DefaultView,NavigationCaseReporter {
 				delete.decorators = new DecoratorList(new UITooltipDecorator(UIMessage.make("delete_poll_tooltip", new String[] {poll.getText()})));
 				UIMessage message = UIMessage.make(pollrow,"delete-label","delete_poll_tooltip", new String[] {poll.getText()});
 				UILabelTargetDecorator.targetLabel(message,delete);
-				LOG.debug("this poll can be deleted");
+				log.debug("this poll can be deleted");
 				renderDelete = true;
 
 			}
@@ -292,11 +289,12 @@ DefaultView,NavigationCaseReporter {
 		deleteselect.optionlist.setValue(deletable.toStringArray());
 		deleteForm.parameters.add(new UIELBinding("#{pollToolBean.siteID}", siteId));
 
-		if (renderDelete) 
+		if (renderDelete) {
 			UICommand.make(deleteForm, "delete-polls",  UIMessage.make("poll_list_delete"),
 					"#{pollToolBean.processActionDelete}").decorators = new DecoratorList(new UITooltipDecorator(messageLocator.getMessage("poll_list_delete_tooltip")));
 			UICommand.make(deleteForm, "reset-polls-votes",  UIMessage.make("poll_list_reset"),
 					"#{pollToolBean.processActionResetVotes}").decorators = new DecoratorList(new UITooltipDecorator(messageLocator.getMessage("poll_list_reset_tooltip")));
+		}
 		}
 	}
 

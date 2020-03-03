@@ -26,8 +26,9 @@ package org.sakaiproject.lessonbuildertool.service;
 import java.util.Date;
 import java.util.Map;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+import org.sakaiproject.service.gradebook.shared.ConflictingAssignmentNameException;
 import org.sakaiproject.service.gradebook.shared.GradebookExternalAssessmentService;
 
 /**
@@ -36,9 +37,8 @@ import org.sakaiproject.service.gradebook.shared.GradebookExternalAssessmentServ
  * @author Charles Hedrick <hedrick@rutgers.edu>
  * 
  */
+@Slf4j
 public class GradebookIfc {
-
-    private static final Logger log = LoggerFactory.getLogger(GradebookIfc.class);
     private static GradebookExternalAssessmentService gbExternalService = null;
 
     public void setGradebookExternalAssessmentService (GradebookExternalAssessmentService s) {
@@ -48,10 +48,11 @@ public class GradebookIfc {
     public boolean addExternalAssessment(final String gradebookUid, final String externalId, final String externalUrl,
 					 final String title, final double points, final Date dueDate, final String externalServiceDescription) {
 	try {
-	    gbExternalService.addExternalAssessment(gradebookUid, externalId, externalUrl, title, points, dueDate, externalServiceDescription);
-	} catch (org.sakaiproject.service.gradebook.shared.ConflictingAssignmentNameException e) {
-	    // already exists. Say it worked
-	    return true;
+	    gbExternalService.addExternalAssessment(gradebookUid, externalId, externalUrl, title, points, dueDate, externalServiceDescription, null);
+	} catch (ConflictingAssignmentNameException cane) {
+	    // already exists
+	    log.warn("ConflictingAssignmentNameException for title {} : {} ", title, cane.getMessage());
+	    throw cane;
 	} catch (Exception e) {
 	    log.info("failed add " + e);
 	    return false;
@@ -62,13 +63,12 @@ public class GradebookIfc {
     public boolean updateExternalAssessment(final String gradebookUid, final String externalId, final String externalUrl,
 					    final String title, final double points, final Date dueDate) {
 	try {
-	    gbExternalService.updateExternalAssessment(gradebookUid, externalId, externalUrl, title, points, dueDate);
+	    gbExternalService.updateExternalAssessment(gradebookUid, externalId, externalUrl, null, title, points, dueDate);
 	} catch (Exception e) {
 	    return false;
 	}
 	return true;
     }
-
 
 
     public boolean removeExternalAssessment(final String gradebookUid, final String externalId) {

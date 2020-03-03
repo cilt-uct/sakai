@@ -3,7 +3,7 @@
   <parent>
     <groupId>org.sakaiproject</groupId>
     <artifactId>master</artifactId>
-    <version>12-SNAPSHOT</version>
+    <version>21-SNAPSHOT</version>
     <relativePath>../master/pom.xml</relativePath>
   </parent>
 
@@ -11,12 +11,6 @@
   <groupId>org.sakaiproject.userauditservice</groupId>
   <artifactId>userauditservice</artifactId>
   <packaging>pom</packaging>
-  <organization>
-    <name>Sakai Project</name>
-    <url>http://sakaiproject.org/</url>
-  </organization>
-  <inceptionYear>2013</inceptionYear>
-
   <properties>
     <sakai.simple-xml.version>2.6</sakai.simple-xml.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -24,21 +18,10 @@
 
   <modules>
     <module>api</module>
-    <module>deploy</module>
     <module>impl</module>
-    <module>pack</module>
     <module>tool</module>
     <module>util</module>
   </modules>
-
-
-  <distributionManagement>
-    <site>
-      <id>sakai-site</id>
-      <name>Sakai release Site</name>
-      <url>scpexe://source.sakaiproject.org/var/www/html/release/userauditservice/${project.version}</url>
-    </site>
-  </distributionManagement>
 
   <dependencyManagement>
     <dependencies>
@@ -53,42 +36,7 @@
         <artifactId>userauditservice-impl</artifactId>
         <version>${project.version}</version>
       </dependency>
-      <dependency>
-        <groupId>org.simpleframework</groupId>
-        <artifactId>simple-xml</artifactId>
-        <version>${sakai.simple-xml.version}</version>
-        <scope>provided</scope>
-      </dependency>
     </dependencies>
   </dependencyManagement>
-
-  <reporting>
-    <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-javadoc-plugin</artifactId>
-        <reportSets>
-          <reportSet>
-            <id>aggregate</id>
-            <configuration>
-              <encoding>UTF-8</encoding>
-              <links>
-                <link>http://download.oracle.com/javase/6/docs/api/</link>
-                <link>http://docs.oracle.com/javaee/5/api/</link>
-                <link>http://junit.sourceforge.net/javadoc/</link>
-              </links>
-              <breakiterator>true</breakiterator>
-              <verbose>false</verbose>
-              <maxmemory>512m</maxmemory>
-              <additionalJOption>-J-Xmx512m -J-XX:MaxPermSize=160m</additionalJOption>
-            </configuration>
-            <reports>
-              <report>aggregate</report>
-            </reports>
-          </reportSet>
-        </reportSets>
-      </plugin>
-    </plugins>
-  </reporting>
 
 </project>

@@ -4,8 +4,7 @@
 		$tlang.getString("action.replace")
 	</h3>
 	#if ($itemAlertMessage)
-		<div class="alertMessage">$tlang.getString("label.alert") $validator.escapeHtml($itemAlertMessage)</div>
-		<div style="display:block;clear:both" ></div>
+		<div class="sak-banner-error">$tlang.getString("label.alert") $formattedText.escapeHtml($itemAlertMessage)</div>
 	#end
 	<p class="instruction">
 		$tlang.getString("instr.replace")
@@ -29,7 +28,7 @@
 					<label>$tlang.getString("label.name")</label>
 				</td>
 				<td style="width:180px;padding-left:0"> 
-					$validator.escapeHtml($item.name)
+					$formattedText.escapeHtml($item.name)
 				</td>
 			</tr>
 			<tr> 
@@ -71,19 +70,25 @@
 						$tlang.getString("gen.email1")
 					</label>	
 					<select name="notify" id="notify">
-						<option value="r">$tlang.getString("gen.email2")</option>
-						<option value="o">$tlang.getString("gen.email3")</option>
-						<option value="n" selected="selected">$tlang.getString("gen.email4")</option>
+						#if ($noti)
+							<option value="r" #if($noti=="r") selected="selected" #end>$tlang.getString("gen.email2")</option>
+							<option value="o" #if($noti=="o") selected="selected" #end>$tlang.getString("gen.email3")</option>
+							<option value="n" #if($noti=="n") selected="selected" #end>$tlang.getString("gen.email4")</option>
+						#else
+							<option value="r">$tlang.getString("gen.email2")</option>
+							<option value="o">$tlang.getString("gen.email3")</option>
+							<option value="n" selected="selected">$tlang.getString("gen.email4")</option>
+						#end							
 					</select>
 				</p>	
 			#end
 		#end
 		
 		<p class="act">
-			<input type="button" class="active" name="savechanges" id="saveChanges" onclick="showNotif('submitnotifxxx','saveChanges','addContentForm');document.getElementById('addContentForm').action='#toolLinkParam("ResourcesHelperAction" "doReplace" "sakai_csrf_token=$validator.escapeUrl($sakai_csrf_token)")';submitform('addContentForm');" value="$tlang.getString("label.upl")" accesskey="s" />
+			<input type="button" class="active" name="savechanges" id="saveChanges" onclick="showNotif('submitnotifxxx','saveChanges','addContentForm');document.getElementById('addContentForm').action='#toolLinkParam("ResourcesHelperAction" "doReplace" "sakai_csrf_token=$formattedText.escapeUrl($sakai_csrf_token)")';submitform('addContentForm');" value="$tlang.getString("label.upl")" accesskey="s" />
 			<input type="button" name="cancel" onclick="document.getElementById('addContentForm').action='#toolLink("ResourcesHelperAction" "doCancel")';submitform('addContentForm');" value="$tlang.getString("label.cancel")" accesskey="x" />
-			<span id="submitnotifxxx"  class="messageProgress"  style="visibility:hidden">$tlang.getString("processmessage.save.file")</span>
 		</p>
+		<p id="submitnotifxxx"  class="sak-banner-info"  style="visibility:hidden">$tlang.getString("processmessage.save.file")</p>
 		
 		<input type="hidden" name="sakai_csrf_token" value="$sakai_csrf_token" />
 	</form>

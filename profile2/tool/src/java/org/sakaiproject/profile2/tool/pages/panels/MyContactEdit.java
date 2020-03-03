@@ -17,9 +17,7 @@ package org.sakaiproject.profile2.tool.pages.panels;
 
 
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.Component;
 import org.apache.wicket.ajax.AjaxRequestTarget;
@@ -50,11 +48,13 @@ import org.sakaiproject.profile2.tool.components.FeedbackLabel;
 import org.sakaiproject.profile2.tool.components.PhoneNumberValidator;
 import org.sakaiproject.profile2.util.ProfileConstants;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public class MyContactEdit extends Panel {
-	
+
 	private static final long serialVersionUID = 1L;
-	private static final Logger log = LoggerFactory.getLogger(MyInfoEdit.class);
-    
+
 	@SpringBean(name="org.sakaiproject.profile2.logic.SakaiProxy")
 	private SakaiProxy sakaiProxy;
 	

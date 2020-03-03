@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.site.tool.helper.participant.impl;
 
 import java.util.ArrayList;
@@ -8,15 +23,12 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.collections.Predicate;
-import org.apache.commons.lang.ArrayUtils;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.apache.commons.validator.EmailValidator;
-import org.apache.commons.lang.StringUtils;
-
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.Predicate;
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.validator.routines.EmailValidator;
 import org.sakaiproject.accountvalidator.logic.ValidationLogic;
 import org.sakaiproject.authz.api.AuthzGroup;
 import org.sakaiproject.authz.api.AuthzGroupService;
@@ -25,16 +37,17 @@ import org.sakaiproject.authz.api.GroupNotDefinedException;
 import org.sakaiproject.authz.api.Role;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.component.cover.ComponentManager;
+import org.sakaiproject.event.api.UsageSessionService;
 import org.sakaiproject.event.cover.EventTrackingService;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.site.util.Participant;
-import org.sakaiproject.site.util.SiteTypeUtil;
+import org.sakaiproject.site.util.SiteConstants;
 import org.sakaiproject.site.util.SiteParticipantHelper;
+import org.sakaiproject.site.util.SiteTypeUtil;
 import org.sakaiproject.sitemanage.api.SiteHelper;
 import org.sakaiproject.sitemanage.api.UserNotificationProvider;
-import org.sakaiproject.event.api.UsageSessionService;
 import org.sakaiproject.tool.api.SessionManager;
 import org.sakaiproject.tool.api.Tool;
 import org.sakaiproject.tool.api.ToolManager;
@@ -48,26 +61,28 @@ import org.sakaiproject.user.api.UserNotDefinedException;
 import org.sakaiproject.user.api.UserPermissionException;
 import org.sakaiproject.userauditservice.api.UserAuditRegistration;
 import org.sakaiproject.userauditservice.api.UserAuditService;
-import org.sakaiproject.util.PasswordCheck;
+import org.sakaiproject.util.api.PasswordFactory;
 
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import uk.org.ponder.messageutil.MessageLocator;
 import uk.org.ponder.messageutil.TargettedMessage;
 import uk.org.ponder.messageutil.TargettedMessageList;
+
 /**
  * 
  * @author 
  *
  */
+@Slf4j
 public class SiteAddParticipantHandler {
-	
-    /** Our log (commons). */
-    private static final Logger M_log = LoggerFactory.getLogger(SiteAddParticipantHandler.class);
 
 	private static final String EMAIL_CHAR = "@";
     public SiteService siteService = null;
     public AuthzGroupService authzGroupService = null;
     public ToolManager toolManager = null;
     public SessionManager sessionManager = null;
+    @Setter private PasswordFactory passwordFactory;
     public ServerConfigurationService serverConfigurationService;
     private final String HELPER_ID = "sakai.tool.helper.id";
     private static final UserAuditRegistration userAuditRegistration = (UserAuditRegistration) ComponentManager.get("org.sakaiproject.userauditservice.api.UserAuditRegistration.sitemanage");
@@ -248,7 +263,7 @@ public class SiteAddParticipantHandler {
                         .getAttribute(HELPER_ID + ".siteId").toString();
             }
             catch (java.lang.NullPointerException npe) {
-                M_log.error( "Site ID wasn't set in the helper call!!", npe );
+                log.error( "Site ID wasn't set in the helper call!!", npe );
             }
             
             if (siteId == null) {
@@ -259,11 +274,11 @@ public class SiteAddParticipantHandler {
                 site = siteService.getSite(siteId);
                 realm = authzGroupService.getAuthzGroup(siteService.siteReference(siteId));
                 
-                // bjones86 - SAK-23257
+                // SAK-23257
                 roles = SiteParticipantHelper.getAllowedRoles( site.getType(), realm.getRoles() );
             
             } catch (IdUnusedException | GroupNotDefinedException e) {
-                M_log.error( "The siteId we were given was bogus", e );
+                log.error( "The siteId we were given was bogus", e );
             }
             
         }
@@ -324,12 +339,24 @@ public class SiteAddParticipantHandler {
     public String processCancel() {
         ToolSession session = sessionManager.getCurrentToolSession();
         session.setAttribute(ATTR_TOP_REFRESH, Boolean.TRUE);
+
+        // Go to Site Info landing page on 'Cancel'
+        setNextPage(SiteConstants.SITE_INFO_TEMPLATE_INDEX);
+
         resetTargettedMessageList();
         reset();
 
         return "done";
     }
-    
+
+    /*
+     * Utility method; sets the template index (in the tool session) of the desired page to transfer the user to.
+     */
+    private void setNextPage(String nextPageTemplateIndex) {
+        ToolSession session = sessionManager.getCurrentToolSession();
+        session.setAttribute(SiteConstants.STATE_TEMPLATE_INDEX, nextPageTemplateIndex);
+    }
+
     private boolean validCsrfToken() {
 		return StringUtils.equals(csrfToken, getCsrfToken());
     }
@@ -575,7 +602,7 @@ public class SiteAddParticipantHandler {
 							targettedMessageList.addMessage(new TargettedMessage("java.account",
 					                new Object[] { eId }, 
 					                TargettedMessage.SEVERITY_INFO));
-							M_log.debug(this  + ".addUsersRealm: cannot find user with eid= " + eId, e);
+							log.debug(this  + ".addUsersRealm: cannot find user with eid= " + eId, e);
 						} // try
 					} // for
 
@@ -603,16 +630,16 @@ public class SiteAddParticipantHandler {
 						}
 					} catch (GroupNotDefinedException ee) {
 						targettedMessageList.addMessage(new TargettedMessage("java.realm",new Object[] { realmId }, TargettedMessage.SEVERITY_INFO));
-						M_log.warn(this + ".addUsersRealm: cannot find realm for" + realmId, ee);
+						log.warn(this + ".addUsersRealm: cannot find realm for" + realmId, ee);
 					} catch (AuthzPermissionException ee) {
 						targettedMessageList.addMessage(new TargettedMessage("java.permeditsite",new Object[] { realmId }, TargettedMessage.SEVERITY_INFO));
-						M_log.warn(this + ".addUsersRealm: don't have permission to edit realm " + realmId, ee);
+						log.warn(this + ".addUsersRealm: don't have permission to edit realm " + realmId, ee);
 					}
 				} catch (GroupNotDefinedException eee) {
 					targettedMessageList.addMessage(new TargettedMessage("java.realm",new Object[] { realmId }, TargettedMessage.SEVERITY_INFO));
-					M_log.warn(this + ".addUsersRealm: cannot find realm for " + realmId, eee);
+					log.warn(this + ".addUsersRealm: cannot find realm for " + realmId, eee);
 				} catch (Exception eee) {
-					M_log.warn(this + ".addUsersRealm: " + eee.getMessage() + " realmId=" + realmId, eee);
+					log.warn(this + ".addUsersRealm: " + eee.getMessage() + " realmId=" + realmId, eee);
 				}
 			}
 		}
@@ -666,7 +693,7 @@ public class SiteAddParticipantHandler {
 						if (lastName != null  && lastName.length() > 0)
 							uEdit.setLastName(entry.lastName);
 						
-						String pw = PasswordCheck.generatePassword();
+						String pw = passwordFactory.generatePassword();
 						uEdit.setPassword(pw);
 
 						// and save
@@ -682,13 +709,13 @@ public class SiteAddParticipantHandler {
 						}
 					} catch (UserIdInvalidException ee) {
 						targettedMessageList.addMessage(new TargettedMessage("java.isinval",new Object[] { eId }, TargettedMessage.SEVERITY_INFO));
-						M_log.warn(this + ".doAdd_participant: id " + eId + " is invalid", ee);
+						log.warn(this + ".doAdd_participant: id " + eId + " is invalid", ee);
 					} catch (UserAlreadyDefinedException ee) {
 						targettedMessageList.addMessage(new TargettedMessage("java.beenused",new Object[] { eId }, TargettedMessage.SEVERITY_INFO));
-						M_log.warn(this + ".doAdd_participant: id " + eId + " has been used", ee);
+						log.warn(this + ".doAdd_participant: id " + eId + " has been used", ee);
 					} catch (UserPermissionException ee) {
 						targettedMessageList.addMessage(new TargettedMessage("java.haveadd",new Object[] { eId }, TargettedMessage.SEVERITY_INFO));
-						M_log.warn(this + ".doAdd_participant: You don't have permission to add " + eId, ee);
+						log.warn(this + ".doAdd_participant: You don't have permission to add " + eId, ee);
 					}
 				}
 			}
@@ -733,7 +760,10 @@ public class SiteAddParticipantHandler {
 		{
 			// time to reset user inputs
 			reset();
-			
+
+			// After succesfully adding participants, return to the 'Manage Participants' UI rather than whatever the previously selected tab was
+			setNextPage(SiteConstants.MANAGE_PARTICIPANTS_TEMPLATE_INDEX);
+
 	        return "done";
 		}
 		else
@@ -809,7 +839,7 @@ public class SiteAddParticipantHandler {
 							// look for user based on eid first
 							u = userDirectoryService.getUserByEid(officialAccount);
 						} catch (UserNotDefinedException e) {
-							M_log.debug(this + ".checkAddParticipant: " + messageLocator.getMessage("java.username",officialAccount), e);
+							log.debug(this + ".checkAddParticipant: " + messageLocator.getMessage("java.username",officialAccount), e);
 						}
 					}
 					else
@@ -819,7 +849,7 @@ public class SiteAddParticipantHandler {
 							// look for user based on eid first
 							u = userDirectoryService.getUserByEid(officialAccount);
 						} catch (UserNotDefinedException e) {
-							M_log.debug(this + ".checkAddParticipant: " + messageLocator.getMessage("java.username",officialAccount), e);
+							log.debug(this + ".checkAddParticipant: " + messageLocator.getMessage("java.username",officialAccount), e);
 						}
 						
 						//Changed user lookup to satisfy BSP-1010 (jholtzman)
@@ -832,7 +862,7 @@ public class SiteAddParticipantHandler {
 							if(usersWithEmail != null) {
 								if(usersWithEmail.isEmpty()) {
 									// If the collection is empty, we didn't find any users with this email address
-									M_log.debug("Unable to find users with email " + officialAccount);
+									log.debug("Unable to find users with email " + officialAccount);
 								} else if (usersWithEmail.size() == 1) {
 									if (u == null)
 									{
@@ -841,7 +871,7 @@ public class SiteAddParticipantHandler {
 									}
 								} else if (!usersWithEmail.isEmpty()) {
 									// If we have multiple users with this email address, expand the list with all matching user's eids and let the instructor choose from them
-									M_log.debug("Found multiple user with email " + officialAccount);
+									log.debug("Found multiple user with email " + officialAccount);
 									
 									// multiple matches
 									for (User user : usersWithEmail)
@@ -874,7 +904,7 @@ public class SiteAddParticipantHandler {
 						
 					if (u != null)
 					{
-						M_log.debug("found user with eid " + u.getEid());
+						log.debug("found user with eid " + u.getEid());
 						if (site != null && site.getUserRole(u.getId()) != null) {
 							// user already exists in the site, cannot be added
 							// again
@@ -1001,7 +1031,7 @@ public class SiteAddParticipantHandler {
 								pList.add(participant);
 							}
 						} catch (UserNotDefinedException e) {
-							M_log.debug("no user with eid: " + userEid);
+							log.debug("no user with eid: " + userEid);
 							
 							/*
 							 * The account may exist with a different eid
@@ -1009,17 +1039,17 @@ public class SiteAddParticipantHandler {
 							User u = null;
 							Collection<User> usersWithEmail = userDirectoryService.findUsersByEmail(userEid);
 							if(usersWithEmail != null) {
-								M_log.debug("found a collection of matching email users:  " + usersWithEmail.size());
+								log.debug("found a collection of matching email users:  " + usersWithEmail.size());
 								if(usersWithEmail.isEmpty()) {
 									// If the collection is empty, we didn't find any users with this email address
-									M_log.info("Unable to find users with email " + userEid);
+									log.info("Unable to find users with email " + userEid);
 								} else if (usersWithEmail.size() == 1) {
 									// We found one user with this email address.  Use it.
 									u = (User)usersWithEmail.iterator().next();
 								} else if (usersWithEmail.size() > 1) {
 									// If we have multiple users with this email address, pick one and log this error condition
 									// TODO Should we not pick a user?  Throw an exception?
-									M_log.warn("Found multiple user with email " + userEid);
+									log.warn("Found multiple user with email " + userEid);
 									u = (User)usersWithEmail.iterator().next();
 								}
 							}
@@ -1044,7 +1074,7 @@ public class SiteAddParticipantHandler {
 								if (!userDirectoryService.allowAddUser())
 								{
 									targettedMessageList.addMessage(new TargettedMessage("java.haveadd",new Object[] { userEid }, TargettedMessage.SEVERITY_ERROR));
-									M_log.warn(this + ".checkAddParticipant: user" + userDirectoryService.getCurrentUser()!= null ? userDirectoryService.getCurrentUser().getEid():"" + " don't have permission to add " + userEid);
+									log.warn(this + ".checkAddParticipant: user" + userDirectoryService.getCurrentUser()!= null ? userDirectoryService.getCurrentUser().getEid():"" + " don't have permission to add " + userEid);
 								}
 							} else  {
 								if (site != null && site.getUserRole(u.getId()) != null) {
@@ -1052,7 +1082,7 @@ public class SiteAddParticipantHandler {
 									// again
 									existingUsers.add(userEid);
 								} else {
-									M_log.debug("adding: " + u.getDisplayName() + ", " + u.getEid());
+									log.debug("adding: " + u.getDisplayName() + ", " + u.getEid());
 									participant.name = u.getDisplayName();
 									participant.uniqname = u.getEid();
 									participant.active = true;
@@ -1223,12 +1253,12 @@ public class SiteAddParticipantHandler {
     	
     	// get site property, if different, it overrides sakai.properties setting
     	if (site == null) {
-    	        M_log.error("Could not get site and thus, site properties.");
+    	        log.error("Could not get site and thus, site properties.");
     	}
     	else
     	{
     	    String allowThisSiteAddNonOfficialParticipant = site.getProperties().getProperty("nonOfficialAccount");
-    	    M_log.debug("Site non-official allowed? "+allowThisSiteAddNonOfficialParticipant);
+    	    log.debug("Site non-official allowed? "+allowThisSiteAddNonOfficialParticipant);
     	    if (allowThisSiteAddNonOfficialParticipant != null && !allowThisSiteAddNonOfficialParticipant.equalsIgnoreCase(rv)) {
     	        rv = allowThisSiteAddNonOfficialParticipant;
     	    }

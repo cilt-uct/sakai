@@ -27,8 +27,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Map.Entry;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
 import org.sakaiproject.coursemanagement.api.CourseManagementService;
 import org.sakaiproject.coursemanagement.api.CourseOffering;
 import org.sakaiproject.coursemanagement.api.Membership;
@@ -38,8 +38,8 @@ import org.sakaiproject.coursemanagement.api.Section;
  * Resolves user roles in CourseOfferings.
  *
  */
+@Slf4j
 public class CourseOfferingRoleResolver extends BaseRoleResolver {
-	private static final Logger log = LoggerFactory.getLogger(CourseOfferingRoleResolver.class);
 
 	// Configuration keys.
 	public static final String COURSE_OFFERING_ROLE_TO_SITE_ROLE = "courseOfferingRoleToSiteRole";
@@ -152,4 +152,12 @@ public class CourseOfferingRoleResolver extends BaseRoleResolver {
 		return sectionRoles;
 	}
 
+	// This signature was added to the interface to support speedup of displaying the list of available rosters,
+	// but implemented this method signature only for certain implementations.
+	// Some implementations -- including this one -- do not implement this method signature.
+	// This signature is here merely to complete the maven build (it ignores the added parameter).
+	// You must edit to specify processing if you actually use this class.
+	public Map<String, String> getGroupRoles(CourseManagementService cmService, String userEid, String academicSessionEid) {
+		return getGroupRoles(cmService, userEid);
+	}
 }

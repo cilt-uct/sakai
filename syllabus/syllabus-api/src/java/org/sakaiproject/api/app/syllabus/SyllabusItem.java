@@ -31,12 +31,12 @@ public interface SyllabusItem
   /**
    * @return Returns the syllabi.
    */
-  public Set getSyllabi();
+  public Set<SyllabusData> getSyllabi();
 
   /**
    * @param syllabi The syllabi to set.
    */
-  public void setSyllabi(Set syllabi);
+  public void setSyllabi(Set<SyllabusData> syllabi);
 
   /**
    * @return Returns the contextId.
@@ -78,18 +78,5 @@ public interface SyllabusItem
    */
   public void setRedirectURL(String redirectURL);
 
-    /**
-     *
-     * @return  whether or not to open the redirect url in a new window
-     */
-  public Boolean isOpenInNewWindow();
-
-    /**
-     *
-     * @param openInNewWindow
-     */
-  public void setOpenInNewWindow(Boolean openInNewWindow);
 }
-
-
 

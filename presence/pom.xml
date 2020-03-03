@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.sakaiproject</groupId>
         <artifactId>master</artifactId>
-        <version>12-SNAPSHOT</version>
+        <version>21-SNAPSHOT</version>
 		<relativePath>../master/pom.xml</relativePath>
     </parent>
 
@@ -17,19 +17,9 @@
     <modules>
         <module>presence-api/api</module>
         <module>presence-impl/impl</module>
-        <module>presence-impl/pack</module>
         <module>presence-tool/tool</module>
         <module>presence-util/util</module>
     </modules>
-
-
-    <distributionManagement>
-        <site>
-            <id>sakai-site</id>
-            <name>Sakai release Site</name>
-            <url>scpexe://source.sakaiproject.org/var/www/html/release/presence/${project.version}</url>
-        </site>
-    </distributionManagement>
 
     <dependencyManagement>
         <dependencies>

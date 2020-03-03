@@ -24,23 +24,16 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.sakaiproject.accountvalidator.model.ValidationAccount;
-import org.sakaiproject.accountvalidator.tool.otp.AcountValidationLocator;
-import org.sakaiproject.accountvalidator.tool.params.ValidationViewParams;
+import lombok.extern.slf4j.Slf4j;
 
-import org.sakaiproject.component.api.ServerConfigurationService;
+import org.sakaiproject.accountvalidator.model.ValidationAccount;
 import org.sakaiproject.entitybroker.EntityReference;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.user.api.User;
-import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserNotDefinedException;
 import org.sakaiproject.site.api.Site;
 
 import uk.org.ponder.messageutil.TargettedMessage;
-import uk.org.ponder.messageutil.TargettedMessageList;
-import uk.org.ponder.rsf.components.UIBoundBoolean;
 import uk.org.ponder.rsf.components.UIBranchContainer;
 import uk.org.ponder.rsf.components.UICommand;
 import uk.org.ponder.rsf.components.UIContainer;
@@ -50,21 +43,18 @@ import uk.org.ponder.rsf.components.UIInput;
 import uk.org.ponder.rsf.components.UIOutput;
 import uk.org.ponder.rsf.components.UILink;
 import uk.org.ponder.rsf.components.UIMessage;
-import uk.org.ponder.rsf.components.UIVerbatim;
-import uk.org.ponder.rsf.flow.ARIResult;
 import uk.org.ponder.rsf.flow.ActionResultInterceptor;
 import uk.org.ponder.rsf.view.ComponentChecker;
 import uk.org.ponder.rsf.view.ViewComponentProducer;
 import uk.org.ponder.rsf.viewstate.ViewParameters;
-import uk.org.ponder.springutil.SpringMessageLocator;
 
 /**
  * Produces transferMemberships.html - builds a form that allows the user to transfer their memberships to another account provided that they can authenticate with that account
  * @author bbailla2
  */
+@Slf4j
 public class TransferMembershipsProducer extends BaseValidationProducer implements ViewComponentProducer, ActionResultInterceptor {
-	
-	private static Logger log = LoggerFactory.getLogger(NewUserProducer.class);
+
 	public static final String VIEW_ID = "transferMemberships";
 
 	public String getViewID()
@@ -121,7 +111,7 @@ public class TransferMembershipsProducer extends BaseValidationProducer implemen
 		if (u == null)
 		{
 			log.error("user ID does not exist for ValidationAccount with tokenId: " + va.getValidationToken());
-			tml.addMessage(new TargettedMessage("validate.userNotDefined", new Object[]{}, TargettedMessage.SEVERITY_ERROR));
+			tml.addMessage(new TargettedMessage("validate.userNotDefined", new Object[]{getUIService()}, TargettedMessage.SEVERITY_ERROR));
 			return;
 		}
 
@@ -160,7 +150,7 @@ public class TransferMembershipsProducer extends BaseValidationProducer implemen
 				}
 				catch (IdUnusedException e)
 				{
-					e.printStackTrace();
+					log.error(e.getMessage(), e);
 				}
 			}
 		}
@@ -171,6 +161,8 @@ public class TransferMembershipsProducer extends BaseValidationProducer implemen
 		UILink.make(tofill, "welcome2.2", linkText, activationURL);
 		UIMessage.make(tofill, "transferInstructions", "validate.loginexisting.transfer", args);
 		UIMessage.make(tofill, "validate.alreadyhave", "validate.alreadyhave", args);
+
+		addResetPassLink(tofill, va);
 
 		Object[] displayIdArgs = new Object[]{u.getDisplayId()};
 		UIForm claimForm = UIForm.make(tofill, "claimAccountForm");

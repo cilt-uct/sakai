@@ -58,6 +58,7 @@ public class FormattedTextTest {
     private static final boolean BLANK_DEFAULT = true;
     public static String TEST1 = "<a href=\"blah.html\" style=\"font-weight:bold;\">blah</a><div>hello there</div>";
     public static String TEST2 = "<span>this is my span</span><script>alert('oh noes, a XSS attack!');</script><div>hello there from a div</div>";
+    public static String TEST3 = "<a href=\"blah.html\" style=\"font-weight:bold;\" target=\"_blank\">blah</a><div>hello there</div>";
     FormattedTextImpl formattedText;
     private SessionManager sessionManager;
     private ServerConfigurationService serverConfigurationService;
@@ -94,6 +95,7 @@ public class FormattedTextTest {
 
         // add in the config so we can test it
         serverConfigurationService.registerConfigItem(BasicConfigItem.makeDefaultedConfigItem("content.cleaner.errors.handling", "return", "FormattedTextTest"));
+        serverConfigurationService.registerConfigItem(BasicConfigItem.makeDefaultedConfigItem("content.cleaner.referrer-policy", "noopener", "FormattedTextTest"));
 
         ComponentManager.testingMode = true;
         // instantiate what we are testing
@@ -114,48 +116,52 @@ public class FormattedTextTest {
     @Test
     public void testProcessAnchor() {
         // Check we add the target attribute
-    	Assert.assertEquals("<a  href=\"http://sakaiproject.org/\" target=\"_blank\">", formattedText
-                .processAnchor("<a href=\"http://sakaiproject.org/\">"));
+    	Assert.assertEquals("<a  href=\"https://www.sakailms.org/\" target=\"_blank\" rel=\"noopener\">", formattedText
+                .processAnchor("<a href=\"https://www.sakailms.org/\">"));
     }
 
     @Test
     public void testProcessAnchorRelative() {
         // Check we add the target attribute
-    	Assert.assertEquals("<a  href=\"other.html\" target=\"_blank\">", formattedText
+    	Assert.assertEquals("<a  href=\"other.html\" target=\"_blank\" rel=\"noopener\">", formattedText
                 .processAnchor("<a href=\"other.html\">"));
     }
 
     @Test
     public void testProcessAnchorMailto() {
-    	Assert.assertEquals("<a  href=\"mailto:someone@example.com\" target=\"_blank\">", formattedText
+    	Assert.assertEquals("<a  href=\"mailto:someone@example.com\" target=\"_blank\" rel=\"noopener\">", formattedText
                 .processAnchor("<a href=\"mailto:someone@example.com\">"));
     }
 
     @Test
     public void testProcessAnchorName() {
-    	Assert.assertEquals("<a  href=\"#anchor\" target=\"_blank\">", formattedText
+    	Assert.assertEquals("<a  href=\"#anchor\" target=\"_blank\" rel=\"noopener\">", formattedText
                 .processAnchor("<a href=\"#anchor\">"));
     }
 
     @Test
     public void testRegexTargetMatch() {
-        Pattern patternAnchorTagWithOutTarget = formattedText.M_patternAnchorTagWithOutTarget;
-        /*  Pattern.compile("([<]a\\s)(?![^>]*target=)([^>]*?)[>]",
+        Pattern patternAnchorTagWithOutTarget = formattedText.M_patternAnchorTagWithOutTargetAndWithHrefAndHrefNotStartingWithHash;
+        /*  Pattern.compile("([<]a\s)(?=[^>]*href=)(?![^>]*href="#)(?![^>]*target=)([^>]*?)[>]",
             Pattern.CASE_INSENSITIVE | Pattern.DOTALL); */
         Assert.assertTrue(patternAnchorTagWithOutTarget.matcher("<a href=\"other.html\">link</a>").find());
         Assert.assertFalse(patternAnchorTagWithOutTarget.matcher("<a target=\"AZ\" href=\"other.html\">link</a>").find());
         Assert.assertTrue(patternAnchorTagWithOutTarget.matcher("<a href=\"other.html\" class=\"AZ\">link</a>").find());
         Assert.assertFalse(patternAnchorTagWithOutTarget.matcher("<a target=\"AZ\" href=\"other.html\">link</a>").find());
         Assert.assertFalse(patternAnchorTagWithOutTarget.matcher("<a href=\"other.html\" target=\"AZ\">link</a>").find());
+
+        Assert.assertFalse(patternAnchorTagWithOutTarget.matcher("<a name=\"anchor\">link</a>").find());
+        Assert.assertFalse(patternAnchorTagWithOutTarget.matcher("<a href=\"#other\" target=\"AZ\">link</a>").find());
+        Assert.assertFalse(patternAnchorTagWithOutTarget.matcher("<a href=\"#other\">link</a>").find());
     }
 
     @Test
     public void testTargetNotOverridden() {
     	// KNL-526 - testing that targets are not destroyed or replaced
         // method 1 - processAnchor (kills all A attribs and only works on the first part of the tag
-    	Assert.assertEquals("<a  href=\"other.html\" target=\"_blank\">", 
+    	Assert.assertEquals("<a  href=\"other.html\" target=\"_blank\" rel=\"noopener\">",
                 formattedText.processAnchor("<a href=\"other.html\">") );
-    	Assert.assertEquals("<a  href=\"other.html\" target=\"_blank\">", 
+    	Assert.assertEquals("<a  href=\"other.html\" target=\"_blank\" rel=\"noopener\">",
                 formattedText.processAnchor("<a target=\"_blank\" href=\"other.html\">") );
 
     	Assert.assertEquals("<a  href=\"other.html\" target=\"_AZ\">", 
@@ -165,10 +171,16 @@ public class FormattedTextTest {
                 formattedText.processAnchor("<a href=\"other.html\" target=\"_AZ\" class=\"azeckoski\">"));
 
         // method 2 - escapeHtmlFormattedText (saves other A attribs)
-    	Assert.assertEquals("<a href=\"other.html\" target=\"_blank\">link</a>", 
+    	Assert.assertEquals("<a href=\"other.html\" target=\"_blank\" rel=\"noopener\">link</a>",
                 formattedText.escapeHtmlFormattedText("<a href=\"other.html\">link</a>") );
-    	Assert.assertEquals("<a href=\"other.html\" class=\"azeckoski\" target=\"_blank\">link</a>", 
+    	Assert.assertEquals("<a href=\"other.html\" class=\"azeckoski\" target=\"_blank\" rel=\"noopener\">link</a>",
                 formattedText.escapeHtmlFormattedText("<a href=\"other.html\" class=\"azeckoski\">link</a>") );
+        Assert.assertEquals("<a href=\"other.html\" target=\"_blank\" class=\"arbitrary\" rel=\"noopener\">link</a>",
+                formattedText.escapeHtmlFormattedText("<a href=\"other.html\" target=\"_blank\" class=\"arbitrary\">link</a>") );
+        Assert.assertEquals("<a href=\"other.html\" class=\"arbitrary\" target=\"_blank\" rel=\"noopener\">link</a>",
+                formattedText.escapeHtmlFormattedText("<a href=\"other.html\" class=\"arbitrary\" target=\"_blank\">link</a>") );
+        Assert.assertEquals("<a href=\"other.html\" target=\"arbitrary\" class=\"arbitrary\">link</a>",
+                formattedText.escapeHtmlFormattedText("<a href=\"other.html\" target=\"arbitrary\" class=\"arbitrary\">link</a>") );
     	Assert.assertEquals("<b>simple</b><b class=\"AZ\">bold</b>", 
                 formattedText.escapeHtmlFormattedText("<b>simple</b><b class=\"AZ\">bold</b>") );
 
@@ -177,9 +189,9 @@ public class FormattedTextTest {
     	Assert.assertEquals("<a href=\"other.html\" target=\"_AZ\" class=\"azeckoski\">link</a>", 
                 formattedText.escapeHtmlFormattedText("<a href=\"other.html\" target=\"_AZ\" class=\"azeckoski\">link</a>") );
 
-    	Assert.assertEquals("<a href=\"other.html\" class=\"azeckoski\" target=\"_blank\">link</a><a href=\"other.html\" target=\"_AZ\" class=\"azeckoski\">link</a>", 
+    	Assert.assertEquals("<a href=\"other.html\" class=\"azeckoski\" target=\"_blank\" rel=\"noopener\">link</a><a href=\"other.html\" target=\"_AZ\" class=\"azeckoski\">link</a>",
                 formattedText.escapeHtmlFormattedText("<a href=\"other.html\" class=\"azeckoski\">link</a><a href=\"other.html\" target=\"_AZ\" class=\"azeckoski\">link</a>") );
-    	Assert.assertEquals("<b>simple</b><b class=\"AZ\">bold</b><a href=\"other.html\" class=\"azeckoski\" target=\"_blank\">link</a><a href=\"other.html\" target=\"_AZ\" class=\"azeckoski\">link</a>", 
+    	Assert.assertEquals("<b>simple</b><b class=\"AZ\">bold</b><a href=\"other.html\" class=\"azeckoski\" target=\"_blank\" rel=\"noopener\">link</a><a href=\"other.html\" target=\"_AZ\" class=\"azeckoski\">link</a>",
                 formattedText.escapeHtmlFormattedText("<b>simple</b><b class=\"AZ\">bold</b><a href=\"other.html\" class=\"azeckoski\">link</a><a href=\"other.html\" target=\"_AZ\" class=\"azeckoski\">link</a>") );
     }
 
@@ -210,7 +222,18 @@ public class FormattedTextTest {
         //Assert.assertFalse( result.contains("style=\"font-weight:bold;\"")); // strips this out
         //Assert.assertTrue( result.contains("target=\"_blank\"")); // adds target in
         Assert.assertTrue( result.contains("<div>hello there</div>"));
-        Assert.assertEquals("<a href=\"blah.html\" style=\"font-weight: bold;\" target=\"_blank\">blah</a><div>hello there</div>", result);
+        Assert.assertEquals("<a href=\"blah.html\" style=\"font-weight: bold;\" target=\"_blank\" rel=\"noopener\">blah</a><div>hello there</div>", result);
+
+        strFromBrowser = TEST3;
+        errorMessages = new StringBuilder();
+        formattedText.setDefaultAddBlankTargetToLinks(true);
+        result = formattedText.processFormattedText(strFromBrowser, errorMessages, false);
+        Assert.assertNotNull(result);
+        Assert.assertTrue( result.contains("href=\"blah.html\""));
+        //Assert.assertFalse( result.contains("style=\"font-weight:bold;\"")); // strips this out
+        //Assert.assertTrue( result.contains("target=\"_blank\"")); // adds target in
+        Assert.assertTrue( result.contains("<div>hello there</div>"));
+        Assert.assertEquals("<a href=\"blah.html\" style=\"font-weight: bold;\" target=\"_blank\" rel=\"noopener\">blah</a><div>hello there</div>", result);
 
         strFromBrowser = TEST2;
         errorMessages = new StringBuilder();
@@ -296,8 +319,6 @@ public class FormattedTextTest {
         String repeatK    = "<span class class></span>";
         String repeatKV   = "<span class=\"one\" class=\"two\"></span>";
         String badK       = "<span class=\"foo\" class-></span>";
-        String badK2      = "<span class=\"foo\" data-></span>";
-        String badK3      = "<span class=\"foo\" data--></span>";
         String badKV      = "<span class=\"foo\" class-=\"one\"></span>";
 
         String resultRepeatK    = "<span></span>";
@@ -306,9 +327,9 @@ public class FormattedTextTest {
         String resultBadKV      = "<span class=\"foo\"></span>";
 
         // antisamy will not allow empty attributes OR unknown attributes
-        passTests   = new String[] { oneKV, twoKV, selfClose, subAttr, subAttrs };
-        failTests   = new String[] { repeatK, badK, badK2, badK3, badKV };
-        failResults = new String[] { resultRepeatK, resultBadK, resultBadK, resultBadK, resultBadKV };
+        passTests   = new String[] { oneKV, twoKV, selfClose, subAttr, subAttrs};
+        failTests   = new String[] { repeatK, badK, badKV };
+        failResults = new String[] { resultRepeatK, resultBadK, resultBadKV };
 
         result = formattedText.processFormattedText(repeatKV, new StringBuilder());
         Assert.assertEquals(resultRepeatKV, result);
@@ -713,6 +734,26 @@ public class FormattedTextTest {
     }
 
     @Test
+    public void testKNL_1531() {
+        // https://jira.sakaiproject.org/browse/KNL-1061
+        String strFromBrowser = null;
+        String result = null;
+        StringBuilder errorMessages = null;
+
+        strFromBrowser = "<div class=\"classValue\">divValue</div><img border=\"0\" aria-hidden=\"true\" aria-label=\"Close\" />";
+        errorMessages = new StringBuilder();
+        result = formattedText.processFormattedText(strFromBrowser, errorMessages);
+        Assert.assertNotNull(result);
+        Assert.assertFalse( errorMessages.length() > 10 );
+        Assert.assertTrue( result.contains("<div "));
+        Assert.assertTrue( result.contains("divValue"));
+        Assert.assertTrue( result.contains("<img"));
+        Assert.assertTrue( result.contains("aria-hidden"));
+        Assert.assertTrue( result.contains("aria-label"));
+        Assert.assertTrue( result.contains("Close"));
+    }
+
+    @Test
     public void testKNL_1061() {
         // https://jira.sakaiproject.org/browse/KNL-1061
         String strFromBrowser = null;
@@ -823,8 +864,8 @@ public class FormattedTextTest {
     public void testEscapeHrefUrl() {
         // https://jira.sakaiproject.org/browse/KNL-1105
         String output = null;
-        output = formattedText.sanitizeHrefURL("http://www.sakaiproject.org/?x=Hello World&y=12");
-        Assert.assertTrue(output,"http://www.sakaiproject.org/?x=Hello%20World&y=12".equals(output));
+        output = formattedText.sanitizeHrefURL("https://www.sakailms.org/?x=Hello World&y=12");
+        Assert.assertTrue(output,"https://www.sakailms.org/?x=Hello%20World&y=12".equals(output));
         output = formattedText.sanitizeHrefURL("http://www.abc.es#\"><script>");
         Assert.assertTrue(output,"http://www.abc.es#%22%3E%3Cscript%3E".equals(output));
         output = formattedText.sanitizeHrefURL("http://www.abc.es/page#anchor");
@@ -870,22 +911,22 @@ public class FormattedTextTest {
 
     @Test
     public void testCanDoSsl() {
-        Assert.assertEquals("<a href=\"https://sakaiproject.org\">https://sakaiproject.org</a>", formattedText.encodeUrlsAsHtml("https://sakaiproject.org"));
+        Assert.assertEquals("<a href=\"https://www.sakailms.org\">https://www.sakailms.org</a>", formattedText.encodeUrlsAsHtml("https://www.sakailms.org"));
     }
 
     @Test
     public void testCanIgnoreTrailingExclamation() {
-        Assert.assertEquals("Hey, it's <a href=\"http://sakaiproject.org\">http://sakaiproject.org</a>!", formattedText.encodeUrlsAsHtml("Hey, it's http://sakaiproject.org!"));
+        Assert.assertEquals("Hey, it's <a href=\"https://www.sakailms.org/\">https://www.sakailms.org/</a>!", formattedText.encodeUrlsAsHtml("Hey, it's https://www.sakailms.org/!"));
     }
 
     @Test
     public void testCanIgnoreTrailingQuestion() {
-        Assert.assertEquals("Have you ever seen <a href=\"http://sakaiproject.org\">http://sakaiproject.org</a>? Just wondering.", formattedText.encodeUrlsAsHtml("Have you ever seen http://sakaiproject.org? Just wondering."));
+        Assert.assertEquals("Have you ever seen <a href=\"https://www.sakailms.org/\">https://www.sakailms.org/</a>? Just wondering.", formattedText.encodeUrlsAsHtml("Have you ever seen https://www.sakailms.org/? Just wondering."));
     }
 
     @Test
     public void testCanEncodeQueryString() {
-        Assert.assertEquals("See <a href=\"http://sakaiproject.org/index.php?task=blogcategory&id=181\">http://sakaiproject.org/index.php?task=blogcategory&amp;id=181</a> for more info.", formattedText.encodeUrlsAsHtml(formattedText.escapeHtml("See http://sakaiproject.org/index.php?task=blogcategory&id=181 for more info.")));
+        Assert.assertEquals("See <a href=\"https://www.sakailms.org/index.php?task=blogcategory&id=181\">https://www.sakailms.org/index.php?task=blogcategory&amp;id=181</a> for more info.", formattedText.encodeUrlsAsHtml(formattedText.escapeHtml("See https://www.sakailms.org/index.php?task=blogcategory&id=181 for more info.")));
     }
 
     @Test
@@ -900,7 +941,7 @@ public class FormattedTextTest {
 
     @Test
     public void testCanIgnoreExistingHref() {
-        Assert.assertEquals("<a href=\"http://sakaiproject.org\">Sakai Project</a>", formattedText.encodeUrlsAsHtml("<a href=\"http://sakaiproject.org\">Sakai Project</a>"));
+        Assert.assertEquals("<a href=\"https://www.sakailms.org/\">Sakai Project</a>", formattedText.encodeUrlsAsHtml("<a href=\"https://www.sakailms.org/\">Sakai Project</a>"));
     }
 
     @Test
@@ -1025,6 +1066,20 @@ public class FormattedTextTest {
 
     }
 
+    @Test
+    public void testKNL_1487() {
+        // https://jira.sakaiproject.org/browse/KNL-1487
+        String text = null;
+        String result = null;
+        StringBuilder errorMessages = new StringBuilder();
+
+        //These are all expected to be an empty string as these tags are removed
+        text = "<img align=\"middle\" alt=\"square root of 5555\" class=\"Wirisformula\" data-mathml=\"(some mathml)\" role=\"math\" src=\"/pluginwiris_engine/app/showimage?formula=bf57cf5ace9b1e530d7221ee512cb429\" />";
+        result = formattedText.processFormattedText(text,errorMessages);
+        Assert.assertTrue( errorMessages.length() == 0 );
+        //Verify nothing was removed
+        Assert.assertEquals(result, text);
+    }
 
     @Test
     public void testGetShortenedTitles() {
@@ -1032,7 +1087,7 @@ public class FormattedTextTest {
             for (int k=0; k<CUT_METHODS.length; k++) {
                 ServerConfigurationService scs = new BasicConfigurationService();
                 scs.registerConfigItem(BasicConfigItem.makeDefaultedConfigItem("site.title.cut.method", CUT_METHODS[k], "FormattedTextTest"));
-                scs.registerConfigItem(BasicConfigItem.makeDefaultedConfigItem("site.title.maxlength", MAX_LENGTHS[k], "FormattedTextTest"));
+                scs.registerConfigItem(BasicConfigItem.makeDefaultedConfigItem("site.title.cut.maxlength", MAX_LENGTHS[k], "FormattedTextTest"));
                 scs.registerConfigItem(BasicConfigItem.makeDefaultedConfigItem("site.title.cut.separator", CUT_SEPARATORS[k], "FormattedTextTest"));
                 formattedText.setServerConfigurationService(scs);
                 String resumeTitle = formattedText.makeShortenedText(siteTitle, null, null, null);
@@ -1082,5 +1137,42 @@ public class FormattedTextTest {
         result = formattedText.stripHtmlFromText(text, false, false);
         Assert.assertEquals("ad", result);
     }
+
+    @Test
+    public void testKNL_1530() {
+        // https://jira.sakaiproject.org/browse/KNL-1530
+        String text = null;
+        String result = null;
+        StringBuilder errorMessages = new StringBuilder();
+
+        String anchor = "<a href=\"https://www.sakailms.org/\">sakaiproject</a>";
+        String expectedAnchor = "<a href=\"https://www.sakailms.org/\" target=\"_blank\" rel=\"noopener\">sakaiproject</a>";
+
+        //Process the anchor, there shouldn't be any error messages or changes, but it does insert target and noopener which should pass
+        result = formattedText.processFormattedText(anchor,errorMessages);
+        Assert.assertTrue( errorMessages.length() == 0 );
+        Assert.assertEquals(result, expectedAnchor);
+
+        //Now reprocess the result
+        result = formattedText.processFormattedText(result,errorMessages);
+        Assert.assertTrue( errorMessages.length() == 0 );
+        Assert.assertEquals(result, expectedAnchor);
+    }
+    
+    @Test
+    public void getHtmlBodyTest() {
+    	String result;
+        StringBuilder errorMessages = new StringBuilder();
+
+        result = formattedText.getHtmlBody("<html><body><div>Text</div></body></html>");
+        Assert.assertEquals("<div>Text</div>", result);
+        
+        result = formattedText.getHtmlBody("<div>Text</div>");
+        Assert.assertEquals("<div>Text</div>", result);
+
+        result = formattedText.getHtmlBody("");
+        Assert.assertEquals("", result);
+    }
+
 
 }

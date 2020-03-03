@@ -9,17 +9,7 @@
 </jsp:useBean>
 
 	<sakai:view_container title="#{SyllabusTool.siteTitle}">
-	<sakai:stylesheet path="/syllabus/css/syllabus.css" />
 	<sakai:view_content>
-
-
-<script type="text/javascript">
-	// SAK-12177: If i'm being loaded into the iframe upon redirect
-	// reset the tool so proper page will be displayed
-	// NOTE: URL taken from reset icon 
-	if (window.parent.location.href.indexOf("printFriendly") == -1)
-	    window.location.href = '<h:outputText value="#{SyllabusTool.resetUrl}" />';
-</script>
 
 
 <%-- gsilver: global things about syllabus tool:
@@ -80,7 +70,10 @@
 				<h:outputText value="#{msgs.syllabus_noEntry}" styleClass="instruction" rendered="#{SyllabusTool.displayNoEntryMsg}"/>
 			</syllabus:syllabus_if>				
 			<syllabus:syllabus_ifnot test="#{SyllabusTool.syllabusItem.redirectURL}">
-  			<syllabus:syllabus_iframe redirectUrl="#{SyllabusTool.syllabusItem.redirectURL}" width="960px" height="1142px"/>
+				<h:outputText escape="false" value="#{msgs.redirect_explanation} " />
+				<h:outputLink target="_blank" rel="noopener" title="#{msgs.openLinkNewWindow}" value="#{SyllabusTool.syllabusItem.redirectURL}">
+					<h:outputText escape="false" value="#{SyllabusTool.syllabusItem.redirectURL}" />
+				</h:outputLink>
 			</syllabus:syllabus_ifnot>
 		</h:form>
 	</sakai:view_content>

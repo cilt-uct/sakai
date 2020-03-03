@@ -4,17 +4,12 @@
     <name>Sakai Entity Broker REST Implementation</name>
     <groupId>org.sakaiproject.entitybroker</groupId>
     <artifactId>entitybroker-restimpl</artifactId>
-    <organization>
-        <name>Sakai Project</name>
-        <url>http://sakaiproject.org/</url>
-    </organization>
-    <inceptionYear>2007</inceptionYear>
     <packaging>jar</packaging>
 <!-- the base is parent -->
     <parent>
         <artifactId>entitybroker</artifactId>
         <groupId>org.sakaiproject</groupId>
-        <version>12-SNAPSHOT</version><!--entitybroker.version-->
+        <version>21-SNAPSHOT</version><!--entitybroker.version-->
     </parent>
     <dependencies>
         <!-- internal dependencies -->
@@ -25,6 +20,10 @@
         <dependency>
             <groupId>org.sakaiproject.entitybroker</groupId>
             <artifactId>entitybroker-utils</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.sakaiproject.kernel</groupId>
+            <artifactId>sakai-kernel-api</artifactId>
         </dependency>
         <!-- internal testing -->
         <dependency>
@@ -41,12 +40,18 @@
         </dependency>
         <!-- external dependencies -->
         <dependency>
+            <!--TODO Move to javax.servlet-api version of master-->
             <groupId>javax.servlet</groupId>
             <artifactId>servlet-api</artifactId>
+            <version>2.4</version>
         </dependency>
         <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
         </dependency>
         <!-- Data processing -->
         <dependency>

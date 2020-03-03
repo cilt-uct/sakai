@@ -141,6 +141,11 @@ public class UrlResourceType extends BaseResourceType
 		return null;
 	}
 	
+	public String getIconClass(ContentEntity entity) 
+	{
+		return null;
+	}
+	
 	public String getId() 
 	{
 		return typeId;
@@ -200,7 +205,7 @@ public class UrlResourceType extends BaseResourceType
 	@Override
     public boolean hasRightsDialog()
     {
-		return serverConfigurationService.getBoolean("content.url.rightsdialog", false);
+		return serverConfigurationService.getBoolean("content.url.rightsdialog", true);
     }
 
 }

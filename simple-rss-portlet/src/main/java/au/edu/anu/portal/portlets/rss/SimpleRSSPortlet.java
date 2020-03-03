@@ -34,20 +34,26 @@ import javax.portlet.RenderRequest;
 import javax.portlet.RenderResponse;
 import javax.portlet.ValidatorException;
 
+import com.rometools.rome.feed.synd.SyndFeed;
 import lombok.extern.slf4j.Slf4j;
-
-import org.apache.commons.lang.StringEscapeUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.text.StringEscapeUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import au.edu.anu.portal.portlets.rss.model.Attachment;
 import au.edu.anu.portal.portlets.rss.utils.Constants;
 import au.edu.anu.portal.portlets.rss.utils.Messages;
 
-import com.sun.syndication.feed.synd.SyndFeed;
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.memory.api.Cache;
 import org.sakaiproject.memory.api.MemoryService;
-
+import org.sakaiproject.site.api.Site;
+import org.sakaiproject.site.api.SitePage;
+import org.sakaiproject.site.api.SiteService;
+import org.sakaiproject.site.api.ToolConfiguration;
+import org.sakaiproject.tool.api.Placement;
+import org.sakaiproject.tool.api.ToolManager;
+import org.sakaiproject.event.api.EventTrackingService;
+import org.sakaiproject.exception.IdUnusedException;
 
 /**
  * SimpleRssPortlet
@@ -65,7 +71,7 @@ public class SimpleRSSPortlet extends GenericPortlet{
 	private String editUrl;
 	private String errorUrl;
 	private String noContentUrl;
-	
+
 	//cache
 	private MemoryService memoryService;
 	private Cache<String, SyndFeed> feedCache;
@@ -73,12 +79,21 @@ public class SimpleRSSPortlet extends GenericPortlet{
 
 	private static final String FEED_CACHE_NAME = "au.edu.anu.portal.portlets.cache.SimpleRSSPortletCache.feed";
 	private static final String MEDIA_CACHE_NAME = "au.edu.anu.portal.portlets.cache.SimpleRSSPortletCache.media";
-	
+
 	//pref names
 	private final String PREF_PORTLET_TITLE = "portlet_title";
 	private final String PREF_FEED_URL = "feed_url";
 	private final String PREF_MAX_ITEMS = "max_items";
-	
+
+	// events
+	private static final String NEWS_READ_EVENT = "news.read";
+	private static final String NEWS_REVISE_EVENT = "news.revise";
+	private static final String EVENT_REF_TEMPLATE = "/news/site/%s/placement/%s";
+
+	private EventTrackingService eventServ;
+	private SiteService siteServ;
+	private ToolManager toolMan;
+
 	public void init(PortletConfig config) throws PortletException {	   
 	   super.init(config);
 	   log.info("Simple RSS Portlet init()");
@@ -93,9 +108,14 @@ public class SimpleRSSPortlet extends GenericPortlet{
 	   memoryService = ComponentManager.get(MemoryService.class);
 	   feedCache = memoryService.getCache(FEED_CACHE_NAME);
 	   mediaCache = memoryService.getCache(MEDIA_CACHE_NAME);
+
+	   // setup event tracking
+	   eventServ = ComponentManager.get(EventTrackingService.class);
+	   siteServ = ComponentManager.get(SiteService.class);
+	   toolMan = ComponentManager.get(ToolManager.class);
 	   
 	}
-	
+
 	/**
 	 * Delegate to appropriate PortletMode.
 	 */
@@ -109,8 +129,7 @@ public class SimpleRSSPortlet extends GenericPortlet{
 			super.doDispatch(request, response);
 		}
 	}
-	
-	
+
 	/**
 	 * Render the main view
 	 */
@@ -119,30 +138,32 @@ public class SimpleRSSPortlet extends GenericPortlet{
 		
 		//get feed URL
 		String feedUrl = getConfiguredFeedUrl(request);
-		
+
 		//get feed data
 		SyndFeed feed = getFeedContent(request, response);
-		
+
 		//catch - errors already handled
 		if(feed == null) {
 			return;
 		}
-		
+
 		//catch and send to no content page
 		if(feed.getEntries().isEmpty()) {
 			dispatch(request, response, noContentUrl);
 		}
-		
+
 		//get the media associated with the entries in this feed
 		Map<String,Attachment> media = getFeedMedia(feed, feedUrl);
-				
+
 		//get max items (subtract 1 since it will be used in a 0 based index)
 		int maxItems = getConfiguredMaxItems(request) - 1;
-		
+
 		request.setAttribute("SyndFeed", feed);
 		request.setAttribute("Media", media);
 		request.setAttribute("maxItems", maxItems);
-		
+
+		postEvent(NEWS_READ_EVENT, false);
+
 		dispatch(request, response, viewUrl);
 	}	
 	
@@ -154,7 +175,7 @@ public class SimpleRSSPortlet extends GenericPortlet{
 
 		//if we have an error message, replay the form
 		String errorMessage = request.getParameter("errorMessage");
-		
+
 		if(StringUtils.isNotBlank(errorMessage)) {
 			//PORT-672 replay data from the request so it is preserved
 			request.setAttribute("portletTitle", request.getParameter("portletTitle"));
@@ -166,7 +187,7 @@ public class SimpleRSSPortlet extends GenericPortlet{
 			request.setAttribute("feedUrl", getConfiguredFeedUrl(request));
 			request.setAttribute("maxItems", getConfiguredMaxItems(request));
 		}
-	
+
 		//check permissions
 		request.setAttribute("feedUrlIsLocked", isPrefLocked(request, PREF_FEED_URL));
 		request.setAttribute("portletTitleIsLocked", isPrefLocked(request, PREF_PORTLET_TITLE));
@@ -179,7 +200,7 @@ public class SimpleRSSPortlet extends GenericPortlet{
 		
 		dispatch(request, response, editUrl);
 	}
-	
+
 	/**
 	 * Custom mode handler for CONFIG view
 	 * Identical to EDIT mode.
@@ -188,7 +209,7 @@ public class SimpleRSSPortlet extends GenericPortlet{
 		log.debug("Simple RSS doConfig()");
 		doEdit(request,response);
 	}
-	
+
 	/**
 	 * Process any portlet actions. 
 	 */
@@ -197,11 +218,11 @@ public class SimpleRSSPortlet extends GenericPortlet{
 		
 		//this handles both EDIT and CONFIG modes in exactly the same way.
 		//if we need to split, check PortletMode.
-		
+
 		boolean success = true;
 		//get prefs and submitted values
 		PortletPreferences prefs = request.getPreferences();
-		String portletTitle = StringEscapeUtils.escapeHtml(StringUtils.trim(request.getParameter("portletTitle")));
+		String portletTitle = StringEscapeUtils.escapeHtml4(StringUtils.trim(request.getParameter("portletTitle")));
 		String maxItems = StringUtils.trim(request.getParameter("maxItems"));
 		String feedUrl = StringUtils.trim(request.getParameter("feedUrl"));
 		
@@ -209,15 +230,35 @@ public class SimpleRSSPortlet extends GenericPortlet{
 		if(StringUtils.isBlank(portletTitle)){
 			portletTitle=Constants.PORTLET_TITLE_DEFAULT;
 		}
-		
+
 		boolean feedUrlIsLocked = isPrefLocked(request, PREF_FEED_URL);
 		boolean portletTitleIsLocked = isPrefLocked(request, PREF_PORTLET_TITLE);
-		
+
 		//check not readonly
 		try {
 			//only do this if we know its not locked, ie this is not a preconfigured portlet
 			if(!portletTitleIsLocked) {
 				prefs.setValue(PREF_PORTLET_TITLE, portletTitle);
+
+				//Save the page and tool title
+				try{
+					Placement placement = toolMan.getCurrentPlacement();
+					Site siteEdit = siteServ.getSite(placement.getContext());
+					for (SitePage sitePage : siteEdit.getPages()) {
+						for(ToolConfiguration toolConfiguration : sitePage.getTools()){
+							if (toolConfiguration.getId().equals(placement.getId())) {
+								sitePage.setTitle(portletTitle);
+								toolConfiguration.setTitle(portletTitle);
+							}
+						}
+					}
+
+					siteServ.save(siteEdit);
+
+				}catch(Exception ex){
+					log.error("Error saving the news title.", ex);
+				}
+
 			}
 			
 			//only do this if we know its not locked, ie this is not a preconfigured portlet
@@ -230,12 +271,13 @@ public class SimpleRSSPortlet extends GenericPortlet{
 			response.setRenderParameter("errorMessage", Messages.getString("error.form.readonly.error"));
 			log.error(e.getMessage());
 		}
-		
+
 		//validate and save
 		if(success) {
 			try {
 				prefs.store();
 				response.setPortletMode(PortletMode.VIEW);
+				postEvent(NEWS_REVISE_EVENT, true);
 				
 			} catch (ValidatorException e) {
 				//PORT-672 present entered data on the form again
@@ -258,8 +300,7 @@ public class SimpleRSSPortlet extends GenericPortlet{
 		
 		
 	}
-	
-	
+
 	/**
 	 * Get the feed content
 	 * @param request
@@ -291,7 +332,7 @@ public class SimpleRSSPortlet extends GenericPortlet{
 		
 		return feed;
 	}
-	
+
 	/**
 	 * Helper to get the remote feed data and cache it
 	 * @param feedUrl
@@ -315,7 +356,7 @@ public class SimpleRSSPortlet extends GenericPortlet{
 		
 		return feed;
 	}
-	
+
 	/**
 	 * Helper for extracting the enclosures (media) associated with entries in the feed.
 	 * They are returned as a map of String to Attachment where String is the entry Uri
@@ -345,9 +386,7 @@ public class SimpleRSSPortlet extends GenericPortlet{
 		
 		return media;
 	}
-	
-	
-	
+
 	/**
 	 * Get the preferred portlet title if set, or default from Constants
 	 * @param request
@@ -357,7 +396,7 @@ public class SimpleRSSPortlet extends GenericPortlet{
 		PortletPreferences pref = request.getPreferences();
 		return pref.getValue(PREF_PORTLET_TITLE, Constants.PORTLET_TITLE_DEFAULT);
 	}
-	
+
 	/**
 	 * Get the preferred portlet height if set, or default from Constants
 	 * @param request
@@ -367,7 +406,7 @@ public class SimpleRSSPortlet extends GenericPortlet{
 	      PortletPreferences pref = request.getPreferences();
 	      return pref.getValue(PREF_FEED_URL, null);
 	}
-	
+
 	/**
 	 * Get the preferred max number of items, or default from Constants
 	 * @param request
@@ -377,9 +416,7 @@ public class SimpleRSSPortlet extends GenericPortlet{
 	      PortletPreferences pref = request.getPreferences();
 	      return Integer.valueOf(pref.getValue(PREF_MAX_ITEMS, Integer.toString(Constants.MAX_ITEMS)));
 	}
-	
-	
-	
+
 	/**
 	 * Override GenericPortlet.getTitle() to use the preferred title for the portlet instead
 	 */
@@ -399,7 +436,7 @@ public class SimpleRSSPortlet extends GenericPortlet{
 	private void doError(String messageKey, String headingKey, RenderRequest request, RenderResponse response){
 		doError(messageKey, headingKey, null, request, response);
 	}
-	
+
 	/**
 	 * Helper to handle error messages
 	 * @param messageKey	Message bundle key
@@ -419,16 +456,16 @@ public class SimpleRSSPortlet extends GenericPortlet{
 		} else {
 			request.setAttribute("errorHeading", Messages.getString("error.heading.general"));
 		}
-		
+
 		if(StringUtils.isNotBlank(link)){
 			request.setAttribute("errorLink", link);
 		}
-		
+
 		//dispatch
 		try {
 			dispatch(request, response, errorUrl);
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 		}
 	}
 	
@@ -467,7 +504,7 @@ public class SimpleRSSPortlet extends GenericPortlet{
 	    
 		return url.toString();
 	}
-	
+
 	/**
 	 * Helper to check if a preference is locked (ie readonly). This may be set by a channel config to restrict access.
 	 * 
@@ -483,12 +520,24 @@ public class SimpleRSSPortlet extends GenericPortlet{
 			return false;
 		}
 	}
+
+	private void postEvent(String eventType, boolean modification) {
+
+		try {
+			Placement placement = toolMan.getCurrentPlacement();
+			String siteId = siteServ.getSite(placement.getContext()).getId();
+			String eventRef = String.format(EVENT_REF_TEMPLATE, siteId, placement.getId());
+			eventServ.post(eventServ.newEvent(eventType, eventRef, modification));
+		}
+		catch (IdUnusedException e) {
+			log.debug("Failed to post " + eventType + " due to invalid siteId", e);
+		}
+	}
 	
 	public void destroy() {
 		log.info("Simple RSS Portlet destroy()");
 		memoryService.destroyCache(FEED_CACHE_NAME);
 		memoryService.destroyCache(MEDIA_CACHE_NAME);
 	}
-	
-	
+
 }

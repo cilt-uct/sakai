@@ -4,7 +4,7 @@
     <parent>
       <groupId>org.sakaiproject</groupId>
       <artifactId>master</artifactId>
-      <version>12-SNAPSHOT</version>
+      <version>21-SNAPSHOT</version>
       <relativePath>../master/pom.xml</relativePath>
     </parent>
   <name>Sakai Syllabus Project</name>
@@ -13,7 +13,6 @@
   <packaging>pom</packaging>
 
   <modules>
-    <module>components</module>
     <module>syllabus-api</module>
     <module>syllabus-app</module>
     <module>syllabus-hbm</module>

@@ -6,7 +6,7 @@
 .selected {width:210px; text-align:right; vertical-align:top;}
 
 .transferButtonTable {text-align:center; font-weight:bold;}
-.studentSectionInfo {font-weight:bold;}
+.sectionTable .studentSectionInfo {font-weight:bold;}
 .deleteButtons {margin-top:40px;}
 .verticalPadding {margin-top:20px;}
 
@@ -32,6 +32,8 @@ tr.paddedSectionRow td  table {padding-top:0 !important; padding-bottom:1em !imp
 .paddedMeetingRow {padding-top:0 !important; padding-bottom:3px !important; }
 .meetingFirstCol  {padding-top:10px !important; }
 .meetingSecondCol {padding-top:3px !important;}
+.meetingDay {display:inline-block;margin-right: 15px;}
+.meetingDay label {padding-left: 4px;}
 
 
 /* Form labels should be bold */
@@ -128,5 +130,15 @@ table.narrowTable tr th {
 /* Indent options checkboxes */
 .indent {text-indent: 1em;}
 
+.ui-dialog-titlebar-close {
+    visibility: hidden;
+}
 
-
+.displayNone {
+    display: none;
+}
+ 
+.dialogConfirm {
+    float:left;
+    margin:12px 12px 20px 0;
+}

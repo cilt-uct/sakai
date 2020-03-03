@@ -1,11 +1,26 @@
+/**
+ * Copyright (c) 2006-2016 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.tool.resetpass;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
 import org.sakaiproject.accountvalidator.logic.ValidationLogic;
 import org.sakaiproject.accountvalidator.model.ValidationAccount;
 import org.sakaiproject.authz.api.SecurityAdvisor;
@@ -18,6 +33,7 @@ import org.sakaiproject.user.api.UserEdit;
 
 import uk.org.ponder.messageutil.MessageLocator;
 
+@Slf4j
 public class FormHandler {
 
 	private static java.lang.String SECURE_UPDATE_USER_ANY = org.sakaiproject.user.api.UserDirectoryService.SECURE_UPDATE_USER_ANY;
@@ -65,14 +81,18 @@ public class FormHandler {
 		this.validationLogic = validationLogic;
 	}
 
-
-	private static Logger m_log  = LoggerFactory.getLogger(FormHandler.class);
-
 	public String processAction() {
 		//siteManage.validateNewUsers = false use the classic method:
 		boolean validatingAccounts = serverConfigurationService.getBoolean("siteManage.validateNewUsers", true);
 		if (! validatingAccounts) {
 			return resetPassClassic();
+		}
+
+		// If the user is null at this point, it means we hit one of the error cases (wrong type, super user, invalid email, multiple accounts tied to email)
+		// We return 'success' here so that we're transferred to the confirmation page, so that no information is leaked about if the account exists or not.
+		if (userBean.getUser() == null ) {
+			// Don't send any email, just transfer to the confirmation page
+			return "Success";
 		}
 
 		//otherwise lets we need some info on the user.
@@ -83,32 +103,30 @@ public class FormHandler {
 		eventService.post(eventService.newEvent("user.resetpass", userBean.getUser().getReference() , true));
 
 		if (!validationLogic.isAccountValidated(userId)) {
-			m_log.debug("account is not validated");
+			log.debug("account is not validated");
 			//its possible that the user has an outstanding Validation
 			ValidationAccount va = validationLogic.getVaLidationAcountByUserId(userId);
 			if (va == null) {
 				//we need to validate the account.
-				m_log.debug("This is a legacy user to validate!");
+				log.debug("This is a legacy user to validate!");
 				validationLogic.createValidationAccount(userBean.getUser().getId(), ValidationAccount.ACCOUNT_STATUS_PASSWORD_RESET);
 			} else {
-				m_log.debug("resending validation");
+				log.debug("resending validation");
 				validationLogic.resendValidation(va.getValidationToken());
 			}
-			
-			
 			return "Success";
 		} else {
 			//there may be a pending VA that needs to be verified
 			ValidationAccount va = validationLogic.getVaLidationAcountByUserId(userId);
 			if (va == null ) {
 				//the account is validated we need to send a password reset
-				m_log.info("no account found!");
+				log.info("no account found!");
 				validationLogic.createValidationAccount(userId, ValidationAccount.ACCOUNT_STATUS_PASSWORD_RESET);
 			} else if (va.getValidationReceived() == null) {
-				m_log.debug("no response on validation!");
+				log.debug("no response on validation!");
 				validationLogic.resendValidation(va.getValidationToken());
 			} else {
-				m_log.debug("creating a new validation for password reset");
+				log.debug("creating a new validation for password reset");
 				validationLogic.createValidationAccount(userId, ValidationAccount.ACCOUNT_STATUS_PASSWORD_RESET);
 			}
 			return "Success";
@@ -121,12 +139,12 @@ public class FormHandler {
 	 * @return
 	 */
 	private String resetPassClassic() {
-		m_log.info("getting password for " + userBean.getEmail());
+		log.info("getting password for " + userBean.getEmail());
 
 		String from = serverConfigurationService.getString("setup.request", null);
 		if (from == null)
 		{
-			m_log.warn(this + " - no 'setup.request' in configuration");
+			log.warn(this + " - no 'setup.request' in configuration");
 			from = "postmaster@".concat(serverConfigurationService.getServerName());
 		}
 
@@ -167,7 +185,7 @@ public class FormHandler {
 			if (serverConfigurationService.getString("mail.support", null) != null )
 				buff.append(messageLocator.getMessage("mailBody4",new Object[]{serverConfigurationService.getString("mail.support")}) + "\n\n");
 
-			m_log.debug(messageLocator.getMessage("mailBody1",new Object[]{productionSiteName}));
+			log.debug(messageLocator.getMessage("mailBody1",new Object[]{productionSiteName}));
 			buff.append(messageLocator.getMessage("mailBodySalut")+"\n");
 			buff.append(messageLocator.getMessage("mailBodySalut1",productionSiteName));
 
@@ -180,13 +198,12 @@ public class FormHandler {
 			emailService.send(from,userBean.getUser().getEmail(),messageLocator.getMessage("mailSubject", new Object[]{productionSiteName}),body,
 					userBean.getUser().getEmail(), null, headers);
 
-			m_log.info("New password emailed to: " + userE.getEid() + " (" + userE.getId() + ")");
+			log.info("New password emailed to: " + userE.getEid() + " (" + userE.getId() + ")");
 			eventService.post(eventService.newEvent("user.resetpass", userE.getReference() , true));
 
 		}
 		catch (Exception e) {
-			e.printStackTrace();
-			
+			log.error(e.getMessage(), e);
 			return null;
 		}
 		finally {

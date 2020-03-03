@@ -19,15 +19,18 @@
  */
 package org.sakaiproject.accountvalidator.tool.producers;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.Locale;
+
+import lombok.extern.slf4j.Slf4j;
 import org.joda.time.Period;
 import org.joda.time.format.PeriodFormat;
 import org.joda.time.format.PeriodFormatter;
+
 import org.sakaiproject.accountvalidator.model.ValidationAccount;
 import org.sakaiproject.entitybroker.EntityReference;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserNotDefinedException;
+
 import uk.org.ponder.localeutil.LocaleGetter;
 import uk.org.ponder.messageutil.TargettedMessage;
 import uk.org.ponder.rsf.components.*;
@@ -36,17 +39,16 @@ import uk.org.ponder.rsf.view.ComponentChecker;
 import uk.org.ponder.rsf.view.ViewComponentProducer;
 import uk.org.ponder.rsf.viewstate.ViewParameters;
 
-import java.util.Locale;
-
 /**
  * Produces passwordReset.html - builds a form containing nothing more than the a password and confirm password field
  * @author bbailla2
  */
+@Slf4j
 public class PasswordResetProducer extends BaseValidationProducer implements ViewComponentProducer, ActionResultInterceptor {
-	
-	private static Logger log = LoggerFactory.getLogger(PasswordResetProducer.class);
+
 	public static final String VIEW_ID = "passwordReset";
 	private static final String MAX_PASSWORD_RESET_MINUTES = "accountValidator.maxPasswordResetMinutes";
+	private static final int MAX_PASSWORD_RESET_MINUTES_DEFAULT = 60;
 	private static LocaleGetter localeGetter;
 	
 	public void setLocaleGetter(LocaleGetter localeGetter)
@@ -126,44 +128,33 @@ public class PasswordResetProducer extends BaseValidationProducer implements Vie
 			 * Password resets should go quickly. If it takes longer than accountValidator.maxPasswordResetMinutes, 
 			 * it could be an intruder who stumbled on an old validation token.
 			 */
-			//Only do this check if accountValidator.maxPasswordResetMinutes is configured correctly
-			String strMinutes = serverConfigurationService.getString(MAX_PASSWORD_RESET_MINUTES);
-			if (strMinutes != null && !"".equals(strMinutes))
+			if (va.getAccountStatus() != null)
 			{
-				if (va.getAccountStatus() != null)
+				int minutes = serverConfigurationService.getInt(MAX_PASSWORD_RESET_MINUTES, MAX_PASSWORD_RESET_MINUTES_DEFAULT);
+
+				//get the time limit and convert to millis
+				long maxMillis = minutes * 60 * 1000;
+
+				//the time when the validation token was sent to the email server
+				long sentTime = va.getValidationSent().getTime();
+
+				if (System.currentTimeMillis() - sentTime > maxMillis)
 				{
-					try
+					//it's been too long, so invalide the token and stop the user
+					va.setStatus(ValidationAccount.STATUS_EXPIRED);
+
+					//get a nice expiration meesage
+					TargettedMessage expirationMessage = getExpirationMessage();
+					if (expirationMessage == null)
 					{
-						//get the time limit and convert to millis
-						long maxMillis = Long.parseLong(strMinutes);
-						maxMillis*=60*1000;
-
-						//the time when the validation token was sent to the email server
-						long sentTime = va.getValidationSent().getTime();
-
-						if (System.currentTimeMillis() - sentTime > maxMillis)
-						{
-							//it's been too long, so invalide the token and stop the user
-							va.setStatus(ValidationAccount.STATUS_EXPIRED);
-
-							//get a nice expiration meesage
-							TargettedMessage expirationMessage = getExpirationMessage();
-							if (expirationMessage == null)
-							{
-								//should never happen
-								args = new Object[]{ va.getValidationToken() };
-								tml.addMessage(new TargettedMessage("msg.expiredValidation", args, TargettedMessage.SEVERITY_ERROR));
-								return;
-							}
-							tml.addMessage(expirationMessage);
-							addResetPassLink(tofill, va);
-							return;
-						}
+						//should never happen
+						args = new Object[]{ va.getValidationToken() };
+						tml.addMessage(new TargettedMessage("msg.expiredValidation", args, TargettedMessage.SEVERITY_ERROR));
+						return;
 					}
-					catch (NumberFormatException nfe)
-					{
-						log.error("accountValidator.maxPasswordResetMinutes is not configured correctly");
-					}
+					tml.addMessage(expirationMessage);
+					addResetPassLink(tofill, va);
+					return;
 				}
 			}
 		}
@@ -181,30 +172,19 @@ public class PasswordResetProducer extends BaseValidationProducer implements Vie
 		if (u == null)
 		{
 			log.error("user ID does not exist for ValidationAccount with tokenId: " + va.getValidationToken());
-			tml.addMessage(new TargettedMessage("validate.userNotDefined", new Object[]{}, TargettedMessage.SEVERITY_ERROR));
+			tml.addMessage(new TargettedMessage("validate.userNotDefined", new Object[]{getUIService()}, TargettedMessage.SEVERITY_ERROR));
 			return;
 		}
 
-		String resetMinutes = serverConfigurationService.getString(MAX_PASSWORD_RESET_MINUTES);
-		if (resetMinutes != null && !"".equals(resetMinutes))
-		{
-			try
-			{
-				int minutes = Integer.parseInt(resetMinutes);
-				UIMessage.make(tofill, "welcome2", "validate.expirationtime", new Object[]{getFormattedMinutes(minutes)});
-			}
-			catch (NumberFormatException nfe)
-			{
-				log.error("accountValidator.maxPasswordResetMinutes is not configured correctly");
-			}
-		}
+		int minutes = serverConfigurationService.getInt(MAX_PASSWORD_RESET_MINUTES, MAX_PASSWORD_RESET_MINUTES_DEFAULT);
+		UIMessage.make(tofill, "welcome2", "validate.expirationtime", new Object[]{getFormattedMinutes(minutes)});
 
 		//the form
 		UIForm detailsForm = UIForm.make(tofill, "setDetailsForm");
 
 		UICommand.make(detailsForm, "addDetailsSub", UIMessage.make("submit.new.reset"), "accountValidationLocator.validateAccount");
 
-		String otp = "accountValidationLocator." + va.getId();
+		String otp = "accountValidationLocator." + va.getValidationToken();
 
 		UIMessage.make(detailsForm, "username.new", "username.new.reset", args);
 		UIOutput.make(detailsForm, "eid", u.getDisplayId());
@@ -218,8 +198,6 @@ public class PasswordResetProducer extends BaseValidationProducer implements Vie
 
 		UIBranchContainer row2 = UIBranchContainer.make(detailsForm, "passrow2:");
 		UIInput.make(row2, "password2", otp + ".password2");
-
-		detailsForm.parameters.add(new UIELBinding(otp + ".userId", va.getUserId()));
 	}
 
 	/**
@@ -253,77 +231,19 @@ public class PasswordResetProducer extends BaseValidationProducer implements Vie
 	}
 
 	/**
-	 * Adds a link to the page for the user to request another validation token
-	 * @param tofill the parent of the link
-	 */
-	private void addResetPassLink(UIContainer toFill, ValidationAccount va)
-	{
-		if (toFill == null || va == null)
-		{
-			// enforce method contract
-			throw new IllegalArgumentException("null passed to addResetPassLink()");
-		}
-
-		//the url to reset-pass - assume it's on the gateway. Otherwise, we don't render a link and we log a warning
-		String url = null;
-		try
-		{
-			//get the link target
-			url = developerHelperService.getToolViewURL("sakai.resetpass", null, null, developerHelperService.getStartingLocationReference());
-		}
-		catch (IllegalArgumentException e)
-		{
-			log.warn("Couldn't create a link to reset-pass; no instance of reset-pass found on the gateway");
-		}
-
-		if (url != null)
-		{
-			//add the container
-			UIBranchContainer requestAnotherContainer = UIBranchContainer.make(toFill, "requestAnotherContainer:");
-			//add a label
-			UIMessage.make(requestAnotherContainer, "request.another.label", "validate.requestanother.label");
-			//add the link to reset-pass
-			String requestAnother = null;
-			if (ValidationAccount.ACCOUNT_STATUS_PASSWORD_RESET == va.getAccountStatus())
-			{
-				requestAnother = messageLocator.getMessage("validate.requestanother.reset");
-			}
-			else
-			{
-				requestAnother = messageLocator.getMessage("validate.requestanother");
-			}
-			UILink.make(requestAnotherContainer, "request.another", requestAnother, url);
-		}
-		//else - there is no reset pass instance on the gateway, but the user sees an appropriate message regardless (handled by a targetted message)
-	}
-
-	/**
 	 * When a user's validation token expires (by accountValidator.maxPasswordResetMinutes elapsing)
 	 * this returns an appropriate TargettedMessage
-	 * @return an approrpiate TargettedMessage when a validaiton token has expired,
-	 * null if accountValidator.maxPasswordResetMinutes isn't configured correctly
+	 * @return an appropriate TargettedMessage when a validation token has expired
 	 */
 	private TargettedMessage getExpirationMessage()
 	{
 		//get the time limit (iff possible)
-		String strMinutes = serverConfigurationService.getString(MAX_PASSWORD_RESET_MINUTES);
-		if (strMinutes != null && !"".equals(strMinutes))
-		{
-			try
-			{
-				int totalMinutes = Integer.parseInt(strMinutes);
+		int minutes = serverConfigurationService.getInt(MAX_PASSWORD_RESET_MINUTES, MAX_PASSWORD_RESET_MINUTES_DEFAULT);
 
-				//get a formatted string representation of the time limit, and create the return value
-				String formattedTime = getFormattedMinutes(totalMinutes);
+		//get a formatted string representation of the time limit, and create the return value
+		String formattedTime = getFormattedMinutes(minutes);
 
-				Object [] args = new Object[]{ formattedTime };
-				return new TargettedMessage("msg.expiredValidationRealTime", args, TargettedMessage.SEVERITY_ERROR);
-			}
-			catch (NumberFormatException e)
-			{
-				log.warn("accountValidator.maxPasswordResetMinutes is not configured properly");
-			}
-		}
-		return null;
+		Object [] args = new Object[]{ formattedTime };
+		return new TargettedMessage("msg.expiredValidationRealTime", args, TargettedMessage.SEVERITY_ERROR);
 	}
 }

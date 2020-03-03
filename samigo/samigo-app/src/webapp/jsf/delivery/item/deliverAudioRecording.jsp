@@ -25,6 +25,27 @@ should be included in file importing DeliveryMessages
 --%>
 -->
 
+<script src="/library/js/swfobject/swfobject.js"></script>
+<script src="/library/js/recorder/recorder.js"></script>
+<script src="/library/js/recorder/jRecorder.js"></script>
+<script src="/library/js/sakai-recorder.js"></script>
+<script src="/library/js/sakai-recorder.js"></script>
+<script>includeWebjarLibrary('featherlight');</script>
+<script>
+  $(document).ready(function() {
+    if (typeof initiatedFeatherlight === "undefined") {
+      var $elems = $("a[id$='deliverAudioRecording:openRecord']");
+      $elems.each(function(index, elem) {
+        var questionId = $(elem).parent().find("input[name=questionId]").val();
+        elem.dataset.featherlight = ".audioRecordingPopup-" + questionId;
+        elem.dataset.featherlightPersist = true;
+        elem.dataset.featherlightBeforeClose = "$('.audioRecordingPopup-" + questionId + " #audio-stop:enabled').click();";
+      });
+      initiatedFeatherlight = true;
+    }
+  });
+</script>
+
 <f:verbatim><br /></f:verbatim>
 
 <%-- this invisible text is a trick to get the value set in the component tree
@@ -43,41 +64,50 @@ should be included in file importing DeliveryMessages
 
   <h:panelGrid cellpadding="10" columns="1">
     <h:panelGroup>
-		<h:outputText escape="false" value="
-          <script tye=\"text/javascript\">
-            var audio = new Audio();
-            if (!audio.canPlayType(\"audio/wav\")) {
-               document.write('<object><param name=\"autostart\" value=\"false\"/><param name=\"autoplay\" value=\"false\"/><param name=\"controller\" value=\"true\"/><embed src=\"#{delivery.protocol}/samigo-app/servlet/ShowMedia?mediaId=#{question.mediaArray[0].mediaId}\" volume=\"50\" height=\"25\" width=\"300\" autostart=\"false\" autoplay=\"false\" controller=\"true\" type=\"audio/basic\"/></object>');
-            }
-            else {
-                document.write('<audio controls=\"controls\"><source src=\"#{delivery.protocol}/samigo-app/servlet/ShowMedia?mediaId=#{question.mediaArray[0].mediaId}\" type=\"audio/wav\"/></audio>');
-            }
-          </script>" 
-        />
+      <script>
+        var audio = new Audio();
+        var deliveryProtocol = <h:outputText value="'#{delivery.protocol}'"/>;
+        var hasNoMedia = <h:outputText value="'#{question.hasNoMedia}'"/>;
+        var mediaId = <h:outputText value="'#{question.mediaArray[0].mediaId}'"/>;
+        var questionId = <h:outputText value="'#{question.itemData.itemId}'"/>;
+        if (!audio.canPlayType("audio/wav")) {
+          document.write('<object><param name="autostart" value="false"/><param name="autoplay" value="false"/><param name="controller" value="true"/><embed id="audioEmbed' + questionId + '" src="' + deliveryProtocol + '/samigo-app/servlet/ShowMedia?mediaId=' + mediaId + '" volume="50" height="25" width="300" autostart="false" autoplay="false" controller="true" type="audio/basic"/></object>');
+        } else {
+          document.write('<audio controls="controls"><source class="audioSrc' + questionId + '"src="' + deliveryProtocol + '/samigo-app/servlet/ShowMedia?mediaId=' + mediaId + '" type="audio/wav"/></audio>');
+        }
+      </script>
 
       <f:verbatim><br /></f:verbatim>
       <h:outputText value="#{deliveryMessages.open_bracket}"/>
       <f:verbatim><span id="</f:verbatim><h:outputText value="details#{question.itemData.itemId}" /><f:verbatim>"></f:verbatim>
-		<h:outputText value="#{question.mediaArray[0].duration} #{deliveryMessages.secs}, #{deliveryMessages.recorded_on} " rendered="#{!question.mediaArray[0].durationIsOver}" />
+		<h:outputText styleClass="recordedOn#{question.itemData.itemId}" value="#{question.mediaArray[0].duration} #{deliveryMessages.secs}, #{deliveryMessages.recorded_on} " rendered="#{!question.mediaArray[0].durationIsOver}" />
 		<h:outputText value="#{question.mediaArray[0].duration} #{deliveryMessages.secs}, #{deliveryMessages.recorded_on} " rendered="#{question.mediaArray[0].durationIsOver}" />
       <h:outputText value="#{question.mediaArray[0].createdDate}">
-        <f:convertDateTime pattern="#{deliveryMessages.delivery_date_format}" />
+        <f:convertDateTime dateStyle="medium" timeStyle="short" timeZone="#{delivery.userTimeZone}" />
       </h:outputText>
       <f:verbatim></span></f:verbatim>
       <h:outputText value="#{deliveryMessages.close_bracket}"/>
       <f:verbatim><br /></f:verbatim>
-      <h:outputFormat value=" #{deliveryMessages.can_you_hear}" escape="false">
+      <h:outputFormat styleClass="can_you_hear_#{question.itemData.itemId}" value=" #{deliveryMessages.can_you_hear}" escape="false">
 		<f:param value="<a href=\"#{delivery.protocol}/samigo-app/servlet/ShowMedia?mediaId=#{question.mediaArray[0].mediaId}&setMimeType=false\"/> #{deliveryMessages.can_you_hear_2}</a>" />
       </h:outputFormat>
     </h:panelGroup>
   </h:panelGrid>
 <f:verbatim></div></f:verbatim>
 
+<f:verbatim><div id="</f:verbatim><h:outputText value="attempts#{question.itemData.itemId}" /><f:verbatim>"></f:verbatim>
 <h:panelGroup rendered="#{question.attemptsRemaining == null || question.attemptsRemaining > 0}">
-  <h:outputLink title="#{assessmentSettingsMessages.record_your_answer}" value="#" rendered="#{delivery.actionString!='reviewAssessment'}"  onclick="javascript:window.open('../author/audioRecordingPopup.faces?questionId=#{question.itemData.itemId}&duration=#{question.duration}&triesAllowed=#{question.triesAllowed}&attemptsRemaining=#{question.attemptsRemaining}&questionNumber=#{question.number}&questionTotal=#{part.questions}','AudioRecordingApplet','width=950,height=700,scrollbars=no, resizable=no');" >
-	<h:outputText value=" #{assessmentSettingsMessages.record_your_answer}"/>
+  <h:outputLink id="openRecord" title="#{assessmentSettingsMessages.record_your_answer}" value="#" rendered="#{delivery.actionString!='reviewAssessment'}">
+    <h:outputText value="#{assessmentSettingsMessages.record_your_answer}"/>
   </h:outputLink>
+  <h:panelGroup rendered="#{delivery.actionString!='reviewAssessment'}" styleClass="audioRecordingPopup-#{question.itemData.itemId} hidden">
+    <h:outputText escape="false" value="<input type=\"hidden\" name=\"questionId\" value=\"#{question.itemData.itemId}\"/>" />
+    <f:subview id="audioRecordingPopup">
+      <%@ include file="/jsf/author/audioRecordingPopup.jsp" %>
+    </f:subview>
+  </h:panelGroup>
 </h:panelGroup>
+<f:verbatim></div></f:verbatim>
 
 <h:panelGroup rendered="#{question.attemptsRemaining != null && question.attemptsRemaining < 1}">
   <h:outputText value=" #{assessmentSettingsMessages.record_no_more_attempts}"/>
@@ -89,7 +119,7 @@ should be included in file importing DeliveryMessages
              && delivery.navigation ne '1' && delivery.displayMardForReview }">
 <h:selectBooleanCheckbox value="#{question.review}" id="mark_for_review" />
 	<h:outputLabel for="mark_for_review" value="#{deliveryMessages.mark}" />
-	<h:outputLink title="#{assessmentSettingsMessages.whats_this_link}" value="#" onclick="javascript:window.open('../author/markForReviewPopUp.faces','MarkForReview','width=300,height=220,scrollbars=yes, resizable=yes');" >
+	<h:outputLink title="#{assessmentSettingsMessages.whats_this_link}" value="#" onclick="javascript:window.open('/portal/tool/#{requestScope['sakai.tool.placement.id']}/jsf/author/markForReviewPopUp.faces','MarkForReview','width=300,height=220,scrollbars=yes, resizable=yes');event.preventDefault();" >
 		<h:outputText  value=" #{assessmentSettingsMessages.whats_this_link}"/>
 	</h:outputLink>
 </h:panelGroup>

@@ -1,6 +1,22 @@
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.sitemanage.api;
 
 import java.util.List;
+import java.util.Locale;
 
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.site.api.Site;
@@ -54,8 +70,10 @@ public interface UserNotificationProvider {
 	 * @param courseSite
 	 * @param termTitle
 	 * @param requestEmail
+     * @param sendToRequestEmail if the email should be sent to requestEmail given.
+	 * @param sendToUser if the email should be sent to the user who created the site
 	 */
-	public void notifySiteCreation(Site site, List notifySites, boolean courseSite, String termTitle, String requestEmail);
+	public void notifySiteCreation(Site site, List notifySites, boolean courseSite, String termTitle, String requestEmail, boolean sendToRequestEmail, boolean sendToUser);
 	
 	/**
 	 * send course site request information to course authorizer
@@ -104,8 +122,9 @@ public interface UserNotificationProvider {
 	/**
 	 * Notifies user when the course site import completed
 	 * @param toEmail
+	 * @param locale
 	 * @param siteId
 	 * @param siteTitle
 	 */
-	public void notifySiteImportCompleted(String toEmail, String siteId, String siteTitle);
+	public void notifySiteImportCompleted(String toEmail, Locale locale, String siteId, String siteTitle);
 }

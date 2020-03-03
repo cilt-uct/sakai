@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.gradebookng.tool.panels;
 
 import java.io.Serializable;
@@ -7,16 +22,17 @@ import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.extensions.ajax.markup.html.modal.ModalWindow;
 import org.apache.wicket.markup.html.form.Form;
 import org.apache.wicket.markup.html.form.TextArea;
-import org.apache.wicket.markup.html.panel.Panel;
+import org.apache.wicket.markup.html.panel.FeedbackPanel;
 import org.apache.wicket.model.CompoundPropertyModel;
 import org.apache.wicket.model.IModel;
 import org.apache.wicket.model.PropertyModel;
 import org.apache.wicket.model.StringResourceModel;
-import org.apache.wicket.spring.injection.annot.SpringBean;
 import org.apache.wicket.validation.validator.StringValidator;
-import org.sakaiproject.gradebookng.business.GradebookNgBusinessService;
+
+import org.sakaiproject.gradebookng.business.importExport.CommentValidator;
 import org.sakaiproject.gradebookng.business.model.GbUser;
 import org.sakaiproject.gradebookng.tool.component.GbAjaxButton;
+import org.sakaiproject.gradebookng.tool.component.GbFeedbackPanel;
 import org.sakaiproject.service.gradebook.shared.Assignment;
 
 import lombok.Getter;
@@ -29,12 +45,9 @@ import lombok.Setter;
  * @author Steve Swinsburg (steve.swinsburg@gmail.com)
  *
  */
-public class EditGradeCommentPanel extends Panel {
+public class EditGradeCommentPanel extends BasePanel {
 
 	private static final long serialVersionUID = 1L;
-
-	@SpringBean(name = "org.sakaiproject.gradebookng.business.GradebookNgBusinessService")
-	protected GradebookNgBusinessService businessService;
 
 	private final ModalWindow window;
 	private String comment;
@@ -59,11 +72,11 @@ public class EditGradeCommentPanel extends Panel {
 		// form model
 		final GradeComment gradeComment = new GradeComment();
 		gradeComment.setGradeComment(this.comment);
-		final CompoundPropertyModel<GradeComment> formModel = new CompoundPropertyModel<GradeComment>(gradeComment);
+		final CompoundPropertyModel<GradeComment> formModel = new CompoundPropertyModel<>(gradeComment);
 
 		// build form
 		// modal window forms must be submitted via AJAX so we do not specify an onSubmit here
-		final Form<GradeComment> form = new Form<GradeComment>("form", formModel);
+		final Form<GradeComment> form = new Form<>("form", formModel);
 
 		final GbAjaxButton submit = new GbAjaxButton("submit") {
 			private static final long serialVersionUID = 1L;
@@ -80,12 +93,20 @@ public class EditGradeCommentPanel extends Panel {
 					// update member var
 					EditGradeCommentPanel.this.comment = updatedComment.getGradeComment();
 
+					// store the instructor feedback comment
+					target.appendJavaScript(String.format("GbGradeTable.saveNewPrediction('%s');", updatedComment.getGradeComment()));
+
 					// trigger a close
 					EditGradeCommentPanel.this.window.close(target);
 				} else {
 
 					// TODO need to handle the error here
 				}
+			}
+
+			@Override
+			protected void onError(final AjaxRequestTarget target, final Form<?> form) {
+				target.addChildren(form, FeedbackPanel.class);
 			}
 
 		};
@@ -111,11 +132,14 @@ public class EditGradeCommentPanel extends Panel {
 						new Object[] { user.getDisplayName(), user.getDisplayId(), assignment.getName() })).getString());
 
 		// textarea
-		form.add(new TextArea<String>("comment", new PropertyModel<String>(formModel, "gradeComment"))
-				.add(StringValidator.maximumLength(500)));
+		form.add(new TextArea<>("comment", new PropertyModel<>(formModel, "gradeComment"))
+				.add(StringValidator.maximumLength(CommentValidator.getMaxCommentLength(serverConfigService))));
 
 		// instant validation
 		// AjaxFormValidatingBehavior.addToAllFormComponents(form, "onkeyup", Duration.ONE_SECOND);
+
+		// feedback panel
+		form.add(new GbFeedbackPanel("editCommentFeedback"));
 
 		add(form);
 	}

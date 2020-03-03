@@ -11,6 +11,8 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.TreeMap;
 
+import javax.activation.MimeType;
+import javax.activation.MimeTypeParseException;
 import javax.servlet.http.HttpServletRequest;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -18,6 +20,15 @@ import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathFactory;
+
+import org.apache.commons.text.StringEscapeUtils;
+import org.tsugi.basiclti.Base64;
+import org.tsugi.basiclti.XMLMap;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+
+import lombok.extern.slf4j.Slf4j;
 
 import net.oauth.OAuthAccessor;
 import net.oauth.OAuthConsumer;
@@ -27,18 +38,8 @@ import net.oauth.SimpleOAuthValidator;
 import net.oauth.server.OAuthServlet;
 import net.oauth.signature.OAuthSignatureMethod;
 
-import org.apache.commons.lang.StringEscapeUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.tsugi.basiclti.Base64;
-import org.tsugi.basiclti.XMLMap;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
-
+@Slf4j
 public class IMSPOXRequest {
-
-	private final static Logger logger = LoggerFactory.getLogger(IMSPOXRequest.class);
 
 	public final static String MAJOR_SUCCESS = "success";
 	public final static String MAJOR_FAILURE = "failure";
@@ -93,6 +94,7 @@ public class IMSPOXRequest {
 	private String header = null;
 	private String oauth_body_hash = null;
 	private String oauth_consumer_key = null;
+	private String oauth_signature_method = null;
 
 	public boolean valid = false;
 	private String operation = null;
@@ -174,9 +176,20 @@ public class IMSPOXRequest {
 	public void loadFromRequest(HttpServletRequest request) 
 	{
 		String contentType = request.getContentType();
-		if ( ! "application/xml".equals(contentType) ) {
+		String baseContentType;
+
+		try {
+			MimeType mimeType = new MimeType(contentType);
+			baseContentType = mimeType.getBaseType();
+		} catch (MimeTypeParseException e){
+			errorMessage = "Unable to parse mime type";
+			log.info("{}\n{}", errorMessage, contentType);
+			return;
+		}
+
+		if ( ! "application/xml".equals(baseContentType) ) {
 			errorMessage = "Content Type must be application/xml";
-		 	logger.info(errorMessage+"\n"+contentType);
+		 	log.info("{}\n{}", errorMessage, contentType);
 			return;
 		}
 
@@ -195,16 +208,21 @@ public class IMSPOXRequest {
 					String [] pieces = parm.split("\"");
 					oauth_consumer_key = URLDecoder.decode(pieces[1]);
 				}
+				if ( parm.startsWith("oauth_signature_method=") ) {
+					String [] pieces = parm.split("\"");
+					oauth_signature_method = URLDecoder.decode(pieces[1]);
+				}
 			}
 		}		
 
 		if ( oauth_body_hash == null ) {
 			errorMessage = "Did not find oauth_body_hash";
-		 logger.info(errorMessage+"\n"+header);
+			log.info("{}\n{}", errorMessage, header);
 			return;
 		}
 
-		// System.out.println("OBH="+oauth_body_hash);
+		log.debug("OBH={}", oauth_body_hash);
+		log.debug("OSM={}", oauth_signature_method);
 		final char[] buffer = new char[0x10000];
 		try {
 			StringBuilder out = new StringBuilder();
@@ -223,11 +241,14 @@ public class IMSPOXRequest {
 		}
 
 		try {
-			MessageDigest md = MessageDigest.getInstance("SHA1");
+			MessageDigest md = MessageDigest.getInstance("SHA-1");
+			if ( "HMAC-SHA256".equals(oauth_signature_method) ) {
+				md = MessageDigest.getInstance("SHA-256");
+			}
 			md.update(postBody.getBytes()); 
 			byte[] output = Base64.encode(md.digest());
 			String hash = new String(output);
-			// System.out.println("HASH="+hash);
+			log.debug("HASH={}", hash);
 			if ( ! hash.equals(oauth_body_hash) ) {
 				errorMessage = "Body hash does not match header";
 				return;
@@ -297,6 +318,7 @@ public class IMSPOXRequest {
 
 		try {
 			base_string = OAuthSignatureMethod.getBaseString(oam);
+			log.debug("POX base_string={}",base_string);
 		} catch (Exception e) {
 			base_string = null;
 		}
@@ -322,8 +344,7 @@ public class IMSPOXRequest {
 				}
 			}
 		} catch (Throwable t) {
-		 	logger.warn(t.getMessage());
-			// t.printStackTrace();
+		 	log.warn(t.getMessage(), t);
 		}
 		return null;
 	}
@@ -366,9 +387,9 @@ public class IMSPOXRequest {
 		String messageId = ""+dt.getTime();
 
 		return String.format(fatalMessage, 
-				StringEscapeUtils.escapeXml(messageId), 
-				StringEscapeUtils.escapeXml(description),
-				StringEscapeUtils.escapeXml(message_id)); 
+				StringEscapeUtils.escapeXml11(messageId), 
+				StringEscapeUtils.escapeXml11(description),
+				StringEscapeUtils.escapeXml11(message_id)); 
 	}
 
 	static final String responseMessage = 
@@ -441,7 +462,7 @@ public class IMSPOXRequest {
 				sb.append("          <imsx_codeMinorField>\n            <imsx_codeMinorFieldName>");
 				sb.append(key);
 				sb.append("</imsx_codeMinorFieldName>\n            <imsx_codeMinorFieldValue>");
-				sb.append(StringEscapeUtils.escapeXml(value));
+				sb.append(StringEscapeUtils.escapeXml11(value));
 				sb.append("</imsx_codeMinorFieldValue>\n          </imsx_codeMinorField>\n");
 			}
 			if ( sb.length() > 0 ) sb.append("        </imsx_codeMinor>");
@@ -459,7 +480,7 @@ public class IMSPOXRequest {
 
 		if ( internalError.length() > 0 ) {
 			description = description + " (Internal error: " + internalError.toString() + ")";
-		 	logger.warn(internalError.toString());
+		 	log.warn(internalError.toString());
 		}
 
 		if ( bodyString == null ) bodyString = "";
@@ -472,13 +493,13 @@ public class IMSPOXRequest {
 		String newLine = "";
 		if ( bodyString.length() > 0 ) newLine = "\n";
 		return String.format(responseMessage, 
-				StringEscapeUtils.escapeXml(messageId), 
-				StringEscapeUtils.escapeXml(major), 
-				StringEscapeUtils.escapeXml(severity), 
-				StringEscapeUtils.escapeXml(description), 
-				StringEscapeUtils.escapeXml(getHeaderMessageIdentifier()), 
-				StringEscapeUtils.escapeXml(operation), 
-				StringEscapeUtils.escapeXml(minorString), 
+				StringEscapeUtils.escapeXml11(messageId), 
+				StringEscapeUtils.escapeXml11(major), 
+				StringEscapeUtils.escapeXml11(severity), 
+				StringEscapeUtils.escapeXml11(description), 
+				StringEscapeUtils.escapeXml11(getHeaderMessageIdentifier()), 
+				StringEscapeUtils.escapeXml11(operation), 
+				StringEscapeUtils.escapeXml11(minorString), 
 				bodyString, newLine); 
 
 	}
@@ -510,30 +531,30 @@ public class IMSPOXRequest {
 		"</imsx_POXEnvelopeRequest>";
 
 	public static void runTest() {
-		System.out.println("Runnig test.");
+		log.debug("Runnig test.");
 		IMSPOXRequest pox = new IMSPOXRequest(inputTestData);
-		System.out.println("Version = "+pox.getHeaderVersion());
-		System.out.println("Operation = "+pox.getOperation());
+		log.debug("Version = {}", pox.getHeaderVersion());
+		log.debug("Operation = {}", pox.getOperation());
 		Map<String,String> bodyMap = pox.getBodyMap();
 		String guid = bodyMap.get("/resultRecord/sourcedGUID/sourcedId");
-		System.out.println("guid="+guid);
+		log.debug("guid={}", guid);
 		String grade = bodyMap.get("/resultRecord/result/resultScore/textString");
-		System.out.println("grade="+grade);
+		log.debug("grade={}", grade);
 
 		String desc = "Message received and validated operation="+pox.getOperation()+
 			" guid="+guid+" grade="+grade;
 
 		String output = pox.getResponseUnsupported(desc);
-		System.out.println("---- Unsupported ----");
-		System.out.println(output);
+		log.debug("---- Unsupported ----");
+		log.debug(output);
 
 		Properties props = new Properties();
 		props.setProperty("fred","zap");
 		props.setProperty("sam",IMSPOXRequest.MINOR_IDALLOC);
-		System.out.println("---- Generate logger Error ----");
+		log.debug("---- Generate logger Error ----");
 		output = pox.getResponseFailure(desc,props);
-		System.out.println("---- Failure ----");
-		System.out.println(output);
+		log.debug("---- Failure ----");
+		log.debug(output);
 
 
 
@@ -553,10 +574,10 @@ public class IMSPOXRequest {
 		theMap.put("/readMembershipResponse/membershipRecord/membership/member", lm);
 
 		String theXml = XMLMap.getXMLFragment(theMap, true);
-		// System.out.println("th="+theXml);
+		log.debug("th={}", theXml);
 		output = pox.getResponseSuccess(desc,theXml);
-		System.out.println("---- Success String ----");
-		System.out.println(output);
+		log.debug("---- Success String ----");
+		log.debug(output);
 	}
 
 	/*

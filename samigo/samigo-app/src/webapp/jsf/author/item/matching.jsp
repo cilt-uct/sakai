@@ -2,7 +2,7 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
 <%@ taglib uri="http://www.sakaiproject.org/samigo" prefix="samigo" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <!DOCTYPE html
      PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -35,9 +35,9 @@
       <title><h:outputText value="#{authorMessages.item_display_author}"/></title>
       
       <!-- AUTHORING -->
-      <samigo:script path="/js/authoring.js"/>
+      <script src="/samigo-app/js/authoring.js"></script>
 <%--
-<script type="text/JavaScript">
+<script>
 <!--
 <%@ include file="/js/authoring.js" %>
 //-->
@@ -122,7 +122,10 @@
             </div>
         </div>
     </f:subview>
-    
+
+    <!-- Extra Credit -->
+    <%@ include file="/jsf/author/inc/extraCreditSetting.jspf" %>
+
     <!-- 2 TEXT -->
     <div class="form-group row">
         <h:outputLabel value="#{authorMessages.q_text}" styleClass="col-md-4 col-lg-2 form-control-label"/>  
@@ -159,14 +162,14 @@
             <f:facet name="header">
                 <h:outputText value="#{authorMessages.matching_choice_col}"  />
             </f:facet>
-          <h:outputText escape="false" value="#{pair.choice}"  />
+          <h:outputText escape="false" value="#{pair.choice}" styleClass="mcAnswerText"  />
         </h:column>
 
         <h:column>
             <f:facet name="header">
                 <h:outputText value="#{authorMessages.matching_match_col}"  />
             </f:facet>
-            <h:outputText escape="false" value="#{pair.match}"  />
+            <h:outputText escape="false" value="#{pair.match}" styleClass="mcAnswerText"  />
         </h:column>
         
         <h:column>
@@ -210,7 +213,8 @@
         <div class="col-md-8">
         <h:selectOneMenu value="#{itemauthor.currentItem.currentMatchPair.controllingSequence }" id="controllingSequence">
             <f:selectItems value="#{itemauthor.currentItem.selfSequenceList }" />
-        </h:selectOneMenu>        
+        </h:selectOneMenu>
+        <h:outputLabel id="noFeedbackMsg" value="#{authorMessages.feedback_unavailable}" style="#{itemauthor.currentItem.currentMatchPair.sequence != pair.sequence ? 'display: none;' : ''}" />
         <h:panelGrid>
             <samigo:wysiwyg value="#{itemauthor.currentItem.currentMatchPair.match}"
                 rows="140" hasToggle="yes" mode="author">
@@ -222,7 +226,7 @@
     </div>
 
     <!-- Match FEEDBACK -->
-    <h:panelGroup layout="block" rendered="#{itemauthor.target == 'questionpool' || (itemauthor.target != 'questionpool' && (author.isEditPendingAssessmentFlow && assessmentSettings.feedbackAuthoring ne '1') || (!author.isEditPendingAssessmentFlow && publishedSettings.feedbackAuthoring ne '1'))}"> 
+    <h:panelGroup id="feedbackContainer" layout="block" rendered="#{itemauthor.target == 'questionpool' || (itemauthor.target != 'questionpool' && (author.isEditPendingAssessmentFlow && assessmentSettings.feedbackAuthoring ne '1') || (!author.isEditPendingAssessmentFlow && publishedSettings.feedbackAuthoring ne '1'))}">
         <!-- WYSIWYG -->
         <div class="form-group row">
             <h:outputLabel value="#{authorMessages.correct_match_feedback_opt}" styleClass="col-md-4 col-lg-2 form-control-label"/>
@@ -348,7 +352,7 @@
         </div>
     </h:panelGroup>
 
-
+    <%@ include file="/jsf/author/item/tags.jsp" %>
 
 
 <p class="act">
@@ -378,8 +382,8 @@
 <!-- end content -->
 </div>
 
-<script type="text/javascript">
-applyMenuListener("controllingSequence");
+<script>
+applyMenuListener("controllingSequence", "feedbackContainer", "noFeedbackMsg");
 </script>
     </body>
   </html>

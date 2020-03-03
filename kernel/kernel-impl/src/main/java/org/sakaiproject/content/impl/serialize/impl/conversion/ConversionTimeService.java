@@ -21,7 +21,11 @@
 
 package org.sakaiproject.content.impl.serialize.impl.conversion;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.Date;
 import java.util.GregorianCalendar;
+import java.util.Locale;
 import java.util.TimeZone;
 
 import org.sakaiproject.time.api.Time;
@@ -65,6 +69,11 @@ public class ConversionTimeService implements TimeService
 	 * @see org.sakaiproject.time.api.TimeService#getLocalTimeZone()
 	 */
 	public TimeZone getLocalTimeZone()
+	{
+		throw new UnsupportedOperationException("This class is only to be used for conversion purposes");
+	}
+
+	public TimeZone getLocalTimeZone(String userId)
 	{
 		throw new UnsupportedOperationException("This class is only to be used for conversion purposes");
 	}
@@ -182,6 +191,56 @@ public class ConversionTimeService implements TimeService
 	 */
 	public TimeRange newTimeRange(Time start, Time end)
 	{
+		throw new UnsupportedOperationException("This class is only to be used for conversion purposes");
+	}
+
+	@Override
+	public String timeFormat(Date date, Locale locale, int df) {
+		throw new UnsupportedOperationException("This class is only to be used for conversion purposes");
+	}
+
+	@Override
+	public String dateFormat(Date date, Locale locale, int df) {
+		throw new UnsupportedOperationException("This class is only to be used for conversion purposes");
+	}
+
+	@Override
+	public String dayOfWeekFormat(Date date, Locale locale, int df) {
+		throw new UnsupportedOperationException("This class is only to be used for conversion purposes");
+	}
+
+	@Override
+	public String dateTimeFormat(Date date, Locale locale, int df) {
+		throw new UnsupportedOperationException("This class is only to be used for conversion purposes");
+	}
+
+	@Override
+	public String shortLocalizedTimestamp(Instant instant, TimeZone timezone, Locale locale) {
+		throw new UnsupportedOperationException("This class is only to be used for conversion purposes");
+	}
+
+	@Override
+	public String shortLocalizedTimestamp(Instant instant, Locale locale) {
+		throw new UnsupportedOperationException("This class is only to be used for conversion purposes");
+	}
+
+	@Override
+	public String shortLocalizedDate(LocalDate date, Locale locale) {
+		throw new UnsupportedOperationException("This class is only to be used for conversion purposes");
+	}
+
+	@Override
+	public String shortPreciseLocalizedTimestamp(Instant instant, TimeZone timezone, Locale locale) {
+		throw new UnsupportedOperationException("This class is only to be used for conversion purposes");
+	}
+
+	@Override
+	public String shortPreciseLocalizedTimestamp(Instant instant, Locale locale) {
+		throw new UnsupportedOperationException("This class is only to be used for conversion purposes");
+	}
+
+	@Override
+	public Date parseISODateInUserTimezone(String dateString) {
 		throw new UnsupportedOperationException("This class is only to be used for conversion purposes");
 	}
 

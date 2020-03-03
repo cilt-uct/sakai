@@ -28,10 +28,10 @@ import java.util.Iterator;
 import java.util.Locale;
 import java.util.Properties;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.apache.commons.validator.UrlValidator;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.validator.routines.UrlValidator;
+
 import org.sakaiproject.authz.api.AuthzGroup;
 import org.sakaiproject.authz.api.GroupNotDefinedException;
 import org.sakaiproject.authz.api.Role;
@@ -73,15 +73,15 @@ import org.sakaiproject.util.ResourceLoader;
  * </p>
  * <ul>
  * <li>"site" - to show the services "server.info.url" configuration URL setting</li>
- * <li>"workspace" - to show the configured "myworkspace.info.url" URL, introducing a my workspace to users</li>
+ * <li>"workspace" - to show the configured "myworkspace.info.url" URL, introducing a "Home" site to users</li>
  * <li>"worksite" - to show the current site's "getInfoUrlFull()" setting</li>
  * <li>"annotatedurl" - to show a link to a configured target url, with a description following the link. Aid in redirection.</li>
  * </ul>
  */
+@Slf4j
 public class IFrameAction extends VelocityPortletPaneledAction
 {
-	private static Logger M_log = LoggerFactory.getLogger(IFrameAction.class);
-	
+
 	/** Event for accessing the web-content tool */
 	protected final static String EVENT_ACCESS_WEB_CONTENT = "webcontent.read";
 	
@@ -763,13 +763,13 @@ public class IFrameAction extends VelocityPortletPaneledAction
 		if(url != null && url.startsWith("http:") && ServerConfigurationService.getServerUrl().startsWith("https:")){
 			context.put("popup", true);
 		}
-		
+		context.put("browser-feature-allow", String.join(";", ServerConfigurationService.getStrings("browser.feature.allow")));
 		//for annotatedurl
 		context.put(TARGETPAGE_URL, state.getAttribute(TARGETPAGE_URL));
 		context.put(TARGETPAGE_POPUP, state.getAttribute(TARGETPAGE_POPUP));
 		context.put(TARGETPAGE_NAME, state.getAttribute(TARGETPAGE_NAME));
 		context.put(ANNOTATED_TEXT, state.getAttribute(ANNOTATED_TEXT));
-		
+
 		// set the resource bundle with our strings
 		context.put("tlang", rb);
 
@@ -831,6 +831,7 @@ public class IFrameAction extends VelocityPortletPaneledAction
 		String special = (String) state.getAttribute(SPECIAL);
 		String source = "";
 		String siteId = "";
+		context.put("browser-feature-allow", String.join(";", ServerConfigurationService.getStrings("browser.feature.allow")));
 		if (special == null)
 		{
 			source = (String) state.getAttribute(SOURCE);
@@ -1134,7 +1135,7 @@ public class IFrameAction extends VelocityPortletPaneledAction
 		}
 		catch (Exception ignore)
 		{
-			M_log.warn("doConfigure_update: " + ignore);
+			log.warn("doConfigure_update: " + ignore);
 		}
 
 		// read source if we are not special
@@ -1182,7 +1183,7 @@ public class IFrameAction extends VelocityPortletPaneledAction
 			}
 			catch (Throwable e)
 			{
-				M_log.warn("doConfigure_update: " + e);
+				log.warn("doConfigure_update: " + e);
 			}
 		}
 

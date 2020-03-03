@@ -4,17 +4,12 @@
   <parent>
     <artifactId>web-base</artifactId>
     <groupId>org.sakaiproject</groupId> 
-    <version>12-SNAPSHOT</version>
+    <version>21-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
   <name>sakai-web-portlet</name>
   <groupId>org.sakaiproject</groupId>
   <artifactId>sakai-web-portlet</artifactId>
-  <organization>
-    <name>The Sakai Foundation</name>
-    <url>http://sakaiproject.org/</url>
-  </organization>
-  <inceptionYear>2013</inceptionYear>
   <packaging>war</packaging>
   <dependencies>
         <dependency>
@@ -34,8 +29,8 @@
             <artifactId>sakai-portal-util</artifactId>
         </dependency>
         <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
         </dependency>
         <dependency>
 			<groupId>commons-httpclient</groupId>
@@ -49,12 +44,11 @@
          </dependency>
         <dependency>
             <groupId>javax.servlet</groupId>
-            <artifactId>servlet-api</artifactId>
+            <artifactId>javax.servlet-api</artifactId>
         </dependency>
     <dependency>
       <groupId>javax.portlet</groupId>
       <artifactId>portlet-api</artifactId>
-      <version>1.0</version>
     </dependency>
 <!-- velocity and dependencies (logkit, oro, collections) -->
     <dependency>

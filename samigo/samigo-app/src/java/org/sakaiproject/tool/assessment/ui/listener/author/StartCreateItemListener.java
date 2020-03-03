@@ -19,8 +19,6 @@
  *
  **********************************************************************************/
 
-
-
 package org.sakaiproject.tool.assessment.ui.listener.author;
 
 import java.util.ArrayList;
@@ -32,8 +30,8 @@ import javax.faces.event.ActionListener;
 import javax.faces.event.ValueChangeEvent;
 import javax.faces.event.ValueChangeListener;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
 import org.sakaiproject.tool.api.ToolSession;
 import org.sakaiproject.tool.assessment.facade.AssessmentFacade;
 import org.sakaiproject.tool.assessment.services.assessment.AssessmentService;
@@ -43,6 +41,7 @@ import org.sakaiproject.tool.assessment.ui.bean.author.ImageMapItemBean;
 import org.sakaiproject.tool.assessment.ui.bean.author.ItemAuthorBean;
 import org.sakaiproject.tool.assessment.ui.bean.author.ItemBean;
 import org.sakaiproject.tool.assessment.ui.bean.author.MatchItemBean;
+import org.sakaiproject.tool.assessment.ui.bean.author.SearchQuestionBean;
 import org.sakaiproject.tool.assessment.ui.bean.delivery.SectionContentsBean;
 import org.sakaiproject.tool.assessment.ui.bean.questionpool.QuestionPoolBean;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
@@ -53,11 +52,10 @@ import org.sakaiproject.tool.cover.SessionManager;
  * <p>Description: Sakai Assessment Manager</p>
  * <p>Organization: Sakai Project</p>
  */
-
+@Slf4j
 public class StartCreateItemListener implements ValueChangeListener, ActionListener
 {
 
-  private static Logger log = LoggerFactory.getLogger(StartCreateItemListener.class);
   //private static ContextUtil cu;
   //private String scalename;  // used for multiple choice Survey
 
@@ -136,8 +134,10 @@ public class StartCreateItemListener implements ValueChangeListener, ActionListe
 
    String nextpage= null;
    ItemBean item = new ItemBean();
-   
-   AssessmentBean assessmentBean = (AssessmentBean) ContextUtil.lookupBean("assessmentBean");
+      //This needs to happen in any case
+   itemauthorbean.setTagsTempListToJson("[]");
+
+      AssessmentBean assessmentBean = (AssessmentBean) ContextUtil.lookupBean("assessmentBean");
    try{
     // check to see if we arrived here from question pool
 
@@ -164,6 +164,7 @@ public class StartCreateItemListener implements ValueChangeListener, ActionListe
         itemauthorbean.setItemTypeString("");
         itemauthorbean.setAttachmentList(null);
         itemauthorbean.setResourceHash(null);
+        itemauthorbean.setTagsList(null);
 
         int itype=0; //
 log.debug("item.getItemType() = " + item.getItemType());
@@ -255,6 +256,28 @@ log.debug("after getting item.getItemType() ");
                     }
 
                     break;
+                case 17:
+                    SearchQuestionBean searchQuestionBean= (SearchQuestionBean) ContextUtil.lookupBean("searchQuestionBean");
+                    nextpage = "searchQuestion";
+
+                    if(itemauthorbean.getTarget().equals("questionpool")) {
+                        searchQuestionBean.setComesFromPool(true);
+                        searchQuestionBean.setSelectedQuestionPool(itemauthorbean.getQpoolId());
+                        break;
+                    }else {
+                        searchQuestionBean.setComesFromPool(false);
+                        String partNoQS = itemauthorbean.getInsertToSection();
+                        List<SectionContentsBean> sectionsQS = assessmentBean.getSections();
+                        for (SectionContentsBean content : sectionsQS)
+                        {
+                            if (partNoQS != null && partNoQS.equals(content.getNumber()))
+                            {
+                                searchQuestionBean.setSelectedSection(content.getSectionId());
+                                break;
+                            }
+                        }
+                    }
+                break;
                 case 100:
 				ToolSession currentToolSession = SessionManager.getCurrentToolSession();
 				currentToolSession.setAttribute("QB_insert_possition", itemauthorbean.getInsertPosition());
@@ -267,7 +290,7 @@ log.debug("after getting item.getItemType() ");
    }
     catch(RuntimeException e)
     {
-      e.printStackTrace();
+      log.error(e.getMessage(), e);
       throw e;
     }
 

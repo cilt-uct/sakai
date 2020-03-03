@@ -268,8 +268,6 @@ function mySetMainFrameHeight(id)
 	}
 }
 
-
-
 var instrumentThreads = function(target){
     var threadCount = 0;
     $('#' + target).children('tbody').children('tr').each(function(index){
@@ -362,7 +360,6 @@ function setupMessageNav(messageType){
     }
 }
 
-
 function doAjax(messageId, topicId, self){
     $(self).prop('src', '/library/image/sakai/spinner.gif');
     $.ajax({
@@ -377,6 +374,10 @@ function doAjax(messageId, topicId, self){
                     if ($(self).parent('td').size() === 1) {
                         var thisTheadClassArr = $(thisRow).prop('class').split(' ');
                         var thisThread = thisTheadClassArr[thisTheadClassArr.length - 1];
+                        var unread = parseInt($('.hierItemBlock.' + thisThread + ' .childrenNewNumber').text(), 10);
+                        if (unread > 0) {
+                            $('.hierItemBlock.' + thisThread + ' .childrenNewNumber').text(unread - 1);
+                        }
                         $('.' + thisThread).find('em').text($('.' + thisThread).find('em').text() - 1);
 						//hide "New Messages" in thread seed if all messages have been marked as "read"
                         if ($('.' + thisThread).find('span.messageNew').size() === 1) {
@@ -395,8 +396,8 @@ function doAjax(messageId, topicId, self){
                             $('.jumpToNew').remove();
                         }
                     }
-                    
-                    
+
+
                     //remove at end after references are not needed
                     $(self).remove();
                     $("#" + messageId).parents("tr:first").children("td").each(function(){
@@ -418,18 +419,20 @@ function doAjax(messageId, topicId, self){
     return false;
 }
 
-// This will display/hide extended description for an element
-// Need to be fancy due to a bug (SAK-11933) where copy/pasting
-// content causes addition tags with class 'toggle' to be in
-// markup, causing errors on display.
-// Found multiple versions of this fix, so centralizing it here
-function toggleExtendedDescription(hideShowEl, parent, element) {
-    resize();
-    hideShowEl.toggle();
-    parent.slideToggle(resize);
-    element.toggle();
-    element[0].classList.toggle('opened');
-}
+$(document).ready(function() {
+    var toggleFinished = true;
+    $('.toggle').click(function(e) {
+        if (toggleFinished) {
+            toggleFinished = false;
+            $(this).parent().parent().find('.toggleParent').toggle();
+            $(this).parent().parent().find('[id$=fullTopicDescription]').slideToggle('slow', function() {
+                toggleFinished = true;
+            });
+        }
+        e.preventDefault();
+        return false;
+    });
+});
 
 function toggleDates(hideShowEl, parent, element) {
     resize();
@@ -437,22 +440,6 @@ function toggleDates(hideShowEl, parent, element) {
     parent.slideToggle(resize);
     element.toggle();
 }
-
-//fix for double click stack traces in IE - SAK-10625
-//add Jquery if necessary
-/*if(typeof($) == "undefined"){
-   js = document.createElement('script');
-   js.setAttribute('language', 'javascript');
-   js.setAttribute('type', 'text/javascript');
-   js.setAttribute('src','/library/js/jquery.js');
-   document.getElementsByTagName('head').item(0).appendChild(js);
-//document.write('<script type="text/javascript" src="/library/js/jquery.js"></script>');}
-}
-js = document.createElement('script');
-js.setAttribute('language', 'javascript');
-js.setAttribute('type', 'text/javascript');
-js.setAttribute('src','/messageforums-tool/js/sak-10625.js');
-document.getElementsByTagName('head').item(0).appendChild(js);*/
 
 // open print preview in another browser window so can size approx what actual
 // print out will look like
@@ -477,15 +464,6 @@ $(document).ready(function () {
         }
     }
 
-
-});
-
-$(document).ready(function () {
-    
-    $('#prefs_pvt_form\\:search_by_date').change( function(){
-      $('#prefs_pvt_form\\:pvt_beg_date, #prefs_pvt_form\\:pvt_end_date').toggleClass('showed');
-    });
-
 });
 
 function FCKeditor_OnComplete(editorInstance) {
@@ -507,9 +485,11 @@ function msgcntr_word_count(forumHtml) {
         document.getElementById('counttotal').innerHTML = "<span class='highlight'>(" + getWordCount(forumHtml) + ")</span>";
     }
 }
-  
+
  function fckeditor_word_count_fromMessage(msgStr, countSpan){
- 	document.getElementById(countSpan).innerHTML = "<span class='highlight'>(" + getWordCount(msgStr) + ")</span>";
+ 	if (document.getElementById(countSpan)) {
+ 	    document.getElementById(countSpan).innerHTML = "<span class='highlight'>(" + getWordCount(msgStr) + ")</span>";
+ 	}
  }
  
  function getWordCount(msgStr) {
@@ -642,7 +622,6 @@ function disabledButton() {
         }
     }
 }
-
 function abledButton() {
     var inputs= document.getElementsByTagName("INPUT");
     for (var i = 0; i < inputs.length; i++) {
@@ -675,7 +654,6 @@ function uncheckOthers(field){
     var inputhidden = document.getElementById("addRank:selectedRankType");
     inputhidden.setAttribute("value", ranktype);
 }
-
 
 function validate(form){
     var rankname_missing = false;
@@ -814,7 +792,7 @@ function resizeFrameForDialog()
 }
 
 // This is the profile display on user's names.
-$(document).ready(function() {			
+$(document).ready(function() {
 	$('.authorProfile').each(function() {
 		$(this).qtip({ 
 			content: {
@@ -830,7 +808,7 @@ $(document).ready(function() {
 		});
 		$(this).prop('href', 'javascript:;');
 	});
-});	
+});
 
 $(document).ready(function(){
     $('.blockMeOnClick').click(function(e){
@@ -887,3 +865,19 @@ $(document).ready(function(){
     });
 
 });
+
+// rubrics-specific code
+rubricsEventHandlers = function () {
+
+  $('body').on('total-points-updated', function (e) {
+
+    var gradeField = document.getElementById("msgForum:dfMsgGradeGradePoint");
+    if (gradeField) {
+      gradeField.value = e.detail.value;
+    }
+  });
+
+  $('body').on('rubric-ratings-changed', function (e) {
+    rubricChanged = true;
+  });
+}

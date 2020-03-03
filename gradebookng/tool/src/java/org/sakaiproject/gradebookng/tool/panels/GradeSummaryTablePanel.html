@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-<html xmlns:wicket="http://wicket.apache.org/dtds.data/wicket-xhtml1.4-strict.dtd">
+<html xmlns:wicket="http://wicket.apache.org">
+
 <body>
 
 <wicket:panel>
 	<wicket:enclosure child="categoriesList">
 		<div wicket:id="toggleActions" class="pull-right">
-			<a href="javascript:void(0);" class="button" id="toggleCategories" wicket:id="toggleCategoriesLink" aria-controls="gradeSummaryTable">Group By Category</a>
+			<a href="javascript:void(0);" class="button" id="toggleCategories" wicket:id="toggleCategoriesLink" aria-controls="gradeSummaryTable"><wicket:message key="label.toolbar.togglecategories"></wicket:message></a>
 			<a href="javascript:void(0);" class="gb-summary-expand-all" wicket:id="expandCategoriesLink" aria-controls="gradeSummaryTable"><wicket:message key="label.studentsummary.expandall"></wicket:message></a>
 			<a href="javascript:void(0);" class="gb-summary-collapse-all" wicket:id="collapseCategoriesLink" aria-controls="gradeSummaryTable"><wicket:message key="label.studentsummary.collapseall"></wicket:message></a>
 		</div>
@@ -16,10 +17,10 @@
 				<tr>
 					<th class="col-md-4" scope="col"><wicket:message key="column.header.studentsummary.gradebookitem" /></th>
 					<th class="col-md-2" scope="col"><wicket:message key="column.header.studentsummary.grade" /></th>
-					<th class="col-md-1 weight-col" scope="col"><wicket:message key="column.header.studentsummary.weight" /></th>
-					<th class="col-md-2" scope="col"><wicket:message key="column.header.studentsummary.duedate" /></th>
+					<th class="col-md-1" scope="col" wicket:id="weightColumnHeader"><wicket:message key="column.header.studentsummary.weight" /></th>
+					<th class="date-col" scope="col" wicket:id="dateColumnHeader"><wicket:message key="column.header.studentsummary.duedate" /></th>
 					<th class="col-md-3" scope="col"><wicket:message key="column.header.studentsummary.comments" /></th>
-					<th class="col-md-1 category-col" scope="col" wicket:id="categoryColumnHeader"><wicket:message key="column.header.studentsummary.category" /></th>
+					<th class="col-md-2 category-col" scope="col" wicket:id="categoryColumnHeader"><wicket:message key="column.header.studentsummary.category" /></th>
 				</tr>
 			</thead>
 			<wicket:container wicket:id="categoriesList">
@@ -27,8 +28,10 @@
 					<tbody class="gb-summary-category-tbody">
 						<tr wicket:id="categoryRow" class="gb-summary-category-row" wicket:message="aria-label:studentsummary.categoryrow">
 							<th scope="rowgroup">
-								<span wicket:id="category" class="gb-summary-category-name"></span>
-								<a href="javascript:void(0);" class="gb-summary-category-toggle" wicket:message="title:studentsummary.categorytoggle"></a>
+								<a href="javascript:void(0);" class="gb-summary-category-toggle" wicket:message="title:studentsummary.categorytoggle"><span wicket:id="category" class="gb-summary-category-name"></span></a>
+								<p wicket:id="categoryDropInfo" class="gb-summary-grade-category-dropInfo">
+									<span wicket:id="categoryDropInfo1">Drop Highest: 1 & </span><wbr><span wicket:id="categoryDropInfo2">Drop Lowest: 1</span>
+								</p>
 							</th>
 							<td class="gb-summary-category-grade" wicket:id="categoryGrade" wicket:message="aria-label:studentsummary.categoryaverage"></td>
 							<td class="gb-summary-category-weight weight-col" wicket:id="categoryWeight" wicket:message="aria-label:studentsummary.categoryweight"></td>
@@ -41,25 +44,34 @@
 					<tr wicket:id="assignmentsForCategory" class="gb-summary-grade-row">
 						<th scope="row">
 							<span class="gb-summary-grade-title" wicket:id="title"></span>
+							<span><a href="javascript:void(0);" class="gb-summary-grade-stats pull-right" wicket:message="title:studentsummary.gradebookitem.assignmentstats" wicket:id="assignmentStatsLink"></a></span>
 							<span class="gb-summary-grade-flags" wicket:id="flags">
 								<span wicket:id="isExtraCredit" class="gb-flag-extra-credit"></span>
 								<span wicket:id="isNotCounted" class="gb-flag-not-counted"></span>
 								<span wicket:id="isNotReleased" class="gb-flag-not-released"></span>
+								<span wicket:id="isExcused" class="gb-flag-excused"></span>
+								<span wicket:id="isExternal"></span>
 							</span>
 						</th>
-						<td class="gb-summary-grade-score">
+						<td class="gb-summary-grade-score" wicket:id="gradeScore">
 							<span class="gb-summary-grade-score-raw" wicket:id="grade" wicket:message="aria-label:studentsummary.gradebookitem.score"></span>
 							<span class="gb-summary-grade-score-outof" wicket:id="outOf" wicket:message="aria-label:studentsummary.gradebookitem.outof"></span>
+							<sakai-rubric-student-button wicket:id="sakai-rubric-student-button"></sakai-rubric-student-button>
 						</td>
-						<td class="weight-col"><!-- empty --></td>
+						<td wicket:id="weight"><!-- empty --></td>
 						<td class="gb-summary-grade-duedate" wicket:id="dueDate"></td>
-						<td class="gb-summary-grade-comments" wicket:id="comments"></td>
-						<td class="gb-summary-grade-category" wicket:id="category"></td>
+						<td class="gb-summary-grade-comments"><div wicket:id="comments"></div></td>
+						<td class="gb-summary-grade-category" wicket:id="category">
+							<div wicket:id="categoryName"></div>
+							<p wicket:id="categoryDropInfo" class="gb-summary-grade-category-col-dropInfo">Drop Highest: 1</p>
+							<p wicket:id="categoryDropInfo2" class="gb-summary-grade-category-col-dropInfo">Drop Lowest: 1</p>
+						</td>
 					</tr>
 				</tbody>
 			</wicket:container>
 		</table>
 	</wicket:enclosure>
+	<div wicket:id="assignmentStatsWindow"></div>
 </wicket:panel>
 
 </body>

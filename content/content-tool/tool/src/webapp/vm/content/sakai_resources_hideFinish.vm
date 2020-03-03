@@ -1,16 +1,18 @@
 <!-- sakai_resources_hideFinish.vm, version: $Revision:  $, use with org.sakaiproject.tool.content.ResourcesAction.java -->
 <div class="portletBody">
-	#if ($alertMessage)<div class="alertMessage">$tlang.getString("label.alert") $validator.escapeHtml($alertMessage)</div><div style="display:block;clear:both" ></div>#end
+	#if ($alertMessage)
+		<div class="sak-banner-error">$tlang.getString("label.alert") $formattedText.escapeHtml($alertMessage)</div>
+	#end
 	#if($sitetype == "course")
-		<div class="alertMessage">$tlang.getString("hide.sure_course")</div><div style="display:block;clear:both" ></div>
+		<div class="sak-banner-error">$tlang.getString("hide.sure_course")</div>
 	#else 
-		<div class="alertMessage">$tlang.getString("hide.sure_project")</div><div style="display:block;clear:both" ></div>
+		<div class="sak-banner-error">$tlang.getString("hide.sure_project")</div>
 	#end
 	<h3>
 		$tlang.getString("hide.hide")
 	</h3>
 	<form action="#toolForm("ResourcesAction")" name="hideFileForm" method="post" >
-		<input type="hidden" name="collectionId" value="$validator.escapeHtml($collectionId)" />
+		<input type="hidden" name="collectionId" value="$formattedText.escapeHtml($collectionId)" />
 		#if ($hideItems.size()>0)
 			<table class ="listHier lines" cellspacing="0" summary="$tlang.getString("hide.table")" border="0" cellpadding="0">
 				<tr>
@@ -32,10 +34,11 @@
 						<td headers="title">
 							<h4>
 								#if($member.isCollection())
-									<img src = "#imageLink("sakai/dir_closed.gif")" alt="$member.label" />
+									<span class="fa fa-folder" aria-hidden="true"></span>
 								#else
-									<img src = "#imageLink($member.iconLocation)" alt="$member.label" />
+									<span class="$member.iconClass" aria-hidden="true"></span>
 								#end
+								<span class="sr-only">$!member.label</span>
 								<a href="$member.accessUrl" target="_blank">
 									$member.name
 								</a>

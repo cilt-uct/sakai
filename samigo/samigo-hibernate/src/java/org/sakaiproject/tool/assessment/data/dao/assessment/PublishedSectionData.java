@@ -20,6 +20,7 @@
  **********************************************************************************/
 
 package org.sakaiproject.tool.assessment.data.dao.assessment;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -28,24 +29,16 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-//import java.util.Random;
 import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-//import org.sakaiproject.tool.assessment.data.dao.shared.TypeD;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentIfc;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.ItemDataIfc;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.SectionAttachmentIfc;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.SectionDataIfc;
 import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
-//import org.sakaiproject.tool.assessment.facade.AgentFacade;
-//import org.sakaiproject.tool.assessment.facade.TypeFacadeQueriesAPI;
-//import org.sakaiproject.tool.assessment.services.PersistenceService;
 
 public class PublishedSectionData
     implements java.io.Serializable, SectionDataIfc, Comparable{
-  static Logger errorLogger = LoggerFactory.getLogger("errorLogger");
 
   private static final long serialVersionUID = 7526471155622776147L;
   public static final Integer ACTIVE_STATUS =  Integer.valueOf(1);
@@ -238,7 +231,7 @@ public class PublishedSectionData
       this.sectionMetaDataMap= new HashMap();
     }
     this.sectionMetaDataMap.put(label, entry);
-    this.sectionMetaDataSet.add(new SectionMetaData(this, label, entry));
+    this.sectionMetaDataSet.add(new PublishedSectionMetaData(this, label, entry));
   }
 
   public ArrayList getItemArray() {
@@ -265,7 +258,7 @@ public class PublishedSectionData
   public void addItem(ItemDataIfc item) {
     if (itemSet == null)
       itemSet = new HashSet();
-    itemSet.add((ItemData) item);
+    itemSet.add(item);
   }
 
   private void writeObject(java.io.ObjectOutputStream out) throws IOException {

@@ -11,7 +11,7 @@
 <script rsf:id="scr=portal-matter" type="text/javascript"
 	language="JavaScript" src="/library/js/headscripts.js"></script>
 	<script type="text/javascript">includeLatestJQuery('polls');</script>
-	<link href="/library/webjars/jquery-ui/1.11.3/jquery-ui.min.css" rel="stylesheet" type="text/css" />
+	<link href="/library/webjars/jquery-ui/1.12.1/jquery-ui.min.css" rel="stylesheet" type="text/css" />
 	<script type="text/javascript" src="/library/js/lang-datepicker/lang-datepicker.js"></script>
 
 	<script type="text/javascript">
@@ -37,7 +37,9 @@
 
 <body rsf:id="scr=sakai-body">
 <div class="portletBody container-fluid">
-<h3 rsf:id="new_poll_title">Add/Edit a poll</h3>
+	<div class="page-header">
+		<h1 rsf:id="new_poll_title">Add/Edit a poll</h1>
+	</div>
   <div rsf:id="message-for:*">
 	<span>Message for user here</span>
   </div>
@@ -91,8 +93,8 @@
 
 <div rsf:id="option-headers:">
 <p><strong rsf:id="options-title">Answer Options:</strong><br />
-<a rsf:id="option-add" href="pollOption.html">Add Option</a></p>
-
+<a rsf:id="option-add" href="pollOption.html">Add Option</a>&nbsp;&nbsp;
+<a rsf:id="option-add-batch" href="pollOptionBatch.html">Add options in batch</a></p>
 
 <table class="listHier lines" cellspacing="0" border="0">
 	<tr>

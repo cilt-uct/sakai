@@ -20,8 +20,7 @@ import java.util.List;
 
 import javax.servlet.http.Cookie;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.Component;
 import org.apache.wicket.RestartResponseException;
@@ -41,6 +40,7 @@ import org.apache.wicket.model.ResourceModel;
 import org.apache.wicket.model.StringResourceModel;
 import org.apache.wicket.request.mapper.parameter.PageParameters;
 import org.apache.wicket.util.cookies.CookieUtils;
+
 import org.sakaiproject.profile2.model.ProfilePreferences;
 import org.sakaiproject.profile2.model.ProfilePrivacy;
 import org.sakaiproject.profile2.tool.components.OnlinePresenceIndicator;
@@ -57,9 +57,8 @@ import org.sakaiproject.profile2.types.PrivacyType;
 import org.sakaiproject.profile2.util.ProfileConstants;
 import org.sakaiproject.user.api.User;
 
+@Slf4j
 public class ViewProfile extends BasePage {
-
-	private static final Logger log = LoggerFactory.getLogger(ViewProfile.class);
 
 	public ViewProfile(final String userUuid, final String tab) {
 
@@ -85,6 +84,13 @@ public class ViewProfile extends BasePage {
 			throw new RestartResponseException(new MyProfile(userUuid));
 		}
 
+		myPicturesLink.setVisible(false);
+		myFriendsLink.setVisible(false);
+		myMessagesLink.setVisible(false);
+		myPrivacyLink.setVisible(false);
+		searchLink.setVisible(false);
+		preferencesLink.setVisible(false);
+
 		// post view event
 		this.sakaiProxy.postEvent(ProfileConstants.EVENT_PROFILE_VIEW_OTHER, "/profile/" + userUuid, false);
 
@@ -99,6 +105,10 @@ public class ViewProfile extends BasePage {
 			throw new IllegalArgumentException("User does not exist: " + userUuid);
 		}
 		final String userDisplayName = user.getDisplayName();
+		otherProfileLink.get("otherProfileLabel").setDefaultModel(
+			new StringResourceModel("link.other.profile", null, new Object[] { userDisplayName }));
+		otherProfileLink.setVisible(true);
+		disableLink(otherProfileLink);
 		final String userType = user.getType();
 
 		// init
@@ -195,6 +205,7 @@ public class ViewProfile extends BasePage {
 			});
 		}
 
+		// DEPRECATED: UNLESS THERE IS AN EXPRESSED DESIRE FOR THIS FUNCTIONALITY THE WALL WILL BE REMOVED FOR 13.
 		if (this.sakaiProxy.isWallEnabledGlobally()) {
 
 			tabs.add(new AbstractTab(new ResourceModel("link.tab.wall")) {

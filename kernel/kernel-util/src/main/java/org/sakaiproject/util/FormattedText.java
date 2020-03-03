@@ -21,13 +21,15 @@
 
 package org.sakaiproject.util;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.text.NumberFormat;
+
+import lombok.extern.slf4j.Slf4j;
+
+import org.w3c.dom.Element;
+
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.util.api.FormattedText.Level;
 import org.sakaiproject.util.api.MockFormattedText;
-import org.w3c.dom.Element;
-import java.text.NumberFormat;
 
 /**
  * COVER
@@ -37,16 +39,14 @@ import java.text.NumberFormat;
  * @deprecated use the {@link FormattedText} service instead of this cover
  */
 @Deprecated
+@Slf4j
 public class FormattedText {
-
-    private static final Logger log = LoggerFactory.getLogger(FormattedText.class);
-
     private static Object LOCK = new Object();
     private static org.sakaiproject.util.api.FormattedText formattedText;
     protected static org.sakaiproject.util.api.FormattedText getFormattedText() {
         if (formattedText == null) {
             synchronized (LOCK) {
-                org.sakaiproject.util.api.FormattedText component = (org.sakaiproject.util.api.FormattedText) ComponentManager.get(org.sakaiproject.util.api.FormattedText.class);
+                org.sakaiproject.util.api.FormattedText component = ComponentManager.get(org.sakaiproject.util.api.FormattedText.class);
                 if (component == null) {
                     log.warn("Unable to find the FormattedText using the ComponentManager (this is OK if this is a unit test)");
                     // we will just make a new mock one each time but we will also keep trying to find one in the CM
@@ -226,4 +226,11 @@ public class FormattedText {
     	return getFormattedText().getNumberFormat();
     }
     
+    /**
+     * @see org.sakaiproject.util.api.FormattedText#getHtmlBody(String)
+     */
+    public static String getHtmlBody(String text) {
+    	return getFormattedText().getHtmlBody(text);
+    }
+
 }

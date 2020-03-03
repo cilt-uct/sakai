@@ -1,7 +1,7 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
 <%@ taglib uri="http://myfaces.apache.org/tomahawk" prefix="t"%>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://sakaiproject.org/jsf/messageforums" prefix="mf" %>
 <jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
    <jsp:setProperty name="msgs" property="baseName" value="org.sakaiproject.api.app.messagecenter.bundle.Messages"/>
@@ -14,21 +14,11 @@
 			<f:verbatim><input type="hidden" id="currentMessageId" name="currentMessageId" value="</f:verbatim><h:outputText value="#{ForumTool.selectedMessage.message.id}"/><f:verbatim>"/></f:verbatim>
 			<f:verbatim><input type="hidden" id="currentTopicId" name="currentTopicId" value="</f:verbatim><h:outputText value="#{ForumTool.selectedTopic.topic.id}"/><f:verbatim>"/></f:verbatim>
 			<f:verbatim><input type="hidden" id="currentForumId" name="currentForumId" value="</f:verbatim><h:outputText value="#{ForumTool.selectedForum.forum.id}"/><f:verbatim>"/></f:verbatim>
-             		<script type="text/javascript">includeLatestJQuery("msgcntr");</script>
-			<script type="text/javascript">
-				$(document).ready(function() {
-					$('#openLinkBlock').hide();
-					jQuery('.toggle').click(function(e) { 
-						$('#replytomessage').toggle('slow');
-						$('.toggleParent').toggle();					
-						 resizeFrame('grow')
-				});					
-				});
-			</script>
+             		<script>includeLatestJQuery("msgcntr");</script>
 				
-       		<sakai:script contextBase="/messageforums-tool" path="/js/sak-10625.js"/>
-       		<sakai:script contextBase="/messageforums-tool" path="/js/forum.js"/>
-       		<sakai:script contextBase="/messageforums-tool" path="/js/messages.js"/>
+		<script src="/messageforums-tool/js/sak-10625.js"></script>
+		<script src="/messageforums-tool/js/forum.js"></script>
+		<script src="/messageforums-tool/js/messages.js"></script>
         <h:outputText styleClass="alertMessage" value="#{msgs.cdfm_reply_deleted}" rendered="#{ForumTool.errorSynch}" />
 	
 
@@ -54,43 +44,32 @@
 				<h:outputText value="#{msgs.cdfm_reply_message_pref}" styleClass="title highlight"/> <h:outputText value="#{ForumTool.selectedMessage.message.title}" styleClass="title"/>
 				<h:outputText value="#{ForumTool.selectedMessage.anonAwareAuthor}" styleClass="textPanelFooter #{ForumTool.selectedMessage.useAnonymousId ? 'anonymousAuthor' : ''}" />
 				<h:outputText value=" #{msgs.cdfm_me}" styleClass="textPanelFooter" rendered="#{ForumTool.selectedMessage.currentUserAndAnonymous}" />
-					<h:outputText value=" #{msgs.cdfm_openb}" styleClass="textPanelFooter"/>
-					<h:outputText value="#{ForumTool.selectedMessage.message.created}" styleClass="textPanelFooter">
-						<f:convertDateTime pattern="#{msgs.date_format}" timeZone="#{ForumTool.userTimeZone}" locale="#{ForumTool.userLocale}"/>  
-					</h:outputText>
-					<h:outputText value=" #{msgs.cdfm_closeb}" styleClass="textPanelFooter"/>
-					<p style="padding:0;margin:.5em 0" id="openLinkBlock" class="toggleParent">
-						<a href="#" id="showMessage" class="toggle show">
-							<h:graphicImage url="/images/collapse.gif" alt=""/>	
-							<h:outputText value=" #{msgs.cdfm_read_full_rep_tomessage}" />
-						</a>
-					</p>
-					<p style="padding:0;margin:.5em 0" id="hideLinkBlock" class="toggleParent">
-						<a href="#" id="hideMessage" class="toggle show">
-							<h:graphicImage url="/images/expand.gif" alt="" />					
-							<h:outputText value=" #{msgs.cdfm_hide_full_rep_tomessage}"/>
-						</a>
-					</p>
-
-			<div  id="replytomessage">	
+				<h:outputText value=" #{msgs.cdfm_openb}" styleClass="textPanelFooter"/>
+				<h:outputText value="#{ForumTool.selectedMessage.message.created}" styleClass="textPanelFooter">
+					<f:convertDateTime pattern="#{msgs.date_format}" timeZone="#{ForumTool.userTimeZone}" locale="#{ForumTool.userLocale}"/>  
+				</h:outputText>
+				<h:outputText value=" #{msgs.cdfm_closeb}" styleClass="textPanelFooter"/>
+				<p id="openLinkBlock" class="toggleParent openLinkBlock">
+					<a href="#" id="showMessage" class="toggle show">
+						<h:graphicImage url="/images/collapse.gif" alt=""/>
+						<h:outputText value=" #{msgs.cdfm_read_full_rep_tomessage}" />
+					</a>
+				</p>
+				<p id="hideLinkBlock" class="toggleParent hideLinkBlock display-none">
+					<a href="#" id="hideMessage" class="toggle show">
+						<h:graphicImage url="/images/expand.gif" alt="" />
+						<h:outputText value=" #{msgs.cdfm_hide_full_rep_tomessage}"/>
+					</a>
+				</p>
+				<div id="fullTopicDescription" class="fullTopicDescription">
 					<mf:htmlShowArea value="#{ForumTool.selectedMessage.message.body}" hideBorder="true" />
-	
-				<h:dataTable value="#{ForumTool.selectedMessage.message.attachments}" var="eachAttach"  rendered="#{!empty ForumTool.selectedMessage.message.attachments}" columnClasses="attach,bogus" styleClass="attachList"  
-						style="font-size:.9em;width:auto;margin-left:1em" border="0">
+					<h:dataTable value="#{ForumTool.selectedMessage.message.attachments}" var="eachAttach"  rendered="#{!empty ForumTool.selectedMessage.message.attachments}" columnClasses="attach,bogus" styleClass="attachList" border="0">
 						<h:column rendered="#{!empty ForumTool.selectedMessage.message.attachments}">
-						<sakai:contentTypeMap fileType="#{eachAttach.attachmentType}" mapType="image" var="imagePath" pathPrefix="/library/image/"/>
-  							  <h:graphicImage id="exampleFileIcon" value="#{imagePath}" alt="" />
-					<%----%>
+							<sakai:contentTypeMap fileType="#{eachAttach.attachmentType}" mapType="image" var="imagePath" pathPrefix="/library/image/"/>
+							<h:graphicImage id="exampleFileIcon" value="#{imagePath}" alt="" />
 						</h:column>
 						<h:column>
-							<%--							<h:outputLink value="#{eachAttach.attachmentUrl}" target="_blank">
 							<h:outputText value="#{eachAttach.attachmentName}"/>
-							</h:outputLink>--%>
-							<%--							<h:outputLink value="#{ForumTool.attachmentUrl}" target="_blank">
-							<f:param name="attachmentId" value="#{eachAttach.attachment.attachmentId}"/>
-							<h:outputText value="#{eachAttach.attachment.attachmentName}"/>
-							</h:outputLink>--%>
-							<h:outputText value="#{eachAttach.attachmentName}"/>							
 						</h:column>
 					</h:dataTable>
 				</div>
@@ -131,7 +110,7 @@
 		   	</div>
             <sakai:inputRichText textareaOnly="#{PrivateMessagesTool.mobileSession}" value="#{ForumTool.composeBody}" id="df_compose_body" rows="#{ForumTool.editorRows}" cols="132">
 			</sakai:inputRichText>
-			<script language="javascript" type="text/javascript">
+			<script>
 				<%-- pre-morpheus would need this: CKEDITOR.on('instanceReady', function() {resizeFrame('grow')}); --%>
 	        
 //	        function FCKeditor_OnComplete( editorInstance )
@@ -194,9 +173,9 @@
 			  </h:column>
 			</h:dataTable>   
 			<p style="padding:0" class="act">
-				<sakai:button_bar_item action="#{ForumTool.processAddAttachmentRedirect}" value="#{msgs.cdfm_button_bar_add_attachment_redirect}" 
+				<h:commandButton action="#{ForumTool.processAddAttachmentRedirect}" value="#{msgs.cdfm_button_bar_add_attachment_redirect}" 
 					rendered="#{empty ForumTool.attachments}" style="font-size:95%"/>
-				<sakai:button_bar_item action="#{ForumTool.processAddAttachmentRedirect}" value="#{msgs.cdfm_button_bar_add_attachment_more_redirect}" 
+				<h:commandButton action="#{ForumTool.processAddAttachmentRedirect}" value="#{msgs.cdfm_button_bar_add_attachment_more_redirect}" 
 					rendered="#{!empty ForumTool.attachments}" style="font-size:95%"/>
 			</p>
 		</div>
@@ -233,13 +212,12 @@
 
 						<h:outputText value="#{msgs.cdfm_reply_message_note} " styleClass="highlight" rendered="#{ForumTool.selectedTopic.moderated == 'true' }" /><h:outputText value="#{msgs.cdfm_reply_message_mod_inst}" styleClass="instruction" rendered="#{ForumTool.selectedTopic.moderated == 'true' }" />	  
 			<p style="padding:0" class="act">
-        <sakai:button_bar_item id="post" action="#{ForumTool.processDfReplyMsgPost}" value="#{msgs.cdfm_button_bar_post_message}" accesskey="s" styleClass="blockMeOnClick"/>
-    <%--    <sakai:button_bar_item action="#{ForumTool.processDfReplyMsgSaveDraft}" value="#{msgs.cdfm_button_bar_save_draft}" /> --%>
-		<sakai:button_bar_item action="#{ForumTool.processDfReplyThreadCancel}" value="#{msgs.cdfm_button_bar_cancel}" accesskey="x" />
-        <h:outputText styleClass="messageProgress" style="display:none" value="#{msgs.cdfm_processing_submit_message}" />
+        <h:commandButton id="post" action="#{ForumTool.processDfReplyMsgPost}" value="#{msgs.cdfm_button_bar_post_message}" accesskey="s" styleClass="blockMeOnClick"/>
+		<h:commandButton action="#{ForumTool.processDfReplyThreadCancel}" value="#{msgs.cdfm_button_bar_cancel}" accesskey="x" />
+        <h:outputText styleClass="sak-banner-info" style="display:none" value="#{msgs.cdfm_processing_submit_message}" />
 			</p>
 
-<script type="text/javascript">
+<script>
 setTimeout(function(){ 
   var _div = document.getElementsByTagName('div');
   for(i=0;i<_div.length; i++)

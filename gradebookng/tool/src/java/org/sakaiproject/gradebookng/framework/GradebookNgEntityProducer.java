@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2003-2016 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.gradebookng.framework;
 
 import java.util.Collection;
@@ -117,11 +132,8 @@ public class GradebookNgEntityProducer implements EntityProducer, EntityTransfer
 		return TOOL_IDS;
 	}
 
-	/**
-	 * Handle import via merge
-	 */
 	@Override
-	public void transferCopyEntities(final String fromContext, final String toContext, final List<String> ids) {
+	public Map<String, String> transferCopyEntities(String fromContext, String toContext, List<String> ids, List<String> options) {
 
 		final Gradebook gradebook = (Gradebook) this.gradebookService.getGradebook(fromContext);
 
@@ -129,14 +141,11 @@ public class GradebookNgEntityProducer implements EntityProducer, EntityTransfer
 
 		final List<Assignment> assignments = this.gradebookService.getAssignments(fromContext);
 
-		this.gradebookService.transferGradebook(gradebookInformation, assignments, toContext);
+		return this.gradebookService.transferGradebook(gradebookInformation, assignments, toContext, fromContext);
 	}
 
-	/**
-	 * Handle import via replace
-	 */
 	@Override
-	public void transferCopyEntities(final String fromContext, final String toContext, final List<String> ids, final boolean cleanup) {
+	public Map<String, String> transferCopyEntities(String fromContext, String toContext, List<String> ids, List<String> options, boolean cleanup) {
 
 		if (cleanup == true) {
 
@@ -152,8 +161,11 @@ public class GradebookNgEntityProducer implements EntityProducer, EntityTransfer
 		}
 
 		// now migrate
-		this.transferCopyEntities(fromContext, toContext, ids);
-
+		return this.transferCopyEntities(fromContext, toContext, ids, null);
 	}
 
+	@Override
+	public void updateEntityReferences(String toContext, Map<String, String> transversalMap) {
+		//not necessary
+	}
 }

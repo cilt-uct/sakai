@@ -39,8 +39,8 @@ import java.util.Map;
 
 import javax.faces.context.FacesContext;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.db.api.SqlService;
 import org.sakaiproject.jsf.util.LocaleUtil;
@@ -48,12 +48,13 @@ import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.tool.api.ToolManager;
 import org.sakaiproject.userauditservice.api.UserAuditRegistration;
 import org.sakaiproject.userauditservice.api.UserAuditService;
+import org.sakaiproject.util.ResourceLoader;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserNotDefinedException;
 
+@Slf4j
 public class UserAuditEventLog {
-	private static final Logger log = LoggerFactory.getLogger(UserAuditEventLog.class);
 	protected List<EventLog> eventLog = new ArrayList<EventLog>();
 	// Static comparators
 	public static final Comparator<EventLog> displayNameComparatorEL;
@@ -74,6 +75,8 @@ public class UserAuditEventLog {
 	private transient SiteService siteService = (SiteService) ComponentManager.get(SiteService.class.getName());
 	private transient ToolManager toolManager = (ToolManager) ComponentManager.get(ToolManager.class.getName());
 	private transient UserDirectoryService userDirectoryService = (UserDirectoryService) ComponentManager.get(UserDirectoryService.class.getName());
+	
+	private ResourceLoader rb = new ResourceLoader("UserAuditMessages");
 	
 	static {
 		displayNameComparatorEL = new Comparator<EventLog>() {
@@ -211,7 +214,7 @@ public class UserAuditEventLog {
 		}
 	
 		public String getAuditStamp() {
-			DateFormat df = DateFormat.getDateTimeInstance();
+			DateFormat df = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.FULL, rb.getLocale());
 			return df.format(auditStamp);
 		}
 		

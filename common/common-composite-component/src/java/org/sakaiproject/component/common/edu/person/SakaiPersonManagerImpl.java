@@ -21,12 +21,6 @@
 
 package org.sakaiproject.component.common.edu.person;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -35,18 +29,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.lang3.StringUtils;
 import org.hibernate.Criteria;
-import org.hibernate.Hibernate;
 import org.hibernate.HibernateException;
 import org.hibernate.Query;
 import org.hibernate.Session;
 import org.hibernate.criterion.Example;
 import org.hibernate.criterion.Expression;
 import org.hibernate.criterion.Order;
-
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.hibernate.type.StringType;
 import org.sakaiproject.api.common.edu.person.PhotoService;
 import org.sakaiproject.api.common.edu.person.SakaiPerson;
 import org.sakaiproject.api.common.edu.person.SakaiPersonManager;
@@ -55,24 +48,24 @@ import org.sakaiproject.api.common.type.TypeManager;
 import org.sakaiproject.authz.cover.SecurityService;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.component.common.manager.PersistableHelper;
+import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.event.api.EventTrackingService;
 import org.sakaiproject.id.cover.IdManager;
 import org.sakaiproject.tool.cover.SessionManager;
 import org.sakaiproject.user.api.User;
+import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserEdit;
 import org.sakaiproject.user.api.UserNotDefinedException;
-import org.sakaiproject.user.api.UserDirectoryService;
-import org.springframework.orm.hibernate3.HibernateCallback;
-import org.springframework.orm.hibernate3.support.HibernateDaoSupport;
+import org.springframework.orm.hibernate4.HibernateCallback;
+import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
 
 
 /**
  * @author <a href="mailto:lance@indiana.edu">Lance Speelmon</a>
  */
+@Slf4j
 public class SakaiPersonManagerImpl extends HibernateDaoSupport implements SakaiPersonManager
 {
-	private static final Logger LOG = LoggerFactory.getLogger(SakaiPersonManagerImpl.class);
-
 	private static final String PERCENT_SIGN = "%";
 
 	private static final String SURNAME = "surname";
@@ -132,9 +125,9 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 	 */
 	public void setUserDirectoryService(UserDirectoryService userDirectoryService)
 	{
-		if (LOG.isDebugEnabled())
+		if (log.isDebugEnabled())
 		{
-			LOG.debug("setUserDirectoryService(userDirectoryService " + userDirectoryService + ")");
+			log.debug("setUserDirectoryService(userDirectoryService {})", userDirectoryService);
 		}
 
 		this.userDirectoryService = userDirectoryService;
@@ -154,9 +147,9 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 	
 	public void init()
 	{
-		LOG.debug("init()");
+		log.debug("init()");
 
-		LOG.debug("// init systemMutableType");
+		log.debug("// init systemMutableType");
 		systemMutableType = typeManager.getType(SYSTEM_MUTABLE_PRIMITIVES[0], SYSTEM_MUTABLE_PRIMITIVES[1],
 				SYSTEM_MUTABLE_PRIMITIVES[2]);
 		if (systemMutableType == null)
@@ -166,7 +159,7 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 		}
 		if (systemMutableType == null) throw new IllegalStateException("systemMutableType == null");
 
-		LOG.debug("// init userMutableType");
+		log.debug("// init userMutableType");
 		userMutableType = typeManager.getType(USER_MUTABLE_PRIMITIVES[0], USER_MUTABLE_PRIMITIVES[1], USER_MUTABLE_PRIMITIVES[2]);
 		if (userMutableType == null)
 		{
@@ -177,7 +170,7 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 		
 		
 		
-		LOG.debug("init() has completed successfully");
+		log.debug("init() has completed successfully");
 	}
 
 	/**
@@ -185,9 +178,9 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 	 */
 	public SakaiPerson create(String userId, Type recordType)
 	{
-		if (LOG.isDebugEnabled())
+		if (log.isDebugEnabled())
 		{
-			LOG.debug("create(String " + userId + ",  Type " + recordType + ")");
+			log.debug("create(String {},  Type {})", userId, recordType);
 		}
 		if (userId == null || userId.length() < 1) throw new IllegalArgumentException("Illegal agentUuid argument passed!");; // a null uid is valid
 		if (!isSupportedType(recordType)) throw new IllegalArgumentException("Illegal recordType argument passed!");
@@ -214,12 +207,12 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 				spi.setMail(u.getEmail());
 			}
 			catch (UserNotDefinedException uue) {
-				LOG.error("User " + userId + "doesn't exist");
+				log.error("User {} doesn't exist", userId);
 			}
 			
 		}
 		
-		LOG.debug("return spi;");
+		log.debug("return spi;");
 		return spi;
 	}
 
@@ -228,12 +221,12 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 	 */
 	public SakaiPerson getSakaiPerson(Type recordType)
 	{
-		if (LOG.isDebugEnabled())
+		if (log.isDebugEnabled())
 		{
-			LOG.debug("getSakaiPerson(Type " + recordType + ")");
+			log.debug("getSakaiPerson(Type {})", recordType);
 		}; // no validation required; method is delegated.
 
-		LOG.debug("return findSakaiPerson(agent.getUuid(), recordType);");
+		log.debug("return findSakaiPerson(agent.getUuid(), recordType);");
 		return getSakaiPerson(SessionManager.getCurrentSessionUserId(), recordType);
 	}
 
@@ -242,7 +235,7 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 	 */
 	public SakaiPerson getPrototype()
 	{
-		LOG.debug("getPrototype()");
+		log.debug("getPrototype()");
 
 		return new SakaiPersonImpl();
 	}
@@ -252,25 +245,25 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 	 */
 	public List findSakaiPersonByUid(final String uid)
 	{
-		if (LOG.isDebugEnabled())
+		if (log.isDebugEnabled())
 		{
-			LOG.debug("findSakaiPersonByUid(String " + uid + ")");
+			log.debug("findSakaiPersonByUid(String {})", uid);
 		}
 		if (uid == null || uid.length() < 1) throw new IllegalArgumentException("Illegal uid argument passed!");
 
 		final HibernateCallback hcb = new HibernateCallback()
 		{
-			public Object doInHibernate(Session session) throws HibernateException, SQLException
+			public Object doInHibernate(Session session) throws HibernateException
 			{
 				final Query q = session.getNamedQuery(HQL_FIND_SAKAI_PERSON_BY_UID);
-				q.setParameter(UID, uid, Hibernate.STRING);
+				q.setParameter(UID, uid, StringType.INSTANCE);
 				// q.setCacheable(cacheFindSakaiPersonByUid);
 				return q.list();
 			}
 		};
 
-		LOG.debug("return getHibernateTemplate().executeFind(hcb);");
-		List hb = getHibernateTemplate().executeFind(hcb);
+		log.debug("return getHibernateTemplate().executeFind(hcb);");
+		List hb = (List) getHibernateTemplate().execute(hcb);
 		if (photoService.overRidesDefault()) {
 			return this.getDiskPhotosForList(hb);
 		} else {
@@ -283,9 +276,9 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 	 */
 	public void save(SakaiPerson sakaiPerson)
 	{
-		if (LOG.isDebugEnabled())
+		if (log.isDebugEnabled())
 		{
-			LOG.debug("save(SakaiPerson " + sakaiPerson + ")");
+			log.debug("save(SakaiPerson {})", sakaiPerson);
 		}
 		if (sakaiPerson == null) throw new IllegalArgumentException("Illegal sakaiPerson argument passed!");
 		if (!isSupportedType(sakaiPerson.getTypeUuid()))
@@ -337,14 +330,14 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 			
 			//set the event
 			String ref = getReference(spi);
-			LOG.debug("got ref of: " + ref + " about to set events");
+			log.debug("got ref of: {} about to set events", ref);
 			
 				
 			
-			eventTrackingService.post(eventTrackingService.newEvent("profile.update", ref, true));
+			eventTrackingService.post(eventTrackingService.newEvent(PROFILE_UPDATE, ref, true));
 			
 			
-			LOG.debug("User record updated for Id :-" + spi.getAgentUuid());
+			log.debug("User record updated for Id :-{}", spi.getAgentUuid());
 			//update the account too -only if not system profile 
 			if (serverConfigurationService.getBoolean("profile.updateUser",false) && spi.getTypeUuid().equals(this.userMutableType.getUuid()) )
 			{
@@ -355,10 +348,10 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 					userEdit.setLastName(spi.getSurname());
 					userEdit.setEmail(spi.getMail());
 					userDirectoryService.commitEdit(userEdit);
-					LOG.debug("Saved user object");
+					log.debug("Saved user object");
 				}
 				catch (Exception e) {
-					e.printStackTrace();
+					log.error(e.getMessage(), e);
 				}
 			}
 			
@@ -368,8 +361,11 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 	}
 
 	private String getReference(SakaiPerson spi) {
-		String ref = "/profile/type/" + spi.getTypeUuid() + "/id/" + spi.getAgentUuid();
-		return ref;
+		StringBuilder sb = new StringBuilder(Entity.SEPARATOR);
+		sb.append("profile").append(Entity.SEPARATOR).append("type").append(Entity.SEPARATOR)
+			.append(spi.getTypeUuid()).append(Entity.SEPARATOR).append("id")
+			.append(Entity.SEPARATOR).append(spi.getAgentUuid());
+		return sb.toString();
 	}
 
 	/**
@@ -377,9 +373,9 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 	 */
 	public SakaiPerson getSakaiPerson(final String agentUuid, final Type recordType)
 	{
-		if (LOG.isDebugEnabled())
+		if (log.isDebugEnabled())
 		{
-			LOG.debug("getSakaiPerson(String " + agentUuid + ", Type " + recordType + ")");
+			log.debug("getSakaiPerson(String {}, Type {})", agentUuid, recordType);
 		}
 		if (agentUuid == null || agentUuid.length() < 1) throw new IllegalArgumentException("Illegal agentUuid argument passed!");
 		if (recordType == null || !isSupportedType(recordType))
@@ -387,17 +383,17 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 
 		final HibernateCallback hcb = new HibernateCallback()
 		{
-			public Object doInHibernate(Session session) throws HibernateException, SQLException
+			public Object doInHibernate(Session session) throws HibernateException
 			{
 				Query q = session.getNamedQuery(HQL_FIND_SAKAI_PERSON_BY_AGENT_AND_TYPE);
-				q.setParameter(AGENT_UUID, agentUuid, Hibernate.STRING);
-				q.setParameter(TYPE_UUID, recordType.getUuid(), Hibernate.STRING);
-				// q.setCacheable(false);
+				q.setParameter(AGENT_UUID, agentUuid, StringType.INSTANCE);
+				q.setParameter(TYPE_UUID, recordType.getUuid(), StringType.INSTANCE);
+				q.setCacheable(true);
 				return q.uniqueResult();
 			}
 		};
 
-		LOG.debug("return (SakaiPerson) getHibernateTemplate().execute(hcb);");
+		log.debug("return (SakaiPerson) getHibernateTemplate().execute(hcb);");
 		SakaiPerson sp =  (SakaiPerson) getHibernateTemplate().execute(hcb);
 		if (photoService.overRidesDefault() && sp != null && sp.getTypeUuid().equals(this.getSystemMutableType().getUuid())) {
 			sp.setJpegPhoto(photoService.getPhotoAsByteArray(sp.getAgentUuid()));
@@ -408,9 +404,9 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 
 	public Map<String, SakaiPerson> getSakaiPersons(final Set<String> userIds, final Type recordType)
 	{
-		if (LOG.isDebugEnabled())
+		if (log.isDebugEnabled())
 		{
-			LOG.debug("getSakaiPersons(Collection size " + userIds.size() + ", Type " + recordType + ")");
+			log.debug("getSakaiPersons(Collection size {}, Type {})", userIds.size(), recordType);
 		}
 		if (userIds == null || userIds.size() == 0) throw new IllegalArgumentException("Illegal agentUuid argument passed!");
 		if (recordType == null || !isSupportedType(recordType)) throw new IllegalArgumentException("Illegal recordType argument passed!");
@@ -465,16 +461,16 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 	{
 		final HibernateCallback hcb = new HibernateCallback()
 		{
-			public Object doInHibernate(Session session) throws HibernateException, SQLException
+			public Object doInHibernate(Session session) throws HibernateException
 			{
 				Query q = session.getNamedQuery(HQL_FIND_SAKAI_PERSONS_BY_AGENTS_AND_TYPE);
 				q.setParameterList(AGENT_UUID_COLLECTION, userIds);
-				q.setParameter(TYPE_UUID, recordType.getUuid(), Hibernate.STRING);
+				q.setParameter(TYPE_UUID, recordType.getUuid(), StringType.INSTANCE);
 				// q.setCacheable(false);
 				return q.list();
 			}
 		};
-		List hb =  getHibernateTemplate().executeFind(hcb);
+		List hb =  (List) getHibernateTemplate().execute(hcb);
 		if (photoService.overRidesDefault()) {
 			return getDiskPhotosForList(hb);
 		} else {
@@ -487,9 +483,9 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 	 */
 	public List findSakaiPerson(final String simpleSearchCriteria)
 	{
-		if (LOG.isDebugEnabled())
+		if (log.isDebugEnabled())
 		{
-			LOG.debug("findSakaiPerson(String " + simpleSearchCriteria + ")");
+			log.debug("findSakaiPerson(String {})", simpleSearchCriteria);
 		}
 		if (simpleSearchCriteria == null || simpleSearchCriteria.length() < 1)
 			throw new IllegalArgumentException("Illegal simpleSearchCriteria argument passed!");
@@ -497,7 +493,7 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 		final String match = PERCENT_SIGN + simpleSearchCriteria + PERCENT_SIGN;
 		final HibernateCallback hcb = new HibernateCallback()
 		{
-			public Object doInHibernate(Session session) throws HibernateException, SQLException
+			public Object doInHibernate(Session session) throws HibernateException
 			{
 				final Criteria c = session.createCriteria(SakaiPersonImpl.class);
 				c.add(Expression.disjunction().add(Expression.ilike(UID, match)).add(Expression.ilike(GIVENNAME, match)).add(
@@ -509,8 +505,8 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 			}
 		};
 
-		LOG.debug("return getHibernateTemplate().executeFind(hcb);");
-		List hb =  getHibernateTemplate().executeFind(hcb);
+		log.debug("return getHibernateTemplate().executeFind(hcb);");
+		List hb = (List) getHibernateTemplate().execute(hcb);
 		if (photoService.overRidesDefault()) {
 			return getDiskPhotosForList(hb);
 		} else {
@@ -524,9 +520,9 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 	 */
 	public void setTypeManager(TypeManager typeManager)
 	{
-		if (LOG.isDebugEnabled())
+		if (log.isDebugEnabled())
 		{
-			LOG.debug("setTypeManager(TypeManager " + typeManager + ")");
+			log.debug("setTypeManager(TypeManager {})", typeManager);
 		}
 
 		this.typeManager = typeManager;
@@ -537,7 +533,7 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 	 */
 	public Type getUserMutableType()
 	{
-		LOG.debug("getUserMutableType()");
+		log.debug("getUserMutableType()");
 
 		return userMutableType;
 	}
@@ -547,7 +543,7 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 	 */
 	public Type getSystemMutableType()
 	{
-		LOG.debug("getSystemMutableType()");
+		log.debug("getSystemMutableType()");
 
 		return systemMutableType;
 	}
@@ -557,15 +553,15 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 	 */
 	public List findSakaiPerson(final SakaiPerson queryByExample)
 	{
-		if (LOG.isDebugEnabled())
+		if (log.isDebugEnabled())
 		{
-			LOG.debug("findSakaiPerson(SakaiPerson " + queryByExample + ")");
+			log.debug("findSakaiPerson(SakaiPerson {})", queryByExample);
 		}
 		if (queryByExample == null) throw new IllegalArgumentException("Illegal queryByExample argument passed!");
 
 		final HibernateCallback hcb = new HibernateCallback()
 		{
-			public Object doInHibernate(Session session) throws HibernateException, SQLException
+			public Object doInHibernate(Session session) throws HibernateException
 			{
 				Criteria criteria = session.createCriteria(queryByExample.getClass());
 				criteria.add(Example.create(queryByExample));
@@ -574,8 +570,8 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 			}
 		};
 
-		LOG.debug("return getHibernateTemplate().executeFind(hcb);");
-		List hb =  getHibernateTemplate().executeFind(hcb);
+		log.debug("return getHibernateTemplate().executeFind(hcb);");
+		List hb = (List) getHibernateTemplate().execute(hcb);
 		if (photoService.overRidesDefault()) {
 			return getDiskPhotosForList(hb);
 		} else {
@@ -590,9 +586,9 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 	 */
 	public void delete(final SakaiPerson sakaiPerson)
 	{
-		if (LOG.isDebugEnabled())
+		if (log.isDebugEnabled())
 		{
-			LOG.debug("delete(SakaiPerson " + sakaiPerson + ")");
+			log.debug("delete(SakaiPerson {})", sakaiPerson);
 		}
 		if (sakaiPerson == null) throw new IllegalArgumentException("Illegal sakaiPerson argument passed!");
 		
@@ -604,17 +600,17 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 		}
 		
 		
-		LOG.debug("getHibernateTemplate().delete(sakaiPerson);");
+		log.debug("getHibernateTemplate().delete(sakaiPerson);");
 		getHibernateTemplate().delete(sakaiPerson);
-		eventTrackingService.post(eventTrackingService.newEvent("profile.delete", ref, true));
+		eventTrackingService.post(eventTrackingService.newEvent(PROFILE_DELETE, ref, true));
 		
 	}
 
 	private boolean isSupportedType(Type recordType)
 	{
-		if (LOG.isDebugEnabled())
+		if (log.isDebugEnabled())
 		{
-			LOG.debug("isSupportedType(Type " + recordType + ")");
+			log.debug("isSupportedType(Type {})", recordType);
 		}
 
 		if (recordType == null) return false;
@@ -625,9 +621,9 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 
 	private boolean isSupportedType(String typeUuid)
 	{
-		if (LOG.isDebugEnabled())
+		if (log.isDebugEnabled())
 		{
-			LOG.debug("isSupportedType(String " + typeUuid + ")");
+			log.debug("isSupportedType(String {})", typeUuid);
 		}
 
 		if (typeUuid == null) return false;
@@ -681,9 +677,9 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 
 	public List isFerpaEnabled(final Collection agentUuids)
 	{
-		if (LOG.isDebugEnabled())
+		if (log.isDebugEnabled())
 		{
-			LOG.debug("isFerpaEnabled(Set " + agentUuids + ")");
+			log.debug("isFerpaEnabled(Set {})", agentUuids);
 		}
 		if (agentUuids == null || agentUuids.isEmpty())
 		{
@@ -692,7 +688,7 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 
 		final HibernateCallback hcb = new HibernateCallback()
 		{
-			public Object doInHibernate(Session session) throws HibernateException, SQLException
+			public Object doInHibernate(Session session) throws HibernateException
 			{
 				final Criteria c = session.createCriteria(SakaiPersonImpl.class);
 				c.add(Expression.in(AGENT_UUID, agentUuids));
@@ -700,23 +696,23 @@ public class SakaiPersonManagerImpl extends HibernateDaoSupport implements Sakai
 				return c.list();
 			}
 		};
-		return getHibernateTemplate().executeFind(hcb);
+		return (List) getHibernateTemplate().execute(hcb);
 	}
 
 	public List findAllFerpaEnabled()
 	{
-		LOG.debug("findAllFerpaEnabled()");
+		log.debug("findAllFerpaEnabled()");
 
 		final HibernateCallback hcb = new HibernateCallback()
 		{
-			public Object doInHibernate(Session session) throws HibernateException, SQLException
+			public Object doInHibernate(Session session) throws HibernateException
 			{
 				final Criteria c = session.createCriteria(SakaiPersonImpl.class);
 				c.add(Expression.eq(FERPA_ENABLED, Boolean.TRUE));
 				return c.list();
 			}
 		};
-		return getHibernateTemplate().executeFind(hcb);
+		return (List) getHibernateTemplate().execute(hcb);
 	}
 	
 

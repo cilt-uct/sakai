@@ -26,6 +26,7 @@ package org.sakaiproject.lessonbuildertool.model;
 import java.util.List;
 import java.util.Map;
 import java.util.Collection;
+import java.util.Optional;
 
 import org.sakaiproject.lessonbuildertool.SimplePage;
 import org.sakaiproject.lessonbuildertool.SimplePageComment;
@@ -44,7 +45,9 @@ import org.sakaiproject.lessonbuildertool.SimplePageProperty;
 import org.sakaiproject.lessonbuildertool.SimpleChecklistItem;
 import org.sakaiproject.lessonbuildertool.ChecklistItemStatus;
 
-import org.springframework.orm.hibernate3.HibernateTemplate;
+import org.sakaiproject.site.api.ToolConfiguration;
+
+import org.springframework.orm.hibernate4.HibernateTemplate;
 
 public interface SimplePageToolDao {
 
@@ -145,6 +148,8 @@ public interface SimplePageToolDao {
     // find all items with given page ID
 	public List<SimplePageItem> findPageItemsBySakaiId(String id);
 
+	public List<SimplePageItem> findPageItemsByPageId(long pageId);
+
     // find resource items with access control involving specified sakaiid
 	public List findControlledResourcesBySakaiId(String id, String siteid);
 	
@@ -195,6 +200,8 @@ public interface SimplePageToolDao {
 	public Long getTopLevelPageId(String toolId);
 
 	public SimplePage getPage(long pageId);
+
+	public String getPageUrl(long pageId);
 
     // list of all pages in the site, not just top level
 	public List<SimplePage> getSitePages(String siteId);
@@ -302,7 +309,7 @@ public interface SimplePageToolDao {
 
     public Long maxChecklistItem(SimplePageItem checklist);
 
-    public Long addChecklistItem(SimplePageItem checklist, Long id, String name);
+	public Long addChecklistItem(SimplePageItem checklist, Long id, String name, Long linkedId);
 
     public boolean isChecklistItemChecked(long checklistId, long checklistItemId, String userId);
 
@@ -327,4 +334,11 @@ public interface SimplePageToolDao {
 
     public boolean doesPageFolderExist(final String siteId, final String folder);
 
+    public String getLessonSubPageJSON(String userId, boolean isInstructor, String siteId, List pages);
+
+    public List<SimplePage> getTopLevelPages(String siteId);
+
+    public List<ToolConfiguration> getSiteTools(String siteId);
+
+    public List<SimplePageItem> getOrderedTopLevelPageItems(String siteId);
 }

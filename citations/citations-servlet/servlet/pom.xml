@@ -4,17 +4,12 @@
   <parent>
     <artifactId>citations-base</artifactId>
     <groupId>org.sakaiproject</groupId>
-    <version>12-SNAPSHOT</version>
+    <version>21-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
   <name>savecite</name>
   <groupId>org.sakaiproject</groupId>
   <artifactId>sakai-citations-servlet</artifactId>
-  <organization>
-    <name>University of Michigan</name>
-    <url>http://sakaiproject.org/</url>
-  </organization>
-  <inceptionYear>2003</inceptionYear>
   <packaging>war</packaging>
   <dependencies>
     <dependency>
@@ -23,7 +18,7 @@
     </dependency>
     <dependency>
       <groupId>javax.servlet</groupId>
-      <artifactId>servlet-api</artifactId>
+      <artifactId>javax.servlet-api</artifactId>
     </dependency>
     <dependency>
       <groupId>org.sakaiproject.kernel</groupId>
@@ -36,24 +31,6 @@
     <dependency>
       <groupId>org.sakaiproject</groupId>
       <artifactId>sakai-citations-api</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.sakaiproject</groupId>
-      <artifactId>sakai-citations-impl</artifactId>
-      <exclusions>
-        <exclusion>
-          <groupId>OKI</groupId>
-          <artifactId>OkiOSID</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.sakaiproject.velocity</groupId>
-          <artifactId>sakai-velocity-tool</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.sakaiproject</groupId>
-          <artifactId>sakai-content-util</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.sakaiproject</groupId>

@@ -18,7 +18,7 @@ package org.sakaiproject.profile2.logic;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.profile2.util.ProfileConstants;
 
 import lombok.Setter;
@@ -53,6 +53,14 @@ public class ProfileLinkLogicImpl implements ProfileLinkLogic {
 			throw new SecurityException("Must be logged in.");
 		}
 		return this.sakaiProxy.getDirectUrlToProfileComponent(userUuid, "viewprofile", null);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getInternalDirectUrlToUserProfile(final String viewerUuid, final String viewedUuid) {
+		return this.sakaiProxy.getDirectUrlToProfileComponent(viewerUuid, viewedUuid, "viewprofile", null);
 	}
 
 	/**
@@ -106,18 +114,27 @@ public class ProfileLinkLogicImpl implements ProfileLinkLogic {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String getInternalDirectUrlToUserConnections() {
-		final String currentUserUuid = this.sakaiProxy.getCurrentUserId();
-		if (currentUserUuid == null) {
-			throw new SecurityException("Must be logged in.");
-		}
+	public String getInternalDirectUrlToUserConnections(String userId) {
 
 		// link direct to connections page, no extra params needed
 		String extraParams = null;
 		if (this.sakaiProxy.isUsingNormalPortal()) {
 			extraParams = getFormattedStateParamForWicketTool(ProfileConstants.WICKET_PAGE_CONNECTIONS, null);
 		}
-		return this.sakaiProxy.getDirectUrlToUserProfile(currentUserUuid, extraParams);
+		return this.sakaiProxy.getDirectUrlToUserProfile(userId, extraParams);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getInternalDirectUrlToUserConnections() {
+		final String currentUserUuid = this.sakaiProxy.getCurrentUserId();
+		if (currentUserUuid == null) {
+			throw new SecurityException("Must be logged in.");
+		}
+
+		return this.getInternalDirectUrlToUserConnections(currentUserUuid);
 	}
 
 	/**

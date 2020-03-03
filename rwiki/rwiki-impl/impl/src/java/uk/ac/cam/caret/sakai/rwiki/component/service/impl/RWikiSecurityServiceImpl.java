@@ -23,8 +23,8 @@ package uk.ac.cam.caret.sakai.rwiki.component.service.impl;
 
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
 import org.sakaiproject.authz.api.FunctionManager;
 import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.component.api.ComponentManager;
@@ -49,9 +49,9 @@ import uk.ac.cam.caret.sakai.rwiki.utils.TimeLogger;
  */
 
 // FIXME: Component
+@Slf4j
 public class RWikiSecurityServiceImpl implements RWikiSecurityService
 {
-	private static Logger log = LoggerFactory.getLogger(RWikiSecurityServiceImpl.class);
 
 	private FunctionManager functionManager;
 
@@ -299,6 +299,63 @@ public class RWikiSecurityServiceImpl implements RWikiSecurityService
 		if (log.isDebugEnabled())
 		{
 			log.debug("Permission denied to update " + rwo.getName() //$NON-NLS-1$
+					+ " by user: " + user); //$NON-NLS-1$
+		}
+		return false;
+	}
+
+	public boolean checkCreate(RWikiEntity rwe)
+	{
+		String user = sessionManager.getCurrentSessionUserId();
+		RWikiObject rwo = rwe.getRWikiObject();
+		if (log.isDebugEnabled())
+		{
+			log.debug("checkCreate for " + rwo.getName() + " by user: " + user); //$NON-NLS-1$ //$NON-NLS-2$
+		}
+		if (user != null && user.equals(rwo.getOwner())
+				&& (rwo.getOwnerWrite() || rwo.getOwnerAdmin()))
+		{
+			if (log.isDebugEnabled())
+			{
+				log.debug("User is owner and allowed to create"); //$NON-NLS-1$
+			}
+			return true;
+		}
+
+		String permissionsReference = rwe.getReference();
+		if ((rwo.getGroupWrite() && checkCreatePermission(permissionsReference))
+				|| (rwo.getGroupAdmin())
+				&& checkAdminPermission(permissionsReference))
+		{
+			if (log.isDebugEnabled())
+			{
+				log.debug("User is in group and allowed to create"); //$NON-NLS-1$
+			}
+			return true;
+		}
+
+		if (rwo.getPublicWrite())
+		{
+			if (log.isDebugEnabled())
+			{
+				log.debug("Object is public write"); //$NON-NLS-1$
+			}
+			return true;
+		}
+
+		if (checkSuperAdminPermission(permissionsReference))
+		{
+			if (log.isDebugEnabled())
+			{
+				log
+						.debug("User is SuperAdmin for Realm thus default allowed to create"); //$NON-NLS-1$
+			}
+			return true;
+		}
+
+		if (log.isDebugEnabled())
+		{
+			log.debug("Permission denied to create " + rwo.getName() //$NON-NLS-1$
 					+ " by user: " + user); //$NON-NLS-1$
 		}
 		return false;

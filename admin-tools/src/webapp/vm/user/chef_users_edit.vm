@@ -1,0 +1,352 @@
+## $Header: /cvs/sakai2/legacy/tools/src/webapp/vm/admin/chef_users_edit.vm,v 1.2 2005/05/24 19:36:12 gsilver.umich.edu Exp $
+
+#css("/admin-tools/css/sakai-user-tool.css" 'media="screen"')
+
+${includeLatestJQuery}
+
+<script type="text/javascript">
+
+function addOptionalAttributeBlock() {
+	
+	//set the html for the select list
+	$("#optionalAttributes").append('#AddOptionalAttributeBlock($optionalAttributes)');
+	
+	//determine how many optional attribute select lists we currently have
+	var count = $("#optionalAttributes > p > select").length;
+	
+	//update the attributes for both the select list and input field we just added
+	$('select[name="SELECT_LIST_ATTR"]').attr("name", "optionalAttr_"+count);
+	$('input[name="INPUT_ATTR"]').attr("name", "optionalAttrValue_"+count);
+	
+	//resize iframe
+	setMainFrameHeight(window.name);
+}
+
+function removeOptionalAttributeBlock(elem) {
+
+	$(elem).parent("p").remove();
+}
+
+
+</script>
+
+#javascript("/admin-tools/js/userValidationCommon.js")
+<script type="text/javascript">USER.isSuperUser =#if ($!superUser) true; #else false; #end</script>
+<script type="text/javascript">USER.isPasswordPolicyEnabled =#if ($!isPasswordPolicyEnabled) true; #else false; #end</script>
+#javascript("/admin-tools/js/userEditValidation.js")
+#javascript("/library/js/spinner.js")
+
+<div class="portletBody">
+#if($menu)
+	#toolbar($menu)
+#end
+	
+
+		<h3>
+			$tlang.getString("useedi.revandmod")
+		</h3>
+		
+		#if ($alertMessage)<div class="sak-banner-error" id="alertMsg">$tlang.getString("useconrem.alert") $formattedText.escapeHtml($alertMessage)</div>#end
+		<form class="form-horizontal" name="$form-name" id="useredit" action="#toolForm("$action")" method="post" autocomplete="on">
+			<fieldset>
+				<legend>
+ 					#if($user) $tlang.getString("useedi.edit") #else $tlang.getString("usecre.creaco")#end 
+				</legend>
+                <div class="instruction">
+                    <span class="reqStarInline">*</span> $tlang.getString("usecre.instruc")
+                </div>
+
+				<div class="form-group">
+					<label class="control-label col-sm-2" #if(!$user) for="user_eid" #end>
+						<span class="red">*</span> $tlang.getString("useconrem.useid")
+					</label>
+					#if($!user && !$valueEid)
+						#set($valueEid=$user.Eid)
+					#end
+					<div class="col-sm-3">
+						#if(!$user)
+							## creating new account
+							<input class="form-control sakai-glow" type="text" name="eid" id="user_eid" placeholder="$tlang.getString("useconrem.useid.placeholder")" oninput="USER.validateUserId();" onkeyup="USER.validateUserId();" autocomplete="username" #if($!valueEid)value="$formattedText.escapeHtml($!valueEid)"#end/>
+						#else
+							## modifying existing account
+							#if($!superUser)
+								## only admin type user can modify the eid field
+								<input class="form-control sakai-glow" type="text" name="eid" id="user_eid" placeholder="$tlang.getString("useconrem.useid.placeholder")" oninput="USER.validateUserId();" onkeyup="USER.validateUserId();" autocomplete="off" #if($!valueEid)value="$formattedText.escapeHtml($!valueEid)"#end/>
+							#else
+								<span id="eidValue">$formattedText.escapeHtml($!valueEid)</span>
+							#end
+						#end
+					</div>
+				</div>
+
+				<div class="form-group">
+					<label class="control-label col-sm-2" for="first-name">
+						$tlang.getString("usecre.firnam")
+					</label>
+					<div class="col-sm-3">
+						#if ($service.allowUpdateUserName($user.Id) || !$user)
+							<input class="form-control sakai-glow" type="text" name="first-name" id="first-name" placeholder="$tlang.getString("usecre.firnam.placeholder")" autocomplete="given-name" #if($user)value="$formattedText.escapeHtml($user.FirstName)"#elseif($valueFirstName)value="$formattedText.escapeHtml($valueFirstName)"#end />
+						#else
+							#if($user)$formattedText.escapeHtml($user.FirstName)#elseif($valueFirstName)$formattedText.escapeHtml($valueFirstName)#end
+						#end
+					</div>
+				</div>
+
+				<div class="form-group">
+					<label class="control-label col-sm-2" for="last-name">
+						$tlang.getString("usecre.lasnam")
+					</label>
+					<div class="col-sm-3">
+						#if ($service.allowUpdateUserName($user.Id) || !$user)
+							<input class="form-control sakai-glow" type="text" name="last-name" id="last-name" placeholder="$tlang.getString("usecre.lasnam.placeholder")" autocomplete="family-name" #if($user)value="$formattedText.escapeHtml($user.LastName)"#elseif($valueLastName)value="$formattedText.escapeHtml($valueLastName)"#end />
+						#else
+							#if($user)$formattedText.escapeHtml($user.LastName)#elseif($valueLastName)$formattedText.escapeHtml($valueLastName)#end
+						#end
+					</div>
+				</div>
+
+				<div class="form-group">
+					<label class="control-label col-sm-2" for="email">
+						$tlang.getString("useconrem.ema")
+					</label>
+					<div class="col-sm-3">
+						#if ($service.allowUpdateUserEmail($user.Id) || !$user)
+							<input class="form-control sakai-glow" type="text" name="email" id="email" placeholder="$tlang.getString("useconrem.ema.placeholder")"  oninput="USER.validateEmail();" onkeyup="USER.validateEmail();" autocomplete="email" #if($user)value="$formattedText.escapeHtml($user.Email)"#elseif($valueEmail)value="$formattedText.escapeHtml($valueEmail)"#end />
+						#else
+							#if($user)$formattedText.escapeHtml($user.Email)#elseif($valueEmail)$formattedText.escapeHtml($valueEmail)#end
+						#end
+					</div>
+
+					<div class="col-sm-offset-2 col-sm-10" id="emailWarningMsg" style="display:none">
+						<div class="validationAlert sak-banner-error">
+							$tlang.getString("useact.invemail")
+						</div>
+					</div>
+				</div>
+
+				#if ($incPw && !$providedUserType)
+					#if(!$!superUser)
+							#if ($service.allowUpdateUserName($user.Id) || $service.allowUpdateUserEmail($user.Id) || $service.allowUpdateUserPassword($user.Id) || !$user)
+								<div class="form-group">
+									<label class="control-label col-sm-2" for="user_pwcur">
+										<span class="red">*</span> $tlang.getString("usecre.vercurpass")
+									</label>
+									<div class="col-sm-3">
+										<input class="form-control sakai-glow" type="password" name="pwcur" id="user_pwcur" placeholder="$tlang.getString("usecre.vercurpass.placeholder")" oninput="USER.validateCurrentPassword();" onkeyup="USER.validateCurrentPassword();" autocomplete="current-password" />
+									</div>
+								</div>
+							#else
+								&nbsp;
+							#end
+					#end
+
+					#if ($service.allowUpdateUserPassword($user.Id) || !$user)
+						<div class="form-group">
+							<label class="control-label col-sm-2" for="user_pw">
+								$tlang.getString("usecre.crenewpass")
+							</label>
+							<div class="col-sm-3">
+								<input class="form-control sakai-glow" type="password" name="pw" id="user_pw" placeholder="$tlang.getString("usecre.crenewpass.placeholder")" oninput="USER.validatePassword();" onkeyup="USER.verifyPasswordsMatch()" onblur="USER.displayStrengthInfo();USER.validatePassword();" onfocus="USER.displayStrengthInfo();" autocomplete="new-password" />
+							</div>
+						</div>
+
+						<div class="form-group forPopover" id="strengthBar" style="display:none;" >
+							<div class="row status-row">
+								<label class="control-label col-sm-2" for="strengthBarMeter">
+									 <span class="red">*</span> $tlang.getString("pw.strength")
+								</label>
+								<div class="status-display col-sm-3">
+									<div class="sak-banner-success" id="strongMsg" style="display:none">
+										<strong>$tlang.getString("pw.strong")</strong>
+										<i class="fa fa-question-circle" aria-hidden="true"></i>
+									</div>
+									<div class="sak-banner-warn" id="moderateMsg" style="display:none">
+										<strong>$tlang.getString("pw.moderate")</strong>
+										<i class="fa fa-question-circle" aria-hidden="true"></i>
+									</div>
+									<div class="sak-banner-error" id="weakMsg" style="display:none">
+										<strong>$tlang.getString("pw.weak")</strong>
+										<i class="fa fa-question-circle" aria-hidden="true"></i>
+									</div>
+									<div class="sak-banner-error" id="failMsg" style="display:none;">
+										<strong>$tlang.getString("pw.fail")</strong>
+										<i class="fa fa-question-circle" aria-hidden="true"></i>
+									</div>
+								</div>
+							</div>
+							<div class="row status-row">
+								<script>
+									$(document).ready(function(){
+										$('.status-display').popover({
+											placement:"bottom",
+											container: ".forPopover",
+											content: "$tlang.getString("pw.strengthInfo")"
+										}); 
+									});
+								</script>
+							<div class="col-sm-2">
+							</div>
+							<div class="col-sm-3">
+								<div class="progress" style="height:3rem; margin:0;">
+									<div class="progress-bar" id="strengthBarMeter" role="progressbar" style="width:0%;background-color:#900;">
+									</div>
+								</div> 
+							</div>
+							</div>
+						</div>
+
+						<div class="form-group">
+							<label class="control-label col-sm-2" for="user_pw0">
+								$tlang.getString("usecre.vernewpass")
+							</label>
+							<div class="col-sm-3">
+								<input class="form-control sakai-glow" type="password" name="pw0" id="user_pw0" placeholder="$tlang.getString("usecre.vernewpass.placeholder")" onkeyup="USER.verifyPasswordsMatch()" onblur="USER.verifyPasswordsMatch();" autocomplete="new-password" />
+							</div>
+							<div class="col-sm-offset-2 col-sm-10" id="matchMsg" style="display:none">
+								<div class="validationAlert sak-banner-success" id="matchMsg" style="display:block">
+									$tlang.getString("pw.match")
+								</div>
+							</div>
+							<div class="col-sm-offset-2 col-sm-10" id="noMatchMsg" style="display:none">
+								<div class="validationAlert sak-banner-error"  style="display:block">
+									$tlang.getString("pw.noMatch")
+								</div>
+							</div>
+						</div>
+					#else
+						&nbsp;
+					#end
+				#end
+
+				#if ($incType)
+					<div class="form-group">
+						<label class="control-label col-sm-2" for="type">
+							$tlang.getString("usecre.typ")
+						</label>
+						<div class="col-sm-3">
+							#if ($service.allowUpdateUserType($user.Id) || !$user)
+								#if($userTypes)
+									<select name="type" id="type">
+									#foreach ( $userType in $userTypes )
+										<option value="$formattedText.escapeHtml($userType)" #if($user.Type==$userType)selected#end>$formattedText.escapeHtml($userType)</option>
+									#end
+								</select>
+								#else
+									<input class="form-control sakai-glow" type="text" name="type" id="type" #if($user)value="$formattedText.escapeHtml($user.Type)"#elseif($valueType)value="$formattedText.escapeHtml($valueType)"#end />
+								#end
+							#else
+								#if($user)$formattedText.escapeHtml($user.Type)#elseif($valueType)$formattedText.escapeHtml($valueType)#end
+							#end
+						</div>
+					</div>
+				#end
+
+				<div class="form-group">
+					<label class="control-label col-sm-2" for="disabled">
+						$tlang.getString("disable.user")
+					</label>
+					#set($disabled = $user.Properties.getProperty("disabled"))
+					<div class="col-sm-3">
+						#if(!$!superUser)
+							#if ($disabled != 'true')$tlang.getString("false") #else $tlang.getString("true") #end 
+						 #else
+							<input class="form-control sakai-glow" type="checkbox" name="disabled" id="disabled" #if($disabled == 'true')CHECKED#end>$tlang.getString("disable")</>
+						 #end
+					</div>
+				</div>
+
+#if ($user)
+	<table class="table table-striped table-hover table-bordered">
+		<tbody>
+			<tr>
+				<td><label>$tlang.getString("useedi.creby")</label></td>
+				<td>$formattedText.escapeHtml($user.CreatedBy.DisplayName)</td>
+			</tr>
+			<tr>
+				<td><label>$tlang.getString("useedi.cre")</label></td>
+				<td>$formattedText.escapeHtml($userCreated)</td>
+			</tr>
+			<tr>
+				<td><label>$tlang.getString("useedi.modby")</label></td>
+				<td>$formattedText.escapeHtml($user.ModifiedBy.DisplayName)</td>
+			</tr>
+			<tr>
+				<td><label>$tlang.getString("useedi.mod")</label></td>
+				<td>$formattedText.escapeHtml($userModifiedDate)</td>
+			</tr>
+			<tr>
+				<td><label>$tlang.getString("useconrem.useuid")</label></td>
+				<td>$formattedText.escapeHtml($user.Id)</td>
+			</tr>
+		</tbody>
+	</table>
+#end
+
+		## optional attributes block
+		#if (!$optionalAttributes.isEmpty())
+			#if ($superUser)
+				<p class="shorttext"></p>
+				<div id="optionalAttributes">
+					<p><strong>$tlang.getString("optional.attributes")</strong></p>
+				
+					#set($attrNum = 1)
+				
+					## for those attributes that are in the master list
+					## print a select list for each  that is already set
+					#foreach ($c_entry in $currentAttributes.entrySet())
+						#if ($optionalAttributes.containsKey($c_entry.key))
+							<p class="shorttext">
+								#optionalAttributesSelectList($optionalAttributes, $c_entry.key, $c_entry.value)
+							</p>
+							#set($attrNum = $attrNum+1)
+						#end
+					#end
+				</div>
+				##link to add a new attribute
+				<p>
+					<a href="#" onclick="javascript:addOptionalAttributeBlock();return false">$tlang.getString("optional.attributes.add")</a>
+				</p>
+			#end
+		#end		
+
+#set ($paramNames = $user.Properties.PropertyNames)
+			
+			<div class="act">
+				#if($providedUserType)
+					<input type="submit" id="eventSubmit_doSave" class="active" name="eventSubmit_doSave" value="$tlang.getString("useedi.sav")" accesskey="s" onclick="SPNR.disableControlsAndSpin( this, null );" />
+				#else
+					#if($user)
+						<input type="submit" id="eventSubmit_doSave" class="active" name="eventSubmit_doSave" value="$tlang.getString("useedi.sav")" accesskey="s" onclick="SPNR.disableControlsAndSpin( this, null );" />
+					#else
+						<input type="submit" id="eventSubmit_doSave" class="active" name="eventSubmit_doSave" value="$tlang.getString("useedi.sav2")" accesskey="s" onclick="SPNR.disableControlsAndSpin( this, null );" />
+					#end
+				#end
+                <input type="submit" id="eventSubmit_doCancel" name="eventSubmit_doCancel" value="$tlang.getString("useedi.can")" accesskey="x" onclick="SPNR.disableControlsAndSpin( this, null );" />
+
+			</div>
+			<input type="hidden" name="sakai_csrf_token" value="$sakai_csrf_token" />
+			<input type="hidden" name="alert_message" id="alert_message" value="$alertMessage" />
+                </fieldset>
+		</form>
+</div>
+
+
+## create a dropdown of existing attributes, takes the full list as an argument as well as a given attribute and the value so we can match them up
+#macro( optionalAttributesSelectList $m $attr $val)
+	
+	<select name="optionalAttr_$attrNum">
+		#foreach ($m_entry in $m.entrySet())
+			<option value="$m_entry.key" #if($m_entry.key == $attr) selected="selected" #end>$m_entry.value</option>
+		#end
+	</select>
+	&nbsp;
+	<input type="text" name="optionalAttrValue_$attrNum" value="$val" />
+	&nbsp;
+	<a href="#" onclick="javascript:removeOptionalAttributeBlock(this);return false"><img src="/library/image/silk/cross.png" alt="$tlang.getString("optional.attributes.remove")" /></a>
+
+#end
+
+##default attribute form, used by javascript
+## must be on one line
+## contains placeholders for the values that will be replaced
+#macro( AddOptionalAttributeBlock $map )<p class="shorttext"><select name="SELECT_LIST_ATTR">#foreach ($entry in $map.entrySet())<option value="$entry.key">$entry.value</option>#end</select>&nbsp;<input type="text" name="INPUT_ATTR" />&nbsp;<a href="#" onclick="javascript:removeOptionalAttributeBlock(this);return false"><img src="/library/image/silk/cross.png" alt="$tlang.getString("optional.attributes.remove")" /></a></p>#end

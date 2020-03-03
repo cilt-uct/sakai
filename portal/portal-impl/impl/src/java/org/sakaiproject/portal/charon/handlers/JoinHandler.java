@@ -1,6 +1,22 @@
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.portal.charon.handlers;
 
 import java.io.IOException;
+import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -11,6 +27,7 @@ import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.portal.api.Portal;
 import org.sakaiproject.portal.api.PortalHandlerException;
 import org.sakaiproject.portal.api.PortalRenderContext;
+import org.sakaiproject.portal.charon.site.PortalSiteHelperImpl;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.cover.SiteService;
 import org.sakaiproject.tool.api.Session;
@@ -133,14 +150,15 @@ public class JoinHandler extends BasePortalHandler
 					String serviceName = ServerConfigurationService.getString("ui.service", "Sakai");
 					
 					// SAK-29138
-					String title = serviceName + " : "+ portal.getSiteHelper().getUserSpecificSiteTitle( site, false );
+					List<String> siteProviders = (List<String>) PortalSiteHelperImpl.getProviderIDsForSite(site);
+					String title = serviceName + " : " + portal.getSiteHelper().getUserSpecificSiteTitle(site, true, false, siteProviders);
 					
 					String skin = site.getSkin();
-					PortalRenderContext context = portal.startPageContext(siteType, title, skin, req);
-					context.put("currentSite", portal.getSiteHelper().convertSiteToMap(req, site, null, site.getId(), null, false, false, false, false, null, true));
+					PortalRenderContext context = portal.startPageContext(siteType, title, skin, req, site);
+					context.put("currentSite", portal.getSiteHelper().convertSiteToMap(req, site, null, site.getId(), null, false, false, false, false, null, true, siteProviders));
 					context.put("uiService", serviceName);
 					
-					boolean restrictedByAccountType = !SiteService.getInstance().isAllowedToJoin(siteId);
+					boolean restrictedByAccountType = !SiteService.getInstance().isAllowedToJoin(site.getId());
 					context.put("restrictedByAccountType", restrictedByAccountType);
 					
 					portal.sendResponse(context, res, "join", "text/html");

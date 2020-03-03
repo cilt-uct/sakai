@@ -4,7 +4,7 @@
     <parent>
       <groupId>org.sakaiproject</groupId>
       <artifactId>master</artifactId>
-      <version>12-SNAPSHOT</version>
+      <version>21-SNAPSHOT</version>
       <relativePath>../master/pom.xml</relativePath>
     </parent>
   <name>Sakai Podcast Project</name>
@@ -12,7 +12,6 @@
   <artifactId>podcasts-base</artifactId>
   <packaging>pom</packaging>
   <modules>
-    <module>pack</module>
     <module>podcasts</module>
     <module>podcasts-api</module>
     <module>podcasts-app</module>

@@ -36,14 +36,17 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import javax.faces.application.FacesMessage;
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.ManagedProperty;
+import javax.faces.bean.SessionScoped;
 import javax.faces.context.ExternalContext;
 import javax.faces.context.FacesContext;
 import javax.faces.event.ValueChangeEvent;
 import javax.faces.model.SelectItem;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+
 import org.sakaiproject.api.app.messageforums.AnonymousManager;
 import org.sakaiproject.api.app.messageforums.Attachment;
 import org.sakaiproject.api.app.messageforums.DiscussionForum;
@@ -57,11 +60,11 @@ import org.sakaiproject.api.app.messageforums.UserStatistics;
 import org.sakaiproject.api.app.messageforums.ui.DiscussionForumManager;
 import org.sakaiproject.api.app.messageforums.ui.UIPermissionsManager;
 import org.sakaiproject.authz.api.Member;
-import org.sakaiproject.authz.cover.SecurityService;
+import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.component.app.messageforums.MembershipItem;
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.component.cover.ServerConfigurationService;
-import org.sakaiproject.event.cover.EventTrackingService;
+import org.sakaiproject.event.api.EventTrackingService;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.service.gradebook.shared.Assignment;
 import org.sakaiproject.service.gradebook.shared.GradeDefinition;
@@ -69,14 +72,17 @@ import org.sakaiproject.service.gradebook.shared.GradebookService;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.tool.api.ToolManager;
-import org.sakaiproject.site.cover.SiteService;
-import org.sakaiproject.tool.cover.SessionManager;
+import org.sakaiproject.site.api.SiteService;
+import org.sakaiproject.tool.api.SessionManager;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserNotDefinedException;
-import org.sakaiproject.user.cover.UserDirectoryService;
+import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.util.ResourceLoader;
+import org.sakaiproject.util.api.FormattedText;
 
-
+@Slf4j
+@ManagedBean(name="mfStatisticsBean")
+@SessionScoped
 public class MessageForumStatisticsBean {
 	
 	/**
@@ -335,8 +341,7 @@ public class MessageForumStatisticsBean {
 	protected String sortByUser2 = FORUM_DATE_SORT2;
 	protected String sortByUser3 = FORUM_DATE_SORT3;
 	protected String sortByAllTopics = ALL_TOPICS_FORUM_TITLE_SORT;
-	
-	
+
 	private static final String LIST_PAGE = "dfStatisticsList";
 	private static final String NAME_SORT = "sort_by_name";
 	private static final String AUTHORED_SORT = "sort_by_num_authored";
@@ -365,18 +370,15 @@ public class MessageForumStatisticsBean {
 	private static final String TOPIC_TITLE = "topicTitle";
 	private static final String FORUM_TITLE = "forumTitle";
 
-	
-	
 	private static final String MESSAGECENTER_BUNDLE = "org.sakaiproject.api.app.messagecenter.bundle.Messages";
-	
+
 	private static final String FORUM_STATISTICS = "dfStatisticsList";
 	private static final String FORUM_STATISTICS_BY_ALL_TOPICS = "dfStatisticsListByAllTopics";
 	private static final String FORUM_STATISTICS_BY_TOPIC = "dfStatisticsListByTopic";
 	private static final String FORUM_STATISTICS_USER = "dfStatisticsUser";
 	private static final String FORUM_STATISTICS_ALL_AUTHORED_MSG = "dfStatisticsAllAuthoredMessageForOneUser";
 	private static final String FORUM_STATISTICS_MSG = "dfStatisticsFullTextForOne";
-	
-	
+
 	public String selectedSiteUserId = null;
 	public String selectedSiteUser = null;
 	public String selectedMsgId= null;
@@ -388,7 +390,7 @@ public class MessageForumStatisticsBean {
 	public String selectedAllTopicsForumId = null;
 	public String selectedAllTopicsTopicTitle = null;
 	public String selectedAllTopicsForumTitle = null;
-		
+
 	private String buttonUserName;
 	private boolean isFirstParticipant = false;
 	private boolean isLastParticipant = false;
@@ -423,10 +425,10 @@ public class MessageForumStatisticsBean {
  	public static Comparator AllTopicsForumDateComparatorDesc;
  	public static Comparator AllTopicsTopicDateComparatorDesc;
  	public static Comparator AllTopicsTopicTitleComparatorDesc;
-  	
+
  	public static Comparator AllTopicsTopicTotalMessagesComparatorDesc;
  	public static Comparator AllTopicsForumTitleComparatorDesc;
- 	
+
  	private static final String DEFAULT_GB_ITEM = "Default_0";
  	private static final String DEFAULT_ALL_GROUPS = "all_participants_desc";
  	private static final String SELECT_ASSIGN = "stat_forum_no_gbitem";
@@ -452,25 +454,34 @@ public class MessageForumStatisticsBean {
 
 	private boolean m_displayAnonIds; // this will be true in a pure-anon scenario
 
-	/** to get accces to log file */
-	private static final Logger LOG = LoggerFactory.getLogger(MessageForumSynopticBean.class);
-	
 	/** Needed if within a site so we only need stats for this site */
+	@ManagedProperty(value="#{Components[\"org.sakaiproject.api.app.messageforums.MessageForumsMessageManager\"]}")
 	private MessageForumsMessageManager messageManager;
-	
 	/** Needed to get topics if tool within a site */
+	@ManagedProperty(value="#{Components[\"org.sakaiproject.api.app.messageforums.ui.DiscussionForumManager\"]}")
 	private DiscussionForumManager forumManager;
-	
+	@ManagedProperty(value="#{Components[\"org.sakaiproject.api.app.messageforums.MembershipManager\"]}")
 	private MembershipManager membershipManager;
-
 	/** Manages anonymous IDs */
+	@ManagedProperty(value="#{Components[\"org.sakaiproject.api.app.messageforums.AnonymousManager\"]}")
 	private AnonymousManager anonymousManager;
-
+	@ManagedProperty(value="#{Components[\"org.sakaiproject.tool.api.ToolManager\"]}")
 	private ToolManager toolManager;
-	
-	
+	@ManagedProperty(value="#{Components[\"org.sakaiproject.user.api.UserDirectoryService\"]}")
+	private UserDirectoryService userDirectoryService;
+	@ManagedProperty(value="#{Components[\"org.sakaiproject.authz.api.SecurityService\"]}")
+	private SecurityService securityService;
+	@ManagedProperty(value="#{Components[\"org.sakaiproject.event.api.EventTrackingService\"]}")
+	private EventTrackingService eventTrackingService;
+	@ManagedProperty(value="#{Components[\"org.sakaiproject.site.api.SiteService\"]}")
+	private SiteService siteService;
+	@ManagedProperty(value="#{Components[\"org.sakaiproject.tool.api.SessionManager\"]}")
+	private SessionManager sessionManager;
 	/** Needed to determine if user has read permission of topic */
+	@ManagedProperty(value="#{Components[\"org.sakaiproject.api.app.messageforums.ui.UIPermissionsManager\"]}")
 	private UIPermissionsManager uiPermissionsManager;
+	@ManagedProperty(value="#{Components[\"org.sakaiproject.util.api.FormattedText\"]}")
+	private FormattedText formattedText;
 	
 	public void setMessageManager(MessageForumsMessageManager messageManager){
 		this.messageManager = messageManager;
@@ -490,7 +501,30 @@ public class MessageForumStatisticsBean {
 		this.toolManager = toolManager;
 	}
 	
-	
+	public void setUserDirectoryService(UserDirectoryService userDirectoryService) {
+		this.userDirectoryService = userDirectoryService;
+	}
+
+	public void setSiteService(SiteService siteService) {
+		this.siteService = siteService;
+	}
+
+	public void setSessionManager(SessionManager sessionManager) {
+		this.sessionManager = sessionManager;
+	}
+
+	public void setEventTrackingService(EventTrackingService eventTrackingService) {
+		this.eventTrackingService = eventTrackingService;
+	}
+
+	public void setFormattedText(FormattedText formattedText) {
+		this.formattedText = formattedText;
+	}
+
+	public void setSecurityService(SecurityService securityService) {
+		this.securityService = securityService;
+	}
+
 	public String getSelectedSiteUserId(){
 		return this.selectedSiteUserId;
 	}
@@ -562,7 +596,7 @@ public class MessageForumStatisticsBean {
 				totalForum = studentTotalCount.get((String) readStat[0]);
 			}
 			if (totalForum > 0) {
-				userStats.setReadForumsAmt((Integer)readStat[1]);
+				userStats.setReadForumsAmt(((Long)readStat[1]).intValue());
 			} else {
 				userStats.setReadForumsAmt(0);				
 			}
@@ -581,7 +615,7 @@ public class MessageForumStatisticsBean {
 				totalForum = studentTotalCount.get((String) authoredStat[0]);
 			}
 			if (totalForum > 0) {
-				userStats.setAuthoredForumsAmt((Integer)authoredStat[1]);
+				userStats.setAuthoredForumsAmt(((Long)authoredStat[1]).intValue());
 			} else {
 				userStats.setAuthoredForumsAmt(0);
 			}
@@ -708,7 +742,7 @@ public class MessageForumStatisticsBean {
 				List<Object[]> totalTopcsCountList = messageManager.findMessageCountByForumId(forum.getId());
 				Map<Long, Integer> totalTopcsCountMap = new HashMap<Long, Integer>();
 				for(Object[] objArr : totalTopcsCountList){
-					totalTopcsCountMap.put((Long) objArr[0], (Integer) objArr[1]);
+					totalTopcsCountMap.put((Long) objArr[0], ((Long) objArr[1]).intValue());
 				}
 				// if there are no topics, reveal IDs; otherwise assume we're in a pure anonymous scenario (all topics are anonymous), if we find one that isn't anonymous, we'll flip it to false
 				m_displayAnonIds = !forum.getTopicsSet().isEmpty();
@@ -759,7 +793,7 @@ public class MessageForumStatisticsBean {
 					totalForum = userMessageTotal.get((String) readStat[0]);
 				}
 				if (totalForum > 0) {
-					userStats.setReadForumsAmt((Integer)readStat[1]);
+					userStats.setReadForumsAmt(((Long)readStat[1]).intValue());
 				} else {
 					userStats.setReadForumsAmt(0);				
 				}
@@ -784,7 +818,7 @@ public class MessageForumStatisticsBean {
 					totalForum = userMessageTotal.get((String) authoredStat[0]);
 				}
 				if (totalForum > 0) {
-					userStats.setAuthoredForumsAmt((Integer)authoredStat[1]);
+					userStats.setAuthoredForumsAmt(((Long)authoredStat[1]).intValue());
 				} else {
 					userStats.setAuthoredForumsAmt(0);
 				}
@@ -799,7 +833,7 @@ public class MessageForumStatisticsBean {
 			
 			if(!DEFAULT_GB_ITEM.equals(selectedGroup)){
 				try{
-					Site currentSite = SiteService.getSite(toolManager.getCurrentPlacement().getContext());		
+					Site currentSite = siteService.getSite(toolManager.getCurrentPlacement().getContext());		
 					if(currentSite.hasGroups()){
 						Group group = currentSite.getGroup(selectedGroup);
 						
@@ -814,7 +848,7 @@ public class MessageForumStatisticsBean {
 						}
 					}
 				}catch (IdUnusedException e) {
-					LOG.error(e.getMessage());
+					log.error(e.getMessage());
 				}
 			}else{
 				for (Iterator i = courseMemberMap.entrySet().iterator(); i.hasNext();) {
@@ -966,7 +1000,7 @@ public class MessageForumStatisticsBean {
 		for (Object[] counts: topicMessageCounts) {
 			dCompiledStatsByTopic = statisticsMap.get(counts[0]);
 			if(dCompiledStatsByTopic != null){
-				dCompiledStatsByTopic.setTotalTopicMessages((Integer) counts[1]);
+				dCompiledStatsByTopic.setTotalTopicMessages(((Long) counts[1]).intValue());
 			}
 		}
 		
@@ -1059,7 +1093,7 @@ public class MessageForumStatisticsBean {
 	}
 
 	private String getCurrentUserId() {
-		String currentUserId = SessionManager.getCurrentSessionUserId();;
+		String currentUserId = sessionManager.getCurrentSessionUserId();;
 		return currentUserId;
 	}
 
@@ -1101,7 +1135,7 @@ public class MessageForumStatisticsBean {
 
 				statistics.add(userAuthoredInfo);
 			}catch(Exception e){
-				LOG.error("MessageForumsStatisticsBean: getUserSubjectMsgBody: selected message Id was not of type Long");
+				log.error("MessageForumsStatisticsBean: getUserSubjectMsgBody: selected message Id was not of type Long");
 			}
 		}
 		return statistics;
@@ -2070,7 +2104,7 @@ public class MessageForumStatisticsBean {
 	   */
 	public String processActionStatisticsUser()
 	{
-		LOG.debug("processActionStatisticsUser");
+		log.debug("processActionStatisticsUser");
 		
 		selectedSiteUserId = getExternalParameterByKey(SITE_USER_ID);
 		//reset cache
@@ -2114,7 +2148,7 @@ public class MessageForumStatisticsBean {
 		String userName="";
 		try
 		{
-			User user=UserDirectoryService.getUser(userId) ;
+			User user=userDirectoryService.getUser(userId) ;
 			if (ServerConfigurationService.getBoolean("msg.displayEid", true)) {
 				if(user != null) {
 					userName= user.getLastName() + ", " + user.getFirstName() + " (" + user.getDisplayId() + ")" ;
@@ -2126,8 +2160,7 @@ public class MessageForumStatisticsBean {
 			}
 		}
 		catch (UserNotDefinedException e) {
-
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 		}
 		
 		return userName;
@@ -2162,7 +2195,7 @@ public class MessageForumStatisticsBean {
 		{
 			try
 			{
-				User u = UserDirectoryService.getUser(selectedSiteUserId);
+				User u = userDirectoryService.getUser(selectedSiteUserId);
 				userName = u.getDisplayName();
 			}
 			catch (UserNotDefinedException unde)
@@ -2207,7 +2240,7 @@ public class MessageForumStatisticsBean {
 	}
 	
 	public String processActionDisplayMsgBody() {
-		LOG.debug("processActionDisplayMsgBody");
+		log.debug("processActionDisplayMsgBody");
 
 		selectedMsgId = getExternalParameterByKey("msgId");
 		Message message =(Message) messageManager.getMessageById(Long.parseLong(selectedMsgId));
@@ -2362,7 +2395,7 @@ public class MessageForumStatisticsBean {
 	
 	public String processActionStatisticsByTopic()
 	{
-		LOG.debug("processActionStatisticsByTopic");
+		log.debug("processActionStatisticsByTopic");
 		
 		//to save some speed, only update if the values have changed
 		boolean newTopic = !getExternalParameterByKey(TOPIC_ID).equals(selectedAllTopicsTopicId);
@@ -2376,7 +2409,7 @@ public class MessageForumStatisticsBean {
 					DiscussionForum df = forumManager.getForumById(Long.parseLong(selectedAllTopicsForumId));
 					selectedAllTopicsForumTitle = df.getTitle();
 				}catch (Exception e) {
-					LOG.warn("MessageForumStatisticsBean.processActionStatisticsByTopic: Wasn't able to find discussion forum for id: " + selectedAllTopicsForumId);
+					log.warn("MessageForumStatisticsBean.processActionStatisticsByTopic: Wasn't able to find discussion forum for id: " + selectedAllTopicsForumId);
 				}
 			}
 		}
@@ -2386,7 +2419,7 @@ public class MessageForumStatisticsBean {
 					DiscussionTopic dt = forumManager.getTopicById(Long.parseLong(selectedAllTopicsTopicId));
 					selectedAllTopicsTopicTitle = dt.getTitle();
 				}catch (Exception e) {
-					LOG.warn("MessageForumStatisticsBean.processActionStatisticsByTopic: Wasn't able to find discussion topic for id: " + selectedAllTopicsForumId);
+					log.warn("MessageForumStatisticsBean.processActionStatisticsByTopic: Wasn't able to find discussion topic for id: " + selectedAllTopicsForumId);
 				}
 			}
 		}
@@ -2447,17 +2480,15 @@ public class MessageForumStatisticsBean {
 						try {
 							assignments.add(new SelectItem(Integer.toString(assignments.size()), thisAssign.getName()));
 						} catch(Exception e) {
-							LOG.error("DiscussionForumTool - processDfMsgGrd:" + e);
-							e.printStackTrace();
+							log.error("DiscussionForumTool - processDfMsgGrd:" + e);
 						}
 					}
 				}
 			}
 		} catch(SecurityException se) {
-			LOG.debug("SecurityException caught while getting assignments.", se);
+			log.debug("SecurityException caught while getting assignments.", se);
 		} catch(Exception e1) {
-			LOG.error("DiscussionForumTool&processDfMsgGrad:" + e1);
-			e1.printStackTrace();
+			log.error("DiscussionForumTool&processDfMsgGrad:" + e1);
 		}
 	}
 	
@@ -2475,7 +2506,7 @@ public class MessageForumStatisticsBean {
 		{
 			Object og = ComponentManager.get("org.sakaiproject.service.gradebook.GradebookService");
 			if (!(og instanceof GradebookService)) {
-				LOG.info("Error getting gradebook service from component manager. CM returns:" + og.getClass().getName());
+				log.info("Error getting gradebook service from component manager. CM returns:" + og.getClass().getName());
 				return false;
 			}
 
@@ -2488,7 +2519,7 @@ public class MessageForumStatisticsBean {
 		}
 		catch (Exception e)
 		{
-			LOG.info(this + "isGradebookDefined " + e.getMessage());
+			log.info(this + "isGradebookDefined " + e.getMessage());
 		}
 
 		return rv;
@@ -2641,7 +2672,7 @@ public class MessageForumStatisticsBean {
 			    gradeByLetter = false;
 			}        
 
-			Assignment assignment = gradebookService.getAssignment(gradebookUid, selAssignName);
+			Assignment assignment = gradebookService.getAssignmentByNameOrId(gradebookUid, selAssignName);
 			if(assignment != null){
 				gbItemPointsPossible = assignment.getPoints().toString();			
 
@@ -2649,11 +2680,12 @@ public class MessageForumStatisticsBean {
 				Map studentIdFunctionMap = gradebookService.getViewableStudentsForItemForCurrentUser(gradebookUid, assignment.getId());
 				List<GradeDefinition> grades = gradebookService.getGradesForStudentsForItem(gradebookUid, assignment.getId(), new ArrayList(studentIdFunctionMap.keySet()));
 				//add grade values to return map
+				String decSeparator = formattedText.getDecimalSeparator();
 				for(GradeDefinition gradeDef : grades){
 					String studentUuid = gradeDef.getStudentUid();		  
 					DecoratedGradebookAssignment gradeAssignment = new DecoratedGradebookAssignment();
 					gradeAssignment.setAllowedToGrade(true);						
-					gradeAssignment.setScore(gradeDef.getGrade());
+					gradeAssignment.setScore(StringUtils.replace(gradeDef.getGrade(), (",".equals(decSeparator)?".":","), decSeparator));
 					gradeAssignment.setComment(gradeDef.getGradeComment());
 					gradeAssignment.setName(selAssignName);
 					gradeAssignment.setPointsPossible(gbItemPointsPossible);						
@@ -2747,18 +2779,17 @@ public class MessageForumStatisticsBean {
 					}
 				}
 				
-				gradebookService.saveGradesAndComments(gradebookUuid, gradebookService.getAssignment(gradebookUuid, selectedAssignName).getId(), gradeInfoToSave);
+				gradebookService.saveGradesAndComments(gradebookUuid, gradebookService.getAssignmentByNameOrId(gradebookUuid, selectedAssignName).getId(), gradeInfoToSave);
 
 				setSuccessMessage(getResourceBundleString(GRADE_SUCCESSFUL));
 			} 
 			catch(SecurityException se) {
-				LOG.error("MessageForumStatisticsBean Security Exception - proccessActionSubmitGrades:" + se);
+				log.error("MessageForumStatisticsBean Security Exception - proccessActionSubmitGrades:" + se);
 				setErrorMessage(getResourceBundleString("cdfm_no_gb_perm"));
 			}
 			catch(Exception e) 
 			{ 
-				LOG.error("MessageForumStatisticsBean - proccessActionSubmitGrades:" + e); 
-				e.printStackTrace(); 
+				log.error("MessageForumStatisticsBean - proccessActionSubmitGrades:" + e); 
 			} 
 
 			String eventRef = "";
@@ -2768,7 +2799,7 @@ public class MessageForumStatisticsBean {
 				eventRef = getEventReference(selectedAllTopicsForumId);
 			}
 			
-			EventTrackingService.post(EventTrackingService.newEvent(DiscussionForumService.EVENT_FORUMS_GRADE, eventRef, true));
+			eventTrackingService.post(eventTrackingService.newEvent(DiscussionForumService.EVENT_FORUMS_GRADE, eventRef, true));
 
 		}		
 		
@@ -2789,7 +2820,7 @@ public class MessageForumStatisticsBean {
 		else
 			eventMessagePrefix = "/forums";
 
-		return eventMessagePrefix + getContextSiteId() + "/" + ref + "/" + SessionManager.getCurrentSessionUserId();
+		return eventMessagePrefix + getContextSiteId() + "/" + ref + "/" + sessionManager.getCurrentSessionUserId();
 	}
 	
 	private boolean validateGradeInput(){
@@ -2845,20 +2876,20 @@ public class MessageForumStatisticsBean {
 	
 	private void setErrorMessage(String errorMsg)
 	{
-		LOG.debug("setErrorMessage(String " + errorMsg + ")");
+		log.debug("setErrorMessage(String " + errorMsg + ")");
 		FacesContext.getCurrentInstance().addMessage(null,
 				new FacesMessage(FacesMessage.SEVERITY_ERROR, getResourceBundleString(ALERT) + errorMsg, null));
 	}
 	
 	private void setSuccessMessage(String successMsg)
 	{
-		LOG.debug("setSuccessMessage(String " + successMsg + ")");
+		log.debug("setSuccessMessage(String " + successMsg + ")");
 		FacesContext.getCurrentInstance().addMessage(null, new FacesMessage(FacesMessage.SEVERITY_INFO, successMsg, null));
 	}
 	
 	private String getContextSiteId()
 	{
-		LOG.debug("getContextSiteId()");
+		log.debug("getContextSiteId()");
 		return ("/site/" + toolManager.getCurrentPlacement().getContext());
 	}
 	
@@ -2874,7 +2905,7 @@ public class MessageForumStatisticsBean {
 		}
 		catch (NumberFormatException e) 
 		{
-			//e.printStackTrace();
+			log.error(e.getMessage(), e);
 			return false;
 		}
 	}
@@ -2896,7 +2927,7 @@ public class MessageForumStatisticsBean {
 		if(groups == null){
 			groups = new ArrayList<SelectItem>();
 			try{
-				Site currentSite = SiteService.getSite(toolManager.getCurrentPlacement().getContext());		
+				Site currentSite = siteService.getSite(toolManager.getCurrentPlacement().getContext());		
 				if(currentSite.hasGroups()){					
 					groups.add(new SelectItem(DEFAULT_GB_ITEM, getResourceBundleString(DEFAULT_ALL_GROUPS)));
 					Collection siteGroups = currentSite.getGroups();    
@@ -2906,7 +2937,7 @@ public class MessageForumStatisticsBean {
 					}
 				}
 			}catch (IdUnusedException e){
-				LOG.error(e.getMessage());
+				log.error(e.getMessage());
 			}
 		}
 		return groups;
@@ -2978,7 +3009,7 @@ public class MessageForumStatisticsBean {
 		List<Object[]> totalTopcsCountList = messageManager.findMessageCountTotal();
 		Map<Long, Integer> totalTopcsCountMap = new HashMap<Long, Integer>();
 		for(Object[] objArr : totalTopcsCountList){
-			totalTopcsCountMap.put((Long) objArr[0], (Integer) objArr[1]);
+			totalTopcsCountMap.put((Long) objArr[0], ((Long) objArr[1]).intValue());
 		}
 		Map<String, Boolean> overridingPermissionMap = getOverridingPermissionsMap();
 
@@ -3044,7 +3075,7 @@ public class MessageForumStatisticsBean {
 		for (Iterator i = members.iterator(); i.hasNext();) {
 			MembershipItem item = (MembershipItem) i.next();
 			if (null != item.getUser()) {
-				overridingPermissionMap.put(item.getUser().getId(), forumManager.isInstructor(item.getUser()) || SecurityService.isSuperUser(item.getUser().getId()));
+				overridingPermissionMap.put(item.getUser().getId(), forumManager.isInstructor(item.getUser()) || securityService.isSuperUser(item.getUser().getId()));
 			}
 		}
 		return overridingPermissionMap;

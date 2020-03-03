@@ -4,8 +4,7 @@
 		$tlang.getString("create.folder")
 	</h3>
 	#if ($itemAlertMessage)
-		<div class="alertMessage">$tlang.getString("label.alert") $validator.escapeHtml($itemAlertMessage)</div>
-		<div style="display:block;clear:both" ></div>
+		<div class="sak-banner-error">$tlang.getString("label.alert") $formattedText.escapeHtml($itemAlertMessage)</div>
 	#end
 	<ol class="breadcrumb">
 		<li><span>
@@ -13,7 +12,7 @@
 		</span></li>
 		##<img src = "#imageLink($contentTypeImageService.getContentTypeImage("folder"))" border="0"  alt="$tlang.getString("gen.folder")" />
 		#foreach ($item in $model.collectionPath)
-			<li><span>$validator.escapeHtml($item.name)</span></li>
+			<li><span>$formattedText.escapeHtml($item.name)</span></li>
 		#end
 	</ol>
 		<p class="instruction">
@@ -35,27 +34,28 @@
 				<div id="contentDiv${DOT}$i" class="container-fluid">
 					<input type="hidden" name="exists${DOT}$i" id="exists${DOT}$i" value="true" />
 					<div class="row">
-						<div class="col-lg-2 col-md-2 col-sm-2 col-xs-12"
+						<div class="col-sm-2 col-xs-12">
 							<label for="content${DOT}$i">$tlang.getString("label.folder")</label>
 						</div>
-						<div class="col-lg-6 col-md-6 col-sm-4 col-xs-12">
+						<div class="col-md-6 col-sm-4 col-xs-12">
 							<input type="text" name="content${DOT}$i" id="content${DOT}$i" />
 						##  onkeypress="return handleEnterKey(this, event)"
 						</div>
-						<div class="col-lg-4 col-md-4 col-sm-4 col-xs-12">
+						<div class="col-sm-4 col-xs-12">
 							<a href="#" id="propsTrigger${DOT}$i">$tlang.getString("edit.show")</a>
 							<a class="remove" style="display:none" href="#" id="removeTrigger${DOT}$i" title="$tlang.getString("edit.remove")">
-								<img src="#imageLink("sakai/cross.png")"  alt="x" />
+								<span class="fa fa-times" aria-hidden="true"></span>
+								<span class="sr-only">x</span>
 							</a>
 						</div>
 						<br><br>
 					</div>
 					<input type="hidden" id="prev${DOT}$i" name="prev${DOT}$i" value="#if($prev >= 0)${prev}#end" />
 					<input type="hidden" id="next${DOT}$i" name="next${DOT}$i" value="#if($next < $pipes.size())${next}#end" />
-				</div>
-				<div id="propertiesDiv${DOT}$i" style="display:none;">
-#parse("/vm/resources/sakai_properties.vm")
-					<hr class="itemSeparator" />
+					<div id="propertiesDiv${DOT}$i" style="display:none;" aria-expanded="false">
+						#parse("/vm/resources/sakai_properties.vm")
+						<hr class="itemSeparator" />
+					</div>
 				</div>
 			#end
 		</div>
@@ -69,9 +69,15 @@
 					$tlang.getString("gen.email1")
 				</label>	
 				<select name="notify" id="notify">
-					<option value="r">$tlang.getString("gen.email2")</option>
-					<option value="o">$tlang.getString("gen.email3")</option>
-					<option value="n" selected="selected">$tlang.getString("gen.email4")</option>
+					#if ($noti)
+						<option value="r" #if($noti=="r") selected="selected" #end>$tlang.getString("gen.email2")</option>
+						<option value="o" #if($noti=="o") selected="selected" #end>$tlang.getString("gen.email3")</option>
+						<option value="n" #if($noti=="n") selected="selected" #end>$tlang.getString("gen.email4")</option>
+					#else
+						<option value="r">$tlang.getString("gen.email2")</option>
+						<option value="o">$tlang.getString("gen.email3")</option>
+						<option value="n" selected="selected">$tlang.getString("gen.email4")</option>
+					#end							
 				</select>
 			</p>	
 		#end
@@ -79,8 +85,8 @@
 		<p class="act">
 			<input type="button" class="active" name="savechanges" id="saveChanges" onclick="showNotif('submitnotif03','saveChanges','addFolderForm');document.getElementById('addFolderForm').action='#toolLink("ResourcesHelperAction" "doCreateFolders")&flow=save';submitform('addFolderForm');" value="$tlang.getString("label.finfldr")" accesskey="s" />
 			<input type="button" name="cancel" onclick="document.getElementById('addFolderForm').action='#toolLink("ResourcesHelperAction" "doCancel")';submitform('addFolderForm');" value="$tlang.getString("label.cancel")" accesskey="x" />
-			<span class="messageProgress"  id="submitnotif03" style="visibility:hidden">$tlang.getString("processmessage.folders")</span>
 		</p>
+		<p class="sak-banner-info"  id="submitnotif03" style="visibility:hidden">$tlang.getString("processmessage.folders")</p>
 		<input type="hidden" name="sakai_csrf_token" value="$sakai_csrf_token" />
 	</form>
 </div>

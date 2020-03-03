@@ -109,6 +109,7 @@ public interface LessonEntity {
 
     // properties of entities
     public String getTitle();
+    public String getDescription();
     public String getUrl();
     public Date getDueDate();
     // for forums, where we have a hiearchy of topics
@@ -194,5 +195,6 @@ public interface LessonEntity {
 
     // siteId for the object
     public String getSiteId();
-
+    
+    public void setSimplePageBean(SimplePageBean simplePageBean); 
 }

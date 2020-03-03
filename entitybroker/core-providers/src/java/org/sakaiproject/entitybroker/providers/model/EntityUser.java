@@ -33,7 +33,6 @@ import org.sakaiproject.entitybroker.entityprovider.annotations.EntityId;
 import org.sakaiproject.entitybroker.entityprovider.annotations.EntityLastModified;
 import org.sakaiproject.entitybroker.entityprovider.annotations.EntityOwner;
 import org.sakaiproject.entitybroker.entityprovider.annotations.EntityTitle;
-import org.sakaiproject.time.api.Time;
 import org.sakaiproject.user.api.User;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -60,6 +59,7 @@ public class EntityUser implements User {
     private String firstName;
     private String lastName;
     private String displayName;
+    private String displayId;
     private String type;
     private String owner;
     private long lastModified;
@@ -81,8 +81,9 @@ public class EntityUser implements User {
         this.firstName = user.getFirstName();
         this.lastName = user.getLastName();
         this.displayName = user.getDisplayName();
+        this.displayId = user.getDisplayId();
         this.owner = user.getCreatedBy() == null ? null : "/user/" + user.getCreatedBy().getId();
-        this.lastModified = user.getModifiedTime() == null ? System.currentTimeMillis() : user.getModifiedTime().getTime();
+        this.lastModified = user.getModifiedDate() == null ? System.currentTimeMillis() : user.getModifiedDate().getTime();
         this.type = user.getType();
         ResourceProperties rp = user.getProperties();
         for (Iterator<String> iterator = rp.getPropertyNames(); iterator.hasNext();) {
@@ -93,13 +94,14 @@ public class EntityUser implements User {
     }
 
     public EntityUser(String eid, String email, String firstName, String lastName,
-            String displayName, String password, String type) {
+            String displayName, String displayId, String password, String type) {
         this.eid = eid;
         this.password = password;
         this.email = email;
         this.firstName = firstName;
         this.lastName = lastName;
         this.displayName = displayName;
+        this.displayId = displayId;
         this.type = type;
     }
 
@@ -173,6 +175,10 @@ public class EntityUser implements User {
         return displayName;
     }
 
+    public String getDisplayName(String context) {
+        return displayName;
+    }
+
     public void setDisplayName(String displayName) {
         this.displayName = displayName;
     }
@@ -221,13 +227,6 @@ public class EntityUser implements User {
         throw new UnsupportedOperationException();
     }
 
-    public Time getCreatedTime() {
-        if (user != null) {
-            return user.getCreatedTime();
-        }
-        throw new UnsupportedOperationException();
-    }
-
     public Date getCreatedDate() {
         if (user != null) {
             return user.getCreatedDate();
@@ -236,10 +235,11 @@ public class EntityUser implements User {
     }
 
     public String getDisplayId() {
-        if (user != null) {
-            return user.getDisplayId();
-        }
-        return eid;
+        return displayId;
+    }
+
+    public String getDisplayId(String context) {
+        return displayId;
     }
 
     public User getModifiedBy() {
@@ -249,12 +249,6 @@ public class EntityUser implements User {
         throw new UnsupportedOperationException();
     }
 
-    public Time getModifiedTime() {
-        if (user != null) {
-            return user.getModifiedTime();
-        }
-        throw new UnsupportedOperationException();
-    }
 
     public Date getModifiedDate() {
         if (user != null) {

@@ -24,15 +24,17 @@ package org.sakaiproject.content.types;
 import static org.sakaiproject.content.api.ResourceToolAction.*;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeSet;
-import java.util.Arrays;
+import java.util.Set;
+
+import lombok.extern.slf4j.Slf4j;
 
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.component.cover.ServerConfigurationService;
@@ -50,20 +52,19 @@ import org.sakaiproject.content.util.BaseResourceType;
 import org.sakaiproject.content.util.BaseResourceAction.Localizer;
 import org.sakaiproject.entity.api.Reference;
 import org.sakaiproject.entity.api.ResourceProperties;
+import org.sakaiproject.exception.ZipFileNumberException;
+import org.sakaiproject.tool.api.ToolSession;
+import org.sakaiproject.tool.cover.SessionManager;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.util.Resource;
 import org.sakaiproject.util.ResourceLoader;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+@Slf4j
 public class FileUploadType extends BaseResourceType 
 {
 	protected String typeId = ResourceType.TYPE_UPLOAD;
 	protected String helperId = "sakai.resource.type.helper";
-
-	private static final Logger LOG = LoggerFactory.getLogger(FileUploadType.class);
 
 	
 	/** localized tool properties **/
@@ -202,8 +203,17 @@ public class FileUploadType extends BaseResourceType
 		public void initializeAction(Reference reference) {
 			try {
 					contentHostingService.expandZippedResource(reference.getId());
+			} catch (ZipFileNumberException e) {
+				log.warn("The ZIP file cannot be expanded because contains more files than the maximum allowed.", e);
+				ToolSession toolSession = SessionManager.getCurrentToolSession();
+				Collection<String> errorMessages = (Collection<String>) toolSession.getAttribute("resources.request.message_list");
+				if(errorMessages == null) {
+					errorMessages = new TreeSet();
+					toolSession.setAttribute("resources.request.message_list", errorMessages);
+				}
+				errorMessages.add(rb.getString("alert.zip.filenumber"));
 			} catch (Exception e) {
-				LOG.error("Exception extracting zip content", e);
+				log.error("Exception extracting zip content", e);
 			}
 		}
 		
@@ -252,6 +262,20 @@ public class FileUploadType extends BaseResourceType
 			}
 		}
 		return iconLocation;
+	}
+	
+	public String getIconClass(ContentEntity entity) 
+	{
+		String iconClass = null;
+		if(entity != null && entity instanceof ContentResource)
+		{
+			String mimetype = ((ContentResource) entity).getContentType();
+			if(mimetype != null && ! "".equals(mimetype.trim()))
+			{
+				iconClass = contentTypeImageService.getContentTypeImageClass(mimetype);
+			}
+		}
+		return iconClass;
 	}
 	
 	public String getId() 

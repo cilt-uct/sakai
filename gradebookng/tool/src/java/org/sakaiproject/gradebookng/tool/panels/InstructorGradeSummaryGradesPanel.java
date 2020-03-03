@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.gradebookng.tool.panels;
 
 import java.util.ArrayList;
@@ -6,32 +21,29 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.markup.html.basic.Label;
-import org.apache.wicket.markup.html.panel.Panel;
 import org.apache.wicket.model.IModel;
 import org.apache.wicket.model.LoadableDetachableModel;
-import org.apache.wicket.spring.injection.annot.SpringBean;
 import org.sakaiproject.gradebookng.business.GbCategoryType;
-import org.sakaiproject.gradebookng.business.GbGradingType;
 import org.sakaiproject.gradebookng.business.GbRole;
-import org.sakaiproject.gradebookng.business.GradebookNgBusinessService;
 import org.sakaiproject.gradebookng.business.model.GbGradeInfo;
 import org.sakaiproject.gradebookng.business.model.GbStudentGradeInfo;
 import org.sakaiproject.gradebookng.business.util.CourseGradeFormatter;
 import org.sakaiproject.gradebookng.tool.pages.GradebookPage;
 import org.sakaiproject.service.gradebook.shared.Assignment;
+import org.sakaiproject.service.gradebook.shared.CategoryDefinition;
 import org.sakaiproject.service.gradebook.shared.CourseGrade;
+import org.sakaiproject.service.gradebook.shared.GradingType;
+import org.sakaiproject.service.gradebook.shared.SortType;
 import org.sakaiproject.tool.gradebook.Gradebook;
 
-public class InstructorGradeSummaryGradesPanel extends Panel {
+public class InstructorGradeSummaryGradesPanel extends BasePanel {
 
 	private static final long serialVersionUID = 1L;
-
-	@SpringBean(name = "org.sakaiproject.gradebookng.business.GradebookNgBusinessService")
-	protected GradebookNgBusinessService businessService;
 
 	GbCategoryType configuredCategoryType;
 
@@ -64,18 +76,22 @@ public class InstructorGradeSummaryGradesPanel extends Panel {
 
 		// unpack model
 		final Map<String, Object> modelData = (Map<String, Object>) getDefaultModelObject();
-		final String userId = (String) modelData.get("userId");
+		final String userId = (String) modelData.get("studentUuid");
 
 		final GradebookPage gradebookPage = (GradebookPage) getPage();
 
 		// build the grade matrix for the user
-		final Gradebook gradebook = this.businessService.getGradebook();
-		final List<Assignment> assignments = this.businessService.getGradebookAssignmentsForStudent(userId);
+		final Gradebook gradebook = getGradebook();
+		final SortType sortedBy = this.isGroupedByCategory ? SortType.SORT_BY_CATEGORY : SortType.SORT_BY_SORTING;
+		final List<Assignment> assignments = this.businessService.getGradebookAssignmentsForStudent(userId, sortedBy);
+
+		final boolean isCourseGradeVisible = this.businessService.isCourseGradeVisible(this.businessService.getCurrentUser().getId());
+		final GbRole userRole = gradebookPage.getCurrentRole();
 
 		final CourseGradeFormatter courseGradeFormatter = new CourseGradeFormatter(
 				gradebook,
-				GbRole.INSTRUCTOR,
-				true,
+				userRole,
+				isCourseGradeVisible,
 				gradebook.isCoursePointsDisplayed(),
 				true);
 
@@ -84,15 +100,15 @@ public class InstructorGradeSummaryGradesPanel extends Panel {
 		final GbStudentGradeInfo studentGradeInfo = this.businessService
 				.buildGradeMatrix(
 						assignments,
-						Arrays.asList(userId),
+						new ArrayList<>(Arrays.asList(userId)), // needs to support #remove
 						gradebookPage.getUiSettings())
 				.get(0);
 		final Map<Long, Double> categoryAverages = studentGradeInfo.getCategoryAverages();
 		final Map<Long, GbGradeInfo> grades = studentGradeInfo.getGrades();
 
 		// setup
-		final List<String> categoryNames = new ArrayList<String>();
-		final Map<String, List<Assignment>> categoryNamesToAssignments = new HashMap<String, List<Assignment>>();
+		final List<String> categoryNames = new ArrayList<>();
+		final Map<String, List<Assignment>> categoryNamesToAssignments = new HashMap<>();
 
 		// iterate over assignments and build map of categoryname to list of assignments
 		for (final Assignment assignment : assignments) {
@@ -101,11 +117,13 @@ public class InstructorGradeSummaryGradesPanel extends Panel {
 
 			if (!categoryNamesToAssignments.containsKey(categoryName)) {
 				categoryNames.add(categoryName);
-				categoryNamesToAssignments.put(categoryName, new ArrayList<Assignment>());
+				categoryNamesToAssignments.put(categoryName, new ArrayList<>());
 			}
 
 			categoryNamesToAssignments.get(categoryName).add(assignment);
 		}
+		Map<String, CategoryDefinition> categoriesMap = businessService.getGradebookCategories().stream()
+				.collect(Collectors.toMap(cat -> cat.getName(), cat -> cat));
 		Collections.sort(categoryNames);
 
 		// build the model for table
@@ -118,7 +136,9 @@ public class InstructorGradeSummaryGradesPanel extends Panel {
 		tableModel.put("isCategoryWeightEnabled", isCategoryWeightEnabled());
 		tableModel.put("isGroupedByCategory", this.isGroupedByCategory);
 		tableModel.put("showingStudentView", false);
-		tableModel.put("gradingType", GbGradingType.valueOf(gradebook.getGrade_type()));
+		tableModel.put("gradingType", GradingType.valueOf(gradebook.getGrade_type()));
+		tableModel.put("categoriesMap", categoriesMap);
+		tableModel.put("studentUuid", userId);
 
 		addOrReplace(new GradeSummaryTablePanel("gradeSummaryTable", new LoadableDetachableModel<Map<String, Object>>() {
 			@Override
@@ -135,18 +155,31 @@ public class InstructorGradeSummaryGradesPanel extends Panel {
 		addOrReplace(new Label("courseGradeNotReleasedFlag", getString("label.studentsummary.coursegradenotreleasedflag")) {
 			@Override
 			public boolean isVisible() {
-				return !gradebook.isCourseGradeDisplayed();
+				return showDisplayCourseGradeToStudent(gradebook, userRole, isCourseGradeVisible);
 			}
 		});
 
 		addOrReplace(new Label("courseGradeNotReleasedMessage", getString("label.studentsummary.coursegradenotreleasedmessage")) {
 			@Override
 			public boolean isVisible() {
-				return !gradebook.isCourseGradeDisplayed();
+				return showDisplayCourseGradeToStudent(gradebook, userRole, isCourseGradeVisible);
 			}
 		});
 
 		add(new AttributeModifier("data-studentid", userId));
+	}
+
+	/**
+	 * Determine if the 'Display Course Grade to Student' setting should be visible for the user.
+	 * @param gradebook
+	 * @param userRole
+	 * @param isCourseGradeVisible
+	 * @return
+	 */
+	private boolean showDisplayCourseGradeToStudent(Gradebook gradebook,GbRole userRole, boolean isCourseGradeVisible) {
+		return !gradebook.isCourseGradeDisplayed()
+						&& (GbRole.INSTRUCTOR.equals(userRole) || GbRole.TA.equals(userRole) && isCourseGradeVisible)
+						&& serverConfigService.getBoolean(SAK_PROP_SHOW_COURSE_GRADE_STUDENT, SAK_PROP_SHOW_COURSE_GRADE_STUDENT_DEFAULT);
 	}
 
 	/**

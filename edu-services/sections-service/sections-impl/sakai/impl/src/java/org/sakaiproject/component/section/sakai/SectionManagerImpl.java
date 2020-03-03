@@ -33,11 +33,31 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Calendar;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.sakaiproject.thread_local.api.ThreadLocalManager;
-import org.sakaiproject.tool.api.SessionManager;
+import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.lang3.StringUtils;
+
+import org.sakaiproject.authz.api.AuthzGroup;
+import org.sakaiproject.authz.api.AuthzGroupService;
+import org.sakaiproject.authz.api.AuthzPermissionException;
+import org.sakaiproject.authz.api.AuthzRealmLockException;
+import org.sakaiproject.authz.api.GroupFullException;
+import org.sakaiproject.authz.api.GroupNotDefinedException;
+import org.sakaiproject.authz.api.GroupProvider;
+import org.sakaiproject.authz.api.Member;
+import org.sakaiproject.authz.api.SecurityService;
+import org.sakaiproject.component.cover.ComponentManager;
+import org.sakaiproject.component.section.sakai.facade.SakaiUtil;
+import org.sakaiproject.coursemanagement.api.CourseManagementService;
+import org.sakaiproject.coursemanagement.api.Section;
+import org.sakaiproject.coursemanagement.api.exception.IdNotFoundException;
+import org.sakaiproject.entity.api.EntityManager;
+import org.sakaiproject.entity.api.Reference;
+import org.sakaiproject.entity.api.ResourceProperties;
+import org.sakaiproject.event.api.Event;
+import org.sakaiproject.event.api.EventTrackingService;
+import org.sakaiproject.exception.IdUnusedException;
+import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.section.api.SectionAwareness;
 import org.sakaiproject.section.api.SectionManager;
 import org.sakaiproject.section.api.coursemanagement.Course;
@@ -51,30 +71,12 @@ import org.sakaiproject.section.api.exception.MembershipException;
 import org.sakaiproject.section.api.exception.RoleConfigurationException;
 import org.sakaiproject.section.api.exception.SectionFullException;
 import org.sakaiproject.section.api.facade.Role;
-import org.sakaiproject.component.cover.ComponentManager;
-import org.sakaiproject.component.section.sakai.facade.SakaiUtil;
-import org.sakaiproject.coursemanagement.api.CourseManagementService;
-import org.sakaiproject.coursemanagement.api.Section;
-import org.sakaiproject.coursemanagement.api.exception.IdNotFoundException;
-import org.sakaiproject.exception.IdUnusedException;
-import org.sakaiproject.exception.PermissionException;
-import org.sakaiproject.authz.api.AuthzGroup;
-import org.sakaiproject.authz.api.AuthzGroupService;
-import org.sakaiproject.authz.api.AuthzPermissionException;
-import org.sakaiproject.authz.api.GroupFullException;
-import org.sakaiproject.authz.api.GroupNotDefinedException;
-import org.sakaiproject.authz.api.GroupProvider;
-import org.sakaiproject.authz.api.Member;
-import org.sakaiproject.entity.api.EntityManager;
-import org.sakaiproject.entity.api.Reference;
-import org.sakaiproject.entity.api.ResourceProperties;
-import org.sakaiproject.event.api.Event;
-import org.sakaiproject.event.api.EventTrackingService;
-import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteAdvisor;
 import org.sakaiproject.site.api.SiteService;
+import org.sakaiproject.thread_local.api.ThreadLocalManager;
+import org.sakaiproject.tool.api.SessionManager;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserNotDefinedException;
 
@@ -85,10 +87,9 @@ import org.sakaiproject.user.api.UserNotDefinedException;
  * @author <a href="mailto:jholtzman@berkeley.edu">Josh Holtzman</a>
  *
  */
+@Slf4j
 public abstract class SectionManagerImpl implements SectionManager, SiteAdvisor {
 
-	private static final Logger log = LoggerFactory.getLogger(SectionManagerImpl.class);
-	
     // Sakai services set by method injection
     protected abstract SiteService siteService();
 
@@ -170,7 +171,12 @@ public abstract class SectionManagerImpl implements SectionManager, SiteAdvisor 
 				for(Iterator memberIter = members.iterator(); memberIter.hasNext();) {
 					Member member = (Member)memberIter.next();
 					if(member.isProvided()) {
-						group.addMember(member.getUserId(), member.getRole().getId(), member.isActive(), false);
+						try {
+							group.insertMember(member.getUserId(), member.getRole().getId(), member.isActive(), false);
+						} catch (AuthzRealmLockException arle) {
+							log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
+							return;
+						}
 					}
 				}
 			}
@@ -328,7 +334,7 @@ public abstract class SectionManagerImpl implements SectionManager, SiteAdvisor 
 	 * constructed by finding the official section from CM and converting it to a CourseSection.
 	 * 
 	 * @param site The site in which we are adding a CourseSection 
-	 * @param sectionId The Enterprise ID of the section to add.
+	 * @param sectionEid The Enterprise ID of the section to add.
 	 * 
 	 * @return The CourseSection that was added to the site
 	 */
@@ -683,8 +689,26 @@ public abstract class SectionManagerImpl implements SectionManager, SiteAdvisor 
 		// must be the same
 		List membershipInCategory = authzGroupService.getAuthzUserGroupIds(categorySections, userUid);
 		
-		if (!membershipInCategory.isEmpty()) {
-			log.info("User " + userUid + " can not enroll in section " + sectionUuid + ".  This user is already in section " + membershipInCategory.get(0));
+		List realMembershipInCategory=new ArrayList();
+		
+		for(String msic: (List <String>) membershipInCategory)
+		{
+			String realmGroup=msic;
+			Group group = findGroup(realmGroup);
+			Member member = group.getMember(userUid);
+			if(member == null) {
+				if (log.isDebugEnabled()) { 
+					log.debug("getAuthzUserGroupIds said {} is member of {} but getMember disagrees", userUid, group.getId());
+				}
+				continue;
+			}
+			else {
+				realMembershipInCategory.add(realmGroup);
+			}
+		}
+		
+		if (!realMembershipInCategory.isEmpty()) {
+			log.info("User {} can not enroll in section {}. This user is already in section {} ",userUid, sectionUuid, membershipInCategory.get(0));
 			return null;
 		}
 
@@ -709,7 +733,9 @@ public abstract class SectionManagerImpl implements SectionManager, SiteAdvisor 
 			return null;
 		} catch (GroupFullException e) {
 			throw new SectionFullException("section full");
- 		}
+ 		} catch (AuthzRealmLockException arle) {
+			log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
+		}
 		
 		// Return the membership record that the app understands
 		String userUid = sessionManager.getCurrentSessionUserId();
@@ -820,6 +846,8 @@ public abstract class SectionManagerImpl implements SectionManager, SiteAdvisor 
 			} catch (AuthzPermissionException e) {
 				errorDroppingSection = true;
 				log.error("Permission denied while " + userUid + " attempted to unjoin authzGroup " + sectionUuid);
+			} catch (AuthzRealmLockException arle) {
+				log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
 			}
 		}
 
@@ -832,7 +860,9 @@ public abstract class SectionManagerImpl implements SectionManager, SiteAdvisor 
 				log.debug("Error unjoining newly joined group " + newSectionUuid);
 			} catch (AuthzPermissionException e) {
 				log.error("Permission denied while " + userUid + " attempted to unjoin authzGroup " + newSectionUuid);
-			} 
+			} catch (AuthzRealmLockException arle) {
+				log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
+			}
 			return;
 		} 	
 		
@@ -876,8 +906,13 @@ public abstract class SectionManagerImpl implements SectionManager, SiteAdvisor 
 		// Add the membership to the framework
 		String role = getSectionTaRole(group);
 		
-		group.addMember(userUid, role, true, false);
-		
+		try {
+			group.insertMember(userUid, role, true, false);
+		} catch (AuthzRealmLockException arle) {
+			log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
+			return null;
+		}
+
 		try {
 			siteService().saveGroupMembership(group.getContainingSite());
 			postEvent("section.add.ta", sectionUuid);
@@ -914,7 +949,12 @@ public abstract class SectionManagerImpl implements SectionManager, SiteAdvisor 
 		if(studentRole == null) {
 			throw new RoleConfigurationException("Can't add a student to a section, since there is no student-flgagged role");
 		}
-		group.addMember(userUid, studentRole, true, false);
+		try {
+			group.insertMember(userUid, studentRole, true, false);
+		} catch (AuthzRealmLockException arle) {
+			log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
+			return null;
+		}
 
 		try {
 			siteService().saveGroupMembership(group.getContainingSite());
@@ -968,13 +1008,21 @@ public abstract class SectionManagerImpl implements SectionManager, SiteAdvisor 
 		Set currentUserIds = group.getUsersHasRole(sakaiRoleString);
 		for(Iterator iter = currentUserIds.iterator(); iter.hasNext();) {
 			String userUid = (String)iter.next();
-			group.removeMember(userUid);
+			try {
+				group.deleteMember(userUid);
+			} catch (AuthzRealmLockException arle) {
+				log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
+			}
 		}
 		
 		// Add the new members (sure would be nice to have transactions here!)
 		for(Iterator iter = userUids.iterator(); iter.hasNext();) {
 			String userUid = (String)iter.next();
-			group.addMember(userUid, sakaiRoleString, true, false);
+			try {
+				group.insertMember(userUid, sakaiRoleString, true, false);
+			} catch (AuthzRealmLockException arle) {
+				log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
+			}
 		}
 
 		try {
@@ -1009,14 +1057,16 @@ public abstract class SectionManagerImpl implements SectionManager, SiteAdvisor 
 			ensureInternallyManaged(section.getCourse().getUuid());
 		}
 		
-		group.removeMember(userUid);
 		try {
+			group.deleteMember(userUid);
 			siteService().saveGroupMembership(group.getContainingSite());
 			postEvent("section.student.drop", sectionUuid);
 		} catch (IdUnusedException e) {
 			log.error("unable to find site: ", e);
 		} catch (PermissionException e) {
 			log.error("access denied while attempting to save site: ", e);
+		} catch (AuthzRealmLockException arle) {
+			log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
 		}
 	}
 
@@ -1050,7 +1100,12 @@ public abstract class SectionManagerImpl implements SectionManager, SiteAdvisor 
 				// even if the specified user is not a member, resulting in many
 				// unnecessary (and possibly unintended) updates.
 				if (group.getMember(studentUid) != null) {
-					group.removeMember(studentUid);
+					try {
+						group.deleteMember(studentUid);
+					} catch (AuthzRealmLockException arle) {
+						log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
+						return;
+					}
 				}
 			}
 		}
@@ -1389,9 +1444,12 @@ public abstract class SectionManagerImpl implements SectionManager, SiteAdvisor 
 			if(site == null) {
 				site = group.getContainingSite();
 			}
-			site.removeGroup(group);
+			try {
+				site.deleteGroup(group);
+			} catch (AuthzRealmLockException arle) {
+				log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
+			}
 		}
-		
 
 		try {
 			siteService().save(site);

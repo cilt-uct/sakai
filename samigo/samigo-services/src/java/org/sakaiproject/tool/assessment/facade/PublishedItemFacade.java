@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2005-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.tool.assessment.facade;
 
 import java.io.Serializable;
@@ -9,9 +24,11 @@ import java.util.Set;
 import org.osid.assessment.AssessmentException;
 import org.osid.assessment.Item;
 import org.sakaiproject.tool.assessment.data.dao.assessment.ItemFeedback;
+import org.sakaiproject.tool.assessment.data.dao.assessment.ItemTag;
 import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedItemData;
 import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedItemFeedback;
 import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedItemMetaData;
+import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedItemTag;
 import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedItemText;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.ItemDataIfc;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.ItemFeedbackIfc;
@@ -70,6 +87,7 @@ public class PublishedItemFacade extends ItemFacade implements Serializable, Ite
 	    this.itemType = getItemType();
 	    this.itemTextSet = getItemTextSet();
 	    this.itemMetaDataSet = getItemMetaDataSet();
+	    this.itemTagSet = getItemTagSet();
 	    this.itemFeedbackSet = getItemFeedbackSet();
 	    this.hasRationale= data.getHasRationale();//rshastri :SAK-1824
 	    this.itemAttachmentSet = getItemAttachmentSet();
@@ -164,6 +182,14 @@ public class PublishedItemFacade extends ItemFacade implements Serializable, Ite
 	    this.itemMetaDataSet = this.data.getItemMetaDataSet();
 	  }
 
+	public void addItemTag(String tagId, String tagLabel, String tagCollectionId, String tagCollectionName) {
+		if (getItemTagSet() == null) {
+			setItemTagSet(new HashSet());
+		}
+		getItemTagSet().add(new PublishedItemTag(this.data, tagId, tagLabel, tagCollectionId, tagCollectionName));
+		this.itemTagSet = getItemTagSet();
+	}
+
 	  /**
 	   * Add feedback of a specified feedback type (e.g. CORRECT, INCORRECT)
 	   * to ItemFacade
@@ -177,4 +203,12 @@ public class PublishedItemFacade extends ItemFacade implements Serializable, Ite
 	    this.data.getItemFeedbackSet().add(new PublishedItemFeedback((PublishedItemData)this.data, feedbackTypeId, text));
 	    this.itemFeedbackSet = this.data.getItemFeedbackSet();
 	  }
+
+	public String getTagListToJsonString() {
+		return  this.data.getTagListToJsonString();
+	}
+
+	public void setTagListToJsonString(String tagListToJsonString) {
+		this.data.setTagListToJsonString(tagListToJsonString);
+	}
 }

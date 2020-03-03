@@ -21,7 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.quartz.SchedulerException;
@@ -42,10 +42,9 @@ import org.sakaiproject.profile2.model.UserProfile;
 import org.sakaiproject.profile2.util.ProfileConstants;
 import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.tool.api.SessionManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * This is the Kudos calculation job.
@@ -58,10 +57,9 @@ import lombok.Setter;
  * @author Steve Swinsburg (steve.swinsburg@gmail.com)
  *
  */
-public class KudosJob implements StatefulJob {
+@Slf4j
+ public class KudosJob implements StatefulJob {
 
-	private static final Logger log = LoggerFactory.getLogger(KudosJob.class);
-	
 	private final String BEAN_ID = "org.sakaiproject.profile2.job.KudosJob";
 	
 	

@@ -2,7 +2,7 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
 <%@ taglib uri="http://www.sakaiproject.org/samigo" prefix="samigo" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
   
 <!DOCTYPE html
      PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
@@ -119,9 +119,9 @@ $Id$
 
   <h:outputText value="</span></li></ul>" escape="false"/>
 
-  <h:messages styleClass="messageSamigo" rendered="#{! empty facesContext.maximumSeverity}" layout="table"/>
-  
-<sakai:flowState bean="#{submissionStatus}" />
+  <h:messages styleClass="sak-banner-error" rendered="#{! empty facesContext.maximumSeverity}" layout="table"/>
+
+  <sakai:flowState bean="#{submissionStatus}" />
 
   <h:panelGroup rendered="#{!totalScores.hasRandomDrawPart}">
     <h:outputText value="<h2>#{evaluationMessages.max_score_poss}<small>: #{totalScores.maxScore}</small></h2>" escape="false"/>
@@ -189,7 +189,7 @@ $Id$
        <f:verbatim><br/></f:verbatim>
 	   <h:panelGroup styleClass="itemAction" rendered="#{totalScores.anonymous eq 'false' && description.email != null && description.email != '' && email.fromEmailAddress != null && email.fromEmailAddress != ''}">
 		 <h:outputText value="<a href=\"mailto:" escape="false" />
-	     <h:outputText value="#{description.email}" escape="false" />
+	     <h:outputText value="#{description.email}" />
 	     <h:outputText value="?subject=" escape="false" />
 		 <h:outputText value="#{totalScores.assessmentName} #{commonMessages.feedback}\">" escape="false" />
          <h:outputText value="  #{evaluationMessages.email}" escape="false"/>
@@ -234,7 +234,7 @@ $Id$
 	   <span class="itemAction">
 	   <h:panelGroup rendered="#{totalScores.anonymous eq 'false' && description.email != null && description.email != '' && email.fromEmailAddress != null && email.fromEmailAddress != ''}">
 		 <h:outputText value="<a href=\"mailto:" escape="false" />
-	     <h:outputText value="#{description.email}" escape="false" />
+	     <h:outputText value="#{description.email}" />
 	     <h:outputText value="?subject=" escape="false" />
 		 <h:outputText value="#{totalScores.assessmentName} #{commonMessages.feedback}\">" escape="false" />
          <h:outputText value="  #{evaluationMessages.email}" escape="false"/>
@@ -281,7 +281,7 @@ $Id$
 	   <span class="itemAction">
 	   <h:panelGroup rendered="#{totalScores.anonymous eq 'false' && description.email != null && description.email != '' && email.fromEmailAddress != null && email.fromEmailAddress != ''}">
 		 <h:outputText value="<a href=\"mailto:" escape="false" />
-	     <h:outputText value="#{description.email}" escape="false" />
+	     <h:outputText value="#{description.email}" />
 	     <h:outputText value="?subject=" escape="false" />
 		 <h:outputText value="#{totalScores.assessmentName} #{commonMessages.feedback}\">" escape="false" />
          <h:outputText value="  #{evaluationMessages.email}" escape="false"/>
@@ -398,7 +398,7 @@ $Id$
         </h:commandLink>
      </f:facet>
         <h:outputText rendered="#{description.submittedDate !=null && description.submittedDate ne ''}" value="#{description.submittedDate}">
-          <f:convertDateTime pattern="#{generalMessages.output_date_picker}"/>
+          <f:convertDateTime dateStyle="medium" timeStyle="short" timeZone="#{author.userTimeZone}" />
         </h:outputText>
 		<h:outputText rendered="#{description.submittedDate == null || description.submittedDate eq ''}" value="#{evaluationMessages.no_submission}"/>
     </h:column>
@@ -414,7 +414,7 @@ $Id$
           </h:commandLink>    
       </f:facet>
         <h:outputText rendered="#{description.submittedDate !=null && description.submittedDate ne ''}" value="#{description.submittedDate}">
-           <f:convertDateTime pattern="#{generalMessages.output_date_picker}"/>
+           <f:convertDateTime dateStyle="medium" timeStyle="short" timeZone="#{author.userTimeZone}" />
         </h:outputText>
 		<h:outputText rendered="#{description.submittedDate == null || description.submittedDate eq ''}" value="#{evaluationMessages.no_submission}"/>
     </h:column>
@@ -430,7 +430,7 @@ $Id$
           </h:commandLink>    
       </f:facet>
         <h:outputText rendered="#{description.submittedDate !=null && description.submittedDate ne ''}" value="#{description.submittedDate}">
-           <f:convertDateTime pattern="#{generalMessages.output_date_picker}"/>
+           <f:convertDateTime dateStyle="medium" timeStyle="short" timeZone="#{author.userTimeZone}" />
         </h:outputText>
 		<h:outputText rendered="#{description.submittedDate == null || description.submittedDate eq ''}" value="#{evaluationMessages.no_submission}"/>
     </h:column>

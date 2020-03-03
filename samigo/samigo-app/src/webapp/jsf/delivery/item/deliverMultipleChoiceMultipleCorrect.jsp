@@ -23,7 +23,8 @@ should be included in file importing DeliveryMessages
 **********************************************************************************/
 --%>
 -->
-  <h:outputText value="#{question.text}"  escape="false"/>
+<h:outputText value="<fieldset>" escape="false"/>
+<h:outputText value="#{question.text}" escape="false"/>
   <!-- ATTACHMENTS -->
   <%@ include file="/jsf/delivery/item/attachment.jsp" %>
 
@@ -40,16 +41,15 @@ should be included in file importing DeliveryMessages
       </h:panelGroup>
     </t:column>
     <t:column>
-     <f:verbatim><label></f:verbatim>
-     <h:selectBooleanCheckbox value="#{selection.response}"
-        disabled="#{delivery.actionString=='reviewAssessment'
-                 || delivery.actionString=='gradeAssessment'}" />
-     <f:verbatim><div class="mcAnswerText"></f:verbatim>
-     <h:outputText value=" #{selection.answer.label}" escape="false" />
-     <h:outputText value="#{deliveryMessages.dot}" rendered="#{selection.answer.label ne ''}" />
-     <h:outputText value=" #{selection.answer.text}" escape="false" />
-     <f:verbatim></div></f:verbatim>
-     <f:verbatim></label></f:verbatim>
+      <h:selectBooleanCheckbox id="samigo-mc-mc" value="#{selection.response}"
+        disabled="#{delivery.actionString=='reviewAssessment' || delivery.actionString=='gradeAssessment'}" />
+      <h:panelGroup layout="block" styleClass="mcAnswerText">
+        <span class="samigo-answer-label strong" aria-hidden="true">
+          <h:outputText value=" #{selection.answer.label}" escape="false" />
+          <h:outputText value="#{deliveryMessages.dot} " rendered="#{selection.answer.label ne ''}" />
+        </span>
+        <h:outputLabel for="samigo-mc-mc" value="#{selection.answer.text}" escape="false" />
+      </h:panelGroup>
     </t:column>
     <t:column>
       <h:panelGroup rendered="#{delivery.feedback eq 'true' &&
@@ -82,7 +82,7 @@ should be included in file importing DeliveryMessages
              && delivery.navigation ne '1' && delivery.displayMardForReview }">
 <h:selectBooleanCheckbox value="#{question.review}" id="mark_for_review" />
 	<h:outputLabel for="mark_for_review" value="#{deliveryMessages.mark}" />
-	<h:outputLink title="#{assessmentSettingsMessages.whats_this_link}" value="#" onclick="javascript:window.open('../author/markForReviewPopUp.faces','MarkForReview','width=300,height=220,scrollbars=yes, resizable=yes');" >
+	<h:outputLink title="#{assessmentSettingsMessages.whats_this_link}" value="#" onclick="javascript:window.open('/samigo-app/jsf/author/markForReviewPopUp.faces','MarkForReview','width=350,height=280,scrollbars=yes, resizable=yes');event.preventDefault();" >
 		<h:outputText  value=" #{assessmentSettingsMessages.whats_this_link}"/>
 	</h:outputLink>
 </h:panelGroup>
@@ -129,3 +129,5 @@ should be included in file importing DeliveryMessages
     </h:panelGroup>
   </h:panelGrid>
 </h:panelGroup>
+
+<h:outputText value="</fieldset>" escape="false"/>

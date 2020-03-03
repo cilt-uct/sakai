@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.component.app.scheduler;
 
 import org.junit.After;
@@ -81,7 +96,6 @@ public class ScheduledInvocationTest {
     public void testCreateAndDeleteBySearch() {
         Time time = Mockito.mock(Time.class);
         Mockito.when(time.getTime()).thenReturn(0L);
-        Mockito.when(dao.get(COMPONENT_ID, CONTEXT)).thenReturn("uuid");
         String uuid = manager.createDelayedInvocation(time, COMPONENT_ID, CONTEXT);
         manager.deleteDelayedInvocation(COMPONENT_ID, CONTEXT);
         DelayedInvocation[] empty = manager.findDelayedInvocations(ALL, ALL);
@@ -104,6 +118,25 @@ public class ScheduledInvocationTest {
         String first = manager.createDelayedInvocation(time, COMPONENT_ID, CONTEXT + 1);
         String second = manager.createDelayedInvocation(time, COMPONENT_ID, CONTEXT + 2);
         Assert.assertNotEquals(first, second);
+    }
+
+    @Test
+    public void testFindMissingTrigger() {
+        // Check that find still work when a trigger can't be found for a delayed invocation
+        // Here we have an entry in the dao, but there won't be a trigger.
+        Mockito.when(dao.find(COMPONENT_ID, CONTEXT)).thenReturn(Collections.singleton("uuid"));
+        DelayedInvocation[] delayedInvocations = manager.findDelayedInvocations(COMPONENT_ID, CONTEXT);
+        Assert.assertTrue(delayedInvocations.length == 0);
+    }
+
+    @Test
+    public void testCreateMissingTrigger() {
+        // Check that creating a delayed invokation still works.
+        // Here we have an entry in the dao, but there won't be a trigger.
+        Mockito.when(dao.find(COMPONENT_ID, CONTEXT)).thenReturn(Collections.singleton("uuid"));
+        Mockito.when(dao.get(COMPONENT_ID, CONTEXT)).thenReturn("uuid");
+        String uuid = manager.createDelayedInvocation(Instant.now(), COMPONENT_ID, CONTEXT);
+        Assert.assertNotNull(uuid);
     }
 
 }

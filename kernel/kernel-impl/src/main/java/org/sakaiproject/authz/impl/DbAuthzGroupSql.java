@@ -115,6 +115,8 @@ public interface DbAuthzGroupSql
 
 	String getSelectRealmProviderId2Sql();
 
+	String getSelectRealmsProviderIDsSql(String inClause);
+
 	String getSelectRealmProviderSql(String inClause);
 
 	String getSelectRealmRoleDescriptionSql();
@@ -152,4 +154,12 @@ public interface DbAuthzGroupSql
 	String getSelectRealmUsersInGroupsSql( String inClause);
 
     String getMaintainRolesSql();
+
+    String getSelectRealmLocksSql();
+
+    String getInsertRealmLocksSql();
+
+    String getDeleteRealmLocksForRealmWithReferenceSql();
+
+    String getDeleteRealmLocksForRealmSql();
 }

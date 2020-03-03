@@ -21,9 +21,22 @@
 
 package org.sakaiproject.feedback.tool;
 
-import org.apache.commons.lang.StringEscapeUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.io.IOException;
+import java.text.MessageFormat;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import javax.servlet.ServletConfig;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.apache.commons.text.StringEscapeUtils;
+
+import org.springframework.context.ApplicationContext;
+import org.springframework.web.context.support.WebApplicationContextUtils;
+
 import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.feedback.util.Constants;
@@ -31,16 +44,6 @@ import org.sakaiproject.feedback.util.SakaiProxy;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.util.ResourceLoader;
-import org.springframework.context.ApplicationContext;
-import org.springframework.web.context.support.WebApplicationContextUtils;
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.text.MessageFormat;
-import java.util.*;
 
 /**
  * @author Adrian Fish (adrian.r.fish@gmail.com)
@@ -48,8 +51,6 @@ import java.util.*;
 public class FeedbackTool extends HttpServlet {
     
     private static final long serialVersionUID = 1L;
-
-    private static final Logger logger = LoggerFactory.getLogger(FeedbackTool.class);
 
     private SakaiProxy sakaiProxy = null;
 
@@ -257,26 +258,20 @@ public class FeedbackTool extends HttpServlet {
      * @return The site ID.
      */
     private String overrideSiteId(HttpServletRequest request, String siteId) {
-        // This is set by the portal and is the site ID of the original site that was being accessed
-        // when using a URL like /portal/site/{siteId}/page/contact_us this will contain the site ID.
-        String contactUsSiteId = (String) request.getSession().getAttribute("contact.us.origin.site");
-        if (contactUsSiteId!=null) {
-            siteId = contactUsSiteId;
-        }
-        // When inside the !error site the original URL is put as a request parameter and then passed through.
-        if (siteId.equals("!error")) { // if site is unavailable then retrieve siteId
-            siteId = request.getParameter("siteId");
+        if (siteId.equals("!error")) {
+            // When inside the !error site we get the URL of the original site being accessed
+            return request.getContextPath();
         }
         return siteId;
     }
 
     private void setStringAttribute(HttpServletRequest request, String key, String value){
-		request.setAttribute(key, StringEscapeUtils.escapeJavaScript(value));
+		request.setAttribute(key, StringEscapeUtils.escapeEcmaScript(value));
 	}
 
 	private void setMapAttribute(HttpServletRequest request, String key, Map<String, String> map){
 		for (String s : map.keySet()) {
-			map.put(s, StringEscapeUtils.escapeJavaScript( map.get(s)));
+			map.put(s, StringEscapeUtils.escapeEcmaScript( map.get(s)));
 		}
 		request.setAttribute(key, map);
 	}

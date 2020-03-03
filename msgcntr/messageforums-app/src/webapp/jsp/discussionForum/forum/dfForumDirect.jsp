@@ -4,12 +4,12 @@
                  org.sakaiproject.site.cover.SiteService,
                  org.sakaiproject.tool.cover.ToolManager" %>
 <%@ page import="org.sakaiproject.component.cover.ServerConfigurationService" %>
+<%@ page import="org.slf4j.Logger,org.slf4j.LoggerFactory" %>
+<%! static final Logger log = LoggerFactory.getLogger("dfForumDirect.jsp"); %>
 <%
 
   FacesContext context = FacesContext.getCurrentInstance();
-  Application app = context.getApplication();
-  ValueBinding binding = app.createValueBinding("#{ForumTool}");
-  DiscussionForumTool forumTool = (DiscussionForumTool) binding.getValue(context);
+  DiscussionForumTool forumTool = context.getApplication().evaluateExpressionGet(context, "#{ForumTool}", DiscussionForumTool.class);
 
   String target = "";
 
@@ -23,11 +23,11 @@
       return;
     }
     catch (Exception e) {
-      e.printStackTrace();
+      log.error(e.getMessage(), e);
     }
   }
 
-  target = "/jsp/discussionForum/forum/dfForumDetail.jsf?forumId="
+  target = "/jsp/discussionForum/forum/dfForumDetail.jsp?forumId="
   	       + request.getParameter("forumId");
   forumTool.processActionDisplayForum();
 
@@ -37,7 +37,7 @@
     dispatcher.forward(request, response);
   }
   catch (ServletException e) {
-    e.printStackTrace();
+    log.error(e.getMessage(), e);
   }
 
 %>

@@ -1,27 +1,21 @@
-/**********************************************************************************
-* $URL$URL: https://source.sakaiproject.org/svn/sam/trunk/component/src/java/org/sakaiproject/spring/SpringBeanLocator.java $
-* $Id$
-***********************************************************************************
-*
- * Copyright (c) 2005, 2006, 2008, 2009 The Sakai Foundation
+/**
+ * Copyright (c) 2005-2017 The Apereo Foundation
  *
  * Licensed under the Educational Community License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *       http://www.opensource.org/licenses/ECL-2.0
+ *             http://opensource.org/licenses/ecl2
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*
-**********************************************************************************/
+ */
 package org.sakaiproject.spring;
 
-import org.springframework.web.context.WebApplicationContext;
-import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.ApplicationContext;
 
 public class SpringBeanLocator
 {
@@ -30,71 +24,44 @@ public class SpringBeanLocator
   // This is needed because this bean allows the service to get at beans in the tool
   // The job scheduler can run before the webapp has been started and therefore can
   // attempt to get beans out of the tool before the tool has been started up.
-  private static Object waitLock = new Object();
-  private static WebApplicationContext waCtx = null;
-  private static ConfigurableApplicationContext caCtx = null;
-  private static boolean inWebContext = false;
-  private static SpringBeanLocator instance = null;
+  private static final Object waitLock = new Object();
+  private static ApplicationContext context = null;
 
   public static SpringBeanLocator getInstance()
   {
-    //if (instance != null)
-    //{
-    //  return instance;
-    //}
-    //else
-    //{
       return new SpringBeanLocator();
-    //}
   }
 
   /**
    * For integration inside a web context
    * @param context the WebApplicationContext
    */
-  public static void setApplicationContext(WebApplicationContext context)
+  public static void setApplicationContext(ApplicationContext context)
   {
     synchronized(waitLock)
     {
-      SpringBeanLocator.waCtx = context;
-      SpringBeanLocator.inWebContext = true;
-      waitLock.notifyAll();
-    }
-  }
-
-  /**
-   * Support unit testing via a ConfigurableApplicationContext concrete subclass
-   * such as FileSystemXmlApplicationContext
-   * @param ca
-   */
-  public static void setConfigurableApplicationContext(ConfigurableApplicationContext
-                                                ca)
-  {
-    synchronized (waitLock)
-    {
-      SpringBeanLocator.caCtx = ca;
-      SpringBeanLocator.inWebContext = false;
+      SpringBeanLocator.context = context;
       waitLock.notifyAll();
     }
   }
 
   public Object getBean(String name)
   {
-    if (waCtx == null && caCtx == null) {
+    if (context == null) {
       try {
-        waitLock.wait();
+          synchronized (waitLock)
+          {
+              // Should always wait in a loop.
+              while (context == null) {
+                // Will release the lock while we are waiting.
+                waitLock.wait();
+              }
+          }
       } catch (InterruptedException e) {
         throw new RuntimeException("Got interrupted waiting for bean to be setup.", e);
       }
     }
-    if (inWebContext)
-    {
-      return waCtx.getBean(name);
-    }
-    else
-    {
-      return caCtx.getBean(name);
-    }
+    return context.getBean(name);
 
   }
 

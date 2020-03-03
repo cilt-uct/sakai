@@ -8,8 +8,9 @@
   <f:view>
     <html xmlns="http://www.w3.org/1999/xhtml">
       <head><%= request.getAttribute("html.head") %>
-      <title><h:outputText value="User Activity Report"/></title>
-      <samigo:stylesheet path="/css/tool_sam.css"/>
+      <title><h:outputText value="#{sectionActivityMessages.section_activity_report}"/></title>
+      <script src="/samigo-app/js/eventInfo.js"></script>
+      <link rel="stylesheet" type="text/css" href="/samigo-app/css/tool_sam.css">
       </head>
     <body onload="<%= request.getAttribute("html.body.onload") %>">
 
@@ -43,7 +44,7 @@
 	 <!-- Title.. -->
 	 <h:column rendered="#{sectionActivity.sortType != 'assessmentName'}">
 	  <f:facet name="header">
-	  <h:commandLink title="#{sectionActivityMessages.t_sortTitle}" id="title" action="sectionActitity" >
+	  <h:commandLink title="#{sectionActivityMessages.t_sortTitle}" id="title" action="sectionActivity" >
           <h:outputText value="#{sectionActivityMessages.assessment_name}" />
         <f:actionListener
            type="org.sakaiproject.tool.assessment.ui.listener.author.SectionActivityListener" />
@@ -51,8 +52,8 @@
         <f:param name="sortAscending" value="true"/>
         </h:commandLink>
      </f:facet>
-     <h:panelGroup>	 
-		<h:commandLink title ="#{sectionActivityMessages.assessment_name}" action="gradeStudentResultFromSectionActivity" immediate="true" >
+     <h:panelGroup rendered="#{!pageData.anonymousGrading}">
+		<h:commandLink title ="#{sectionActivityMessages.assessment_name}" action="studentScores" immediate="true" >
 		  <h:outputText value="#{pageData.assessmentName}"/>
 		   <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.evaluation.ResetTotalScoreListener" />
 		   <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.evaluation.TotalScoreListener" />
@@ -61,13 +62,22 @@
         	  <f:param name="studentid" value="#{sectionActivity.selectedUser}" />
        		  <f:param name="publishedIdd" value="#{pageData.assessmentId}" />
       		  <f:param name="gradingData" value="#{pageData.assessmentGradingId}" />	
-	    </h:commandLink>	
+	    </h:commandLink>
+     </h:panelGroup>
+     <h:panelGroup rendered="#{pageData.anonymousGrading}">
+         <h:outputText value="#{pageData.assessmentName}"/>
+         <f:verbatim><span class="info"></f:verbatim>
+            <h:graphicImage url="/images/info_icon.gif" alt="" styleClass="infoDiv"/>
+            <h:panelGroup styleClass="makeLogInfo" style="display:none;z-index:2000;" >
+                <h:outputText value="#{sectionActivityMessages.anon_grading_info}"/>
+            </h:panelGroup>
+        <f:verbatim></span></f:verbatim>
      </h:panelGroup>
      </h:column>
      
        <h:column rendered="#{sectionActivity.sortType eq 'assessmentName' && sectionActivity.sortAscending}">
       <f:facet name="header">
-        <h:commandLink title="#{sectionActivityMessages.t_sortTitle}" action="sectionActitity">
+        <h:commandLink title="#{sectionActivityMessages.t_sortTitle}" action="sectionActivity">
           <h:outputText value="#{sectionActivityMessages.assessment_name}" />
           <f:param name="sortAscending" value="false" />
           <h:graphicImage alt="#{sectionActivityMessages.alt_sortTitleAscending}" rendered="#{sectionActivity.sortAscending}" url="/images/sortascending.gif"/>
@@ -75,8 +85,8 @@
              type="org.sakaiproject.tool.assessment.ui.listener.author.SectionActivityListener" />
           </h:commandLink>    
       </f:facet>
-      <h:panelGroup>	 
-		<h:commandLink title ="#{sectionActivityMessages.assessment_name}" action="gradeStudentResultFromSectionActivity" immediate="true" >
+      <h:panelGroup rendered="#{!pageData.anonymousGrading}">
+		<h:commandLink title ="#{sectionActivityMessages.assessment_name}" action="studentScores" immediate="true" >
 		  <h:outputText value="#{pageData.assessmentName}"/>
 		   <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.evaluation.ResetTotalScoreListener" />
 		   <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.evaluation.TotalScoreListener" />
@@ -87,11 +97,20 @@
       		  <f:param name="gradingData" value="#{pageData.assessmentGradingId}" />	
 	    </h:commandLink>	
      </h:panelGroup>
+     <h:panelGroup rendered="#{pageData.anonymousGrading}">
+         <h:outputText value="#{pageData.assessmentName}"/>
+         <f:verbatim><span class="info"></f:verbatim>
+            <h:graphicImage url="/images/info_icon.gif" alt="" styleClass="infoDiv"/>
+            <h:panelGroup styleClass="makeLogInfo" style="display:none;z-index:2000;" >
+                <h:outputText value="#{sectionActivityMessages.anon_grading_info}"/>
+            </h:panelGroup>
+        <f:verbatim></span></f:verbatim>
+     </h:panelGroup>
     </h:column>
     
     <h:column rendered="#{sectionActivity.sortType eq 'assessmentName' && !sectionActivity.sortAscending}">
       <f:facet name="header">
-      <h:commandLink title="#{sectionActivityMessages.t_sortTitle}" action="sectionActitity">
+      <h:commandLink title="#{sectionActivityMessages.t_sortTitle}" action="sectionActivity">
          <h:outputText value="#{sectionActivityMessages.assessment_name}" />
         <f:param name="sortAscending" value="true"/>
         <h:graphicImage alt="#{sectionActivityMessages.alt_sortTitleDescending}" rendered="#{!sectionActivity.sortAscending}" url="/images/sortdescending.gif"/>
@@ -99,8 +118,8 @@
              type="org.sakaiproject.tool.assessment.ui.listener.author.SectionActivityListener" />
       </h:commandLink> 
       </f:facet>
-	 <h:panelGroup>	 
-		<h:commandLink title ="#{sectionActivityMessages.assessment_name}" action="gradeStudentResultFromSectionActivity" immediate="true" >
+	 <h:panelGroup rendered="#{!pageData.anonymousGrading}">
+		<h:commandLink title ="#{sectionActivityMessages.assessment_name}" action="studentScores" immediate="true" >
 		  <h:outputText value="#{pageData.assessmentName}"/>
 		   <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.evaluation.ResetTotalScoreListener" />
 		   <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.evaluation.TotalScoreListener" />
@@ -111,11 +130,20 @@
       		  <f:param name="gradingData" value="#{pageData.assessmentGradingId}" />	
 	    </h:commandLink>	
      </h:panelGroup>
+     <h:panelGroup rendered="#{pageData.anonymousGrading}">
+         <h:outputText value="#{pageData.assessmentName}"/>
+         <f:verbatim><span class="info"></f:verbatim>
+            <h:graphicImage url="/images/info_icon.gif" alt="" styleClass="infoDiv"/>
+            <h:panelGroup styleClass="makeLogInfo" style="display:none;z-index:2000;" >
+                <h:outputText value="#{sectionActivityMessages.anon_grading_info}"/>
+            </h:panelGroup>
+        <f:verbatim></span></f:verbatim>
+     </h:panelGroup>
 	</h:column>
 	<!-- Assessment ID... -->
 	 <h:column rendered="#{sectionActivity.sortType != 'assessmentId'}">
 	  <f:facet name="header">
-	  <h:commandLink title="#{sectionActivityMessages.t_sortAssessmentId}" id="assessmentId" action="sectionActitity" >
+	  <h:commandLink title="#{sectionActivityMessages.t_sortAssessmentId}" id="assessmentId" action="sectionActivity" >
           <h:outputText value="#{sectionActivityMessages.assessment_id}" />
         <f:actionListener
            type="org.sakaiproject.tool.assessment.ui.listener.author.SectionActivityListener" />
@@ -130,7 +158,7 @@
 	
 	  <h:column rendered="#{sectionActivity.sortType eq 'assessmentId' && sectionActivity.sortAscending}">
 	<f:facet name="header">
-        <h:commandLink title="#{sectionActivityMessages.t_sortAssessmentId}" action="sectionActitity">
+        <h:commandLink title="#{sectionActivityMessages.t_sortAssessmentId}" action="sectionActivity">
           <h:outputText value="#{sectionActivityMessages.assessment_id}" />
           <f:param name="sortAscending" value="false" />
           <h:graphicImage alt="#{sectionActivityMessages.alt_sortAssessmentIdAscending}" rendered="#{sectionActivity.sortAscending}" url="/images/sortascending.gif"/>
@@ -145,7 +173,7 @@
 	
 	  <h:column rendered="#{sectionActivity.sortType eq 'assessmentId' && !sectionActivity.sortAscending}">
 	<f:facet name="header">
-        <h:commandLink title="#{sectionActivityMessages.t_sortAssessmentId}" action="sectionActitity">
+        <h:commandLink title="#{sectionActivityMessages.t_sortAssessmentId}" action="sectionActivity">
           <h:outputText value="#{sectionActivityMessages.assessment_id}" />
           <f:param name="sortAscending" value="true" />
           <h:graphicImage alt="#{sectionActivityMessages.alt_sortAssessmentIdDescending}" rendered="#{!sectionActivity.sortAscending}" url="/images/sortdescending.gif"/>
@@ -161,7 +189,7 @@
 	 <!-- Submit Date... -->	 
 	  <h:column rendered="#{sectionActivity.sortType != 'submitDate'}">
 	  <f:facet name="header">
-	  <h:commandLink title="#{sectionActivityMessages.t_submitDate}" id="submitDate" action="sectionActitity" >
+	  <h:commandLink title="#{sectionActivityMessages.t_submitDate}" id="submitDate" action="sectionActivity" >
           <h:outputText value="#{sectionActivityMessages.date_completed}" />
         <f:actionListener
            type="org.sakaiproject.tool.assessment.ui.listener.author.SectionActivityListener" />
@@ -171,14 +199,14 @@
      </f:facet>
 	 <h:panelGroup>
 	  <h:outputText value="#{pageData.submitDate}">
-	  <f:convertDateTime pattern="#{generalMessages.output_data_picker_w_sec}"/>
+	    <f:convertDateTime dateStyle="medium" timeStyle="short" timeZone="#{author.userTimeZone}" />
 	  </h:outputText>	
      </h:panelGroup>
 	</h:column>
 	
 	  <h:column rendered="#{sectionActivity.sortType eq 'submitDate' && sectionActivity.sortAscending}">
 	<f:facet name="header">
-        <h:commandLink title="#{sectionActivityMessages.t_submitDate}" action="sectionActitity">
+        <h:commandLink title="#{sectionActivityMessages.t_submitDate}" action="sectionActivity">
           <h:outputText value="#{sectionActivityMessages.date_completed}" />
           <f:param name="sortAscending" value="false" />
           <h:graphicImage alt="#{sectionActivityMessages.alt_sortSubmitDateAscending}" rendered="#{sectionActivity.sortAscending}" url="/images/sortascending.gif"/>
@@ -188,14 +216,14 @@
       </f:facet>
      <h:panelGroup>
 	  <h:outputText value="#{pageData.submitDate}">
-	  <f:convertDateTime pattern="#{generalMessages.output_data_picker_w_sec}"/>
+	    <f:convertDateTime dateStyle="medium" timeStyle="short" timeZone="#{author.userTimeZone}" />
 	  </h:outputText>	
      </h:panelGroup>
 	</h:column>
 	
 	<h:column rendered="#{sectionActivity.sortType eq 'submitDate' && !sectionActivity.sortAscending}">
 	<f:facet name="header">
-        <h:commandLink title="#{sectionActivityMessages.t_submitDate}" action="sectionActitity">
+        <h:commandLink title="#{sectionActivityMessages.t_submitDate}" action="sectionActivity">
           <h:outputText value="#{sectionActivityMessages.date_completed}" />
           <f:param name="sortAscending" value="true" />
           <h:graphicImage alt="#{sectionActivityMessages.alt_sortSubmitDateDescending}" rendered="#{!sectionActivity.sortAscending}" url="/images/sortdescending.gif"/>
@@ -205,7 +233,7 @@
       </f:facet>
        <h:panelGroup>
 	  <h:outputText value="#{pageData.submitDate}">
-	  <f:convertDateTime pattern="#{generalMessages.output_data_picker_w_sec}"/>
+	    <f:convertDateTime dateStyle="medium" timeStyle="short" timeZone="#{author.userTimeZone}" />
 	  </h:outputText>	
      </h:panelGroup>
 	</h:column>

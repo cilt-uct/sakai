@@ -1,4 +1,19 @@
 /**
+ * Copyright (c) 2007-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
  * EntityBrokerDaoImplTest.java - created by aaronz on Jul 26, 2007
  */
 
@@ -8,7 +23,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.sakaiproject.entitybroker.dao.EntityBrokerDao;
 import org.sakaiproject.entitybroker.dao.impl.EntityBrokerDaoImpl;
@@ -16,21 +30,18 @@ import org.sakaiproject.entitybroker.mocks.data.TestData;
 import org.sakaiproject.genericdao.api.search.Restriction;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.annotation.DirtiesContext.ClassMode;
 import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit4.AbstractJUnit4SpringContextTests;
+import org.springframework.test.context.junit4.AbstractTransactionalJUnit4SpringContextTests;
 
 /**
  * Testing the entity broker dao
  * 
  * @author Aaron Zeckoski (aaronz@vt.edu)
  */
-@DirtiesContext(classMode=ClassMode.AFTER_EACH_TEST_METHOD)
 @ContextConfiguration(locations={
 		"/database-test.xml",
 		"classpath:org/sakaiproject/entitybroker/spring-jdbc.xml" })
-public class EntityBrokerDaoImplTest extends AbstractJUnit4SpringContextTests {
+public class EntityBrokerDaoImplTest extends AbstractTransactionalJUnit4SpringContextTests {
 
    @Autowired
    @Qualifier("org.sakaiproject.entitybroker.dao.EntityBrokerDao")
@@ -122,7 +133,6 @@ public class EntityBrokerDaoImplTest extends AbstractJUnit4SpringContextTests {
    /**
     * Test method for {@link EntityBrokerDaoImpl#deleteProperties(String, String)}
     */
-   @Ignore // TODO this test fails, need to research why
    @Test
    public void testDeleteProperties() {
       // test that we can remove a property
@@ -134,7 +144,6 @@ public class EntityBrokerDaoImplTest extends AbstractJUnit4SpringContextTests {
       Assert.assertEquals(2, removed);
    }
 
-   @Ignore // TODO this test fails, need to research why
    @Test
    public void testDeleteTags() {
       // test we can remove a tag, need to research why

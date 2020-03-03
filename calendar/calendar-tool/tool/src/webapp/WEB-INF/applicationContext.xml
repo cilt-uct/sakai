@@ -9,6 +9,7 @@
 			ref="org.sakaiproject.calendar.api.CalendarService" />
 		<property name="siteService" ref="org.sakaiproject.site.api.SiteService" />
 		<property name="timeService" ref="org.sakaiproject.time.api.TimeService" />
+		<property name="entityManager"><ref bean="org.sakaiproject.entity.api.EntityManager"/></property>
 	</bean>
 	
 </beans>

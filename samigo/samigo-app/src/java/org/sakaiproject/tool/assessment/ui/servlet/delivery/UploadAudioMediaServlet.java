@@ -19,9 +19,11 @@
  *
  **********************************************************************************/
 
-
-
 package org.sakaiproject.tool.assessment.ui.servlet.delivery;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -31,16 +33,21 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
-import javax.servlet.ServletContext;
-import javax.servlet.ServletException;
-import javax.servlet.ServletInputStream;
+import java.util.Date;
+import java.util.ArrayList;
+import java.util.List;
+
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.ServletContext;
+import javax.servlet.ServletException;
+import javax.servlet.ServletInputStream;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
+import org.sakaiproject.component.cover.ComponentManager;
+import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.tool.assessment.data.dao.grading.AssessmentGradingData;
 import org.sakaiproject.tool.assessment.data.dao.grading.ItemGradingData;
 import org.sakaiproject.tool.assessment.data.dao.grading.MediaData;
@@ -48,9 +55,8 @@ import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedItemData;
 import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedItemText;
 import org.sakaiproject.tool.assessment.services.assessment.PublishedAssessmentService;
 import org.sakaiproject.tool.assessment.services.GradingService;
-
-import java.util.Date;
-import java.util.ArrayList;
+import org.sakaiproject.util.DateFormatterUtil;
+import org.sakaiproject.util.ResourceLoader;
 
 /**
  * <p>Title: Samigo</p>
@@ -61,14 +67,15 @@ import java.util.ArrayList;
  * @author Ed Smiley
  * @version $Id$
  */
-
+@Slf4j
 public class UploadAudioMediaServlet extends HttpServlet
 {
   /**
 	 * 
 	 */
 	private static final long serialVersionUID = 8389831837152012411L;
-private static Logger log = LoggerFactory.getLogger(UploadAudioMediaServlet.class);
+
+	ResourceLoader rb = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.DeliveryMessages");
 
   public UploadAudioMediaServlet()
   {
@@ -85,8 +92,9 @@ private static Logger log = LoggerFactory.getLogger(UploadAudioMediaServlet.clas
   {
     boolean mediaIsValid = true;
     ServletContext context = super.getServletContext();
-    String repositoryPath = (String)context.getAttribute("FILEUPLOAD_REPOSITORY_PATH");
-    String saveToDb = (String)context.getAttribute("FILEUPLOAD_SAVE_MEDIA_TO_DB");
+    ServerConfigurationService serverConfigurationService = ComponentManager.get(ServerConfigurationService.class);
+    String repositoryPath = serverConfigurationService.getString("samigo.answerUploadRepositoryPath", "${sakai.home}/samigo/answerUploadRepositoryPath/");
+    String saveToDb = serverConfigurationService.getString("samigo.saveMediaToDb", "true");
 
     log.debug("req content length ="+req.getContentLength());
     log.debug("req content type ="+req.getContentType());
@@ -97,23 +105,27 @@ private static Logger log = LoggerFactory.getLogger(UploadAudioMediaServlet.clas
       suffix = "au";
     String mediaLocation = req.getParameter("media")+"."+suffix;
     log.debug("****media location="+mediaLocation);
-    String response = "empty";
+    JsonObject json = null;
 
     // test for nonemptiness first
     if (mediaLocation != null && !(mediaLocation.trim()).equals(""))
     {
       File repositoryPathDir = new File(repositoryPath);
-      mediaLocation = repositoryPathDir.getCanonicalPath() + "/" + mediaLocation;
+      // Fix Windows paths
+      if("\\".equals(File.separator)){
+          mediaLocation = mediaLocation.replace("/","\\");
+      }
+      mediaLocation = repositoryPathDir.getCanonicalPath() + File.separator + mediaLocation;
       File mediaFile = new File(mediaLocation);
       
       if (mediaFile.getCanonicalPath().equals (mediaLocation)){
     	  File mediaDir = mediaFile.getParentFile(); 
           if (!mediaDir.exists())
             mediaDir.mkdirs();
-          //log.debug("*** directory exist="+mediaDir.exists());
+
           mediaIsValid=writeToFile(req, mediaLocation);  
       }else{
-    	  log.debug ("****Error in file paths " + mediaFile.getCanonicalPath() + " is not equal to " + mediaLocation);
+    	  log.error ("****Error in file paths " + mediaFile.getCanonicalPath() + " is not equal to " + mediaLocation);
     	  mediaIsValid=false;
       }
 
@@ -126,19 +138,20 @@ private static Logger log = LoggerFactory.getLogger(UploadAudioMediaServlet.clas
       // note that this delivery bean is empty. this is not the same one created for the
       // user during take assessment.
       try{
-        response = submitMediaAsAnswer(req, mediaLocation, saveToDb);
+        json = submitMediaAsAnswer(req, mediaLocation, saveToDb);
         log.info("Audio has been saved and submitted as answer to the question. Any old recordings have been removed from the system.");
       }
       catch (Exception ex){
         log.info(ex.getMessage());
       }
     }
-  	res.setContentType("text/plain");
-	res.setContentLength(response.length());
-	PrintWriter out = res.getWriter();
-	out.println(response);
-	out.close();
-	out.flush();
+    String response = new Gson().toJson(json);
+    res.setContentType("application/json");
+    res.setCharacterEncoding("UTF-8");
+    try (PrintWriter out = res.getWriter()) {
+      out.println(response);
+      out.close();
+    }
   }
 
   private boolean writeToFile(HttpServletRequest req, String mediaLocation){
@@ -299,7 +312,7 @@ private static Logger log = LoggerFactory.getLogger(UploadAudioMediaServlet.clas
     return outputStream;
   }
 
-  private String submitMediaAsAnswer(HttpServletRequest req,
+  private JsonObject submitMediaAsAnswer(HttpServletRequest req,
                                    String mediaLocation, String saveToDb)
     throws Exception{
     // read parameters passed in
@@ -312,15 +325,12 @@ private static Logger log = LoggerFactory.getLogger(UploadAudioMediaServlet.clas
     PublishedAssessmentService pubService = new PublishedAssessmentService();
     int assessmentIndex = mediaLocation.indexOf("assessment");
     int questionIndex = mediaLocation.indexOf("question");
-    int agentIndex = mediaLocation.indexOf("/", questionIndex + 8);
+    int agentIndex = mediaLocation.indexOf(File.separator, questionIndex + 8);
     //int myfileIndex = mediaLocation.lastIndexOf("/");
     String pubAssessmentId = mediaLocation.substring(assessmentIndex + 10,
 						     questionIndex - 1);
     String questionId = mediaLocation.substring(questionIndex + 8, agentIndex);
     //String agentEid = mediaLocation.substring(agentIndex+1, myfileIndex);
-    //log.debug("****pubAss="+pubAssessmentId);
-    //log.debug("****questionId="+questionId);
-    //log.debug("****agent="+agentId);
 
     PublishedItemData item = pubService.loadPublishedItem(questionId);
     PublishedItemText itemText = (PublishedItemText)(item.getItemTextSet()).iterator().next();
@@ -341,12 +351,12 @@ private static Logger log = LoggerFactory.getLogger(UploadAudioMediaServlet.clas
     //    also work out no. of attempts remaining 
     ItemGradingData itemGrading = gradingService.getItemGradingData(
                                   adata.getAssessmentGradingId().toString(), questionId);
-    ArrayList mediaList = new ArrayList();
+    List<MediaData> mediaList = new ArrayList<>();
     if (itemGrading != null){
       // just need update itemGrading, and media.media 
       GradingService service = new GradingService();
       if (itemGrading.getItemGradingId() != null)
-	mediaList = service.getMediaArray(itemGrading.getItemGradingId().toString());
+	  mediaList = service.getMediaArray(itemGrading.getItemGradingId().toString());
 
       if (mediaList.size()>0){
         log.debug("*** delete old audio");
@@ -392,7 +402,7 @@ private static Logger log = LoggerFactory.getLogger(UploadAudioMediaServlet.clas
     return saveMedia(attemptsRemaining, mimeType, agentId, mediaLocation, itemGrading, saveToDb, duration);
   }
 
-  private String saveMedia(int attemptsRemaining, String mimeType, String agent,
+  private JsonObject saveMedia(int attemptsRemaining, String mimeType, String agent,
                          String mediaLocation, ItemGradingData itemGrading,
                         String saveToDb, String duration){
     boolean SAVETODB = false;
@@ -429,6 +439,7 @@ private static Logger log = LoggerFactory.getLogger(UploadAudioMediaServlet.clas
 
     }
     Long mediaId = gradingService.saveMedia(mediaData);
+    mediaData.setMediaId(mediaId);
     log.debug("mediaId=" + mediaId);
 
     // 2. store mediaId in itemGradingRecord.answerText
@@ -449,7 +460,12 @@ private static Logger log = LoggerFactory.getLogger(UploadAudioMediaServlet.clas
     catch(Exception e){
       log.warn(e.getMessage());
     }
-    return mediaId.toString();
+    JsonObject json = new JsonObject();
+    json.addProperty("mediaId", mediaId);
+    json.addProperty("duration", mediaData.getDuration());
+    json.addProperty("createdDate", mediaData.getCreatedDate().toString());
+    json.addProperty("attemptsRemaining", attemptsRemaining);
+    return json;
   }
 
   private byte[] getMediaStream(String mediaLocation)

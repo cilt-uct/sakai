@@ -5,18 +5,13 @@
   <parent>
     <groupId>org.sakaiproject.site</groupId>
     <artifactId>site</artifactId>
-    <version>12-SNAPSHOT</version>
+    <version>21-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
   <name>Sakai AdminSitePerms</name>
   <groupId>org.sakaiproject</groupId>
   <artifactId>adminsiteperms</artifactId>
-  <organization>
-    <name>Sakai Project</name>
-    <url>http://sakaiproject.org/</url>
-  </organization>
-  <inceptionYear>2008</inceptionYear>
   <packaging>war</packaging>
   <properties>
     <maven.deploy.skip>true</maven.deploy.skip>
@@ -27,7 +22,7 @@
     <!-- we are running a webapp in a servlet container so we need the servlet API -->
     <dependency>
       <groupId>javax.servlet</groupId>
-      <artifactId>servlet-api</artifactId>
+      <artifactId>javax.servlet-api</artifactId>
     </dependency>
     <!-- We need this special package to run the jsps in Sakai -->
     <dependency>
@@ -67,8 +62,8 @@
     </dependency>
     <!-- utility libs -->
     <dependency>
-      <groupId>commons-lang</groupId>
-      <artifactId>commons-lang</artifactId>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
     </dependency>
     <dependency>
       <groupId>commons-io</groupId>
@@ -86,7 +81,7 @@
     <!-- JSP and standard tag libraries -->
     <dependency>
       <groupId>javax.servlet.jsp</groupId>
-      <artifactId>jsp-api</artifactId>
+      <artifactId>javax.servlet.jsp-api</artifactId>
     </dependency>
     <dependency>
       <groupId>javax.servlet</groupId>

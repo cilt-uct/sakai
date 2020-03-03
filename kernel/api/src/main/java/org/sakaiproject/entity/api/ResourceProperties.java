@@ -22,6 +22,7 @@
 package org.sakaiproject.entity.api;
 
 import java.io.Serializable;
+import java.time.Instant;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
@@ -277,10 +278,19 @@ public interface ResourceProperties extends Serializable
 	 *            if not found.
 	 * @exception EntityPropertyTypeException
 	 *            if the property is found but not a Time.
-	 * @deprecated use {@link #getDateProperty(String)}
+	 * @deprecated use {@link #getDateProperty(String)} and {@link  #getInstantProperty(String)}
 	 */
 	Time getTimeProperty(String name) throws EntityPropertyNotDefinedException, EntityPropertyTypeException;
 
+	/**
+	 * Access a named property as a Instant
+	 * @param name The property name.
+	 * @return the property value
+	 * @throws EntityPropertyNotDefinedException if not found
+	 * @throws EntityPropertyTypeException if the property is not a date 
+	 */
+	Instant getInstantProperty(String name) throws EntityPropertyNotDefinedException, EntityPropertyTypeException;
+	
 	/**
 	 * Access a named property as a Date
 	 * @param name The property name.
@@ -289,18 +299,6 @@ public interface ResourceProperties extends Serializable
 	 * @throws EntityPropertyTypeException if the property is not a date 
 	 */
 	Date getDateProperty(String name) throws EntityPropertyNotDefinedException, EntityPropertyTypeException;
-	/**
-	 * Access a named property as a User.
-	 * 
-	 * @param name
-	 *        The property name.
-	 * @return the property value
-	 * @exception EntityPropertyNotDefinedException
-	 *            if not found.
-	 * @exception EntityPropertyTypeException
-	 *            if the property is found but not a User.
-	 */
-	// TODO: -ggolden User getUserProperty(String name) throws EntityPropertyNotDefinedException, EntityPropertyTypeException;
 
 	/**
 	 * Get the static String of PROP_CREATOR

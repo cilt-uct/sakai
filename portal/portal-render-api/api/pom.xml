@@ -5,7 +5,7 @@
   <parent>
     <artifactId>portal</artifactId>
     <groupId>org.sakaiproject.portal</groupId>
-    <version>12-SNAPSHOT</version>
+    <version>21-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
   
@@ -37,7 +37,7 @@
     </dependency>
     <dependency>
       <groupId>javax.servlet</groupId>
-      <artifactId>servlet-api</artifactId>
+      <artifactId>javax.servlet-api</artifactId>
     </dependency>
   </dependencies>
   

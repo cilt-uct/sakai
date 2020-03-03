@@ -22,16 +22,26 @@
 package org.sakaiproject.mailarchive.impl;
 
 import java.io.UnsupportedEncodingException;
+import java.time.Instant;
 import java.util.List;
 import java.util.Stack;
 import java.util.Vector;
+
 import javax.mail.internet.MimeUtility;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.lang3.StringUtils;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+
 import org.sakaiproject.alias.api.AliasService;
-import org.sakaiproject.authz.cover.FunctionManager;
-import org.sakaiproject.authz.cover.SecurityService;
+import org.sakaiproject.authz.api.FunctionManager;
+import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.entity.api.ContextObserver;
 import org.sakaiproject.entity.api.Edit;
 import org.sakaiproject.entity.api.Entity;
@@ -57,61 +67,34 @@ import org.sakaiproject.message.api.MessageChannelEdit;
 import org.sakaiproject.message.api.MessageHeader;
 import org.sakaiproject.message.api.MessageHeaderEdit;
 import org.sakaiproject.message.util.BaseMessage;
-import org.sakaiproject.site.cover.SiteService;
+import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.time.api.Time;
-import org.sakaiproject.time.cover.TimeService;
+import org.sakaiproject.time.api.TimeService;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.util.BaseResourcePropertiesEdit;
 import org.sakaiproject.util.FormattedText;
-import org.apache.commons.lang.StringUtils;
 import org.sakaiproject.util.Xml;
 import org.sakaiproject.util.Web;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
 
 /**
  * <p>
  * BaseMailArchiveService extends the BaseMessage for the specifics of MailArchive.
  * </p>
  */
+@Slf4j
 public abstract class BaseMailArchiveService extends BaseMessage implements MailArchiveService, ContextObserver
 {
-	/** Our logger. */
-	private static Logger M_log = LoggerFactory.getLogger(BaseMailArchiveService.class);
-
 	/**********************************************************************************************************************************************************************************************************************************************************
 	 * Constructors, Dependencies and their setter methods
 	 *********************************************************************************************************************************************************************************************************************************************************/
 
 	/** Dependency: NotificationService. */
-	protected NotificationService m_notificationService = null;
+	@Setter protected NotificationService notificationService;
 
 	/** Dependency: AliasService */
-	protected AliasService m_aliasService;
+	@Setter protected AliasService aliasService;
 
-	/**
-	 * Dependency: NotificationService.
-	 * 
-	 * @param service
-	 *        The NotificationService.
-	 */
-	public void setNotificationService(NotificationService service)
-	{
-		m_notificationService = service;
-	}
-
-	/**
-	 * Dependency: AliasService.
-	 *
-	 * @param service
-	 *        The AliasService.
-	 */
-	public void setAliasService(AliasService service)
-	{
-		m_aliasService = service;
-	}
+	@Setter private FunctionManager functionManager;
 
 	/**********************************************************************************************************************************************************************************************************************************************************
 	 * Init and Destroy
@@ -127,7 +110,7 @@ public abstract class BaseMailArchiveService extends BaseMessage implements Mail
 			super.init();
 
 			// register a transient notification for mail
-			NotificationEdit edit = m_notificationService.addTransientNotification();
+			NotificationEdit edit = notificationService.addTransientNotification();
 
 			// set function
 			edit.setFunction(eventId(SECURE_ADD));
@@ -139,18 +122,18 @@ public abstract class BaseMailArchiveService extends BaseMessage implements Mail
 			edit.setAction(new SiteEmailNotificationMail());
 
 			// register functions
-			FunctionManager.registerFunction(eventId(SECURE_READ));
-			FunctionManager.registerFunction(eventId(SECURE_ADD));
-			FunctionManager.registerFunction(eventId(SECURE_REMOVE_ANY));
+			functionManager.registerFunction(eventId(SECURE_READ));
+			functionManager.registerFunction(eventId(SECURE_ADD));
+			functionManager.registerFunction(eventId(SECURE_REMOVE_ANY));
 
 			// entity producer registration
 			m_entityManager.registerEntityProducer(this, REFERENCE_ROOT);
 
-			M_log.info("init()");
+			log.info("init()");
 		}
 		catch (Throwable t)
 		{
-			M_log.warn("init(): ", t);
+			log.warn("init(): ", t);
 		}
 
 	} // init
@@ -502,7 +485,7 @@ public abstract class BaseMailArchiveService extends BaseMessage implements Mail
 					}
 				}
 				else
-					M_log.warn("parse(): unknown message subtype: " + subType + " in ref: " + reference);
+					log.warn("parse(): unknown message subtype: " + subType + " in ref: " + reference);
 			}
 
 			ref.set(APPLICATION_ID, subType, id, container, context);
@@ -555,7 +538,7 @@ public abstract class BaseMailArchiveService extends BaseMessage implements Mail
 	protected void enableMailbox(String siteId)
 	{
 		// form the email channel name
-		String channelRef = channelReference(siteId, SiteService.MAIN_CONTAINER);
+		String channelRef = channelReference(siteId, m_siteService.MAIN_CONTAINER);
 
 		// see if there's a channel
 		MessageChannel channel = null;
@@ -625,7 +608,7 @@ public abstract class BaseMailArchiveService extends BaseMessage implements Mail
 	protected void disableMailbox(String siteId)
 	{
 		// form the email channel name
-		String channelRef = channelReference(siteId, SiteService.MAIN_CONTAINER);
+		String channelRef = channelReference(siteId, m_siteService.MAIN_CONTAINER);
 
 		// see if there's a channel
 		MessageChannel channel = null;
@@ -667,7 +650,7 @@ public abstract class BaseMailArchiveService extends BaseMessage implements Mail
 		// remove any alias
 		try
 		{
-			m_aliasService.removeTargetAliases(channelRef);
+			aliasService.removeTargetAliases(channelRef);
 		}
 		catch (PermissionException e)
 		{
@@ -839,17 +822,21 @@ public abstract class BaseMailArchiveService extends BaseMessage implements Mail
 		 * @exception PermissionException
 		 *            If the user does not have write permission to the channel.
 		 */
-		public MailArchiveMessage addMailArchiveMessage(String subject, String fromAddress, Time dateSent, List mailHeaders,
+		public MailArchiveMessage addMailArchiveMessage(String subject, String fromAddress, Instant dateSent, List mailHeaders,
 				List attachments, String[] body) throws PermissionException
 		{
+			StringBuilder alertMsg = new StringBuilder();
+			final String cleanedHtml = FormattedText.processFormattedText(body[1], alertMsg);
+			final String cleanedText = FormattedText.encodeUnicode(body[0]);
+
 			MailArchiveMessageEdit edit = (MailArchiveMessageEdit) addMessage();
 			MailArchiveMessageHeaderEdit archiveHeaders = edit.getMailArchiveHeaderEdit();
-			edit.setBody(body[0]); 
-			edit.setHtmlBody(body[1]);
+			edit.setBody(cleanedText);
+			edit.setHtmlBody(cleanedHtml);
 			archiveHeaders.replaceAttachments(attachments);
 			archiveHeaders.setSubject(subject);
 			archiveHeaders.setFromAddress(fromAddress);
-			archiveHeaders.setDateSent(dateSent);
+			archiveHeaders.setInstantSent(dateSent);
 			archiveHeaders.setMailHeaders(mailHeaders);
 
 			// lets make sure that folks who have signed up for email get it
@@ -942,13 +929,7 @@ public abstract class BaseMailArchiveService extends BaseMessage implements Mail
 		 */
 		public boolean allowAddMessage(User user)
 		{
-			if (!SecurityService.unlock(user, eventId(SECURE_ADD), getReference()))
-			{
-				return false;
-			}
-
-			return true;
-
+			return m_securityService.unlock(user, eventId(SECURE_ADD), getReference());
 		}
 
 		/*
@@ -1156,7 +1137,7 @@ public abstract class BaseMailArchiveService extends BaseMessage implements Mail
 		 */
 		public String getHtmlBody()
 		{
-			return m_html_body;
+			return FormattedText.getHtmlBody(m_html_body);
 		} // getHtmlBody
 
 		/**
@@ -1167,7 +1148,7 @@ public abstract class BaseMailArchiveService extends BaseMessage implements Mail
 		public String getFormattedBody()
 		{
 			if ( getHtmlBody() != null && getHtmlBody().length() > 0 )
-				return m_html_body;
+				return getHtmlBody();
 			else 
 				return Web.encodeUrlsAsHtml( FormattedText.convertPlaintextToFormattedText(m_body) );
 				
@@ -1258,7 +1239,7 @@ public abstract class BaseMailArchiveService extends BaseMessage implements Mail
 			// now extract the subject, from address, date sent
 			m_subject = el.getAttribute("subject");
 			m_fromAddress = el.getAttribute("mail-from");
-			m_dateSent = TimeService.newTimeGmt(el.getAttribute("mail-date"));
+			m_dateSent = m_timeService.newTimeGmt(el.getAttribute("mail-date"));
 
 			// mail headers
 			NodeList children = el.getChildNodes();
@@ -1333,7 +1314,7 @@ public abstract class BaseMailArchiveService extends BaseMessage implements Mail
 			catch (UnsupportedEncodingException e)
 			{
 				// if unable to decode RFC address, just return address as is
-				M_log.debug(this+".getFromAddress "+e.toString());
+				log.debug(this+".getFromAddress "+e.toString());
 			}
 			
 			return fromAddress;
@@ -1357,6 +1338,7 @@ public abstract class BaseMailArchiveService extends BaseMessage implements Mail
 		 * 
 		 * @return The date: sent of the message.
 		 */
+		@Override
 		public Time getDateSent()
 		{
 			return ((m_dateSent == null) ? this.getDate() : m_dateSent);
@@ -1369,12 +1351,23 @@ public abstract class BaseMailArchiveService extends BaseMessage implements Mail
 		 * @param sent
 		 *        The the date: sent of the message.
 		 */
+		@Override
 		public void setDateSent(Time sent)
 		{
-			m_dateSent = TimeService.newTime(sent.getTime());
+			m_dateSent = m_timeService.newTime(sent.getTime());
 
 		} // setDateSent
 
+		@Override
+		public void setInstantSent(Instant sent) {
+			m_dateSent = m_timeService.newTime(sent.toEpochMilli());
+		}
+
+
+		@Override
+		public Instant getInstantSent() {
+			return Instant.ofEpochMilli(m_dateSent.getTime());
+		}
 		/**
 		 * Access the entire set of mail headers the message.
 		 * 
@@ -1428,6 +1421,7 @@ public abstract class BaseMailArchiveService extends BaseMessage implements Mail
 
 		} // toXml
 
+
 	} // BaseMailArchiveMessageHeader
 	/* (non-Javadoc)
 	 * @see org.sakaiproject.entity.api.EntitySummary#summarizableToolIds()
@@ -1440,4 +1434,3 @@ public abstract class BaseMailArchiveService extends BaseMessage implements Mail
 	}
 
 } // BaseMailArchiveService
-

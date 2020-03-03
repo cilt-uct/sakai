@@ -25,29 +25,42 @@ import java.text.DecimalFormat;
 import java.util.Collection;
 import java.util.Hashtable;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Objects;
 import java.util.Vector;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
 import org.sakaiproject.user.api.DisplayAdvisorUDP;
+import org.sakaiproject.user.api.ExternalUserSearchUDP;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryProvider;
 import org.sakaiproject.user.api.UserEdit;
 import org.sakaiproject.user.api.UserFactory;
 import org.sakaiproject.user.api.UsersShareEmailUDP;
+import org.sakaiproject.user.detail.ValueEncryptionUtilities;
 
 /**
  * <p>
  * SampleUserDirectoryProvider is a samaple UserDirectoryProvider.
  * </p>
  */
-public class SampleUserDirectoryProvider implements UserDirectoryProvider, UsersShareEmailUDP, DisplayAdvisorUDP
+@Slf4j
+public class SampleUserDirectoryProvider implements UserDirectoryProvider, UsersShareEmailUDP, DisplayAdvisorUDP, ExternalUserSearchUDP
 {
+	private static final String USER_PROP_CANDIDATE_ID = "candidateID";
+	private static final String USER_PROP_ADDITIONAL_INFO = "additionalInfo";
+	
+	private final static String SITE_PROP_USE_INSTITUTIONAL_ANONYMOUS_ID = "useInstitutionalAnonymousID";
+	private final static String SITE_PROP_DISPLAY_ADDITIONAL_INFORMATION = "displayAdditionalInformation";
+	
+	private final static String SYSTEM_PROP_USE_INSTITUTIONAL_ANONYMOUS_ID = "useInstitutionalAnonymousID";
+	private final static String SYSTEM_PROP_DISPLAY_ADDITIONAL_INFORMATION = "displayAdditionalInformation";
+	
 	// Use the standard example domain name for examples.
 	public static final String EMAIL_DOMAIN = "@example.edu";
-
-	/** Our log (commons). */
-	private static Logger M_log = LoggerFactory.getLogger(SampleUserDirectoryProvider.class);
 
 	/**********************************************************************************************************************************************************************************************************************************************************
 	 * Dependencies and their setter methods
@@ -65,6 +78,12 @@ public class SampleUserDirectoryProvider implements UserDirectoryProvider, Users
 	public void setCourseStudents(String count)
 	{
 		m_courseStudents = Integer.parseInt(count);
+	}
+
+	protected ValueEncryptionUtilities encryptionUtilities;
+
+	public void setValueEncryptionUtilities(ValueEncryptionUtilities encryptionUtilities) {
+		this.encryptionUtilities = encryptionUtilities;
 	}
 
 	/***************************************************************************
@@ -122,26 +141,26 @@ public class SampleUserDirectoryProvider implements UserDirectoryProvider, Users
 				}
 			}
 
-			m_info.put("instructor", new Info("instructor", "The", "Instructor", "instructor" + EMAIL_DOMAIN));
-			m_info.put("instructor1", new Info("instructor1", "The", "Instructor1", "instructor1" + EMAIL_DOMAIN));
-			m_info.put("instructor2", new Info("instructor2", "The", "Instructor2", "instructor2" + EMAIL_DOMAIN));
+			m_info.put("instructor", new Info("instructor", "Sakai", "Instructor", "instructor" + EMAIL_DOMAIN));
+			m_info.put("instructor1", new Info("instructor1", "Sakai", "Instructor1", "instructor1" + EMAIL_DOMAIN));
+			m_info.put("instructor2", new Info("instructor2", "Sakai", "Instructor2", "instructor2" + EMAIL_DOMAIN));
 			m_info.put("da1", new Info("da1", "Dept", "Admin", "da1" + EMAIL_DOMAIN));
-			m_info.put("ta", new Info("ta", "The", "Teaching-Assistant", "ta" + EMAIL_DOMAIN));
+			m_info.put("ta", new Info("ta", "Teaching", "Assistant", "ta" + EMAIL_DOMAIN));
 
 			//SAK-25394 more ta's for testing purposes
-			m_info.put("ta1", new Info("ta1", "The", "Teaching-Assistant1", "ta1" + EMAIL_DOMAIN));
-			m_info.put("ta2", new Info("ta2", "The", "Teaching-Assistant2", "ta2" + EMAIL_DOMAIN));
-			m_info.put("ta3", new Info("ta2", "The", "Teaching-Assistant3", "ta3" + EMAIL_DOMAIN));
+			m_info.put("ta1", new Info("ta1", "Teaching", "Assistant1", "ta1" + EMAIL_DOMAIN));
+			m_info.put("ta2", new Info("ta2", "Teaching", "Assistant2", "ta2" + EMAIL_DOMAIN));
+			m_info.put("ta3", new Info("ta2", "Teaching", "Assistant3", "ta3" + EMAIL_DOMAIN));
 
 			//SAK-25267 used for integration with uPortal
-			m_info.put("student", new Info("student", "The", "Student", "student" + EMAIL_DOMAIN));
-			m_info.put("faculty", new Info("faculty", "The", "Faculty", "faculty" + EMAIL_DOMAIN));
+			m_info.put("student", new Info("student", "Sakai", "Student", "student" + EMAIL_DOMAIN));
+			m_info.put("faculty", new Info("faculty", "Sakai", "Faculty", "faculty" + EMAIL_DOMAIN));
 
-			M_log.info("init()");
+			log.info("init()");
 		}
-		catch (Exception e)
+		catch (Throwable t)
 		{
-			M_log.warn(".init(): ", e);
+			log.warn("Problem creating SampleUserDirectoryProvider", t);
 		}
 	}
 	
@@ -151,7 +170,7 @@ public class SampleUserDirectoryProvider implements UserDirectoryProvider, Users
 	public void destroy()
 	{
 
-		M_log.info("destroy()");
+		log.info("destroy()");
 
 	} // destroy
 
@@ -185,6 +204,12 @@ public class SampleUserDirectoryProvider implements UserDirectoryProvider, Users
 			this.firstName = firstName;
 			this.lastName = lastName;
 			this.email = email;
+		}
+
+		boolean contains(CharSequence sequence)
+		{
+			return id.contains(sequence) || firstName.contains(sequence) || lastName.contains(sequence)
+				|| email.contains(sequence);
 		}
 
 	} // class info
@@ -236,6 +261,41 @@ public class SampleUserDirectoryProvider implements UserDirectoryProvider, Users
 		}
 		else
 		{
+			if(edit.getEid().equals("student0001")){
+				edit.getProperties().addProperty(USER_PROP_CANDIDATE_ID, encryptionUtilities.encrypt("user1encrypted", 0));
+				edit.getProperties().addPropertyToList(USER_PROP_ADDITIONAL_INFO, encryptionUtilities.encrypt("Additional notes encrypted", 0));
+			}
+			if(edit.getEid().equals("student0002")){
+				edit.getProperties().addProperty(USER_PROP_CANDIDATE_ID, encryptionUtilities.encrypt("2notes", 20));
+				edit.getProperties().addPropertyToList(USER_PROP_ADDITIONAL_INFO, encryptionUtilities.encrypt("Additional notes encrypted student0002", 60));
+				edit.getProperties().addPropertyToList(USER_PROP_ADDITIONAL_INFO, encryptionUtilities.encrypt("Additional notes encrypted again", 60));
+			}
+			if(edit.getEid().equals("student0003")){
+				edit.getProperties().addPropertyToList(USER_PROP_CANDIDATE_ID, encryptionUtilities.encrypt("id1of2", 0));
+				edit.getProperties().addPropertyToList(USER_PROP_CANDIDATE_ID, encryptionUtilities.encrypt("id2of2", 0));
+				edit.getProperties().addPropertyToList(USER_PROP_ADDITIONAL_INFO, encryptionUtilities.encrypt("Additional notes encrypted again2", 0));
+			}
+			if(edit.getEid().equals("student0004")){
+				edit.getProperties().addProperty(USER_PROP_CANDIDATE_ID, encryptionUtilities.encrypt("", 0));
+				edit.getProperties().addPropertyToList(USER_PROP_ADDITIONAL_INFO, encryptionUtilities.encrypt("", 0));
+			}
+			if(edit.getEid().equals("student0005")){
+				edit.getProperties().addProperty(USER_PROP_CANDIDATE_ID, encryptionUtilities.encrypt("", 0));
+				edit.getProperties().addPropertyToList(USER_PROP_ADDITIONAL_INFO, encryptionUtilities.encrypt("", 0));
+			}
+			if(edit.getEid().equals("student0006")){
+				edit.getProperties().addProperty(USER_PROP_CANDIDATE_ID, encryptionUtilities.encrypt(" ", 0));
+				edit.getProperties().addPropertyToList(USER_PROP_ADDITIONAL_INFO, encryptionUtilities.encrypt(" ", 0));
+			}
+			if(edit.getEid().equals("student0007")){
+				edit.getProperties().addProperty(USER_PROP_CANDIDATE_ID, encryptionUtilities.encrypt("student0007", 0));
+				String reallyLongString = "abcdefghijklmnopqrstuvwxyz1234567890 abcdefghijklmnopqrstuvwxyz1234567890 abcdefghijklmnopqrstuvwxyz1234567890 ,"+
+					"abcdefghijklmnopqrstuvwxyz1234567890 abcdefghijklmnopqrstuvwxyz1234567890 abcdefghijklmnopqrstuvwxyz1234567890 ,abcdefghijklmnopqrstuvwxyz1234567890 abcdefghijklmnopqrstuvwxyz1234567890 abcdefghijklmnopqrstuvwxyz1234567890 ,"+
+					"abcdefghijklmnopqrstuvwxyz1234567890 abcdefghijklmnopqrstuvwxyz1234567890 abcdefghijklmnopqrstuvwxyz1234567890 ,abcdefghijklmnopqrstuvwxyz1234567890 abcdefghijklmnopqrstuvwxyz1234567890 abcdefghijklmnopqrstuvwxyz1234567890 ,"+
+					"abcdefghijklmnopqrstuvwxyz1234567890 abcdefghijklmnopqrstuvwxyz1234567890 abcdefghijklmnopqrstuvwxyz1234567890 ,abcdefghijklmnopqrstuvwxyz1234567890 abcdefghijklmnopqrstuvwxyz1234567890 abcdefghijklmnopqrstuvwxyz1234567890 ,"+
+					"abcdefghijklmnopqrstuvwxyz1234567890 abcdefghijklmnopqrstuvwxyz1234567890 abcdefghijklmnopqrstuvwxyz1234567890 ,abcdefghijklmnopqrstuvwxyz1234567890 abcdefghijklmnopqrstuvwxyz1234567890 abcdefghijklmnopqrstuvwxyz1234567890 ,up_until_10 0 0 _char";
+				edit.getProperties().addPropertyToList(USER_PROP_ADDITIONAL_INFO, encryptionUtilities.encrypt(reallyLongString, 0));
+			}
 			edit.setFirstName(info.firstName);
 			edit.setLastName(info.lastName);
 			edit.setEmail(info.email);
@@ -303,18 +363,31 @@ public class SampleUserDirectoryProvider implements UserDirectoryProvider, Users
 	{
 		Collection<UserEdit> rv = new Vector<>();
 
-		// get a UserEdit to populate
-		UserEdit edit = factory.newUser();
-
 		int pos = email.indexOf(EMAIL_DOMAIN);
 		if (pos != -1)
 		{
+			// get a UserEdit to populate
 			String id = email.substring(0, pos);
-			edit.setEid(id);
+			UserEdit edit = factory.newUser(id);
 			if (getUser(edit)) rv.add(edit);
 		}
 
 		return rv;
+	}
+
+	@Override
+	public List<UserEdit> searchExternalUsers(String criteria, int first, int last, UserFactory factory) {
+		Stream<Info> stream = m_info.values().stream().filter(i -> i.contains(criteria));
+		if (first != -1) {
+			stream = stream.skip(first);
+		}
+		if (last != -1) {
+			stream = stream.limit(last-first+1);
+		}
+		return stream.map(i -> {
+			UserEdit edit = factory.newUser(i.id);
+			return getUser(edit)?edit:null;
+		}).filter(Objects::nonNull).collect(Collectors.toList());
 	}
 
 	/**

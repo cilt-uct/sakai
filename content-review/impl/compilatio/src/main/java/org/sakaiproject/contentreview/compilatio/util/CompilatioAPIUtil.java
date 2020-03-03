@@ -19,7 +19,6 @@ package org.sakaiproject.contentreview.compilatio.util;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.StringReader;
-import java.net.Proxy;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLStreamHandler;
@@ -42,23 +41,24 @@ import javax.xml.soap.SOAPException;
 import javax.xml.soap.SOAPMessage;
 import javax.xml.soap.SOAPPart;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.sakaiproject.contentreview.exception.SubmissionException;
 import org.sakaiproject.contentreview.exception.TransientSubmissionException;
 import org.w3c.dom.Document;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * This is a utility class for wrapping the SOAP calls to the Compilatio Service
  *
  */
+@Slf4j
 public class CompilatioAPIUtil {
-	private static final Log log = LogFactory.getLog(CompilatioAPIUtil.class);
+
 
 	public static Document callCompilatioReturnDocument(String apiURL, Map<String, String> parameters, String secretKey,
-			final int timeout, Proxy proxy, boolean isMultipart) throws TransientSubmissionException, SubmissionException {
+			final int timeout) throws TransientSubmissionException, SubmissionException {
 
 		SOAPConnectionFactory soapConnectionFactory;
 		Document xmlDocument = null;
@@ -111,7 +111,7 @@ public class CompilatioAPIUtil {
 			soapConnection.close();
 
 		} catch (UnsupportedOperationException | SOAPException | IOException | ParserConfigurationException | SAXException e) {
-			log.error(e);
+			log.error(e.getLocalizedMessage(), e);
 		}
 		return xmlDocument;
 

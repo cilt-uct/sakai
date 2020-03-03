@@ -22,12 +22,17 @@
 package org.sakaiproject.site.impl;
 
 import java.util.Date;
+import java.util.List;
 import java.util.Set;
 import java.util.Stack;
 import java.util.Iterator;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+import org.sakaiproject.authz.api.AuthzRealmLockException;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
 import org.sakaiproject.authz.api.AuthzGroup;
 import org.sakaiproject.authz.api.GroupNotDefinedException;
 import org.sakaiproject.authz.api.Member;
@@ -35,26 +40,21 @@ import org.sakaiproject.authz.api.Role;
 import org.sakaiproject.authz.api.RoleAlreadyDefinedException;
 import org.sakaiproject.entity.api.ResourceProperties;
 import org.sakaiproject.entity.api.ResourcePropertiesEdit;
-import org.sakaiproject.exception.IdUsedException;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.time.api.Time;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.util.BaseResourceProperties;
 import org.sakaiproject.util.BaseResourcePropertiesEdit;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
 
 /**
  * <p>
  * BaseGroup is an implementation of the Site API Group.
  * </p>
  */
+@Slf4j
 public class BaseGroup implements Group, Identifiable
 {
-	/** Our log (commons). */
-	private static Logger M_log = LoggerFactory.getLogger(BaseGroup.class);
-
 	/** A fixed class serian number. */
 	private static final long serialVersionUID = 1L;
 
@@ -91,7 +91,7 @@ public class BaseGroup implements Group, Identifiable
 	{
 		this.siteService = siteService;
 
-		if (site == null) M_log.warn("BaseGroup(site) created with null site");
+		if (site == null) log.warn("BaseGroup(site) created with null site");
 
 		m_site = site;
 		m_id = siteService.idManager().createUuid();
@@ -101,7 +101,7 @@ public class BaseGroup implements Group, Identifiable
 	protected BaseGroup(BaseSiteService siteService, String id, String title, String description, Site site)
 	{
 		this.siteService = siteService;
-		if (site == null) M_log.warn("BaseGroup(..., site) created with null site");
+		if (site == null) log.warn("BaseGroup(..., site) created with null site");
 
 		m_id = id;
 		m_title = title;
@@ -123,27 +123,29 @@ public class BaseGroup implements Group, Identifiable
 	protected BaseGroup(BaseSiteService siteService, Group other, Site site, boolean exact)
 	{
 		this.siteService = siteService;
-		if (site == null) M_log.warn("BaseGroup(other, site...) created with null site");
+		if (site == null) log.warn("BaseGroup(other, site...) created with null site");
 
 		BaseGroup bOther = (BaseGroup) other;
+		BaseResourceProperties bOtherProperties = (BaseResourceProperties) other.getProperties();
 
-		m_site = (Site) site;
+		m_site = site;
+		BaseResourcePropertiesEdit properties = new BaseResourcePropertiesEdit();
+		properties.addAll(other.getProperties());
 
 		if (exact)
 		{
 			m_id = bOther.m_id;
+			bOther.getRealmLocks().forEach(a -> setLockForReference(a[0], RealmLockMode.valueOf(a[1])));
 		}
 		else
 		{
 			m_id = siteService.idManager().createUuid();
 		}
 
+		properties.setLazy(bOtherProperties.isLazy());
+		m_properties = properties;
 		m_title = bOther.m_title;
 		m_description = bOther.m_description;
-
-		m_properties = new BaseResourcePropertiesEdit();
-		m_properties.addAll(other.getProperties());
-		((BaseResourcePropertiesEdit) m_properties).setLazy(((BaseResourceProperties) other.getProperties()).isLazy());
 	}
 
 	/**
@@ -388,21 +390,21 @@ public class BaseGroup implements Group, Identifiable
 								}
 								catch (RoleAlreadyDefinedException rException)
 								{
-									M_log.warn("getAzg: role id " + roleId + " already used in group " + m_azg.getReference() + rException.getMessage());
+									log.warn("getAzg: role id " + roleId + " already used in group " + m_azg.getReference() + rException.getMessage());
 								}
 							}
 						}
 						}
 						catch (Exception e1)
 						{
-							M_log.warn("getAzg: cannot access realm of " + m_site.getReference() + e1.getMessage());
+							log.warn("getAzg: cannot access realm of " + m_site.getReference() + e1.getMessage());
 							
 						}
 					}
 				}
 				catch (Exception t)
 				{
-					M_log.warn("getAzg: " + t);
+					log.warn("getAzg: " + t);
 				}
 			}
 		}
@@ -412,8 +414,45 @@ public class BaseGroup implements Group, Identifiable
 
 	public void addMember(String userId, String roleId, boolean active, boolean provided)
 	{
+		try {
+			insertMember(userId, roleId, active, provided);
+		} catch (IllegalStateException ise) {
+			log.warn(ise.getMessage());
+		}
+	}
+
+	public void insertMember(String userId, String roleId, boolean active, boolean provided) throws IllegalStateException
+	{
+		RealmLockMode lockMode = getRealmLock();
+		if(RealmLockMode.ALL.equals(lockMode) || RealmLockMode.MODIFY.equals(lockMode)) {
+			throw new IllegalStateException("Can't add member " + userId + " with role " + roleId + " to a locked group");
+		}
 		m_azgChanged = true;
-		getAzg().addMember(userId, roleId, active, provided);
+		try
+		{
+			getAzg().addMember(userId, roleId, active, provided);
+		}
+		catch (IllegalArgumentException iae)
+		{
+			// In the same way that we copy across all roles when a group is created, when adding a member
+			// if the role isn't defined in the group, look in the site and copy it when adding.
+			Role siteRole = getContainingSite().getRole(roleId);
+			if (siteRole != null)
+			{
+				try
+				{
+					getAzg().addRole(roleId, siteRole);
+				}
+				catch (RoleAlreadyDefinedException ignore) // Possibly added by another thread.
+				{
+				}
+				getAzg().addMember(userId, roleId, active, provided);
+			}
+			else
+			{
+				throw iae;
+			}
+		}
 	}
 
 	public Role addRole(String id) throws RoleAlreadyDefinedException
@@ -531,12 +570,38 @@ public class BaseGroup implements Group, Identifiable
 
 	public void removeMember(String userId)
 	{
+		try {
+			deleteMember(userId);
+		} catch (AuthzRealmLockException arle) {
+			log.warn(arle.getMessage());
+		}
+	}
+
+	public void deleteMember(String userId) throws AuthzRealmLockException
+	{
+		RealmLockMode lockMode = getRealmLock();
+		if(RealmLockMode.MODIFY.equals(lockMode) || RealmLockMode.ALL.equals(lockMode)) {
+			throw new AuthzRealmLockException("Member " + userId + " can't be removed from a locked group " + m_id);
+		}
 		m_azgChanged = true;
 		getAzg().removeMember(userId);
 	}
 
 	public void removeMembers()
 	{
+		try {
+			deleteMembers();
+		} catch (AuthzRealmLockException arle) {
+			log.warn(arle.getMessage());
+		}
+	}
+
+	public void deleteMembers() throws AuthzRealmLockException
+	{
+		RealmLockMode lockMode = getRealmLock();
+		if(RealmLockMode.MODIFY.equals(lockMode) || RealmLockMode.ALL.equals(lockMode)) {
+			throw new AuthzRealmLockException("Can't remove members from a locked group " + m_id);
+		}
 		m_azgChanged = true;
 		getAzg().removeMembers();
 	}
@@ -570,5 +635,26 @@ public class BaseGroup implements Group, Identifiable
 		boolean changed = getAzg().keepIntersection(other);
 		if (changed) m_azgChanged = true;
 		return changed;
+	}
+
+	@Override
+	public RealmLockMode getRealmLock() {
+		return getAzg().getRealmLock();
+	}
+
+	@Override
+	public RealmLockMode getLockForReference(String reference) {
+		return getAzg().getLockForReference(reference);
+	}
+
+	@Override
+	public void setLockForReference(String reference, RealmLockMode type) {
+		getAzg().setLockForReference(reference, type);
+		m_azgChanged = true;
+	}
+
+	@Override
+	public List<String[]> getRealmLocks() {
+		return getAzg().getRealmLocks();
 	}
 }

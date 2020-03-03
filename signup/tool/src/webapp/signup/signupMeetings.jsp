@@ -11,9 +11,9 @@
 				@import url("/sakai-signup-tool/css/signupStyle.css");
 		</style>
 <h:outputText value="#{Portal.latestJQuery}" escape="false"/>
-		<script TYPE="text/javascript" src="/sakai-signup-tool/js/signupScript.js"></script>
+		<script src="/sakai-signup-tool/js/signupScript.js"></script>
 		
-		<script type="text/javascript">
+		<script>
 	         //initialization of the page
 	         jQuery(document).ready(function() {
 		         //due to recuring meetings, make sure even/odd Rows display correctly
@@ -190,25 +190,26 @@
 		<sakai:view_content>
 			<h:outputText value="#{msgs.event_error_alerts} #{messageUIBean.errorMessage}" styleClass="alertMessage" escape="false" rendered="#{messageUIBean.error}"/> 
 			<h:form id="items">
-			 	<sakai:view_title value="#{msgs.signup_tool}"/>
-
-				<h:panelGrid columns="1">
+				<div class="page-header">
+					<sakai:view_title value="#{msgs.signup_tool}"/>
+				</div>
+				<h:panelGroup styleClass="" rendered="#{(SignupMeetingsBean.allowedToUpdate && SignupMeetingsBean.meetingsAvailable) or (!SignupMeetingsBean.allowedToUpdate && SignupMeetingsBean.meetingsAvailable)}">
 					<h:outputText value="#{msgs.events_organizer_instruction}"  rendered="#{SignupMeetingsBean.allowedToUpdate && SignupMeetingsBean.meetingsAvailable}" escape="false"/>
-					<h:outputText value="#{msgs.events_attendee_instruction}" rendered="#{!SignupMeetingsBean.allowedToUpdate && SignupMeetingsBean.meetingsAvailable}" escape="false"/>
 					<h:outputText value="&nbsp;" escape="false"/>
-				</h:panelGrid>
+					<h:outputText value="#{msgs.events_attendee_instruction}" rendered="#{!SignupMeetingsBean.allowedToUpdate && SignupMeetingsBean.meetingsAvailable}" escape="false"/>
+				</h:panelGroup>
 				
 				
 				<div class="form-group row">
 					<!-- view range dropdown -->
-					<h:outputLabel value="#{msgs.events_dropdownbox_title} "  for="viewByRange" styleClass="form-control-label col-lg-1 col-md-1"/>
+					<h:outputLabel value="#{msgs.events_dropdownbox_title} "  for="viewByRange" styleClass="col-lg-1 col-md-1"/>
 					<div class="col-lg-3 col-md-3">
 						<h:selectOneMenu id="viewByRange" value="#{SignupMeetingsBean.viewDateRang}" valueChangeListener="#{SignupMeetingsBean.processSelectedRange}" onchange="if(validateIEDisabledItem(this)){submit()};">
 							<f:selectItems value="#{SignupMeetingsBean.viewDropDownList}"/>
 						</h:selectOneMenu>
 					</div>
 					<!-- filter by category dropdown -->
-					<h:outputLabel value="#{msgs.filter_by_category} " for="viewByCategory" styleClass="form-control-label col-lg-2 col-md-2"/>
+					<h:outputLabel value="#{msgs.filter_by_category} " for="viewByCategory" styleClass="col-lg-2 col-md-2"/>
 					<div class="col-lg-2 col-md-2">
 						<h:selectOneMenu id="viewByCategory" value="#{SignupMeetingsBean.categoryFilter}" valueChangeListener="#{SignupMeetingsBean.processSelectedCategory}" onchange="if(validateIEDisabledItem(this)){submit()};">
 							<f:selectItems value="#{SignupMeetingsBean.allCategoriesForFilter}"/>
@@ -217,19 +218,17 @@
 					<!--  expand all recurring meetings -->
 					<h:panelGroup layout="block" styleClass="col-lg-4 col-md-4" rendered="#{SignupMeetingsBean.enableExpandOption && SignupMeetingsBean.meetingsAvailable}">
 						<h:panelGroup >
-								<h:selectBooleanCheckbox value="#{SignupMeetingsBean.showAllRecurMeetings}" valueChangeListener="#{SignupMeetingsBean.processExpandAllRcurEvents}" onclick="submit();"/>
-								<h:outputText value="#{msgs.expand_all_recur_events}" escape="false"/>
+								<h:selectBooleanCheckbox id="showallrecurmeeting" value="#{SignupMeetingsBean.showAllRecurMeetings}" valueChangeListener="#{SignupMeetingsBean.processExpandAllRcurEvents}" onclick="submit();"/>
+								<h:outputLabel for="showallrecurmeeting" value="#{msgs.expand_all_recur_events}" escape="false"/>
 						</h:panelGroup>
 						<h:outputText value="&nbsp;" escape="false" rendered="#{!SignupMeetingsBean.enableExpandOption}"/>
 					</h:panelGroup>
 				</div>
 
-				<h:panelGrid columns="1" styleClass="noMeetingsWarn" rendered="#{!SignupMeetingsBean.meetingsAvailable}" >
-					<h:panelGroup>
-						<h:outputText value="#{SignupMeetingsBean.meetingUnavailableMessages}" escape="false" rendered="#{SignupMeetingsBean.userLoggedInStatus}"/>
-						<h:outputText value=" #{msgs.you_need_to_login}" rendered="#{!SignupMeetingsBean.userLoggedInStatus}" escape="false"/>
-					</h:panelGroup>
-				</h:panelGrid>	
+				<h:panelGroup styleClass="noMeetingsWarn" rendered="#{!SignupMeetingsBean.meetingsAvailable}">
+					<h:outputText value="#{SignupMeetingsBean.meetingUnavailableMessages}" escape="false" rendered="#{SignupMeetingsBean.userLoggedInStatus}"/>
+					<h:outputText value=" #{msgs.you_need_to_login}" rendered="#{!SignupMeetingsBean.userLoggedInStatus}" escape="false"/>
+				</h:panelGroup>
 				<h:panelGroup rendered="#{SignupMeetingsBean.meetingsAvailable}">
 					<div class="table-responsive">
 				 	<t:dataTable 
@@ -243,8 +242,8 @@
 				 		rowStyle="#{wrapper.hideStyle}"
 				 		rowClasses="oddRow,evenRow"
 				 		columnClasses="removeCol, titleCol, creatorCol, locationCol, dateCol, timeCol, statusCol"
-				 		styleClass="table table-bordered table-hover table-striped">
-	
+				 		styleClass="table table-hover table-striped table-bordered">
+
 						<t:column defaultSorted="true" sortable="true">
 							<f:facet name="header" >
 								<t:commandSortHeader columnName="#{SignupMeetingsBean.signupSorter.titleColumn}" immediate="true" arrow="true">
@@ -253,18 +252,22 @@
 							</f:facet>
 							<h:panelGroup rendered="#{wrapper.firstOneRecurMeeting && wrapper.recurEventsSize >1}" styleClass="toggleMeetings">
 								<h:outputText value="<span id='imageOpen_RM_#{wrapper.recurId}' style='display:none'>"  escape="false"/>
-		   	    					<h:graphicImage value="/images/minusSmall.gif"  alt="open" styleClass="openCloseImageIcon" title="#{msgs.event_tool_tips_collapse_recur_meeting}" style="border:none" onclick="showDetails('imageOpen_RM_#{wrapper.recurId}','imageClose_RM_#{wrapper.recurId}');showAllRelatedRecurMeetings('#{wrapper.recurId}','#{SignupMeetingsBean.iframeId}');" />
-		   	    				<h:outputText value="</span>" escape="false" />
-		   	    			
-		   	    				<h:outputText value="<span id='imageClose_RM_#{wrapper.recurId}'>"  escape="false"/>
-		   	    					<h:graphicImage title="#{msgs.event_tool_tips_expand_recur_meeting}" value="/images/plusSmall.gif" styleClass="openCloseImageIcon" alt="close" style="border:none" onclick="showDetails('imageOpen_RM_#{wrapper.recurId}','imageClose_RM_#{wrapper.recurId}');showAllRelatedRecurMeetings('#{wrapper.recurId}','#{SignupMeetingsBean.iframeId}');"/>
-		   	    				<h:outputText value="</span>" escape="false" />
-		   	    				
-		   	    				<h:outputText value="&nbsp;" escape="false"/>
-		   	    			</h:panelGroup>
-									<h:commandLink id="cmdlink90" action="#{SignupMeetingsBean.processSignup}" >
-								<h:outputText value="#{wrapper.meeting.title}" />
-							</h:commandLink>							
+								<h:outputLink value="javascript:showDetails('imageOpen_RM_#{wrapper.recurId}','imageClose_RM_#{wrapper.recurId}');showAllRelatedRecurMeetings('#{wrapper.recurId}','#{SignupMeetingsBean.iframeId}');">
+									<h:graphicImage value="/images/minusSmall.gif" alt="#{msgs.event_tool_tips_collapse_recur_meeting}" styleClass="openCloseImageIcon" title="#{msgs.event_tool_tips_collapse_recur_meeting}" style="border:none" />
+								</h:outputLink>
+								<h:outputText value="</span>" escape="false" />
+								<h:outputText value="<span id='imageClose_RM_#{wrapper.recurId}'>"  escape="false"/>
+								<h:outputLink value="javascript:showDetails('imageOpen_RM_#{wrapper.recurId}','imageClose_RM_#{wrapper.recurId}');showAllRelatedRecurMeetings('#{wrapper.recurId}','#{SignupMeetingsBean.iframeId}');">
+									<h:graphicImage title="#{msgs.event_tool_tips_expand_recur_meeting}" value="/images/plusSmall.gif" styleClass="openCloseImageIcon" alt="#{msgs.event_tool_tips_expand_recur_meeting}" style="border:none" />
+								</h:outputLink>
+								<h:outputText value="</span>" escape="false" />
+								<h:outputText value="&nbsp;" escape="false"/>
+							</h:panelGroup>
+							<strong>
+								<h:commandLink id="cmdlink90" action="#{SignupMeetingsBean.processSignup}">
+									<h:outputText value="#{wrapper.meeting.title}" />
+								</h:commandLink>
+							</strong>
 						</t:column>
 						
 						<t:column sortable="true">
@@ -319,14 +322,14 @@
 							</f:facet>
 							<h:panelGroup style="white-space: nowrap;">
 								<h:outputText value="#{wrapper.meeting.startTime}">
-									<f:convertDateTime pattern="h:mm a" timeZone="#{UserTimeZone.userTimeZone}"/>
+									<f:convertDateTime pattern="#{UserLocale.localizedTimeFormat}" timeZone="#{UserTimeZone.userTimeZone}"/>
 								</h:outputText>
 								<h:outputText value="#{wrapper.meeting.startTime}" rendered="#{wrapper.meeting.meetingCrossDays}">
 											<f:convertDateTime pattern=", EEE" timeZone="#{UserTimeZone.userTimeZone}"/>
 								</h:outputText>
 								<h:outputText value="#{msgs.timeperiod_divider}" escape="false"/>
 								<h:outputText value="#{wrapper.meeting.endTime}">
-									<f:convertDateTime pattern="h:mm a" timeZone="#{UserTimeZone.userTimeZone}"/>
+									<f:convertDateTime pattern="#{UserLocale.localizedTimeFormat}" timeZone="#{UserTimeZone.userTimeZone}"/>
 								</h:outputText>
 								<h:outputText value="#{wrapper.meeting.endTime}" rendered="#{wrapper.meeting.meetingCrossDays}">
 											<f:convertDateTime pattern=", EEE" timeZone="#{UserTimeZone.userTimeZone}"/>
@@ -339,14 +342,14 @@
 							</f:facet>
 							<h:panelGroup style="white-space: nowrap;">
 								<h:outputText value="#{wrapper.startTime}">
-									<f:convertDateTime pattern="h:mm a" timeZone="#{UserTimeZone.userTimeZone}"/>
+									<f:convertDateTime pattern="#{UserLocale.localizedTimeFormat}" timeZone="#{UserTimeZone.userTimeZone}"/>
 								</h:outputText>
 								<h:outputText value="#{wrapper.startTime}" rendered="#{wrapper.myAppointmentCrossDays}">
 											<f:convertDateTime pattern=", EEE" timeZone="#{UserTimeZone.userTimeZone}"/>
 								</h:outputText>
 								<h:outputText value="#{msgs.timeperiod_divider}" escape="false"/>
 								<h:outputText value="#{wrapper.endTime}">
-									<f:convertDateTime pattern="h:mm a" timeZone="#{UserTimeZone.userTimeZone}"/>
+									<f:convertDateTime pattern="#{UserLocale.localizedTimeFormat}" timeZone="#{UserTimeZone.userTimeZone}"/>
 								</h:outputText>
 								<h:outputText value="#{wrapper.endTime}" rendered="#{wrapper.myAppointmentCrossDays}">
 											<f:convertDateTime pattern=", EEE" timeZone="#{UserTimeZone.userTimeZone}"/>
@@ -371,7 +374,8 @@
 							<f:facet name="header">
 								<h:outputText value="#{msgs.tab_event_remove}" escape="false"/>
 							</f:facet>
-							<h:selectBooleanCheckbox value="#{wrapper.selected}" rendered="#{wrapper.meeting.permission.delete}" onclick="determineDeleteMessage(this, #{wrapper.recurEventsSize >1});"/>							
+							<h:outputLabel for="eventRemove" value="#{msgs.tab_event_remove} - #{wrapper.meeting.title}" styleClass="sr-only" escape="false"/>
+							<h:selectBooleanCheckbox id="eventRemove" value="#{wrapper.selected}" rendered="#{wrapper.meeting.permission.delete}" onclick="determineDeleteMessage(this, #{wrapper.recurEventsSize >1});"/>							
 						</t:column>				
 						
 					</t:dataTable></div>
@@ -380,7 +384,7 @@
 						<h:outputText value="&nbsp;" escape="false"/>
 						<h:panelGroup styleClass="act">
 							<h:commandButton id="removeMeetings" action="#{SignupMeetingsBean.removeMeetings}" value="#{msgs.event_removeButton}" onclick='return confirmDelete(this);' rendered="#{SignupMeetingsBean.allowedToDelete}"/>
-							<h:outputText styleClass="messageProgress" style="display:none" value="#{msgs.publish_processing_submit_message}" />
+							<h:outputText styleClass="sak-banner-info" style="display:none" value="#{msgs.publish_processing_submit_message}" />
 						</h:panelGroup>
 					</h:panelGrid>
 				</h:panelGroup>

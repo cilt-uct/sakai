@@ -24,10 +24,10 @@ package org.sakaiproject.provider.authzGroup;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+
 import org.sakaiproject.authz.api.GroupProvider;
-import org.apache.commons.lang.StringUtils;
 
 /**
  * <p>
@@ -40,10 +40,9 @@ import org.apache.commons.lang.StringUtils;
  * </ul>
  * </p>
  */
+@Slf4j
 public class AllHandsGroupProvider implements GroupProvider
 {
-	/** Our log (commons). */
-	private static Logger M_log = LoggerFactory.getLogger(AllHandsGroupProvider.class);
 
 	/**********************************************************************************************************************************************************************************************************************************************************
 	 * Init and Destroy
@@ -56,11 +55,11 @@ public class AllHandsGroupProvider implements GroupProvider
 	{
 		try
 		{
-			M_log.info("init()");
+			log.info("init()");
 		}
 		catch (Throwable t)
 		{
-			M_log.warn("init(): ", t);
+			log.warn("init(): ", t);
 		}
 	}
 
@@ -69,7 +68,7 @@ public class AllHandsGroupProvider implements GroupProvider
 	 */
 	public void destroy()
 	{
-		M_log.info("destroy()");
+		log.info("destroy()");
 	}
 
 	/**********************************************************************************************************************************************************************************************************************************************************
@@ -88,7 +87,7 @@ public class AllHandsGroupProvider implements GroupProvider
 	 */
 	public String getRole(String id, String user)
 	{
-		M_log.info("getRole() id="+id+" user="+user);
+		log.info("getRole() id="+id+" user="+user);
 		// Apparently this is not called ???
 		return null;
 	}
@@ -136,13 +135,22 @@ public class AllHandsGroupProvider implements GroupProvider
 
 	public Map<String, String> getGroupRolesForUser(String userId)
 	{
-		M_log.info("getGroupRolesForUser() user="+userId);
+		log.info("getGroupRolesForUser() user="+userId);
 
 		Map<String, String> rv = new HashMap<String, String>();
 
 		rv.put("sakai.allhands","access");
 
 		return rv;
+	}
+
+	// This signature was added to the interface to support speedup of displaying the list of available rosters,
+	// but implemented this method signature only for the implementations currently in use.
+	// Some implementations -- including this one -- do not implement this method signature.
+	// This signature was added here merely to complete the maven build (it ignores the added parameter).
+	// You must edit to specify processing if you actually use this class.
+	public Map getGroupRolesForUser(String userId, String academicSessionEid) {
+		return getGroupRolesForUser(userId);
 	}
 
 	public String[] unpackId(String id)

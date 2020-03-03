@@ -5,19 +5,17 @@
     <parent>
         <groupId>org.sakaiproject.sitemanage</groupId>
         <artifactId>sitemanage</artifactId>
-        <version>12-SNAPSHOT</version>
+        <version>21-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
     <name>sakai-site-manage-impl</name>
     <groupId>org.sakaiproject.sitemanage</groupId>
     <artifactId>sakai-site-manage-impl</artifactId>
-    <organization>
-        <name>University of Michigan</name>
-        <url>http://sakaiproject.org/</url>
-    </organization>
-    <inceptionYear>2003</inceptionYear>
-    <packaging>jar</packaging>
+    <packaging>sakai-component</packaging>
+    <properties>
+        <deploy.target>components</deploy.target>
+    </properties>
 
     <dependencies>
         <dependency>
@@ -53,8 +51,17 @@
             <artifactId>emailtemplateservice-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
+            <groupId>org.sakaiproject.shortenedurl</groupId>
+            <artifactId>shortenedurl-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.sakaiproject.edu-services.gradebook</groupId>
+            <artifactId>gradebook-service-api</artifactId>
+            <version>21-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
         </dependency>
         <dependency>
             <groupId>org.hibernate</groupId>
@@ -81,6 +88,10 @@
             <artifactId>jdom</artifactId>
             <groupId>jdom</groupId>
             <version>1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>javax</groupId>
+            <artifactId>javaee-api</artifactId>
         </dependency>
         <dependency>
             <groupId>org.sakaiproject.userauditservice</groupId>

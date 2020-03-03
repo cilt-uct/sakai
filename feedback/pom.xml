@@ -13,15 +13,11 @@
 	<parent>
         <groupId>org.sakaiproject</groupId>
         <artifactId>master</artifactId>
-        <version>12-SNAPSHOT</version>
+        <version>21-SNAPSHOT</version>
         <relativePath>../master/pom.xml</relativePath>
     </parent>
 
-  	<organization>
-    	<name>University of Oxford</name>
-    	<url>http://www.ox.ax.uk</url>
-  	</organization>
-    <inceptionYear>2005</inceptionYear>
+
 
   	<developers>
     	<developer>
@@ -33,25 +29,18 @@
 	<pluginRepositories>
 		<pluginRepository>
 			<id>mc-release</id>
-			<url>http://mc-repo.googlecode.com/svn/maven2/releases</url>
+			<url>https://mc-repo.googlecode.com/svn/maven2/releases</url>
 		</pluginRepository>
     </pluginRepositories>
-
-	<issueManagement>
-        <system>JIRA</system>
-        <url>https://jira.oucs.ox.ac.uk/jira/browse/WL-3179</url>
-    </issueManagement>
-
 
   	<dependencies>
 		<dependency>
 			<groupId>javax.servlet</groupId>
-			<artifactId>servlet-api</artifactId>
+			<artifactId>javax.servlet-api</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>javax.servlet</groupId>
             <artifactId>jstl</artifactId>
-            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>taglibs</groupId>
@@ -100,16 +89,20 @@
             <artifactId>commons-fileupload</artifactId>
         </dependency>
         <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
         </dependency>
         <dependency>
             <groupId>javax.activation</groupId>
-            <artifactId>activation</artifactId>
+            <artifactId>javax.activation-api</artifactId>
         </dependency>
         <dependency>
             <groupId>com.sun.mail</groupId>
-            <artifactId>javax.mail</artifactId>
+            <artifactId>jakarta.mail</artifactId>
         </dependency>
         <dependency>
             <groupId>net.tanesha.recaptcha4j</groupId>
@@ -126,7 +119,7 @@
                     <plugin>
                         <groupId>com.github.jknack</groupId>
                         <artifactId>handlebars-maven-plugin</artifactId>
-                        <version>1.3.1</version>
+                        <version>${handlebars1.version}</version>
                         <executions>
                             <execution>
                                 <id>precompile</id>
@@ -162,7 +155,7 @@
             <plugin>
                 <groupId>com.github.jknack</groupId>
                 <artifactId>handlebars-maven-plugin</artifactId>
-                <version>1.3.1</version>
+                <version>${handlebars1.version}</version>
                 <executions>
                     <execution>
                         <id>precompile</id>

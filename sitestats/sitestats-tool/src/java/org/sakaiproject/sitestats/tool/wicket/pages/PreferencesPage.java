@@ -109,11 +109,13 @@ public class PreferencesPage extends BasePage {
 		// Section: General
 		CheckBox listToolEventsOnlyAvailableInSite = new CheckBox("listToolEventsOnlyAvailableInSite");
 		form.add(listToolEventsOnlyAvailableInSite);
-		
+
+		CheckBox showOwnStatisticsToStudents = new CheckBox("showOwnStatisticsToStudents");
+		form.add(showOwnStatisticsToStudents);
 		
 		// Section: Chart
 		WebMarkupContainer chartPrefs = new WebMarkupContainer("chartPrefs");
-		boolean chartPrefsVisible = Locator.getFacade().getStatsManager().isEnableSiteVisits() || Locator.getFacade().getStatsManager().isEnableSiteActivity();
+		boolean chartPrefsVisible = Locator.getFacade().getStatsManager().getEnableSiteVisits() || Locator.getFacade().getStatsManager().isEnableSiteActivity();
 		chartPrefs.setVisible(chartPrefsVisible);
 		form.add(chartPrefs);
 		//CheckBox chartIn3D = new CheckBox("chartIn3D");
@@ -149,8 +151,9 @@ public class PreferencesPage extends BasePage {
 					while (i.hasNext()){
 						ToolInfo t = i.next();
 						if(t.getToolId().equals(toolInfo.getToolId())){
-							EventParserTip parserTip = t.getEventParserTip();
-							if(parserTip != null && parserTip.getFor().equals(StatsManager.PARSERTIP_FOR_CONTEXTID)){
+							boolean match = t.getEventParserTips().stream()
+									.anyMatch(tip -> StatsManager.PARSERTIP_FOR_CONTEXTID.equals(tip.getFor()));
+							if(match){
 								return true;
 							}
 						}
@@ -211,6 +214,14 @@ public class PreferencesPage extends BasePage {
 
 	public boolean isListToolEventsOnlyAvailableInSite() {
 		return getPrefsdata().isListToolEventsOnlyAvailableInSite();
+	}
+
+	public void setShowOwnStatisticsToStudents(boolean showOwnStatisticsToStudents) {
+		prefsdata.setShowOwnStatisticsToStudents(showOwnStatisticsToStudents);
+	}
+
+	public boolean isShowOwnStatisticsToStudents() {
+		return getPrefsdata().isShowOwnStatisticsToStudents();
 	}
 	
 	public void setChartIn3D(boolean chartIn3D) {

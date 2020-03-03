@@ -34,6 +34,7 @@ import org.sakaiproject.entity.api.EntityManager;
 import org.sakaiproject.event.api.EventTrackingService;
 import org.sakaiproject.event.api.UsageSessionService;
 import org.sakaiproject.event.api.ActivityService;
+import org.sakaiproject.messagebundle.api.MessageBundleService;
 import org.sakaiproject.service.gradebook.shared.GradebookExternalAssessmentService;
 import org.sakaiproject.service.gradebook.shared.GradebookService;
 import org.sakaiproject.site.api.SiteService;
@@ -42,6 +43,7 @@ import org.sakaiproject.time.api.TimeService;
 import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.tool.api.SessionManager;
 import org.sakaiproject.tool.api.ToolManager;
+import org.sakaiproject.user.api.AuthenticationManager;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.PreferencesService;
 import org.sakaiproject.shortenedurl.api.ShortenedUrlService;
@@ -62,6 +64,7 @@ public class AbstractWebService {
     protected SessionManager sessionManager;
 
     protected AssignmentService assignmentService;
+    protected AuthenticationManager authenticationManager;
     protected AuthzGroupService authzGroupService;
     protected CalendarService calendarService;
     protected EventTrackingService eventTrackingService;
@@ -77,6 +80,7 @@ public class AbstractWebService {
     protected ContentHostingService contentHostingService;
     protected EntityManager entityManager;
     protected DiscussionForumManager discussionForumManager;
+    protected MessageBundleService messageBundleService;
     protected MessageForumsForumManager messageForumsForumManager;
     protected MessageForumsMessageManager messageForumsMessageManager;
     protected MessageForumsTypeManager messageForumsTypeManager;
@@ -90,11 +94,6 @@ public class AbstractWebService {
     protected ActivityService activityService;
     protected QuestionPoolServiceAPI questionPoolServiceImpl;
     protected LessonBuilderAccessAPI lessonBuilderAccessAPI;
-
-    
-    @WebMethod(exclude = true)
-    public void init() {
-    }
 
     /**
      * Get the Session related to the given sessionid
@@ -123,6 +122,11 @@ public class AbstractWebService {
         Message message = PhaseInterceptorChain.getCurrentMessage();
         HttpServletRequest request = (HttpServletRequest)message.get(AbstractHTTPDestination.HTTP_REQUEST);
         return request.getRemoteAddr();
+    }
+
+    @WebMethod(exclude = true)
+    public void setAuthenticationManager(AuthenticationManager authenticationManager) {
+        this.authenticationManager = authenticationManager;
     }
 
     @WebMethod(exclude = true)
@@ -209,7 +213,12 @@ public class AbstractWebService {
     public void setMessageForumsForumManager(MessageForumsForumManager messageForumsForumManager) {
         this.messageForumsForumManager = messageForumsForumManager;
     }
-    
+
+    @WebMethod(exclude = true)
+    public void setMessageBundleService(MessageBundleService messageBundleService) {
+        this.messageBundleService = messageBundleService;
+    }
+
     @WebMethod(exclude = true)
     public void setMessageForumsMessageManager(MessageForumsMessageManager messageForumsMessageManager) {
         this.messageForumsMessageManager = messageForumsMessageManager;

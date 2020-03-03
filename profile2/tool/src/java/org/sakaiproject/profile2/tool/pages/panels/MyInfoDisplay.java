@@ -19,9 +19,7 @@ package org.sakaiproject.profile2.tool.pages.panels;
 
 import java.util.Date;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.wicket.Component;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.ajax.markup.html.AjaxFallbackLink;
@@ -33,14 +31,15 @@ import org.apache.wicket.spring.injection.annot.SpringBean;
 import org.sakaiproject.profile2.logic.ProfilePrivacyLogic;
 import org.sakaiproject.profile2.logic.SakaiProxy;
 import org.sakaiproject.profile2.model.UserProfile;
-import org.sakaiproject.profile2.types.PrivacyType;
 import org.sakaiproject.profile2.util.ProfileConstants;
 import org.sakaiproject.profile2.util.ProfileUtils;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public class MyInfoDisplay extends Panel {
-	
+
 	private static final long serialVersionUID = 1L;
-	private static final Logger log = LoggerFactory.getLogger(MyInfoDisplay.class);
 	private int visibleFieldCount = 0;
 	private String birthday = ""; 
 	private String birthdayDisplay = "";

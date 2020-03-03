@@ -23,15 +23,14 @@ include file for displaying fill in the numeric questions
 --%>
 -->
 
+<script src="/library/webjars/jquery/1.12.4/jquery.min.js"></script>
+<script src="/samigo-app/js/selection.author.preview.js"></script>
+<script src="/samigo-app/js/selection.student.preview.js"></script>
+<link rel="stylesheet" type="text/css" href="/samigo-app/css/imageQuestion.author.css">
+<link rel="stylesheet" type="text/css" href="/samigo-app/css/imageQuestion.student.css">
+
 <f:verbatim>
-<script type="text/javascript" src="/library/webjars/jquery/1.11.3/jquery.min.js"></script>
-<script language='javascript' src='/samigo-app/js/selection.author.preview.js'></script>
-<script language='javascript' src='/samigo-app/js/selection.student.preview.js'></script>
-
-<link href="/samigo-app/css/imageQuestion.author.css" type="text/css" rel="stylesheet" media="all" />
-<link href="/samigo-app/css/imageQuestion.student.css" type="text/css" rel="stylesheet" media="all" />
-
-<script type="text/JavaScript">	
+<script>	
 	jQuery(window).load(function(){
 			
 		$('input:hidden[id^=hiddenSerializedCoords_]').each(function(){
@@ -90,8 +89,7 @@ include file for displaying fill in the numeric questions
  </h:column>
 </h:dataTable>
 
-<f:verbatim>  
-	<div id="imageMapContainer" class='authorImageContainer'>
-		<img id='img' src='</f:verbatim><h:outputText value="#{question.imageMapSrc}" /><f:verbatim>' />
-	</div>
-</f:verbatim>
+<div id="imageMapContainer" class='authorImageContainer'>
+    <img id='img' src='<h:outputText value="#{question.imageMapSrc}"/>' alt='<h:outputText value="#{question.imageMapAltText}"/>'/>
+</div>
+<%@ include file="/jsf/evaluation/item/displayTags.jsp" %>

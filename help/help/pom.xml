@@ -4,22 +4,22 @@
   <parent>
     <artifactId>help-base</artifactId>
     <groupId>org.sakaiproject</groupId>
-    <version>12-SNAPSHOT</version>
+    <version>21-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
   <name>sakai-help-content</name>
   <groupId>org.sakaiproject</groupId>
   <artifactId>sakai-help-content</artifactId>
-  <organization>
-    <name>Sakai Project</name>
-    <url>http://sakaiproject.org/</url>
-  </organization>
-  <inceptionYear>2004</inceptionYear>
   <packaging>jar</packaging>
   <properties>
     <deploy.target>shared</deploy.target>
   </properties>
-  <dependencies />
+  <dependencies>
+    <dependency>
+      <groupId>org.sakaiproject</groupId>
+      <artifactId>sakai-comp-shared-help</artifactId>
+    </dependency>
+  </dependencies>
   <build>
     <resources>
       <resource>

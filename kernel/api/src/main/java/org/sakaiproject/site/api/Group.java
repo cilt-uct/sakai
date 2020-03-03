@@ -24,7 +24,10 @@ package org.sakaiproject.site.api;
 import java.io.Serializable;
 
 import org.sakaiproject.authz.api.AuthzGroup;
+import org.sakaiproject.authz.api.AuthzRealmLockException;
 import org.sakaiproject.entity.api.Edit;
+import org.sakaiproject.entity.api.Entity;
+import org.sakaiproject.exception.PermissionException;
 
 /**
  * <p>
@@ -45,7 +48,7 @@ public interface Group extends Edit, Serializable, AuthzGroup
 	static final String GROUP_PROP_VIEW_MEMBERS = "group_prop_view_members";
 	/** The property to indicate whether the joinable group is unjoinable or not*/
 	static final String GROUP_PROP_JOINABLE_UNJOINABLE = "group_prop_joinable_unjoinable";
-    
+
 	/** @return a human readable short title of this group. */
 	String getTitle();
 
@@ -74,4 +77,33 @@ public interface Group extends Edit, Serializable, AuthzGroup
 	 *        The new description.
 	 */
 	void setDescription(String description);
+
+	/**
+	 * Deletes a member from this group.
+	 * Its functionality is the same as removeMember but throws AuthzRealmLockException.
+	 * 
+	 * @param userId
+	 *        The id of the user to be deleted.
+	 * @throws AuthzRealmLockException
+	 *        If group is locked and cannot be edited
+	 */
+	void deleteMember(String userId) throws AuthzRealmLockException;
+
+	/**
+	 * Deletes all members from this group.
+	 * Its functionality is the same as removeMembers but throws AuthzRealmLockException.
+	 * 
+	 * @throws IllegalStateException
+	 *        If group is locked and cannot be edited
+	 */
+	void deleteMembers() throws AuthzRealmLockException;
+
+	/**
+	 * Insert a member in this group.
+	 * Its functionality is the same as addMember but throws AuthzRealmLockException.
+	 * 
+	 * @throws AuthzRealmLockException
+	 *        If group is locked and cannot be edited
+	 */
+	void insertMember(String userId, String roleId, boolean active, boolean provided) throws AuthzRealmLockException;
 }

@@ -1,15 +1,30 @@
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.search.elasticsearch;
 
+import java.util.*;
+
 import com.google.common.collect.ForwardingList;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.facet.terms.InternalTermsFacet;
+
 import org.sakaiproject.search.api.*;
 import org.sakaiproject.search.elasticsearch.filter.SearchItemFilter;
-
-import java.util.*;
 
 /**
  * Created by IntelliJ IDEA.
@@ -18,8 +33,8 @@ import java.util.*;
  * Time: 2:19 PM
  * To change this template use File | Settings | File Templates.
  */
+@Slf4j
 public class ElasticSearchList extends ForwardingList<SearchResult> implements SearchList {
-    private static final Logger log = LoggerFactory.getLogger(ElasticSearchList.class);
     private final List<SearchResult> results;
     private final SearchResponse response;
     private final SearchItemFilter filter;
@@ -35,9 +50,8 @@ public class ElasticSearchList extends ForwardingList<SearchResult> implements S
 
         SearchResponse highlightedResponse = null;
 
-
         try {
-            highlightedResponse = elasticSearchService.search(searchTerms, new ArrayList<String>(), 0, references.size(), references);
+            highlightedResponse = elasticSearchService.search(searchTerms, new ArrayList<String>(), 0, references.size(), references, searchIndexBuilder.getName());
         } catch (Exception e) {
             log.error("problem running hightlighted and facetted search: " + e.getMessage(), e);
             return;
@@ -46,7 +60,7 @@ public class ElasticSearchList extends ForwardingList<SearchResult> implements S
         int i=0;
         for (SearchHit hit : highlightedResponse.getHits()) {
             InternalTermsFacet facet = null;
-            if (elasticSearchService.getUseFacetting()){
+            if (searchIndexBuilder.getUseFacetting()){
                 facet = (InternalTermsFacet) highlightedResponse.getFacets().facet(facetName);
             }
             ElasticSearchResult result = new ElasticSearchResult(hit, facet, searchIndexBuilder, searchTerms);
@@ -54,7 +68,6 @@ public class ElasticSearchList extends ForwardingList<SearchResult> implements S
             results.add(filter.filter(result));
         }
     }
-
 
     @Override
     public Iterator<SearchResult> iterator(int startAt) {

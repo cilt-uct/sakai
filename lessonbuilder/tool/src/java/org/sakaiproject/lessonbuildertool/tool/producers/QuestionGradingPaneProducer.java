@@ -1,9 +1,26 @@
+/**
+ * Copyright (c) 2003-2017 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.lessonbuildertool.tool.producers;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 
 import org.sakaiproject.lessonbuildertool.SimplePage;
 import org.sakaiproject.lessonbuildertool.SimplePageItem;
@@ -15,6 +32,10 @@ import org.sakaiproject.lessonbuildertool.tool.view.GeneralViewParameters;
 import org.sakaiproject.lessonbuildertool.tool.view.QuestionGradingPaneViewParameters;
 import org.sakaiproject.user.cover.UserDirectoryService;
 import org.sakaiproject.tool.cover.SessionManager;
+import org.sakaiproject.authz.api.Member;
+import org.sakaiproject.authz.api.SecurityService;
+import org.sakaiproject.site.api.SiteService;
+import org.sakaiproject.user.api.User;
 
 import uk.org.ponder.localeutil.LocaleGetter;
 import uk.org.ponder.messageutil.MessageLocator;
@@ -26,6 +47,7 @@ import uk.org.ponder.rsf.components.UIInitBlock;
 import uk.org.ponder.rsf.components.UIInput;
 import uk.org.ponder.rsf.components.UIInternalLink;
 import uk.org.ponder.rsf.components.UIOutput;
+import uk.org.ponder.rsf.components.UICommand;
 import uk.org.ponder.rsf.components.decorators.UIFreeAttributeDecorator;
 import uk.org.ponder.rsf.view.ComponentChecker;
 import uk.org.ponder.rsf.view.ViewComponentProducer;
@@ -39,6 +61,8 @@ public class QuestionGradingPaneProducer implements ViewComponentProducer, ViewP
 
 	private SimplePageBean simplePageBean;
 	private SimplePageToolDao simplePageToolDao;
+        private SecurityService securityService;
+        private SiteService siteService;
 	private MessageLocator messageLocator;
 	public LocaleGetter localeGetter;                                                                                             
 	
@@ -54,6 +78,14 @@ public class QuestionGradingPaneProducer implements ViewComponentProducer, ViewP
 		this.simplePageToolDao = simplePageToolDao;
 	}
 	
+	public void setSecurityService(SecurityService a) {
+		this.securityService = a;
+	}
+
+	public void setSiteService(SiteService s) {
+		this.siteService = s;
+	}
+
 	public void setMessageLocator(MessageLocator messageLocator) {
 		this.messageLocator = messageLocator;
 	}
@@ -118,9 +150,18 @@ public class QuestionGradingPaneProducer implements ViewComponentProducer, ViewP
 		if (noSpecifiedAnswers && "true".equals(questionItem.getAttribute("questionGraded")))
 		    manuallyGraded = true;
 
+		// initialize notsubmitted to all userids or groupids
+		Set<String> notSubmitted = new HashSet<String>();
+		String siteRef = simplePageBean.getCurrentSite().getReference();
+		// only check students
+		List<User> studentUsers = securityService.unlockUsers("section.role.student", siteRef);
+		for (User u: studentUsers)
+		    notSubmitted.add(u.getId());
+
 		for(SimplePageQuestionResponse response : responses) {			
 			if(!userIds.contains(response.getUserId())) {
 				userIds.add(response.getUserId());
+				notSubmitted.remove(response.getUserId());
 				try {
 					SimpleUser user = new SimpleUser();
 					user.displayName = UserDirectoryService.getUser(response.getUserId()).getDisplayName();
@@ -182,6 +223,28 @@ public class QuestionGradingPaneProducer implements ViewComponentProducer, ViewP
 			}
 		}
 		
+		if (notSubmitted.size() > 0) {
+		    List<String> missing = new ArrayList<String>();
+		    for (String userId: notSubmitted) {
+			try {
+			    missing.add(UserDirectoryService.getUser(userId).getDisplayName());
+			} catch (Exception e) {
+			    missing.add(userId);
+			}
+		    }
+		    Collections.sort(missing);
+		    UIOutput.make(tofill, "missing-head");
+		    UIOutput.make(tofill, "missing-div");
+		    for (String name: missing) {
+			UIBranchContainer branch = UIBranchContainer.make(tofill, "missing:");
+			UIOutput.make(branch, "missing-entry", name);
+		    }
+		    if (graded)
+			UIOutput.make(tofill, "zeroMissing", messageLocator.getMessage("simplepage.zero-missing")).
+			    decorate(new UIFreeAttributeDecorator("title", 
+								  messageLocator.getMessage("simplepage.zero-missing")));
+		}
+
 		UIForm gradingForm = UIForm.make(tofill, "gradingForm");
 		gradingForm.viewparams = new SimpleViewParameters(UVBProducer.VIEW_ID);
 		UIInput idInput = UIInput.make(gradingForm, "gradingForm-id", "gradingBean.id");
@@ -192,6 +255,15 @@ public class QuestionGradingPaneProducer implements ViewComponentProducer, ViewP
 		UIInput csrfInput = UIInput.make(gradingForm, "csrf", "gradingBean.csrfToken", (sessionToken == null ? "" : sessionToken.toString()));
 
 		UIInitBlock.make(tofill, "gradingForm-init", "initGradingForm", new Object[] {idInput, pointsInput, jsIdInput, typeInput, csrfInput, "gradingBean.results"});
+
+		if (notSubmitted.size() > 0 && graded) {
+		    UIForm zeroForm = UIForm.make(tofill, "zero-form");
+		    if (sessionToken != null)
+			UIInput.make(zeroForm, "zero-csrf", "simplePageBean.csrfToken", sessionToken.toString());
+		    UIInput.make(zeroForm, "zero-item", "#{simplePageBean.itemId}", Long.toString(questionItem.getId()));
+		    UICommand.make(zeroForm, "zero", messageLocator.getMessage("simplepage.zero-missing"), "#{simplePageBean.missingAnswersSetZero}");
+		}
+
 	}
 	
 	public ViewParameters getViewParameters() {

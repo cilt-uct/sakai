@@ -19,11 +19,14 @@
  *
  **********************************************************************************/
 
-
-
 package org.sakaiproject.tool.assessment.ui.listener.author;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import javax.faces.application.FacesMessage;
 import javax.faces.context.FacesContext;
@@ -32,16 +35,23 @@ import javax.faces.event.ActionEvent;
 import javax.faces.event.ActionListener;
 import javax.faces.model.SelectItem;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+
 import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.event.cover.EventTrackingService;
 import org.sakaiproject.samigo.util.SamigoConstants;
 import org.sakaiproject.service.gradebook.shared.GradebookExternalAssessmentService;
 import org.sakaiproject.spring.SpringBeanLocator;
 import org.sakaiproject.tool.assessment.api.SamigoApiFactory;
-import org.sakaiproject.tool.assessment.data.dao.assessment.*;
+import org.sakaiproject.tool.assessment.data.dao.assessment.AssessmentAccessControl;
+import org.sakaiproject.tool.assessment.data.dao.assessment.AssessmentFeedback;
+import org.sakaiproject.tool.assessment.data.dao.assessment.EvaluationModel;
+import org.sakaiproject.tool.assessment.data.dao.assessment.ExtendedTime;
+import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedAccessControl;
+import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedAssessmentData;
+import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedEvaluationModel;
+import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedSecuredIPAddress;
 import org.sakaiproject.tool.assessment.data.dao.grading.AssessmentGradingData;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentAccessControlIfc;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentBaseIfc;
@@ -49,18 +59,26 @@ import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentFeedbackIf
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentIfc;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentMetaDataIfc;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.EvaluationModelIfc;
-import org.sakaiproject.tool.assessment.facade.*;
+import org.sakaiproject.tool.assessment.facade.AgentFacade;
+import org.sakaiproject.tool.assessment.facade.ExtendedTimeFacade;
+import org.sakaiproject.tool.assessment.facade.GradebookFacade;
+import org.sakaiproject.tool.assessment.facade.PublishedAssessmentFacade;
+import org.sakaiproject.tool.assessment.facade.PublishedAssessmentFacadeQueries;
 import org.sakaiproject.tool.assessment.integration.context.IntegrationContextFactory;
+import org.sakaiproject.tool.assessment.integration.helper.ifc.CalendarServiceHelper;
 import org.sakaiproject.tool.assessment.integration.helper.ifc.GradebookServiceHelper;
 import org.sakaiproject.tool.assessment.services.GradingService;
 import org.sakaiproject.tool.assessment.services.PersistenceService;
 import org.sakaiproject.tool.assessment.services.assessment.PublishedAssessmentService;
 import org.sakaiproject.tool.assessment.shared.api.assessment.SecureDeliveryServiceAPI;
-import org.sakaiproject.tool.assessment.ui.bean.author.*;
+import org.sakaiproject.tool.assessment.ui.bean.author.AssessmentBean;
+import org.sakaiproject.tool.assessment.ui.bean.author.AuthorBean;
+import org.sakaiproject.tool.assessment.ui.bean.author.PublishRepublishNotificationBean;
+import org.sakaiproject.tool.assessment.ui.bean.author.PublishedAssessmentSettingsBean;
+import org.sakaiproject.tool.assessment.ui.bean.authz.AuthorizationBean;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 import org.sakaiproject.tool.assessment.util.TextFormat;
 import org.sakaiproject.util.ResourceLoader;
-import org.sakaiproject.tool.assessment.integration.helper.ifc.CalendarServiceHelper;
 
 /**
  * <p>Title: Samigo</p>2
@@ -68,18 +86,17 @@ import org.sakaiproject.tool.assessment.integration.helper.ifc.CalendarServiceHe
  * @author Ed Smiley
  * @version $Id$
  */
-
+@Slf4j
 public class SavePublishedSettingsListener
 implements ActionListener
 {
-	private static final Logger LOG = LoggerFactory.getLogger(SavePublishedSettingsListener.class);
 	private static final GradebookServiceHelper gbsHelper =
 		IntegrationContextFactory.getInstance().getGradebookServiceHelper();
 	private static final boolean integrated =
 		IntegrationContextFactory.getInstance().isIntegrated();
 	private CalendarServiceHelper calendarService = IntegrationContextFactory.getInstance().getCalendarServiceHelper();
 	private final ResourceLoader rb= new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AssessmentSettingsMessages");
-	
+
 	public SavePublishedSettingsListener()
 	{
 	}
@@ -91,7 +108,7 @@ implements ActionListener
 				"publishedSettings");
 		// #1 - set Assessment
 		Long assessmentId = assessmentSettings.getAssessmentId();
-		LOG.debug("**** save assessment assessmentId ="+assessmentId.toString());
+		log.debug("**** save assessment assessmentId ="+assessmentId.toString());
 		PublishedAssessmentService assessmentService = new PublishedAssessmentService();
 		PublishedAssessmentFacade assessment = assessmentService.getPublishedAssessment(
 				assessmentId.toString());
@@ -103,8 +120,8 @@ implements ActionListener
 			retractNow = true;
 		}
 
-		EventTrackingService.post(EventTrackingService.newEvent("sam.pubsetting.edit", "siteId=" + AgentFacade.getCurrentSiteId() + ", publishedAssessmentId=" + assessmentId, true));
-		boolean error = checkPublishedSettings(assessmentService, assessmentSettings, context);
+		EventTrackingService.post(EventTrackingService.newEvent(SamigoConstants.EVENT_PUBLISHED_ASSESSMENT_SETTING_EDIT, "siteId=" + AgentFacade.getCurrentSiteId() + ", publishedAssessmentId=" + assessmentId, true));
+		boolean error = checkPublishedSettings(assessmentService, assessmentSettings, context, retractNow);
 		
 		if (error){
 			assessmentSettings.setOutcome("editPublishedAssessmentSettings");
@@ -112,6 +129,7 @@ implements ActionListener
 		}
 		boolean isTitleChanged = isTitleChanged(assessmentSettings, assessment);
 		boolean isScoringTypeChanged = isScoringTypeChanged(assessmentSettings, assessment);
+		boolean isCategoryChanged = isCategoryChanged(assessmentSettings, assessment);
 		SaveAssessmentSettings saveAssessmentSettings = new SaveAssessmentSettings();
 		setPublishedSettings(assessmentSettings, assessment, retractNow, saveAssessmentSettings);
 		
@@ -121,7 +139,7 @@ implements ActionListener
 			return;
 		}
 
-		boolean gbUpdated = updateGB(assessmentSettings, assessment, isTitleChanged, isScoringTypeChanged, context);
+		boolean gbUpdated = updateGB(assessmentSettings, assessment, isTitleChanged, isScoringTypeChanged, isCategoryChanged, context);
 		if (!gbUpdated){
 			assessmentSettings.setOutcome("editPublishedAssessmentSettings");
 			return;
@@ -138,8 +156,8 @@ implements ActionListener
 	    assessmentService.saveAssessment(assessment);
 	    assessmentService.deleteAllSecuredIP(assessment);
 	    // k. set ipAddresses
-	    HashSet ipSet = new HashSet();
-	    String ipAddresses = assessmentSettings.getIpAddresses();
+	    Set ipSet = new HashSet();
+	    String ipAddresses = assessmentSettings.getIpAddresses().replace(" ", "");
 	    if (ipAddresses == null)
 	      ipAddresses = "";
 	    
@@ -157,7 +175,7 @@ implements ActionListener
 	    SecureDeliveryServiceAPI secureDeliveryService = SamigoApiFactory.getInstance().getSecureDeliveryServiceAPI();
 	    assessment.updateAssessmentMetaData(SecureDeliveryServiceAPI.MODULE_KEY, assessmentSettings.getSecureDeliveryModule() );
 	    String encryptedPassword = secureDeliveryService.encryptPassword( assessmentSettings.getSecureDeliveryModule(), assessmentSettings.getSecureDeliveryModuleExitPassword() );
-	    assessment.updateAssessmentMetaData(SecureDeliveryServiceAPI.EXITPWD_KEY, TextFormat.convertPlaintextToFormattedTextNoHighUnicode(LOG, encryptedPassword ));
+	    assessment.updateAssessmentMetaData(SecureDeliveryServiceAPI.EXITPWD_KEY, TextFormat.convertPlaintextToFormattedTextNoHighUnicode(encryptedPassword ));
 	    
 	    // kk. remove the existing title decoration (if any) and then add the new one (if any)	    
 	    String titleDecoration = assessment.getAssessmentMetaDataByLabel( SecureDeliveryServiceAPI.TITLE_DECORATION );
@@ -181,7 +199,7 @@ implements ActionListener
 	    }
 	    catch( NullPointerException | NumberFormatException ex )
 	    {
-	        LOG.warn(ex.getMessage(), ex);
+	        log.warn(ex.getMessage(), ex);
 	        assessment.setInstructorNotification( SamigoConstants.NOTI_PREF_INSTRUCTOR_EMAIL_DEFAULT );
 	    }
 	    
@@ -189,16 +207,17 @@ implements ActionListener
 	    assessmentService.saveAssessment(assessment);
 	    
 		saveAssessmentSettings.updateAttachment(assessment.getAssessmentAttachmentList(), assessmentSettings.getAttachmentList(),(AssessmentIfc)assessment.getData(), false);
-		EventTrackingService.post(EventTrackingService.newEvent("sam.pubSetting.edit", "siteId=" + AgentFacade.getCurrentSiteId() + ", pubAssessmentId=" + assessmentSettings.getAssessmentId(), true));
+		EventTrackingService.post(EventTrackingService.newEvent(SamigoConstants.EVENT_PUBLISHED_ASSESSMENT_SETTING_EDIT, "siteId=" + AgentFacade.getCurrentSiteId() + ", pubAssessmentId=" + assessmentSettings.getAssessmentId(), true));
 	    
 		AuthorBean author = (AuthorBean) ContextUtil.lookupBean("author");
+		AuthorizationBean authorization = (AuthorizationBean) ContextUtil.lookupBean("authorization");
 		if ("editAssessment".equals(author.getFromPage())) {
 			// If go back to edit assessment page, need to refresh the title
 			AssessmentBean assessmentBean = (AssessmentBean) ContextUtil.lookupBean("assessmentBean");
 			assessmentBean.setTitle(assessmentSettings.getTitle());
 		}
 		else {
-			resetPublishedAssessmentsList(author, assessmentService);
+			resetPublishedAssessmentsList(author, authorization, assessmentService);
 		}
 		assessmentSettings.setOutcome(author.getFromPage());
 		
@@ -208,12 +227,12 @@ implements ActionListener
 	    PublishAssessmentListener publishAssessmentListener = new PublishAssessmentListener();
 	    PublishRepublishNotificationBean publishRepublishNotification = (PublishRepublishNotificationBean) ContextUtil.lookupBean("publishRepublishNotification");
 	    String notificationMessage = publishAssessmentListener.getNotificationMessage(publishRepublishNotification, assessmentSettings.getTitle(), assessmentSettings.getReleaseTo(), assessmentSettings.getStartDateString(), assessmentSettings.getPublishedUrl(),
-				assessmentSettings.getReleaseToGroupsAsString(), assessmentSettings.getDueDateString(), assessmentSettings.getTimedHours(), assessmentSettings.getTimedMinutes(), 
-				assessmentSettings.getUnlimitedSubmissions(), assessmentSettings.getSubmissionsAllowed(), assessmentSettings.getScoringType(), assessmentSettings.getFeedbackDelivery(), assessmentSettings.getFeedbackDateString());
+				assessmentSettings.getDueDateString(), assessmentSettings.getTimedHours(), assessmentSettings.getTimedMinutes(), 
+				assessmentSettings.getUnlimitedSubmissions(), assessmentSettings.getSubmissionsAllowed(), assessmentSettings.getScoringType(), assessmentSettings.getFeedbackDelivery(), assessmentSettings.getFeedbackDateString(), assessmentSettings.getFeedbackEndDateString(), assessmentSettings.getFeedbackScoreThreshold());
 	    calendarService.updateAllCalendarEvents(assessment, assessmentSettings.getReleaseTo(), assessmentSettings.getGroupsAuthorized(), rb.getString("calendarDueDatePrefix") + " ", addDueDateToCalendar, notificationMessage);
 	}
 
-	public boolean checkPublishedSettings(PublishedAssessmentService assessmentService, PublishedAssessmentSettingsBean assessmentSettings, FacesContext context) {
+	public boolean checkPublishedSettings(PublishedAssessmentService assessmentService, PublishedAssessmentSettingsBean assessmentSettings, FacesContext context, boolean retractNow) {
 		boolean error = false;
 		// Title
 		String assessmentName = assessmentSettings.getTitle();
@@ -224,7 +243,7 @@ implements ActionListener
 			error=true;
 		}
 		else {
-			assessmentName = TextFormat.convertPlaintextToFormattedTextNoHighUnicode(LOG, assessmentName.trim());
+			assessmentName = TextFormat.convertPlaintextToFormattedTextNoHighUnicode(assessmentName.trim());
 			// check if name is unique 
 			if(!assessmentService.publishedAssessmentTitleIsUnique(assessmentSettings.getAssessmentId().toString(), assessmentName)){
 				String nameUnique_err = ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.AssessmentSettingsMessages","assessmentName_error");
@@ -296,16 +315,16 @@ implements ActionListener
 			Date entryStartDate = entry.getStartDate();
 			Date entryDueDate = entry.getDueDate();
 			Date entryRetractDate = entry.getRetractDate();
-			if(!"".equals(entry.getUser())) {
+			if(StringUtils.isNotEmpty(entry.getUser())) {
 				extendedTimeUsers.add(entry.getUser());
 			}
 
-			if(!"".equals(entry.getGroup())) {
+			if(StringUtils.isNotEmpty(entry.getGroup())) {
 				extendedTimeGroups.add(entry.getGroup());
 			}
 			boolean isEntryRetractEarlierThanAvailable = false;
 
-			if(!entry.getUser().isEmpty() && !entry.getGroup().isEmpty()) {
+			if(StringUtils.isBlank(entry.getUser()) && StringUtils.isBlank(entry.getGroup())) {
 				String extendedTimeError1 = getExtendedTimeErrorString("extended_time_user_and_group_set", entry, assessmentSettings);
 				context.addMessage(null, new FacesMessage(FacesMessage.SEVERITY_WARN, extendedTimeError1, null));
 				error = true;
@@ -327,9 +346,8 @@ implements ActionListener
 					entry.setStartDate(new Date());
 				}
 				if(!isEntryRetractEarlierThanAvailable && (entryRetractDate != null && entryDueDate != null && entryRetractDate.before(entryDueDate))) {
-					String extendedTimeError4 = getExtendedTimeErrorString("extended_time_retract_earlier_than_due", entry, assessmentSettings);
-					context.addMessage(null, new FacesMessage(FacesMessage.SEVERITY_WARN, extendedTimeError4, null));
-					error = true;
+					// Retract date should be pushed to the due date
+					entry.setRetractDate(entryDueDate);
 				}
 			}
 			if(entryDueDate != null && entryStartDate != null && entryDueDate.equals(entryStartDate)) {
@@ -389,17 +407,16 @@ implements ActionListener
 
 	    // SAM-1088
 	    // if late submissions not allowed and late submission date is null, set late submission date to due date
+	    final boolean autoSubmitEnabled = ServerConfigurationService.getBoolean("samigo.autoSubmit.enabled", true);
 	    if (assessmentSettings.getLateHandling() != null && AssessmentAccessControlIfc.NOT_ACCEPT_LATE_SUBMISSION.toString().equals(assessmentSettings.getLateHandling()) &&
 	    		retractDate == null && dueDate != null && assessmentSettings.getAutoSubmit()) {
-	    	boolean autoSubmitEnabled = ServerConfigurationService.getBoolean("samigo.autoSubmit.enabled", false);
 	    	if (autoSubmitEnabled) {
 	    		assessmentSettings.setRetractDate(dueDate);
 	    	}
 	    }
 
 	    // if auto-submit is enabled, make sure late submission date is set
-	    if (assessmentSettings.getAutoSubmit() && retractDate == null) {
-	    	boolean autoSubmitEnabled = ServerConfigurationService.getBoolean("samigo.autoSubmit.enabled", false);
+	    if (assessmentSettings.getAutoSubmit() && retractDate == null && !retractNow) {
 	    	if (autoSubmitEnabled) {
 	    		String dateError4 = ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.AssessmentSettingsMessages","retract_required_with_auto_submit");
 	    		context.addMessage(null,new FacesMessage(FacesMessage.SEVERITY_WARN, dateError4, null));
@@ -426,7 +443,7 @@ implements ActionListener
 		catch (Exception ex)
 		{
 			// keep default
-			LOG.warn("Expecting Boolean hasTimeAssessment, got: " + time + ", exception: " + ex);
+			log.warn("Expecting Boolean hasTimeAssessment, got: " + time + ", exception: " + ex);
 		}
 		if(isTime && (assessmentSettings.getTimeLimit())==0){
 			String time_err = ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.AssessmentSettingsMessages", "timeSelect_error");
@@ -469,7 +486,7 @@ implements ActionListener
 
 		// check feedback - if at specific time then time should be defined.
 		if((assessmentSettings.getFeedbackDelivery()).equals("2")) {
-			if (assessmentSettings.getFeedbackDateString()==null || assessmentSettings.getFeedbackDateString().equals("")) {
+			if (StringUtils.isBlank(assessmentSettings.getFeedbackDateString())) {
 				error=true;
 				String  date_err=ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.AssessmentSettingsMessages","date_error");
 				context.addMessage(null,new FacesMessage(date_err));
@@ -478,6 +495,34 @@ implements ActionListener
 				String feedbackDateErr = ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.GeneralMessages","invalid_feedback_date");
 				context.addMessage(null,new FacesMessage(feedbackDateErr));
 				error=true;
+			}
+
+			if(StringUtils.isNotBlank(assessmentSettings.getFeedbackEndDateString()) && assessmentSettings.getFeedbackDate().after(assessmentSettings.getFeedbackEndDate())){
+				String feedbackDateErr = ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.GeneralMessages","invalid_feedback_ranges");
+				context.addMessage(null,new FacesMessage(feedbackDateErr));
+				error=true;
+			}
+
+			boolean scoreThresholdEnabled = assessmentSettings.getFeedbackScoreThresholdEnabled();
+			//Check if the value is empty
+			boolean scoreThresholdError = StringUtils.isBlank(assessmentSettings.getFeedbackScoreThreshold());
+			//If the threshold value is not empty, check if is a valid percentage
+			if (!scoreThresholdError) {
+				String submittedScoreThreshold = StringUtils.replace(assessmentSettings.getFeedbackScoreThreshold(), ",", ".");
+				try {
+					Double doubleInput = new Double(submittedScoreThreshold);
+					if(doubleInput.compareTo(new Double("0.0")) == -1 || doubleInput.compareTo(new Double("100.0")) == 1){
+						throw new Exception();
+					}
+				} catch(Exception ex) {
+					scoreThresholdError = true;
+				}
+			}
+			//If the threshold is enabled and is not valid, display an error.
+			if(scoreThresholdEnabled && scoreThresholdError){
+				error = true;
+				String str_err = ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.AssessmentSettingsMessages","feedback_score_threshold_required");
+				context.addMessage(null,new FacesMessage(str_err));
 			}
 		}
 		
@@ -507,11 +552,16 @@ implements ActionListener
 
 		return error;
 	}
-	
+
+	// Check if the category has changed.
+	private boolean isCategoryChanged(PublishedAssessmentSettingsBean assessmentSettings, PublishedAssessmentFacade assessment) {
+		return !StringUtils.equals(assessmentSettings.getCategorySelected(), String.valueOf(assessment.getCategoryId()));
+	}
+
 	// Check if title has been changed. If yes, update it.
 	private boolean isTitleChanged(PublishedAssessmentSettingsBean assessmentSettings, PublishedAssessmentFacade assessment) {
 		if (assessment.getTitle() != null && assessmentSettings.getTitle() != null) {
-			String assessmentTitle = TextFormat.convertPlaintextToFormattedTextNoHighUnicode(LOG, assessmentSettings.getTitle().trim());
+			String assessmentTitle = TextFormat.convertPlaintextToFormattedTextNoHighUnicode(assessmentSettings.getTitle().trim());
 				if (!assessment.getTitle().trim().equals(assessmentTitle)) {
 					assessment.setTitle(assessmentTitle);
 					return true;
@@ -547,18 +597,23 @@ implements ActionListener
 		control.setStartDate(assessmentSettings.getStartDate());
 		control.setDueDate(assessmentSettings.getDueDate());
 
-		if (assessmentSettings.getLateHandling() != null) {
-			control.setLateHandling(new Integer(assessmentSettings.getLateHandling()));
+		Integer lateHandling = assessmentSettings.getLateHandling() != null ? new Integer(assessmentSettings.getLateHandling()) : -1;
+		if (lateHandling > 0) {
+			control.setLateHandling(lateHandling);
 		}
 
-		if (retractNow)
-		{
+		if (retractNow && lateHandling.equals(AssessmentAccessControl.ACCEPT_LATE_SUBMISSION)) {
+			control.setRetractDate(new Date());
+			if (assessmentSettings.getDueDate() != null && assessmentSettings.getDueDate().after(new Date())) {
+				control.setDueDate(new Date());
+			}
+		}
+		else if (retractNow) {
+			assessmentSettings.setLateHandling(AssessmentAccessControlIfc.ACCEPT_LATE_SUBMISSION.toString());
+			control.setDueDate(new Date());
 			control.setRetractDate(new Date());
 		}
-		else if (assessmentSettings.getRetractDate() == null
-				 || "".equals(assessmentSettings.getRetractDateString()))
-		{
-			control.setLateHandling(AssessmentAccessControl.NOT_ACCEPT_LATE_SUBMISSION);
+		else if ("".equals(assessmentSettings.getRetractDateString())) {
 			control.setRetractDate(null);
 		}
 		else {
@@ -625,7 +680,7 @@ implements ActionListener
 			}
 			catch( NumberFormatException ex )
 			{
-				LOG.warn(ex.getMessage(), ex);
+				log.warn(ex.getMessage(), ex);
 				assessment.setInstructorNotification( SamigoConstants.NOTI_PREF_INSTRUCTOR_EMAIL_DEFAULT );
 			}
 		}
@@ -644,11 +699,11 @@ implements ActionListener
 		// e. set Submission Messages
 	    control.setSubmissionMessage(assessmentSettings.getSubmissionMessage());
 	    // g. set password
-	    control.setPassword(TextFormat.convertPlaintextToFormattedTextNoHighUnicode(LOG, StringUtils.trim(assessmentSettings.getPassword())));
+	    control.setPassword(TextFormat.convertPlaintextToFormattedTextNoHighUnicode(StringUtils.trim(assessmentSettings.getPassword())));
 	    // h. set finalPageUrl
 	    String finalPageUrl = "";
 	    if (assessmentSettings.getFinalPageUrl() != null) {
-	    	finalPageUrl = TextFormat.convertPlaintextToFormattedTextNoHighUnicode(LOG, assessmentSettings.getFinalPageUrl().trim());
+	    	finalPageUrl = TextFormat.convertPlaintextToFormattedTextNoHighUnicode(assessmentSettings.getFinalPageUrl().trim());
 	    	if (finalPageUrl.length() != 0 && !finalPageUrl.toLowerCase().startsWith("http")) {
 	    		finalPageUrl = "http://" + finalPageUrl;
 	    	}
@@ -672,6 +727,10 @@ implements ActionListener
 		    feedback.setFeedbackComponentOption(new Integer(assessmentSettings.getFeedbackComponentOption()));
 
 		control.setFeedbackDate(assessmentSettings.getFeedbackDate());
+		control.setFeedbackEndDate(assessmentSettings.getFeedbackEndDate());
+		//Set the value if the checkbox is selected, wipe the value otherwise.
+		String feedbackScoreThreshold = StringUtils.replace(assessmentSettings.getFeedbackScoreThreshold(), ",", ".");
+		control.setFeedbackScoreThreshold(assessmentSettings.getFeedbackScoreThresholdEnabled() ? new Double(feedbackScoreThreshold) : null);
 		// Feedback Components Students Can See
 		// if 'No feedback' (it corresponds to value 3) is selected, 
 		// all components are unchecked
@@ -707,25 +766,31 @@ implements ActionListener
 			evaluation.setAssessmentBase(assessment.getData());
 		}
 		if (assessmentSettings.getAnonymousGrading()) {
-			evaluation.setAnonymousGrading(1);
+			evaluation.setAnonymousGrading(EvaluationModelIfc.ANONYMOUS_GRADING);
 		}
 		else {
-			evaluation.setAnonymousGrading(2);
+			evaluation.setAnonymousGrading(EvaluationModelIfc.NON_ANONYMOUS_GRADING);
 		}
 	    
 		// If there is value set for toDefaultGradebook, we reset it
 		// Otherwise, do nothing
 		if (assessmentSettings.getToDefaultGradebook()) {
-			evaluation.setToGradeBook("1");
+			evaluation.setToGradeBook(Integer.toString(EvaluationModelIfc.TO_DEFAULT_GRADEBOOK));
 		}
 		else {
-			evaluation.setToGradeBook("2");
+			evaluation.setToGradeBook(Integer.toString(EvaluationModelIfc.NOT_TO_GRADEBOOK));
 		}
 
 		if (assessmentSettings.getScoringType() != null) {
 			evaluation.setScoringType(new Integer(assessmentSettings.getScoringType()));
 		}
 		assessment.setEvaluationModel(evaluation);
+
+		// Add category unless unassigned (-1) is selected or defaulted. CategoryId comes
+		// from the web page as a string representation of a the long cat id.
+		if (!StringUtils.equals(assessmentSettings.getCategorySelected(), "-1")) {
+			assessment.setCategoryId(Long.parseLong((assessmentSettings.getCategorySelected())));
+		}
 
 		// update ValueMap: it contains value for thh checkboxes in
 		// publishedSettings.jsp for: hasAvailableDate, hasDueDate,
@@ -737,15 +802,15 @@ implements ActionListener
 
 		ExtendedTimeFacade extendedTimeFacade = PersistenceService.getInstance().getExtendedTimeFacade();
 		extendedTimeFacade.saveEntriesPub(assessment.getData(), assessmentSettings.getExtendedTimes());
-		
+
 		// i. set Graphics
-		assessment.updateAssessmentMetaData(AssessmentMetaDataIfc.BGCOLOR, TextFormat.convertPlaintextToFormattedTextNoHighUnicode(LOG, assessmentSettings.getBgColor()));
-		assessment.updateAssessmentMetaData(AssessmentMetaDataIfc.BGIMAGE, TextFormat.convertPlaintextToFormattedTextNoHighUnicode(LOG, assessmentSettings.getBgImage()));
+		assessment.updateAssessmentMetaData(AssessmentMetaDataIfc.BGCOLOR, TextFormat.convertPlaintextToFormattedTextNoHighUnicode(assessmentSettings.getBgColor()));
+		assessment.updateAssessmentMetaData(AssessmentMetaDataIfc.BGIMAGE, TextFormat.convertPlaintextToFormattedTextNoHighUnicode(assessmentSettings.getBgImage()));
 
 	    // j. set objectives,rubrics,keywords
-		assessment.updateAssessmentMetaData(AssessmentMetaDataIfc.KEYWORDS, TextFormat.convertPlaintextToFormattedTextNoHighUnicode(LOG, assessmentSettings.getKeywords()));
-	    assessment.updateAssessmentMetaData(AssessmentMetaDataIfc.OBJECTIVES, TextFormat.convertPlaintextToFormattedTextNoHighUnicode(LOG, assessmentSettings.getObjectives()));
-	    assessment.updateAssessmentMetaData(AssessmentMetaDataIfc.RUBRICS, TextFormat.convertPlaintextToFormattedTextNoHighUnicode(LOG, assessmentSettings.getRubrics()));
+		assessment.updateAssessmentMetaData(AssessmentMetaDataIfc.KEYWORDS, TextFormat.convertPlaintextToFormattedTextNoHighUnicode(assessmentSettings.getKeywords()));
+	    assessment.updateAssessmentMetaData(AssessmentMetaDataIfc.OBJECTIVES, TextFormat.convertPlaintextToFormattedTextNoHighUnicode(assessmentSettings.getObjectives()));
+	    assessment.updateAssessmentMetaData(AssessmentMetaDataIfc.RUBRICS, TextFormat.convertPlaintextToFormattedTextNoHighUnicode(assessmentSettings.getRubrics()));
 	}
 
 	public boolean checkScore(PublishedAssessmentSettingsBean assessmentSettings, PublishedAssessmentFacade assessment, FacesContext context) {
@@ -764,7 +829,7 @@ implements ActionListener
 		return gbError;
 	}
 
-	public boolean updateGB(PublishedAssessmentSettingsBean assessmentSettings, PublishedAssessmentFacade assessment, boolean isTitleChanged, boolean isScoringTypeChanged, FacesContext context) {
+	public boolean updateGB(PublishedAssessmentSettingsBean assessmentSettings, PublishedAssessmentFacade assessment, boolean isTitleChanged, boolean isScoringTypeChanged, boolean isCategoryChanged, FacesContext context) {
 		//#3 - add or remove external assessment to gradebook
 		// a. if Gradebook does not exists, do nothing, 'cos setting should have been hidden
 		// b. if Gradebook exists, just call addExternal and removeExternal and swallow any exception. The
@@ -788,7 +853,7 @@ implements ActionListener
 			String assessmentName;
 			boolean gbItemExists = false;
 			try{
-				assessmentName = TextFormat.convertPlaintextToFormattedTextNoHighUnicode(LOG, assessmentSettings.getTitle().trim());
+				assessmentName = TextFormat.convertPlaintextToFormattedTextNoHighUnicode(assessmentSettings.getTitle().trim());
 				gbItemExists = gbsHelper.isAssignmentDefined(assessmentName, g);
 				if (assessmentSettings.getToDefaultGradebook() && gbItemExists && isTitleChanged){
 					String gbConflict_error=ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.AssessmentSettingsMessages","gbConflict_error");
@@ -797,7 +862,7 @@ implements ActionListener
 				}
 			}
 			catch(Exception e){
-				LOG.warn("external assessment in GB has the same title:"+e.getMessage());
+				log.warn("external assessment in GB has the same title:"+e.getMessage());
 			}
 			
 			if (assessmentSettings.getToDefaultGradebook()) {
@@ -815,29 +880,39 @@ implements ActionListener
 			if (evaluation.getToGradeBook()!=null && 
 					evaluation.getToGradeBook().equals(EvaluationModelIfc.TO_DEFAULT_GRADEBOOK.toString())){
 				Long categoryId = null;
-				if (isTitleChanged || isScoringTypeChanged) {
+				if (isTitleChanged || isScoringTypeChanged || isCategoryChanged) {
 					// Because GB use title instead of id, we remove and re-add to GB if title changes.
 					try {
-						LOG.debug("before gbsHelper.removeGradebook()");
+						log.debug("before gbsHelper.removeGradebook()");
 						categoryId = gbsHelper.getExternalAssessmentCategoryId(GradebookFacade.getGradebookUId(), assessment.getPublishedAssessmentId().toString(), g);
 						gbsHelper.removeExternalAssessment(GradebookFacade.getGradebookUId(), assessment.getPublishedAssessmentId().toString(), g);
 					} catch (Exception e1) {
 						// Should be the external assessment doesn't exist in GB. So we quiet swallow the exception. Please check the log for the actual error.
-						LOG.info("Exception thrown in updateGB():" + e1.getMessage());
+						log.info("Exception thrown in updateGB():" + e1.getMessage());
 					}
 				}
 				
-				if(gbItemExists && !(isTitleChanged || isScoringTypeChanged)){
+				if(gbItemExists && !(isTitleChanged || isScoringTypeChanged || isCategoryChanged)){
 					try {
 						gbsHelper.updateGradebook(assessment, g);
 					} catch (Exception e) {
-						LOG.warn("Exception thrown in updateGB():" + e.getMessage());
+                                               String gbConflict_error=ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.AssessmentSettingsMessages","gbConflict_error");
+                                               context.addMessage(null,new FacesMessage(gbConflict_error));
+                                               evaluation.setToGradeBook("0");
+						log.warn("Exception thrown in updateGB():" + e.getMessage());
+                                               return false;
 					}
 				}
 				else{
 					try{
-						LOG.debug("before gbsHelper.addToGradebook()");
-						gbsHelper.addToGradebook((PublishedAssessmentData)assessment.getData(), categoryId, g);
+						log.debug("before gbsHelper.addToGradebook()");
+
+						Long newCategory = null;
+						if (!StringUtils.equals(assessmentSettings.getCategorySelected(), "-1")) {
+							newCategory = Long.valueOf(assessmentSettings.getCategorySelected());
+						}
+
+						gbsHelper.addToGradebook((PublishedAssessmentData)assessment.getData(), newCategory, g);
 
 						// any score to copy over? get all the assessmentGradingData and copy over
 						GradingService gradingService = new GradingService();
@@ -853,11 +928,11 @@ implements ActionListener
 						}
 
 						//ArrayList list = gradingService.getAllSubmissions(assessment.getPublishedAssessmentId().toString());
-						LOG.debug("list size =" + list.size()	);
+						log.debug("list size =" + list.size()	);
 						for (int i=0; i<list.size();i++){
 							try {
 								AssessmentGradingData ag = (AssessmentGradingData)list.get(i);
-								LOG.debug("ag.scores " + ag.getTotalAutoScore());
+								log.debug("ag.scores " + ag.getTotalAutoScore());
 								// Send the average score if average was selected for multiple submissions
 								if (scoringType.equals(EvaluationModelIfc.AVERAGE_SCORE)) {							
 									// status = 5: there is no submission but grader update something in the score page
@@ -870,14 +945,15 @@ implements ActionListener
 									}
 								}
 								gbsHelper.updateExternalAssessmentScore(ag, g);
+								gbsHelper.updateExternalAssessmentComment(ag.getPublishedAssessmentId(),ag.getAgentId() , ag.getComments(), g);
 							}
 							catch (Exception e) {
-								LOG.warn("Exception occues in " + i + "th record. Message:" + e.getMessage());
+								log.warn("Exception occues in " + i + "th record. Message:" + e.getMessage());
 							}
 						}
 					}
 					catch(Exception e){
-						LOG.warn("oh well, must have been added already:"+e.getMessage());
+						log.warn("oh well, must have been added already:"+e.getMessage());
 					}
 				}
 			}
@@ -888,20 +964,20 @@ implements ActionListener
 							assessment.getPublishedAssessmentId().toString(), g);
 				}
 				catch(Exception e){
-					LOG.warn("*** oh well, looks like there is nothing to remove:"+e.getMessage());
+					log.warn("*** oh well, looks like there is nothing to remove:"+e.getMessage());
 				}
 			}
 		}
 		return true;
 	}
 
-	public void resetPublishedAssessmentsList(AuthorBean author,
+	public void resetPublishedAssessmentsList(AuthorBean author, AuthorizationBean authorization,
 			PublishedAssessmentService assessmentService) {
 		AuthorActionListener authorActionListener = new AuthorActionListener();
 		GradingService gradingService = new GradingService();
-		ArrayList publishedAssessmentList = assessmentService.getBasicInfoOfAllPublishedAssessments2(
+		List publishedAssessmentList = assessmentService.getBasicInfoOfAllPublishedAssessments2(
 				  PublishedAssessmentFacadeQueries.TITLE, true, AgentFacade.getCurrentSiteId());
-		authorActionListener.prepareAllPublishedAssessmentsList(author, gradingService, publishedAssessmentList);
+		authorActionListener.prepareAllPublishedAssessmentsList(author, authorization, gradingService, publishedAssessmentList);
 	}
 
 	private String getExtendedTimeErrorString(String key, ExtendedTime entry, PublishedAssessmentSettingsBean settings) {
@@ -963,5 +1039,3 @@ implements ActionListener
 		return setToReturn;
 	}
 }
-
-

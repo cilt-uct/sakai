@@ -25,16 +25,19 @@ import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.Stack;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.text.NumberFormat;
 import java.text.DecimalFormat;
-import org.apache.commons.lang.StringEscapeUtils;
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import org.apache.commons.validator.routines.UrlValidator;
+
 import org.w3c.dom.Element;
 
 import org.owasp.validator.html.AntiSamy;
@@ -42,6 +45,7 @@ import org.owasp.validator.html.CleanResults;
 import org.owasp.validator.html.Policy;
 import org.owasp.validator.html.PolicyException;
 import org.owasp.validator.html.ScanException;
+
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.tool.api.SessionManager;
@@ -50,21 +54,12 @@ import org.sakaiproject.util.ResourceLoader;
 import org.sakaiproject.util.Xml;
 import org.sakaiproject.util.api.FormattedText;
 
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
-import java.nio.charset.Charset;
-import java.nio.charset.CharsetDecoder;
-import java.nio.charset.CodingErrorAction;
-import java.nio.charset.CharacterCodingException;
-
 /**
  * FormattedText provides support for user entry of formatted text; the formatted text is HTML. This includes text formatting in user input such as bold, underline, and fonts.
  */
+@Slf4j
 public class FormattedTextImpl implements FormattedText
 {
-    /** Our log (commons). */
-    private static final Logger M_log = LoggerFactory.getLogger(FormattedTextImpl.class);
-
     private ServerConfigurationService serverConfigurationService = null;
     public void setServerConfigurationService(ServerConfigurationService serverConfigurationService) {
         this.serverConfigurationService = serverConfigurationService;
@@ -98,6 +93,10 @@ public class FormattedTextImpl implements FormattedText
     private boolean logErrors = false;
     private boolean cleanUTF8 = true;
     private String restrictReplacement = null;
+
+    private String referrerPolicy = null;
+    private static final String SAK_PROP_REFERRER_POLICY = "content.cleaner.referrer-policy";
+    private static final String SAKAI_REFERRER_POLICY_DEFAULT = "noopener";
 
     private final String DEFAULT_RESOURCECLASS = "org.sakaiproject.localization.util.ContentProperties";
     protected final String DEFAULT_RESOURCEBUNDLE = "org.sakaiproject.localization.bundle.content.content";
@@ -133,19 +132,21 @@ public class FormattedTextImpl implements FormattedText
             } else {
                 // probably the none case, but maybe also a case of invalid config....
                 if (!"none".equalsIgnoreCase(errorsHandling)) {
-                    M_log.warn("FormattedText error handling option invalid: "+errorsHandling+", defaulting to 'none'");
+                    log.warn("FormattedText error handling option invalid: "+errorsHandling+", defaulting to 'none'");
                 }
             }
             // allow one extra option to control logging if desired
             logErrors = serverConfigurationService.getBoolean("content.cleaner.errors.logged", logErrors);
-            M_log.info("FormattedText error handling: "+errorsHandling+
+            log.info("FormattedText error handling: "+errorsHandling+
                     "; log errors=" + logErrors + 
                     "; return to tool=" + returnErrorToTool + 
                     "; notify user=" + showErrorToUser + 
                     "; details to user=" + showDetailedErrorToUser);
+
+            referrerPolicy = serverConfigurationService.getString(SAK_PROP_REFERRER_POLICY, SAKAI_REFERRER_POLICY_DEFAULT);
         }
         if (useLegacy) {
-            M_log.error(
+            log.error(
                      "**************************************************\n"
                     +"* -----------<<<   WARNING   >>>---------------- *\n"
                     +"* The LEGACY Sakai content scanner is no longer  *\n"
@@ -169,19 +170,19 @@ public class FormattedTextImpl implements FormattedText
             File lowFile = new File(sakaiHomePath, "antisamy"+File.separator+"low-security-policy.xml");
             if (lowFile.canRead()) {
                 lowPolicyURL = lowFile.toURI().toURL();
-                M_log.info("AntiSamy found override for low policy file at: "+lowPolicyURL);
+                log.info("AntiSamy found override for low policy file at: "+lowPolicyURL);
             }
             File highFile = new File(sakaiHomePath, "antisamy"+File.separator+"high-security-policy.xml");
             if (highFile.canRead()) {
                 highPolicyURL = highFile.toURI().toURL();
-                M_log.info("AntiSamy found override for high policy file at: "+highPolicyURL);
+                log.info("AntiSamy found override for high policy file at: "+highPolicyURL);
             }
             Policy policyHigh = Policy.getInstance(highPolicyURL);
             antiSamyHigh = new AntiSamy(policyHigh);
             Policy policyLow = Policy.getInstance(lowPolicyURL);
             antiSamyLow = new AntiSamy(policyLow);
             // TODO should we attempt to fallback to internal files if the parsing/init fails of external ones?
-            M_log.info("AntiSamy INIT default security level ("+(defaultLowSecurity()?"LOW":"high")+"), policy files: high="+highPolicyURL+", low="+lowPolicyURL);
+            log.info("AntiSamy INIT default security level ("+(defaultLowSecurity()?"LOW":"high")+"), policy files: high="+highPolicyURL+", low="+lowPolicyURL);
         } catch (Exception e) {
             throw new IllegalStateException("Unable to startup the antisamy html code cleanup handler (cannot complete startup): " + e, e);
         }
@@ -273,9 +274,12 @@ public class FormattedTextImpl implements FormattedText
     /** Matches all anchor tags that have a target attribute. */
     public final Pattern M_patternAnchorTagWithTarget = Pattern.compile("([<]a\\s[^<>]*?)target=[^<>\\s]*([^<>]*?)[>]",
             Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-    /** Matches all anchor tags that do not have a target attribute. */
-    public final Pattern M_patternAnchorTagWithOutTarget = 
-            Pattern.compile("([<]a\\s)(?![^>]*target=)([^>]*?)[>]",
+    /** Matches all anchor tags that have target="_blank" not accompanied by a rel attribute. */
+    public final Pattern M_patternAnchorTagWithTargetBlankAndWithOutRel = Pattern.compile("([<]a\\s[^<>]*?)(?![^>]*rel[^<>\\s]*=)(target[^<>\\s]*=[^<>\\s]*_blank)([^<>]*?)[>]",
+            Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+    /** Matches all anchor tags that do not have a target attribute AND href not starting with # AND href exists */
+    public final Pattern M_patternAnchorTagWithOutTargetAndWithHrefAndHrefNotStartingWithHash =
+            Pattern.compile("([<]a\\s)(?=[^>]*href=)(?![^>]*href=\"#)(?![^>]*target=)([^>]*?)[>]",
                     Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
     /** Matches href attribute */
@@ -284,6 +288,8 @@ public class FormattedTextImpl implements FormattedText
     private Pattern M_patternHrefTarget = Pattern.compile("\\starget\\s*=\\s*(\".*?\"|'.*?')",
             Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
     private Pattern M_patternHrefTitle = Pattern.compile("\\stitle\\s*=\\s*(\".*?\"|'.*?')",
+            Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+    private Pattern M_patternHrefRel = Pattern.compile("\\srel\\s*=\\s*(\".*?\"|'.*?')",
             Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
     /* (non-Javadoc)
@@ -398,15 +404,28 @@ public class FormattedTextImpl implements FormattedText
 
                     // now replace all the A tags WITHOUT a target with _blank (to match the old functionality)
                     if (addBlankTargetToLinks() && StringUtils.isNotBlank(val)) {
-                        Matcher m = M_patternAnchorTagWithOutTarget.matcher(val);
+                        Matcher m = M_patternAnchorTagWithOutTargetAndWithHrefAndHrefNotStartingWithHash.matcher(val);
                         if (m.find()) {
-                            val = m.replaceAll("$1$2 target=\"_blank\">"); // adds a target to A tags without one
+                            if (StringUtils.isNotBlank(referrerPolicy)) {
+                                val = m.replaceAll("$1$2 target=\"_blank\" rel=\"" + referrerPolicy + "\">"); // adds a target and rel to A tags without one
+                            } else {
+                                val = m.replaceAll("$1$2 target=\"_blank\">"); // adds a target to A tags without one
+                            }
+                        }
+                    }
+
+                    // If there is a referrer policy defined...
+                    if (StringUtils.isNotBlank(referrerPolicy) && StringUtils.isNotBlank(val) ) {
+                        // If the A tag contains target="_blank" but is not accompanied by a rel attribute, add it
+                        Matcher m = M_patternAnchorTagWithTargetBlankAndWithOutRel.matcher(val);
+                        if (m.find()) {
+                            val = m.replaceAll("$1$2$3 rel=\"" + referrerPolicy + "\">"); // adds a rel to A tags without one
                         }
                     }
                 } catch (ScanException e) {
                     // this will match the legacy behavior
                     val = "";
-                    M_log.error("processFormattedText: Failure during scan of input html: " + e, e);
+                    log.error("processFormattedText: Failure during scan of input html: " + e, e);
                 } catch (PolicyException e) {
                     // this is an unrecoverable failure
                     throw new RuntimeException("Unable to access the antiSamy policy file: "+e, e);
@@ -422,7 +441,7 @@ public class FormattedTextImpl implements FormattedText
             // We catch all exceptions here because doing so will usually give the user the
             // opportunity to work around the issue, rather than causing a tool stack trace
 
-            M_log.error("Unexpected error processing text", e);
+            log.error("Unexpected error processing text", e);
             formattedTextErrors.append(getResourceLoader().getString("unknown_error_markup") + "\n");
             val = null;
         }
@@ -439,7 +458,7 @@ public class FormattedTextImpl implements FormattedText
                     session.setAttribute("userWarning", getResourceLoader().getString("content_has_been_cleaned"));
                 }
             }
-            if (logErrors && M_log.isInfoEnabled()) {
+            if (logErrors && log.isInfoEnabled()) {
                 // KNL-1075 - Logger errors if desired so they can be easily found
                 String user = "UNKNOWN";
                 try {
@@ -451,7 +470,7 @@ public class FormattedTextImpl implements FormattedText
                         // nothing to do in this case
                     }
                 }
-                M_log.info("FormattedText Error: user=" + user + " : " + formattedTextErrors.toString()
+                log.info("FormattedText Error: user=" + user + " : " + formattedTextErrors.toString()
                         +"\n  -- processing input:\n"+strFromBrowser
                         +"\n  -- resulting output:\n"+val
                         );
@@ -494,8 +513,7 @@ public class FormattedTextImpl implements FormattedText
      */
     private String escapeHtmlFormattedText(String value, boolean supressNewlines)
     {
-        if (value == null) return "";
-        if (value.length() == 0) return "";
+        if (StringUtils.isEmpty(value)) return StringUtils.EMPTY;
         if (cleanUTF8) {
             value = removeSurrogates(value);
         }
@@ -518,9 +536,22 @@ public class FormattedTextImpl implements FormattedText
         // added for KNL-526
 
         if (addBlankTargetToLinks()) {
-            Matcher m = M_patternAnchorTagWithOutTarget.matcher(value);
+            Matcher m = M_patternAnchorTagWithOutTargetAndWithHrefAndHrefNotStartingWithHash.matcher(value);
             if (m.find()) {
-                value = m.replaceAll("$1$2 target=\"_blank\">"); // adds a target to A tags without one
+                if (StringUtils.isNotBlank(referrerPolicy)) {
+                    value = m.replaceAll("$1$2 target=\"_blank\" rel=\"" + referrerPolicy + "\">"); // adds a target and rel to A tags without one
+                } else {
+                    value = m.replaceAll("$1$2 target=\"_blank\">"); // adds a target to A tags without one
+                }
+            }
+        }
+
+        // If there is a referrer policy defined...
+        if (StringUtils.isNotBlank(referrerPolicy) && StringUtils.isNotBlank(value)) {
+            // If the A tag contains target="_blank" but is not accompanied by a rel attribute, add it
+            Matcher m = M_patternAnchorTagWithTargetBlankAndWithOutRel.matcher(value);
+            if (m.find()) {
+                value = m.replaceAll("$1$2$3 rel=\"" + referrerPolicy + "\">"); // adds a rel to A tags without one
             }
         }
 
@@ -561,8 +592,8 @@ public class FormattedTextImpl implements FormattedText
          * they also depend on this handling a null input and converting it to null
          */
         String val = "";
-        if (value != null && !"".equals(value)) {
-            val = StringEscapeUtils.escapeHtml(value);
+        if (StringUtils.isNotEmpty(value)){
+            val = StringEscapeUtils.escapeHtml4(value);
             if (escapeNewlines && val != null) {
                 val = val.replace("\n", "<br/>\n");
             }
@@ -588,7 +619,7 @@ public class FormattedTextImpl implements FormattedText
     public String encodeUnicode(String value)
     {
         // TODO call method in each process routine
-        if (value == null) return "";
+        if (StringUtils.isEmpty(value)) return StringUtils.EMPTY;
 
         try
         {
@@ -619,8 +650,8 @@ public class FormattedTextImpl implements FormattedText
         }
         catch (Exception e)
         {
-            M_log.error("Validator.escapeHtml: ", e);
-            return "";
+            log.error("Validator.escapeHtml: ", e);
+            return StringUtils.EMPTY;
         }
     }
 
@@ -629,12 +660,8 @@ public class FormattedTextImpl implements FormattedText
      */
     public String unEscapeHtml(String value)
     {
-        if (value == null || value.equals("")) return "";
-        value = value.replaceAll("&lt;", "<");
-        value = value.replaceAll("&gt;", ">");
-        value = value.replaceAll("&amp;", "&");
-        value = value.replaceAll("&quot;", "\"");
-        return value;
+        if (StringUtils.isEmpty(value)) return StringUtils.EMPTY;
+        return StringEscapeUtils.unescapeHtml4(value);
     }
 
     /* (non-Javadoc)
@@ -645,6 +672,7 @@ public class FormattedTextImpl implements FormattedText
         String href = null;
         String hrefTarget = null;
         String hrefTitle = null;
+        String hrefRel = null;
 
         try {
             // get HREF value
@@ -662,8 +690,13 @@ public class FormattedTextImpl implements FormattedText
             if (matcher.find()) {
                 hrefTitle = matcher.group();
             }
+            // get rel value
+            matcher = M_patternHrefRel.matcher(anchor);
+            if (matcher.find()) {
+                hrefRel = matcher.group();
+            }
         } catch (Exception e) {
-            M_log.error("FormattedText.processAnchor ", e);
+            log.error("FormattedText.processAnchor ", e);
         }
 
         if (hrefTarget != null) {
@@ -675,9 +708,23 @@ public class FormattedTextImpl implements FormattedText
             hrefTarget = " target=\"" + hrefTarget + "\"";
         } else {
             // default to _blank if not set and configured to force
-            if (addBlankTargetToLinks()) {
+            // do not add if anchor link to same page (editor page)
+            if (addBlankTargetToLinks() &&
+                    !(href != null && href.startsWith("#"))) {
                 hrefTarget = " target=\"_blank\"";
             }
+        }
+
+        if (hrefRel != null) {
+            // use the existing one
+            hrefRel = hrefRel.trim();
+            hrefRel = hrefRel.replaceAll("\"", ""); // slightly paranoid
+            hrefRel = hrefRel.replaceAll(">", ""); // slightly paranoid
+            hrefRel = hrefRel.replaceFirst("rel=", ""); // slightly paranoid
+            hrefRel = " rel=\"" + hrefRel + "\"";
+        } else if (hrefRel == null && " target=\"_blank\"".equals(hrefTarget) && StringUtils.isNotBlank(referrerPolicy)) {
+            // target is _blank but has no rel attribute
+            hrefRel = " rel=\"" + referrerPolicy + "\"";
         }
 
         if (hrefTitle != null) {
@@ -695,13 +742,16 @@ public class FormattedTextImpl implements FormattedText
             href = href.replaceAll(">", "");
             href = href.replaceFirst("href=", "href=\"");
             newAnchor = "<a " + href + "\"" + hrefTarget;
+            if (hrefRel != null) {
+                newAnchor += hrefRel;
+            }
             if (hrefTitle != null)
             {
                 newAnchor += hrefTitle;
             }
             newAnchor += ">";
         } else {
-            M_log.debug("FormattedText.processAnchor href == null");
+            log.debug("FormattedText.processAnchor href == null");
             newAnchor = anchor; // default to the original one so we don't lose the anchor
         }
         return newAnchor;
@@ -711,23 +761,21 @@ public class FormattedTextImpl implements FormattedText
      * @see org.sakaiproject.util.api.FormattedText#processEscapedHtml(java.lang.String)
      */
     public String processEscapedHtml(final String source) {
-        if (source == null)
-            return "";
-        if (source.equals(""))
-            return "";
+        if (StringUtils.isEmpty(source))
+            return StringUtils.EMPTY;
 
         String html = null;
         try {
             // TODO call encodeUnicode in other process routine
             html = encodeUnicode(source);
         } catch (Exception e) {
-            M_log.error("FormattedText.processEscapedHtml encodeUnicode(source):"+e, e);
+            log.error("FormattedText.processEscapedHtml encodeUnicode(source):"+e, e);
         }
         try {
             // to use the FormattedText functions
             html = unEscapeHtml(html);
         } catch (Exception e) {
-            M_log.error("FormattedText.processEscapedHtml unEscapeHtml(Html):"+e, e);
+            log.error("FormattedText.processEscapedHtml unEscapeHtml(Html):"+e, e);
         }
 
         return processFormattedText(html, new StringBuilder());
@@ -786,7 +834,6 @@ public class FormattedTextImpl implements FormattedText
             if (value.indexOf(ref) >= 0)
             {
                 val = M_htmlCharacterEntityReferencesUnicode[i];
-                // System.out.println("REPLACING "+ref+" WITH UNICODE CHARACTER #"+val+" WHICH IN JAVA IS "+Character.toString(val));
                 value = value.replaceAll(ref, Character.toString(val));
             }
         }
@@ -1004,7 +1051,7 @@ public class FormattedTextImpl implements FormattedText
     }
 
     public String escapeJavascript(String value) {
-        if (value == null || "".equals(value)) return "";
+        if (StringUtils.isEmpty(value)) return StringUtils.EMPTY;
         try
         {
             StringBuilder buf = new StringBuilder();
@@ -1034,7 +1081,7 @@ public class FormattedTextImpl implements FormattedText
         }
         catch (Exception e)
         {
-            M_log.error("escapeJavascript: ", e);
+            log.error("escapeJavascript: ", e);
             return value;
         }
     }
@@ -1043,7 +1090,7 @@ public class FormattedTextImpl implements FormattedText
      * @see org.sakaiproject.util.api.FormattedText#escapeJsQuoted(java.lang.String)
      */
     public String escapeJsQuoted(String value) {
-        return StringEscapeUtils.escapeJavaScript(value);
+        return StringEscapeUtils.escapeEcmaScript(value);
     }
 
     /** These characters are escaped when making a URL */
@@ -1062,7 +1109,7 @@ public class FormattedTextImpl implements FormattedText
         try
         {
             // convert the string to bytes in UTF-8
-            byte[] bytes = id.getBytes("UTF-8");
+            byte[] bytes = id.getBytes(StandardCharsets.UTF_8.name());
 
             StringBuilder buf = new StringBuilder();
             for (int i = 0; i < bytes.length; i++)
@@ -1094,7 +1141,7 @@ public class FormattedTextImpl implements FormattedText
         }
         catch (UnsupportedEncodingException e)
         {
-            M_log.error("Validator.escapeUrl: ", e);
+            log.error("Validator.escapeUrl: ", e);
             return "";
         }
     }
@@ -1191,10 +1238,10 @@ public class FormattedTextImpl implements FormattedText
             retval = retval.replace("%25","%");
             return retval;
         } catch ( java.net.URISyntaxException e ) {
-            M_log.info("Failure during encode of href url: " + e);
+            log.info("Failure during encode of href url: " + e);
             return null;
         } catch ( java.net.MalformedURLException e ) {
-            M_log.info("Failure during encode of href url: " + e);
+            log.info("Failure during encode of href url: " + e);
             return null;
         }
     }
@@ -1236,7 +1283,7 @@ public class FormattedTextImpl implements FormattedText
 		try {
 			nbFormat = NumberFormat.getNumberInstance(new ResourceLoader().getLocale());
 		} catch (Exception e) {
-			M_log.error("Error while retrieving local number format, using default ", e);
+			log.error("Error while retrieving local number format, using default ", e);
 		}
 		if (maxFractionDigits!=null) nbFormat.setMaximumFractionDigits(maxFractionDigits);
 		if (minFractionDigits!=null) nbFormat.setMinimumFractionDigits(minFractionDigits);
@@ -1247,16 +1294,25 @@ public class FormattedTextImpl implements FormattedText
     public NumberFormat getNumberFormat() {
     	return getNumberFormat(null,null,null);
     }
+
+    /* (non-Javadoc)
+     * @see org.sakaiproject.util.api.FormattedText#getHTMLBody(java.lang.String)
+     */
+    public String getHtmlBody(String text) {
+        if (StringUtils.isBlank(text)) return text;
+        org.jsoup.nodes.Document document = org.jsoup.Jsoup.parse(text);
+        document.outputSettings().prettyPrint(false);
+        return document.body().html();
+    }
     
     public String getDecimalSeparator() {
 		return ((DecimalFormat)getNumberFormat()).getDecimalFormatSymbols().getDecimalSeparator()+"";
     }
     
-    
     /**
      * SAK-23567 Gets the shortened version of the title
      *
-     * Controlled by "site.title.cut.method", "site.title.maxlength", and "site.title.cut.separator"
+     * Controlled by "site.title.cut.method", "site.title.cut.maxlength", and "site.title.cut.separator"
      *
      * @param text the full site title (or desc) to shorten
      * @param maxLength maximum length for the string before it is shortened (and after shortening) (null defaults to 25)
@@ -1267,7 +1323,8 @@ public class FormattedTextImpl implements FormattedText
     public String makeShortenedText(String text, Integer maxLength, String separator, String cutMethod) {
         // this method defines the defaults for the 3 configuration options
         if (maxLength == null || maxLength < 1) {
-            maxLength = serverConfigurationService.getInt("site.title.maxlength", 25);
+        	// SAK-31985: New property needed to control the site title
+            maxLength = serverConfigurationService.getInt("site.title.cut.maxlength", serverConfigurationService.getInt("site.title.maxlength", 25));
         }
         if (separator == null) {
             separator = serverConfigurationService.getString("site.title.cut.separator", " ...");

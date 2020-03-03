@@ -20,6 +20,11 @@
 
 package org.sakaiproject.entitybroker.providers;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,9 +38,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
 import org.sakaiproject.api.privacy.PrivacyManager;
+import org.sakaiproject.authz.api.AuthzRealmLockException;
 import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.authz.api.Member;
@@ -63,22 +69,20 @@ import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
-import org.sakaiproject.site.api.SiteService.SelectionType;
-
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import org.sakaiproject.user.api.User;
+import org.sakaiproject.user.api.UserDirectoryService;
+import org.sakaiproject.user.api.UserNotDefinedException;
+import org.sakaiproject.userauditservice.api.UserAuditRegistration;
+import org.sakaiproject.userauditservice.api.UserAuditService;
 
 /**
  * This provides access to memberships as entities
  * 
  * @author Aaron Zeckoski (azeckoski @ gmail.com)
  */
+@Slf4j
 public class MembershipEntityProvider extends AbstractEntityProvider implements CoreEntityProvider,
 RESTful, ActionsExecutable {
-
-    private static Logger log = LoggerFactory.getLogger(MembershipEntityProvider.class);
 
     private SiteService siteService;
     private AuthzGroupService authzGroupService;
@@ -111,6 +115,16 @@ RESTful, ActionsExecutable {
     private SecurityService securityService;
     public void setSecurityService(SecurityService securityService){
     	this.securityService = securityService;
+    }
+
+    private static UserDirectoryService userDirectoryService;
+    public void setUserDirectoryService(UserDirectoryService userDirectoryService) {
+        this.userDirectoryService = userDirectoryService;
+    }
+
+    private static UserAuditRegistration userAuditRegistration;
+    public void setUserAuditRegistration(UserAuditRegistration userAuditRegistration) {
+        this.userAuditRegistration = userAuditRegistration;
     }
 
     public static String PREFIX = "membership";
@@ -175,6 +189,7 @@ RESTful, ActionsExecutable {
         } else if ("site".equals(siteId)) {
             siteId = view.getPathSegment(3);
         }
+
         if (siteId == null) {
             throw new IllegalArgumentException(
                     "siteId must be set in order to unjoin sites, set in params or in the URL /unjoin/site/siteId");
@@ -182,6 +197,11 @@ RESTful, ActionsExecutable {
         checkSiteSecurity(siteId);
         try {
             siteService.unjoin(siteId);
+            //String user = sessionManager().getCurrentSessionUserId();
+            String currentUserEid = userEntityProvider.getCurrentUser(view).getEid(); //userDirectoryService.getCurrentUser().getEid();
+            String roleId = siteService.getSite(siteId).getJoinerRole();
+            List<String[]> userAuditList = Collections.singletonList(new String[]{siteId,currentUserEid,roleId, UserAuditService.USER_AUDIT_ACTION_REMOVE,userAuditRegistration.getDatabaseSourceKey(),currentUserEid});
+            userAuditRegistration.addToUserAuditing(userAuditList);
         } catch (IdUnusedException e) {
             throw new IllegalArgumentException("The siteId provided (" + siteId
                     + ") could not be found: " + e, e);
@@ -221,7 +241,7 @@ RESTful, ActionsExecutable {
 
         List<EntityData> l = getEntities(new EntityReference(PREFIX, ""), new Search(
                 CollectionResolvable.SEARCH_LOCATION_REFERENCE, locationReference));
-        ActionReturn actionReturn = new ActionReturn(l, Formats.JSON);
+        ActionReturn actionReturn = new ActionReturn(l, view.getFormat());
         if ((extraResponseHeaders != null) && !extraResponseHeaders.isEmpty()) {
             actionReturn.setHeaders(extraResponseHeaders);
         }
@@ -498,8 +518,11 @@ RESTful, ActionsExecutable {
 
                     if (group.getMember(userId) == null && (role != null && role.getId() != null)) {
                         // Every user added via this EB is defined as non-provided
-                        group.addMember(userId, role.getId(), m != null ? m.isActive() : true,
-                                false);
+                        try {
+                            group.insertMember(userId, role.getId(), m != null ? m.isActive() : true, false);
+                        } catch (AuthzRealmLockException arle) {
+                            log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
+                        }
                     }
                 }
             } else if ("update".equals(action)) {
@@ -508,7 +531,11 @@ RESTful, ActionsExecutable {
                             + site.getId() + ") cannot be updated by the current user.");
                 }
                 // replace the current membership with the provided list
-                group.removeMembers();
+                try {
+                    group.deleteMembers();
+                } catch (AuthzRealmLockException arle) {
+                    log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
+                }
                 for (String user : userIds) {
                     String userId = userEntityProvider.findAndCheckUserId(null, user.trim());
                     if (userId == null) {
@@ -520,8 +547,12 @@ RESTful, ActionsExecutable {
 
                     if (group.getMember(userId) == null && (role != null && role.getId() != null)) {
                         // Every user added via this EB is defined as non-provided
-                        group.addMember(userId, role.getId(), m != null ? m.isActive() : true,
+                        try {
+                            group.insertMember(userId, role.getId(), m != null ? m.isActive() : true,
                                 false);
+                        } catch (AuthzRealmLockException arle) {
+                            log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
+                        }
                     }
                 }
             } else if ("remove".equals(action)) {
@@ -532,7 +563,11 @@ RESTful, ActionsExecutable {
                         log.warn("Unable to remove user ("+userId+") from group ("+group.getId()+") in site ("+site.getId()+"), could not find user record by id or eid");
                         continue;
                     }
-                    group.removeMember(userId);
+                    try {
+                        group.deleteMember(userId);
+                    } catch (AuthzRealmLockException arle) {
+                        log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
+                    }
                 }
             } else {
                 throw new IllegalArgumentException(
@@ -671,55 +706,52 @@ RESTful, ActionsExecutable {
                 throw new IllegalArgumentException("unable to find user with id ("+userId+")");
             }
 
-            boolean userCurrent = userId.equals(currentUserId);
-            if (!userCurrent && !developerHelperService.isUserAdmin(currentUserId)) {
-                throw new SecurityException(
-                        "Only admin can access other user memberships, current user ("
-                                + currentUserId + ") cannot access ref: " + userId);
-            }
 
             // Is there a faster way to do this? I really truly hope so -AZ
             // Only if you don't care about getMember details -MJ
-            try {
-            	if (!userCurrent) {
-            		developerHelperService.setCurrentUser("/user/" + userId);
-            	}
-            	List<Site> sites = siteService.getSites(SelectionType.ACCESS, null, null, null,
-            			null, null);
-            	if (includeMemberDetails) {
-            		for (Site site : sites) {
-            			Member sm = site.getMember(userId);
-            			if (sm != null) {
-            				if (includeSites) {
-            					EntityMember em = new EntityMember(sm, site.getReference(), null);
-            					members.add(em);
-            					siteTypes.put(em.getId(), site.getType());
-            				}
-            				// also check the groups
-            				if (includeGroups) {
-            					Collection<Group> groups = site.getGroups();
-            					for (Group group : groups) {
-            						Member gm = group.getMember(userId);
-            						if (gm != null) {
-            							members.add(new EntityMember(gm, group.getReference(), null));
-            						}
-            					}
-            				}
-            			}
-            		} 
-            	}
-            	else  {
-         		    Map <String, String> userRoles = authzGroupService.getUserRoles(userId, null);
-            		for (Site site : sites) {
-            			EntityMember em = new EntityMember(userId, site.getReference(), userRoles.get(site.getReference()), true, null); 
-            			members.add(em);
-            		}
-            	}
+            List<Site> allUserSites = siteService.getUserSites(false, userId);
+            List<Site> sites = new ArrayList<>();
+
+            boolean userCurrent = userId.equals(currentUserId);
+            if (!userCurrent) {
+                // Filter out sites where the logged in user of EB does not have view roster status.
+                for (Site site : allUserSites) {
+                    if (siteService.allowViewRoster(site.getId())) {
+                        sites.add(site);
+                    }
+                }
+            } else {
+                sites = allUserSites;
             }
-            finally {
-            	if (!userCurrent) {
-            		developerHelperService.restoreCurrentUser();
-            	}
+
+            if (includeMemberDetails) {
+                for (Site site : sites) {
+                    Member sm = site.getMember(userId);
+                    if (sm != null) {
+                        if (includeSites) {
+                            EntityMember em = new EntityMember(sm, site.getReference(), null);
+                            members.add(em);
+                            siteTypes.put(em.getId(), site.getType());
+                        }
+                        // also check the groups
+                        if (includeGroups) {
+                            Collection<Group> groups = site.getGroups();
+                            for (Group group : groups) {
+                                Member gm = group.getMember(userId);
+                                if (gm != null) {
+                                    members.add(new EntityMember(gm, group.getReference(), null));
+                                }
+                            }
+                        }
+                    }
+                } 
+            }
+            else  {
+                Map <String, String> userRoles = authzGroupService.getUserRoles(userId, null);
+                for (Site site : sites) {
+                    EntityMember em = new EntityMember(userId, site.getReference(), userRoles.get(site.getReference()), true, null); 
+                    members.add(em);
+                }
             }
         }
         ArrayList<EntityMember> sortedMembers = new ArrayList<EntityMember>();
@@ -825,11 +857,15 @@ RESTful, ActionsExecutable {
 
         checkSiteSecurity(sg.site.getId());
 
+        String[] userAuditString;
+        List<String[]> userAuditList = new ArrayList<>();
+        
         // check for a batch add
         String[] userIds = checkForBatch(params, userId);
-        // now add all the memberships
         String memberId = "";
         String currentUserId = developerHelperService.getCurrentUserId();
+        
+        // now add all the memberships
         for (int i = 0; i < userIds.length; i++) {
             if (sg.group == null) {
                 // site only
@@ -847,10 +883,25 @@ RESTful, ActionsExecutable {
                     sg.site.addMember(userIds[i], roleId, active, false);
                     saveSiteMembership(sg.site);
                 }
+                User user = null;
+                // Add change to user_audits_log table.
+                try {
+                    user = userDirectoryService.getUser(userIds[i]);
+                }
+                catch (UserNotDefinedException e) {
+                    log.error(".createEntity: User with id {} doesn't exist", userIds[i]);
+                }
+                userAuditString = new String[]{sg.site.getId(),user.getEid(), roleId, UserAuditService.USER_AUDIT_ACTION_ADD,
+                                               userAuditRegistration.getDatabaseSourceKey(), userDirectoryService.getCurrentUser().getEid()};
+                userAuditList.add(userAuditString);
             } else {
                 // group and site
-                sg.group.addMember(userIds[i], roleId, active, false);
-                saveGroupMembership(sg.site, sg.group);
+                try {
+                    sg.group.insertMember(userIds[i], roleId, active, false);
+                    saveGroupMembership(sg.site, sg.group);
+                } catch (AuthzRealmLockException arle) {
+                    log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
+                }
             }
             if (i == 0) {
                 EntityMember em = new EntityMember(userIds[0], sg.locationReference, roleId,
@@ -858,6 +909,11 @@ RESTful, ActionsExecutable {
                 memberId = em.getId();
             }
         }
+
+        if (userAuditList.size() > 0) {
+            userAuditRegistration.addToUserAuditing(userAuditList);
+        }
+
         if (userIds.length > 1) {
             log.info("Batch add memberships: siteId="
                     + ((sg.site == null) ? "none" : sg.site.getId()) + ",groupId="
@@ -889,19 +945,48 @@ RESTful, ActionsExecutable {
         }
         String userId = parts[0];
         SiteGroup sg = findLocationByReference(parts[1]);
+
+        String[] userAuditString;
+        List<String[]> userAuditList = new ArrayList<>();
+        
         // check for a batch
         String[] userIds = checkForBatch(params, userId);
         for (int i = 0; i < userIds.length; i++) {
             if (sg.group == null) {
                 // site only
-                sg.site.removeMember(userIds[i]);
-                saveSiteMembership(sg.site);
+                Site site = sg.site;
+
+                // Add change to user_audits_log table.
+                String role = site.getUserRole(userIds[i]).getId();
+                String userEid = null;
+                try {
+                    userEid = userDirectoryService.getUser(userIds[i]).getEid();
+                } catch (UserNotDefinedException e) {
+                    log.error(".deleteEntity: User with id {} not defined", userIds[i]);
+                }
+
+                userAuditString = new String[]{site.getId(), userEid, role, UserAuditService.USER_AUDIT_ACTION_REMOVE,
+                                               userAuditRegistration.getDatabaseSourceKey(), userDirectoryService.getCurrentUser().getEid()};
+                userAuditList.add(userAuditString);
+
+                site.removeMember(userIds[i]);
+                saveSiteMembership(site);
+
             } else {
                 // group and site
-                sg.group.removeMember(userIds[i]);
-                saveGroupMembership(sg.site, sg.group);
+                try {
+                    sg.group.deleteMember(userIds[i]);
+                    saveGroupMembership(sg.site, sg.group);
+                } catch (AuthzRealmLockException arle) {
+                    log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
+                }
             }
         }
+
+        if (userAuditList.size() > 0) {
+            userAuditRegistration.addToUserAuditing(userAuditList);
+        }
+
         if (userIds.length > 1) {
             log.info("Batch remove memberships: siteId="
                     + ((sg.site == null) ? "none" : sg.site.getId()) + ",groupId="
@@ -1190,7 +1275,11 @@ RESTful, ActionsExecutable {
 
             if (group.getUserRole(userId) == null && role.getId() != null) {
                 // Every user added via this EB is defined as non-provided
-                group.addMember(userId, role.getId(), m != null ? m.isActive() : true, false);
+                try {
+                    group.insertMember(userId, role.getId(), m != null ? m.isActive() : true, false);
+                } catch (AuthzRealmLockException arle) {
+                    log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
+                }
             }
         }
     }

@@ -4,19 +4,27 @@
     xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee http://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd">
   <display-name>IMS Services Servlet</display-name>
 
+  <filter>
+    <filter-name>sakai.request</filter-name>
+    <filter-class>org.sakaiproject.util.RequestFilter</filter-class>
+  </filter>
+
+  <filter-mapping>
+    <filter-name>sakai.request</filter-name>
+    <url-pattern>/*</url-pattern>
+    <dispatcher>REQUEST</dispatcher>
+    <dispatcher>FORWARD</dispatcher>
+    <dispatcher>INCLUDE</dispatcher>
+  </filter-mapping>
+
   <servlet>
     <servlet-name>ServiceServlet</servlet-name>
     <servlet-class>org.sakaiproject.blti.ServiceServlet</servlet-class>
   </servlet>
 
   <servlet>
-    <servlet-name>LTI2Service</servlet-name>
-    <servlet-class>org.sakaiproject.lti2.LTI2Service</servlet-class>
-  </servlet>
-
-  <servlet>
-    <servlet-name>SampleServlet</servlet-name>
-    <servlet-class>org.tsugi.lti2.LTI2Servlet</servlet-class>
+    <servlet-name>LTI13Service</servlet-name>
+    <servlet-class>org.sakaiproject.lti13.LTI13Servlet</servlet-class>
   </servlet>
 
   <servlet-mapping>
@@ -25,15 +33,10 @@
   </servlet-mapping>
 
   <servlet-mapping>
-    <servlet-name>LTI2Service</servlet-name>
-    <url-pattern>/lti2/*</url-pattern>
+    <servlet-name>LTI13Service</servlet-name>
+    <url-pattern>/lti13/*</url-pattern>
   </servlet-mapping>
 
-  <servlet-mapping>
-    <servlet-name>SampleServlet</servlet-name>
-    <url-pattern>/sample/*</url-pattern>
-  </servlet-mapping>
-  
   <listener>
     <listener-class>org.sakaiproject.util.SakaiContextLoaderListener</listener-class>
   </listener>

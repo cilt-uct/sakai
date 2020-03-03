@@ -22,7 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.profile2.dao.ProfileDao;
 import org.sakaiproject.profile2.model.Person;
 import org.sakaiproject.profile2.model.ProfilePrivacy;
@@ -31,20 +31,20 @@ import org.sakaiproject.profile2.model.WallItemComment;
 import org.sakaiproject.profile2.types.EmailType;
 import org.sakaiproject.profile2.types.PrivacyType;
 import org.sakaiproject.profile2.util.ProfileConstants;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Implementation of ProfileWallLogic API for Profile2 wall.
  * 
  * @author d.b.robinson@lancaster.ac.uk
+ * @deprecated The wall functionality will be removed from Sakai for the 13 release.
  */
+@Deprecated
+@Slf4j
 public class ProfileWallLogicImpl implements ProfileWallLogic {
-	
-	private static final Logger log = LoggerFactory.getLogger(ProfileWallLogic.class);
-		
+
 	/**
 	 * Creates a new instance of <code>ProfileWallLogicImpl</code>.
 	 */
@@ -381,7 +381,7 @@ public class ProfileWallLogicImpl implements ProfileWallLogic {
 		if (EmailType.EMAIL_NOTIFICATION_WALL_POST_MY_NEW == messageType) {
 			emailTemplateKey = ProfileConstants.EMAIL_TEMPLATE_KEY_WALL_POST_MY_NEW;
 			
-			replacementValues.put("profileLink", linkLogic.getEntityLinkToProfileWall(toUuid));
+			replacementValues.put("wallLink", linkLogic.getEntityLinkToProfileWall(toUuid));
 		}
 		
 		if (null != emailTemplateKey) {
