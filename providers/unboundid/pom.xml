@@ -17,7 +17,7 @@
   <inceptionYear>2005</inceptionYear>
   <packaging>jar</packaging>
   <properties>
-    <sakai.unboundid.version>5.0.0</sakai.unboundid.version>
+    <sakai.unboundid.version>5.0.1</sakai.unboundid.version>
     <deploy.target />
   </properties>
   <dependencies>
