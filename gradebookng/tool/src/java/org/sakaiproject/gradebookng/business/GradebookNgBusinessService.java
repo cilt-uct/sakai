@@ -37,6 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.apache.commons.lang.StringUtils;
 
+import org.apache.wicket.Application;
 import org.sakaiproject.authz.api.Member;
 import org.sakaiproject.authz.api.SecurityAdvisor;
 import org.sakaiproject.authz.api.SecurityAdvisor.SecurityAdvice;
@@ -1001,7 +1002,7 @@ public class GradebookNgBusinessService {
 
 		// Setup the course grade formatter
 		// TODO we want the override except in certain cases. Can we hard code this?
-		final CourseGradeFormatter courseGradeFormatter = new CourseGradeFormatter(gradebook, role, isCourseGradeVisible, settings.getShowPoints(), true);
+		final CourseGradeFormatter courseGradeFormatter = Application.exists() ? new CourseGradeFormatter(gradebook, role, isCourseGradeVisible, settings.getShowPoints(), true) : null;
 
 		for (final GbUser student : gbStudents) {
 			// Create and add the user info
@@ -1011,7 +1012,9 @@ public class GradebookNgBusinessService {
 			String uid = student.getUserUuid();
 			final CourseGrade courseGrade = courseGrades.get(uid);
 			final GbCourseGrade gbCourseGrade = new GbCourseGrade(courseGrades.get(uid));
-			gbCourseGrade.setDisplayString(courseGradeFormatter.format(courseGrade));
+			if (courseGradeFormatter != null) {
+				gbCourseGrade.setDisplayString(courseGradeFormatter.format(courseGrade));
+			}
 			sg.setCourseGrade(gbCourseGrade);
 
 			// Add to map so we can build on it later
