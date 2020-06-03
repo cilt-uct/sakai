@@ -5444,4 +5444,25 @@ public class SakaiScript extends AbstractWebService {
 
     }
 
+    @WebMethod
+    @Path("/nyuArchiveSite")
+    @Produces("text/plain")
+    @GET
+    public String nyuArchiveSite(
+            @WebParam(name = "sessionid", partName = "sessionid") @QueryParam("sessionid") String sessionid,
+            @WebParam(name = "siteid", partName = "siteid") @QueryParam("siteid") String siteid){
+        Session session = establishSession(sessionid);
+
+        System.err.println("Working on archive for site: " + siteid);
+
+        try {
+            String msg = archiveService.archive(siteid);
+            System.err.println("Successfully archived site: " + siteid + " - " + msg);
+        } catch (Exception e) {
+            log.error("WS nyuArchiveSite(): Failed to archive site: " + siteid + " - " + e.getMessage(), e);
+            return e.getClass().getName() + " : " + e.getMessage();
+        }
+
+        return "success";
+    }
 }
