@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *             http://opensource.org/licenses/ecl2
+ * http://opensource.org/licenses/ecl2
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -327,7 +327,7 @@ public class GradeSummaryTablePanel extends BasePanel {
 							sakaiRubricButton.add(AttributeModifier.append("evaluated-item-id", assignment.getId() + "." + studentUuid));
 							sakaiRubricButton.add(AttributeModifier.append("token", rubricsService.generateJsonWebToken(RubricsConstants.RBCS_TOOL_GRADEBOOKNG)));
 
-							addInstructorAttributeOrHide(sakaiRubricButton, assignment.getId(), studentUuid, showingStudentView);
+							addInstructorAttributeOrHide(sakaiRubricButton, assignment, studentUuid, showingStudentView);
 
 							if (assignment.getId() != null) {
 								sakaiRubricButton.add(AttributeModifier.append("entity-id", assignment.getId()));
@@ -344,7 +344,7 @@ public class GradeSummaryTablePanel extends BasePanel {
 							sakaiRubricButton.add(AttributeModifier.append("display", "icon"));
 							sakaiRubricButton.add(AttributeModifier.append("token", rubricsService.generateJsonWebToken(RubricsConstants.RBCS_TOOL_GRADEBOOKNG)));
 
-							addInstructorAttributeOrHide(sakaiRubricButton, assignment.getId(), studentUuid, showingStudentView);
+							addInstructorAttributeOrHide(sakaiRubricButton, assignment, studentUuid, showingStudentView);
 
 							if (assignment.isExternallyMaintained()) {
 								sakaiRubricButton.add(AttributeModifier.append("tool-id", RubricsConstants.RBCS_TOOL_ASSIGNMENT));
@@ -391,15 +391,15 @@ public class GradeSummaryTablePanel extends BasePanel {
 		});
 	}
 
-	private void addInstructorAttributeOrHide(WebMarkupContainer sakaiRubricButton, Long assignmentId, String studentId, boolean showingStudentView) {
+	private void addInstructorAttributeOrHide(WebMarkupContainer sakaiRubricButton, Assignment assignment, String studentId, boolean showingStudentView) {
 
 		if (!showingStudentView && (GradeSummaryTablePanel.this.getUserRole() == GbRole.INSTRUCTOR
 					|| GradeSummaryTablePanel.this.getUserRole() == GbRole.TA)) {
 			sakaiRubricButton.add(AttributeModifier.append("instructor", true));
 		} else {
-			GradeDefinition gradeDefinition = businessService.getGradeForStudentForItem(studentId, assignmentId);
-			if (gradeDefinition.getGrade() == null) {
-				sakaiRubricButton.setVisible(false);
+			GradeDefinition gradeDefinition = businessService.getGradeForStudentForItem(studentId, assignment.getId());
+			if (assignment.isExternallyMaintained() && gradeDefinition.getGrade() == null) {
+				sakaiRubricButton.add(AttributeModifier.replace("force-preview", true));
 			}
 		}
 	}
@@ -431,5 +431,5 @@ public class GradeSummaryTablePanel extends BasePanel {
 			"<script src=\"/rubrics-service/webcomponents/sakai-rubrics-utils.js" + version + "\"></script>"));
 		response.render(StringHeaderItem.forString(
 			"<script type=\"module\" src=\"/rubrics-service/webcomponents/rubric-association-requirements.js" + version + "\"></script>"));
-    }
+	}
 }
