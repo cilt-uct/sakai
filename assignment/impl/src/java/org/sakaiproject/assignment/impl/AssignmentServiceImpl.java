@@ -599,7 +599,12 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
 
     @Override
     public Collection<Group> getGroupsAllowAddAssignment(String context) {
-        return getGroupsAllowFunction(SECURE_ADD_ASSIGNMENT, context, null);
+        return getGroupsAllowAddAssignment(context, null);
+    }
+
+    @Override
+    public Collection<Group> getGroupsAllowAddAssignment(String context, String userId) {
+        return getGroupsAllowFunction(SECURE_ADD_ASSIGNMENT, context, userId);
     }
 
     @Override
@@ -652,10 +657,15 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
 
     @Override
     public boolean allowAddAssignment(String context) {
+        return allowAddAssignment(context, null);
+    }
+
+    @Override
+    public boolean allowAddAssignment(String context, String userId) {
         String resourceString = AssignmentReferenceReckoner.reckoner().context(context).reckon().getReference();
-        if (permissionCheck(SECURE_ADD_ASSIGNMENT, resourceString, null)) return true;
+        if (permissionCheck(SECURE_ADD_ASSIGNMENT, resourceString, userId)) return true;
         // if not, see if the user has any groups to which adds are allowed
-        return (!getGroupsAllowAddAssignment(context).isEmpty());
+        return (!getGroupsAllowAddAssignment(context, userId).isEmpty());
     }
 
     @Override
@@ -823,15 +833,18 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
             assignmentFromXml.setId(null);
             assignmentFromXml.setContext(siteId);
 
-            if (serverConfigurationService.getBoolean(SAK_PROP_ASSIGNMENT_IMPORT_SUBMISSIONS, false) && !assignmentFromXml.getIsGroup()) {
-                // here it's imported exactly as it was including all submissions
-                // except for group submissions as group ids will never be the same
+            if (serverConfigurationService.getBoolean(SAK_PROP_ASSIGNMENT_IMPORT_SUBMISSIONS, false)) {
                 Set<AssignmentSubmission> submissions = assignmentFromXml.getSubmissions();
-                List<String> submitters = submissions.stream().flatMap(s -> s.getSubmitters().stream()).map(AssignmentSubmissionSubmitter::getSubmitter).collect(Collectors.toList());
-                // only if all submitters can be found do we import submissions
-                if (submitters.containsAll(userDirectoryService.getUsers(submitters))) {
-                    submissions.forEach(s -> s.setId(null));
-                    submissions.forEach(s -> s.getSubmitters().forEach(u -> u.setId(null)));
+                if (submissions != null) {
+	                List<String> submitters = submissions.stream().flatMap(s -> s.getSubmitters().stream()).map(AssignmentSubmissionSubmitter::getSubmitter).collect(Collectors.toList());
+	                // only if all submitters can be found do we import submissions
+	                if (submitters.containsAll(userDirectoryService.getUsers(submitters).stream().map(user -> user.getId()).collect(Collectors.toList()))) {
+                        submissions.forEach(s -> s.setId(null));
+                        submissions.forEach(s -> s.getSubmitters().forEach(u -> u.setId(null)));
+	                }
+                }
+                else {
+	                assignmentFromXml.setSubmissions(new HashSet<>());
                 }
             } else {
                 // here it is importing the assignment only
