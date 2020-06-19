@@ -222,7 +222,6 @@ $(document).ready(function() {
     newGradeItemPopoverMessage: TrimPath.parseTemplate(
        $("#newGradeItemPopoverMessage").html().trim().toString()),
   };
-
 });
 
 GbGradeTable.courseGradeRenderer = function (instance, td, row, col, prop, value, cellProperties) {
