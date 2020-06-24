@@ -218,7 +218,7 @@
     <pluginRepository>
         <id>opencast</id>
         <name>Opencast Repo</name>
-        <url>http://nexus.opencast.org/nexus/content/groups/public</url>
+        <url>https://nexus.opencast.org/nexus/content/groups/public</url>
         <snapshots>
             <enabled>false</enabled>
         </snapshots>
@@ -268,7 +268,7 @@
     <repository>
         <id>opencast</id>
         <name>Opencast Repo</name>
-        <url>http://nexus.opencast.org/nexus/content/groups/public</url>
+        <url>https://nexus.opencast.org/nexus/content/groups/public</url>
         <snapshots>
             <enabled>false</enabled>
         </snapshots>
@@ -1875,11 +1875,11 @@
           <version>3.0.1</version>
           <configuration>
             <links>
-              <link>http://docs.oracle.com/javase/8/docs/api/</link>
-              <link>http://docs.oracle.com/javaee/5/api/</link>
-              <link>http://junit.sourceforge.net/javadoc/</link>
-              <link>http://commons.apache.org/proper/commons-lang/javadocs/api-release/</link>
-              <link>http://commons.apache.org/proper/commons-collections/apidocs/</link>
+              <link>https://docs.oracle.com/javase/8/docs/api/</link>
+              <link>https://docs.oracle.com/javaee/5/api/</link>
+              <link>https://junit.sourceforge.net/javadoc/</link>
+              <link>https://commons.apache.org/proper/commons-lang/javadocs/api-release/</link>
+              <link>https://commons.apache.org/proper/commons-collections/apidocs/</link>
             </links>
             <breakiterator>true</breakiterator>
             <minmemory>256m</minmemory>
