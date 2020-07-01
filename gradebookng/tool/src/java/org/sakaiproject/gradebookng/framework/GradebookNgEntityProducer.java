@@ -17,13 +17,16 @@ package org.sakaiproject.gradebookng.framework;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang.StringUtils;
+import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.entity.api.EntityManager;
 import org.sakaiproject.entity.api.EntityProducer;
@@ -239,6 +242,19 @@ public class GradebookNgEntityProducer implements EntityProducer, EntityTransfer
 
 		// <GradebookItems>
 		List<Assignment> gradebookItems = this.gradebookNgBusinessService.getGradebookAssignments(siteId);
+
+		// apply external app blacklist
+		List<String> blacklistedExternalAppNames = Arrays.asList(ServerConfigurationService.getString("gradebookng.archive.external_app_name.blacklist", "").split(","));
+		gradebookItems = gradebookItems.stream().filter(item -> {
+			return !item.isExternallyMaintained() || !blacklistedExternalAppNames.contains(item.getExternalAppName());
+		}).collect(Collectors.toList());
+
+		// apply external app whitelist
+		List<String> whitelistedExternalAppNames = Arrays.asList(ServerConfigurationService.getString("gradebookng.archive.external_app_name.whitelist", "").split(","));
+		gradebookItems = gradebookItems.stream().filter(item -> {
+			return !item.isExternallyMaintained() || whitelistedExternalAppNames.contains(item.getExternalAppName());
+		}).collect(Collectors.toList());
+
 		Element gradebookItemsEl = doc.createElement("GradebookItems");
 		for (Assignment gradebookItem : gradebookItems) {
 			Element gradebookItemEl = doc.createElement("GradebookItem");
@@ -266,69 +282,6 @@ public class GradebookNgEntityProducer implements EntityProducer, EntityTransfer
 			gradebookItemsEl.appendChild(gradebookItemEl);
 		}
 		root.appendChild(gradebookItemsEl);
-
-		// <StudentGrades>
-		Element gradesEl = doc.createElement("StudentGrades");
-		List<GbStudentGradeInfo> gradebookGrades = gradebookNgBusinessService.buildGradeMatrix(gradebookItems);
-		for(GbStudentGradeInfo studentGrades : gradebookGrades) {
-			Element studentEl = doc.createElement("Student");
-			studentEl.setAttribute("userId", studentGrades.getStudentUuid());
-			studentEl.setAttribute("eid", studentGrades.getStudentEid());
-			for (Assignment gradebookItem : gradebookItems) {
-				Element gradeEl = doc.createElement("ItemGrade");
-				gradeEl.setAttribute("gradebookItemId", String.valueOf(gradebookItem.getId()));
-				if (studentGrades.getGrades().containsKey(gradebookItem.getId())) {
-					GbGradeInfo gradeInfo = studentGrades.getGrades().get(gradebookItem.getId());
-					gradeEl.setAttribute("grade", String.valueOf(gradeInfo.getGrade()));
-					gradeEl.setAttribute("instructorComments", gradeInfo.getGradeComment());
-				} else {
-					gradeEl.setAttribute("grade", "");
-					gradeEl.setAttribute("instructorComments", "");
-				}
-				studentEl.appendChild(gradeEl);
-			}
-			if (settings.getCategoryType() > 1) {
-				for (CategoryDefinition category : settings.getCategories()) {
-					Element categoryAverageEl = doc.createElement("CategoryAverage");
-					categoryAverageEl.setAttribute("categoryId", String.valueOf(category.getId()));
-					if (studentGrades.getCategoryAverages().containsKey(category.getId())) {
-						categoryAverageEl.setAttribute("average", String.valueOf(studentGrades.getCategoryAverages().get(category.getId())));
-					} else {
-						categoryAverageEl.setAttribute("average", "");
-					}
-					studentEl.appendChild(categoryAverageEl);
-				}
-			}
-			Element courseGradeEl = doc.createElement("CourseGrade");
-			CourseGrade courseGrade = studentGrades.getCourseGrade().getCourseGrade(); // lol
-			if (courseGrade != null) {
-				courseGradeEl.setAttribute("pointsEarned", String.valueOf(courseGrade.getPointsEarned()));
-				if (settings.getCategoryType() == 3) {
-					// not available for weighted categories
-					courseGradeEl.setAttribute("totalPointsPossible", "");
-				} else if (settings.isCoursePointsDisplayed()) {
-					Double totalPointsPossible = courseGrade.getTotalPointsPossible();
-					if (totalPointsPossible != null && totalPointsPossible < 0) {
-						totalPointsPossible = 0.0;
-					}
-					courseGradeEl.setAttribute("totalPointsPossible", String.valueOf(totalPointsPossible));
-				} else {
-					courseGradeEl.setAttribute("totalPointsPossible", "");
-				}
-				courseGradeEl.setAttribute("calculatedGrade", courseGrade.getCalculatedGrade());
-				courseGradeEl.setAttribute("mappedGrade", courseGrade.getMappedGrade());
-				courseGradeEl.setAttribute("override", courseGrade.getEnteredGrade());
-				if (courseGrade.getDateRecorded() != null) {
-					courseGradeEl.setAttribute("dateRecorded", dateFormat.format(courseGrade.getDateRecorded()));
-				} else {
-					courseGradeEl.setAttribute("dateRecorded", "");
-				}
-			}
-			studentEl.appendChild(courseGradeEl);
-			gradesEl.appendChild(studentEl);
-		}
-
-		root.appendChild(gradesEl);
 
 		stack.peek().appendChild(root);
 
