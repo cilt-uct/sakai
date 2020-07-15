@@ -20,9 +20,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -32,8 +32,10 @@ import java.util.Stack;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
+import org.sakaiproject.authz.api.Member;
 import org.sakaiproject.authz.api.SecurityAdvisor;
 import org.sakaiproject.authz.cover.SecurityService;
+import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.content.api.ContentResource;
 import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.entity.api.EntityProducer;
@@ -46,20 +48,33 @@ import org.sakaiproject.entity.cover.EntityManager;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.exception.TypeException;
+import org.sakaiproject.section.api.facade.Role;
+import org.sakaiproject.site.api.Site;
+import org.sakaiproject.site.cover.SiteService;
 import org.sakaiproject.tool.assessment.data.dao.assessment.Answer;
 import org.sakaiproject.tool.assessment.data.dao.assessment.AssessmentData;
 import org.sakaiproject.tool.assessment.data.dao.assessment.ItemData;
 import org.sakaiproject.tool.assessment.data.dao.assessment.ItemText;
+import org.sakaiproject.tool.assessment.data.dao.questionpool.QuestionPoolItemData;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentIfc;
+import org.sakaiproject.tool.assessment.data.ifc.questionpool.QuestionPoolDataIfc;
 import org.sakaiproject.tool.assessment.facade.AssessmentFacade;
 import org.sakaiproject.tool.assessment.facade.SectionFacade;
 import org.sakaiproject.tool.assessment.shared.api.qti.QTIServiceAPI;
+import org.sakaiproject.tool.assessment.shared.api.questionpool.QuestionPoolServiceAPI;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerConfigurationException;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 
 @Slf4j
 public class AssessmentEntityProducer implements EntityTransferrer,
@@ -152,6 +167,9 @@ public class AssessmentEntityProducer implements EntityTransferrer,
             element.appendChild(assessmentXml);
 
         }
+
+        exportQuestionPools(siteId, archivePath);
+
         stack.pop();
 		return results.toString();
 	}
@@ -377,6 +395,76 @@ public class AssessmentEntityProducer implements EntityTransferrer,
 					service.saveAssessment(assessmentFacade);
 				}
 			}
+		}
+	}
+
+	private void exportQuestionPools(String siteId, String archivePath) {
+		String xmlPath = archivePath + File.separator + "samigo_question_pools.xml";
+		QuestionPoolServiceAPI questionPoolService = (QuestionPoolServiceAPI)ComponentManager.get("org.sakaiproject.tool.assessment.shared.api.questionpool.QuestionPoolServiceAPI");
+
+		try {
+			Site site = SiteService.getSite(siteId);
+			String maintainRole = site.getMaintainRole();
+			List<String> instructorIds = new ArrayList<>();
+			for (Member member : site.getMembers()) {
+				if (maintainRole.equals(member.getRole().getId())) {
+					instructorIds.add(member.getUserId());
+				}
+			}
+
+			DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+			DocumentBuilder builder = factory.newDocumentBuilder();
+			Document doc = builder.newDocument();
+			Element questionPools = doc.createElement("QuestionPools");
+
+			for (String instructorId : instructorIds) {
+				for (Object poolObj : questionPoolService.getAllPools(instructorId)) {
+					Element questionPool = doc.createElement("QuestionPool");
+					QuestionPoolDataIfc pool = (QuestionPoolDataIfc)poolObj;
+					questionPool.setAttribute("title", pool.getTitle());
+					questionPool.setAttribute("id", String.valueOf(pool.getQuestionPoolId()));
+					questionPool.setAttribute("ownerId", instructorId);
+					if (pool.getParentPoolId() != null && pool.getParentPoolId() != 0L) {
+						questionPool.setAttribute("parentId", String.valueOf(pool.getParentPoolId()));
+					}
+					questionPool.setAttribute("sourcebank_ref", String.format("%d::%s", pool.getQuestionPoolId(), pool.getTitle()));
+					for (Object itemObj : pool.getQuestionPoolItems()) {
+						QuestionPoolItemData item = (QuestionPoolItemData)itemObj;
+						NodeList nodes = qtiService.getExportedItem(String.valueOf(item.getItemId()), QTI_VERSION).getChildNodes();
+						for (int i=0; i<nodes.getLength(); ++i) {
+							Element node = (Element) nodes.item(i);
+							questionPool.appendChild(doc.adoptNode(node));
+						}
+					}
+					questionPools.appendChild(questionPool);
+				}
+			}
+
+			doc.appendChild(questionPools);
+
+			FileWriter writer = null;
+			try {
+				File file = new File(xmlPath);
+				writer = new FileWriter(file);
+
+				TransformerFactory tFactory = TransformerFactory.newInstance();
+				Transformer transformer = tFactory.newTransformer();
+
+				DOMSource source = new DOMSource(doc);
+				StreamResult result = new StreamResult(writer);
+				transformer.transform(source, result);
+			} catch (IOException | TransformerException e) {
+				e.printStackTrace();
+			} finally {
+				if (writer != null) {
+					try {
+						writer.close();
+					} catch (Throwable t) {
+					}
+				}
+			}
+		} catch (ParserConfigurationException | IdUnusedException e) {
+			e.printStackTrace();
 		}
 	}
 }
