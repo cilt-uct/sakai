@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2017 The Apereo Foundation
+ * Copyright (c) 2003-2017 The Apereo Foundation
  *
  * Licensed under the Educational Community License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,20 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.sakaiproject.sitestats.test.perf.mock;
 
-import org.sakaiproject.site.api.Site;
+package org.sakaiproject.lessonbuildertool.ccexport;
 
-public abstract class MockSite implements Site {
+import java.util.ArrayList;
+import java.util.List;
 
-    private String siteId;
+import lombok.Data;
 
-    public MockSite(String siteId) {
-        this.siteId = siteId;
-    }
-
-    public String getId() {
-        return siteId;
-    }
-
+@Data
+public class CCAssignmentItem {
+    private String id;
+    private String title;
+    private String instructions;
+    private List<String> attachments = new ArrayList<>();
+    private boolean gradable = false;
+    private boolean forPoints = false;
+    private double maxPoints = 0D;
+    private boolean allowText = false;
+    private boolean allowFile = false;
 }

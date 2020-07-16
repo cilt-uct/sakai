@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2017 The Apereo Foundation
+ * Copyright (c) 2003-2020 The Apereo Foundation
  *
  * Licensed under the Educational Community License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,10 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.sakaiproject.sitestats.test.perf.mock;
+package org.sakaiproject.lessonbuildertool.ccexport;
 
-import org.sakaiproject.event.api.UsageSessionService;
+import java.util.ArrayList;
+import java.util.List;
 
-public abstract class MockUsageSessionService implements UsageSessionService {
+import lombok.Data;
 
+@Data
+public class CCForumItem {
+    private String id;
+    private String title;
+    private String text;
+    private List<CCForumAttachment> attachments = new ArrayList<>();
 }

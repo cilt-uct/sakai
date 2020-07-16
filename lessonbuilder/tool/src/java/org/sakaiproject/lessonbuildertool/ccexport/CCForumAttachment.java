@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2017 The Apereo Foundation
+ * Copyright (c) 2003-2020 The Apereo Foundation
  *
  * Licensed under the Educational Community License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,15 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.sakaiproject.sitestats.test.perf.mock;
+package org.sakaiproject.lessonbuildertool.ccexport;
 
-import org.sakaiproject.exception.IdUnusedException;
-import org.sakaiproject.site.api.Site;
-import org.sakaiproject.site.api.SiteService;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 
-public abstract class MockSiteService implements SiteService {
-
-	public Site getSite(String id) throws IdUnusedException {
-		return StubUtils.stubClass(MockSite.class);
-	}
+@Data
+@AllArgsConstructor
+public class CCForumAttachment {
+    private String logical;
+    private String physical;
 }

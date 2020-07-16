@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2017 The Apereo Foundation
+ * Copyright (c) 2003-2020 The Apereo Foundation
  *
  * Licensed under the Educational Community License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,23 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.sakaiproject.sitestats.test.perf.mock;
+package org.sakaiproject.lessonbuildertool.ccexport;
 
-import org.sakaiproject.sitestats.api.event.EventRegistryService;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 
-import java.util.Arrays;
-import java.util.List;
-
-public abstract class MockEventRegistryService implements EventRegistryService {
-
-	@Override
-	public List<String> getServerEventIds() {
-		return Arrays.asList(new String[]{"site.add", "site.del", "user.add", "user.del", "user.login"});
-	}
-
-	@Override
-	public boolean isRegisteredEvent(String eventId) {
-		return  !getServerEventIds().contains(eventId);
-	}
-
+@Data
+@AllArgsConstructor
+public class CCFeedbackItem {
+    private String id;
+    private String text;
 }

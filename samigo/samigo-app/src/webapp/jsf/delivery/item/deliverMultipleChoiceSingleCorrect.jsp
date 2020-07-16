@@ -43,7 +43,7 @@ should be included in file importing DeliveryMessages
   <%@ include file="/jsf/delivery/item/attachment.jsp" %>
 
 
-  <h:panelGroup layout="block" styleClass="mcscFixUp">
+  <h:panelGroup layout="block" styleClass="mcscFixUp mcscFixUpClassForSelector-#{question.itemData.itemId}">
   <h:panelGroup layout="block" styleClass="mcscFixUpSource">
   <h:selectOneRadio id="samigo-mc-select-one" required="false" value="#{question.responseId}" layout="pagedirection"
                     disabled="#{delivery.actionString=='reviewAssessment' || delivery.actionString=='gradeAssessment'}" >
@@ -56,15 +56,15 @@ should be included in file importing DeliveryMessages
     <h:panelGroup rendered="#{delivery.feedback eq 'true' && delivery.feedbackComponent.showCorrectResponse && !delivery.noFeedback=='true'}">
       <h:panelGroup id="image"
         rendered="#{(selection.answer.isCorrect eq 'true' || (question.itemData.partialCreditFlag && selection.answer.partialCredit gt 0)) && selection.response}"
-        styleClass="icon-sakai--check feedBackCheck">
+        styleClass="icon-sakai--check feedBackCheck imageClassForSelector">
       </h:panelGroup>
       <h:panelGroup id="image2"
         rendered="#{((question.itemData.partialCreditFlag && (selection.answer.partialCredit le 0 || selection.answer.partialCredit == null)) || (selection.answer.isCorrect != null && !selection.answer.isCorrect)) && selection.response}"
-        styleClass="icon-sakai--delete feedBackCross">
+        styleClass="icon-sakai--delete feedBackCross imageClassForSelector">
       </h:panelGroup>
       <h:panelGroup id="noimage"
         rendered="#{!selection.response}"
-        styleClass="icon-sakai--check feedBackNone">
+        styleClass="icon-sakai--check feedBackNone imageClassForSelector">
       </h:panelGroup>
     </h:panelGroup>
     <h:panelGroup layout="block" styleClass="mcscFixUpTarget"></h:panelGroup>
@@ -90,7 +90,7 @@ should be included in file importing DeliveryMessages
 
   </h:panelGroup>
   <script>
-    $('div.mcscFixUp').each(function(index1,elBlockToFix) {
+      <h:outputText value="var elBlockToFix = $('.mcscFixUpClassForSelector-#{question.itemData.itemId}');" escape="false" />
       $(elBlockToFix).find('div.mcscFixUpSource td').each(function(index,elLabelAndInputToMove) {
         var contentsToMove = $(elLabelAndInputToMove).contents();
         if (typeof contentsToMove !== 'undefined') {
@@ -98,7 +98,7 @@ should be included in file importing DeliveryMessages
         }
       });
       $(elBlockToFix).find('li.samigo-question-answer label').each(function(index2, answerLabel) {
-        var properImage = $(answerLabel).parent('li').find(':span')[0];
+        var properImage = $(answerLabel).parent('li').find('span.imageClassForSelector')[0];
         if (typeof properImage !== 'undefined') {
           answerLabel.append(properImage);
         }
@@ -112,7 +112,6 @@ should be included in file importing DeliveryMessages
         }
       });
       $(elBlockToFix).find('div.mcscFixUpSource').remove();
-    });
   </script>
 
   <h:panelGroup
