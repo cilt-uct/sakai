@@ -59,3 +59,7 @@
 	path = groupmanager
 	url = https://github.com/cilt-uct/group-manager.git
 	branch = 20.x
+[external "gradebook1"]
+	path = gradebook1
+	url = https://github.com/cilt-uct/gradebook1.git
+	branch = 20.x
