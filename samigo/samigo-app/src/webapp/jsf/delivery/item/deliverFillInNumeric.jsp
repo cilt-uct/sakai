@@ -170,7 +170,7 @@ $( document ).ready(function() {
   });
 
   $('.fillInNumericInput').focus( function() {
-    $(this).popover();
+    validateFinInput(this);
   });
 
   $('.fillInNumericInput').change( function() {
