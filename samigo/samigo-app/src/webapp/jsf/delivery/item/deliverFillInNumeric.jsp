@@ -159,7 +159,8 @@ var finFormatError = '<h:outputText value="#{deliveryMessages.fin_invalid_charac
 $( document ).ready(function() {
 
   $('.fillInNumericInput').each( function() {
-    validateFinInput(this);
+    $(this).attr('data-toggle', 'popover');
+    $(this).attr('data-content', finFormatError);
   });
 
   $('#takeAssessmentForm').submit(function() {
@@ -170,11 +171,13 @@ $( document ).ready(function() {
   });
 
   $('.fillInNumericInput').focus( function() {
-    validateFinInput(this);
+    $(this).popover();
   });
 
   $('.fillInNumericInput').change( function() {
-    validateFinInput(this);
+    if (validateFinInput(this)) {
+      $(this).popover('destroy');
+    }
   });
 
   $('.fillInNumericInput').keyup( throttle(function(){
@@ -189,7 +192,9 @@ $( document ).ready(function() {
     ) {
         return;
     }
-    validateFinInput(this);
+    if (validateFinInput(this)) {
+      $(this).popover('destroy');
+    }
   }));
 
 });
