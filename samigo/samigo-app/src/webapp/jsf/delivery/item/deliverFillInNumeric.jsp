@@ -159,7 +159,7 @@ var finFormatError = '<h:outputText value="#{deliveryMessages.fin_invalid_charac
 $( document ).ready(function() {
 
   $('.fillInNumericInput').each( function() {
-    $(this).attr('data-toggle', 'popover'); 
+    $(this).attr('data-toggle', 'popover');
     $(this).attr('data-content', finFormatError);
   });
 
@@ -175,7 +175,9 @@ $( document ).ready(function() {
   });
 
   $('.fillInNumericInput').change( function() {
-    validateFinInput(this);
+    if (validateFinInput(this)) {
+      $(this).popover('destroy');
+    }
   });
 
   $('.fillInNumericInput').keyup( throttle(function(){
@@ -190,7 +192,9 @@ $( document ).ready(function() {
     ) {
         return;
     }
-    validateFinInput(this);
+    if (validateFinInput(this)) {
+      $(this).popover('destroy');
+    }
   }));
 
 });
