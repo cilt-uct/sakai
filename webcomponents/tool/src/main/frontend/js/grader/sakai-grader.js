@@ -94,9 +94,8 @@ export class SakaiGrader extends gradableDataMixin(SakaiElement) {
     // by default.
     if (!this.submittedTextMode && this._submission.submittedAttachments
           && this._submission.submittedAttachments.length > 0) {
-      this.selectedAttachment = this._submission.submittedAttachments[0];
-      let preview = this.submission.previewableAttachments[this.selectedAttachment.ref];
-      this.selectedPreview = preview || this.selectedAttachment;
+      this.selectedAttachmentRef = this._submission.submittedAttachments[0];
+      this.selectedPreviewRef = this.submission.previewableAttachments[this.selectedAttachmentRef] || this.selectedAttachmentRef;
     }
 
     if (this.feedbackCommentEditor) {
