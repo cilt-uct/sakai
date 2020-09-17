@@ -148,6 +148,9 @@ public class SiteZipper {
             fOut.close();
             zip.close();
         }
+
+		// NYU touch a state file indicating ready for import
+		FileUtils.writeStringToFile(new File(m_storagePath + siteId + "-" + timestamp + ".ready"), "");
 		
 		return true;
 	}
