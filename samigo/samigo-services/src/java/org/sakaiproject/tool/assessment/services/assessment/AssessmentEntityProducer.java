@@ -20,6 +20,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -37,6 +41,8 @@ import org.sakaiproject.authz.api.SecurityAdvisor;
 import org.sakaiproject.authz.cover.SecurityService;
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.content.api.ContentResource;
+import org.sakaiproject.content.cover.ContentHostingService;
+import org.sakaiproject.db.cover.SqlService;
 import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.entity.api.EntityProducer;
 import org.sakaiproject.entity.api.EntityTransferrer;
@@ -51,12 +57,11 @@ import org.sakaiproject.exception.TypeException;
 import org.sakaiproject.section.api.facade.Role;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.cover.SiteService;
-import org.sakaiproject.tool.assessment.data.dao.assessment.Answer;
-import org.sakaiproject.tool.assessment.data.dao.assessment.AssessmentData;
-import org.sakaiproject.tool.assessment.data.dao.assessment.ItemData;
-import org.sakaiproject.tool.assessment.data.dao.assessment.ItemText;
+import org.sakaiproject.tool.assessment.data.dao.assessment.*;
 import org.sakaiproject.tool.assessment.data.dao.questionpool.QuestionPoolItemData;
+import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentAttachmentIfc;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentIfc;
+import org.sakaiproject.tool.assessment.data.ifc.assessment.AttachmentIfc;
 import org.sakaiproject.tool.assessment.data.ifc.questionpool.QuestionPoolDataIfc;
 import org.sakaiproject.tool.assessment.facade.AssessmentFacade;
 import org.sakaiproject.tool.assessment.facade.SectionFacade;
@@ -166,6 +171,19 @@ public class AssessmentEntityProducer implements EntityTransferrer,
             }
             element.appendChild(assessmentXml);
 
+            for (String resourceId : fetchAllAttachmentResourceIds(data.getAssessmentId())) {
+                ContentResource resource = null;
+                try {
+                    resource = ContentHostingService.getResource(resourceId);
+                } catch (PermissionException e) {
+                    log.warn("Permission error fetching attachment: " + resourceId);
+                } catch (TypeException e) {
+                    log.warn("TypeException error fetching attachment: " + resourceId);
+                } catch (IdUnusedException e) {
+                    log.warn("IdUnusedException error fetching attachment: " + resourceId);
+                }
+                attachments.add(EntityManager.newReference(resource.getReference()));
+            }
         }
 
         exportQuestionPools(siteId, archivePath);
@@ -467,4 +485,65 @@ public class AssessmentEntityProducer implements EntityTransferrer,
 			e.printStackTrace();
 		}
 	}
+
+	private List<String> fetchAllAttachmentResourceIds(Long assessmentId) {
+        List<String> result = new ArrayList<>();
+
+        try {
+            Connection db = SqlService.borrowConnection();
+
+            try {
+                PreparedStatement ps = db.prepareStatement("select resourceid from SAM_ATTACHMENT_T where assessmentid = ?");
+                ps.setLong(1, assessmentId);
+                ResultSet rs = ps.executeQuery();
+                try {
+                    while(rs.next()) {
+                        result.add(rs.getString("resourceid"));
+                    }
+                } finally {
+                    rs.close();
+                }
+
+                ps = db.prepareStatement("select resourceid from SAM_ATTACHMENT_T where sectionid in (select sectionid from SAM_SECTION_T where assessmentid = ?)");
+                ps.setLong(1, assessmentId);
+                rs = ps.executeQuery();
+                try {
+                    while(rs.next()) {
+                        result.add(rs.getString("resourceid"));
+                    }
+                } finally {
+                    rs.close();
+                }
+
+                ps = db.prepareStatement("select resourceid from SAM_ATTACHMENT_T where itemid in (select itemid from SAM_ITEM_T where sectionid in (select sectionid from SAM_SECTION_T where assessmentid = ?))");
+                ps.setLong(1, assessmentId);
+                rs = ps.executeQuery();
+                try {
+                    while(rs.next()) {
+                        result.add(rs.getString("resourceid"));
+                    }
+                } finally {
+                    rs.close();
+                }
+
+                ps = db.prepareStatement("select resourceid from SAM_ATTACHMENT_T where itemtextid in (select itemtextid from sam_itemtext_t where itemid in (select itemid from SAM_ITEM_T where sectionid in (select sectionid from SAM_SECTION_T where assessmentid = ?)))");
+                ps.setLong(1, assessmentId);
+                rs = ps.executeQuery();
+                try {
+                    while(rs.next()) {
+                        result.add(rs.getString("resourceid"));
+                    }
+                } finally {
+                    rs.close();
+                }
+            } finally {
+                SqlService.returnConnection(db);
+            }
+        } catch (SQLException e) {
+            log.error(e.getMessage());
+            e.printStackTrace();
+        }
+
+        return result;
+    }
 }
