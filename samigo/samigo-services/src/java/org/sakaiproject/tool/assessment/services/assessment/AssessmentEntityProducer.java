@@ -486,62 +486,52 @@ public class AssessmentEntityProducer implements EntityTransferrer,
 		}
 	}
 
-	private List<String> fetchAllAttachmentResourceIds(Long assessmentId) {
+    private void loadResourceIds(Connection db, String query, Long assessmentId, List<String> result)
+        throws SQLException {
+        try (PreparedStatement ps = db.prepareStatement(query)) {
+            ps.setLong(1, assessmentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while(rs.next()) {
+                    result.add(rs.getString("resourceid"));
+                }
+            }
+        }
+    }
+
+    private List<String> fetchAllAttachmentResourceIds(Long assessmentId) {
         List<String> result = new ArrayList<>();
 
+        Connection db = null;
         try {
-            Connection db = SqlService.borrowConnection();
+            db = SqlService.borrowConnection();
 
-            try {
-                PreparedStatement ps = db.prepareStatement("select resourceid from SAM_ATTACHMENT_T where assessmentid = ?");
-                ps.setLong(1, assessmentId);
-                ResultSet rs = ps.executeQuery();
-                try {
-                    while(rs.next()) {
-                        result.add(rs.getString("resourceid"));
-                    }
-                } finally {
-                    rs.close();
-                }
+            loadResourceIds(db, "select resourceid from SAM_ATTACHMENT_T where assessmentid = ?", assessmentId, result);
 
-                ps = db.prepareStatement("select resourceid from SAM_ATTACHMENT_T where sectionid in (select sectionid from SAM_SECTION_T where assessmentid = ?)");
-                ps.setLong(1, assessmentId);
-                rs = ps.executeQuery();
-                try {
-                    while(rs.next()) {
-                        result.add(rs.getString("resourceid"));
-                    }
-                } finally {
-                    rs.close();
-                }
+            loadResourceIds(db,
+                            "select resourceid from SAM_ATTACHMENT_T where sectionid in " +
+                            " (select sectionid from SAM_SECTION_T where assessmentid = ?)",
+                            assessmentId,
+                            result);
 
-                ps = db.prepareStatement("select resourceid from SAM_ATTACHMENT_T where itemid in (select itemid from SAM_ITEM_T where sectionid in (select sectionid from SAM_SECTION_T where assessmentid = ?))");
-                ps.setLong(1, assessmentId);
-                rs = ps.executeQuery();
-                try {
-                    while(rs.next()) {
-                        result.add(rs.getString("resourceid"));
-                    }
-                } finally {
-                    rs.close();
-                }
+            loadResourceIds(db,
+                            "select resourceid from SAM_ATTACHMENT_T where itemid in " +
+                            " (select itemid from SAM_ITEM_T where sectionid in " +
+                            "  (select sectionid from SAM_SECTION_T where assessmentid = ?))",
+                            assessmentId,
+                            result);
 
-                ps = db.prepareStatement("select resourceid from SAM_ATTACHMENT_T where itemtextid in (select itemtextid from sam_itemtext_t where itemid in (select itemid from SAM_ITEM_T where sectionid in (select sectionid from SAM_SECTION_T where assessmentid = ?)))");
-                ps.setLong(1, assessmentId);
-                rs = ps.executeQuery();
-                try {
-                    while(rs.next()) {
-                        result.add(rs.getString("resourceid"));
-                    }
-                } finally {
-                    rs.close();
-                }
-            } finally {
-                SqlService.returnConnection(db);
-            }
+            loadResourceIds(db,
+                            "select resourceid from SAM_ATTACHMENT_T where itemtextid in " +
+                            " (select itemtextid from sam_itemtext_t where itemid in " +
+                            "  (select itemid from SAM_ITEM_T where sectionid in" +
+                            "   (select sectionid from SAM_SECTION_T where assessmentid = ?)))",
+                            assessmentId,
+                            result);
         } catch (SQLException e) {
             log.error(e.getMessage());
             e.printStackTrace();
+        } finally {
+            SqlService.returnConnection(db);
         }
 
         return result;
