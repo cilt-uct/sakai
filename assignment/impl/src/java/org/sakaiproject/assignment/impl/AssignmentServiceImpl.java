@@ -287,6 +287,11 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
                 Element assignmentElement = assignmentDocument.getDocumentElement();
                 Node assignmentNode = doc.importNode(assignmentElement, true);
                 element.appendChild(assignmentNode);
+
+                for (String resourceId : assignment.getAttachments()) {
+                    attachments.add(org.sakaiproject.entity.cover.EntityManager.newReference(resourceId));
+                }
+
                 assignmentsArchived++;
             } catch (Exception e) {
                 log.warn("could not append assignment {} to archive, {}", assignment.getId(), e.getMessage());
