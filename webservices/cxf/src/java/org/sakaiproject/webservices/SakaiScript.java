@@ -5456,7 +5456,7 @@ public class SakaiScript extends AbstractWebService {
         System.err.println("Working on archive for site: " + siteid);
 
         try {
-            String msg = archiveService.archive(siteid);
+            String msg = archiveService.archiveAndZip(siteid);
             System.err.println("Successfully archived site: " + siteid + " - " + msg);
         } catch (Exception e) {
             log.error("WS nyuArchiveSite(): Failed to archive site: " + siteid + " - " + e.getMessage(), e);
