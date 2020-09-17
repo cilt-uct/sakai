@@ -186,7 +186,7 @@ public class AssessmentEntityProducer implements EntityTransferrer,
             }
         }
 
-        exportQuestionPools(siteId, archivePath);
+        exportQuestionPools(siteId, archivePath, attachments);
 
         stack.pop();
 		return results.toString();
@@ -416,7 +416,7 @@ public class AssessmentEntityProducer implements EntityTransferrer,
 		}
 	}
 
-	private void exportQuestionPools(String siteId, String archivePath) {
+	private void exportQuestionPools(String siteId, String archivePath, List<Reference> attachments) {
 		String xmlPath = archivePath + File.separator + "samigo_question_pools.xml";
 		QuestionPoolServiceAPI questionPoolService = (QuestionPoolServiceAPI)ComponentManager.get("org.sakaiproject.tool.assessment.shared.api.questionpool.QuestionPoolServiceAPI");
 
@@ -452,6 +452,19 @@ public class AssessmentEntityProducer implements EntityTransferrer,
 						for (int i=0; i<nodes.getLength(); ++i) {
 							Element node = (Element) nodes.item(i);
 							questionPool.appendChild(doc.adoptNode(node));
+						}
+						for (String resourceId : fetchItemAttachmentResourceIds(item.getItemId())) {
+							ContentResource resource = null;
+							try {
+								resource = ContentHostingService.getResource(resourceId);
+							} catch (PermissionException e) {
+								log.warn("Permission error fetching attachment: " + resourceId);
+							} catch (TypeException e) {
+								log.warn("TypeException error fetching attachment: " + resourceId);
+							} catch (IdUnusedException e) {
+								log.warn("IdUnusedException error fetching attachment: " + resourceId);
+							}
+							attachments.add(EntityManager.newReference(resource.getReference()));
 						}
 					}
 					questionPools.appendChild(questionPool);
@@ -536,4 +549,28 @@ public class AssessmentEntityProducer implements EntityTransferrer,
 
         return result;
     }
+
+	private List<String> fetchItemAttachmentResourceIds(Long itemId) {
+		List<String> result = new ArrayList<>();
+
+		Connection db = null;
+		try {
+			db = SqlService.borrowConnection();
+
+			loadResourceIds(db, "select resourceid from SAM_ATTACHMENT_T where itemid = ?", itemId, result);
+
+			loadResourceIds(db,
+					"select resourceid from SAM_ATTACHMENT_T where itemtextid in " +
+							" (select itemtextid from SAM_ITEMTEXT_T where itemid = ?)",
+					itemId,
+					result);
+		} catch (SQLException e) {
+			log.error(e.getMessage());
+			e.printStackTrace();
+		} finally {
+			SqlService.returnConnection(db);
+		}
+
+		return result;
+	}
 }
