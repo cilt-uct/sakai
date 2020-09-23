@@ -133,6 +133,10 @@ public class SiteZipper {
             fOut = new FileOutputStream(zipFile);
             bOut = new BufferedOutputStream(fOut);
             zOut = new ZipArchiveOutputStream(bOut);
+
+            // NYU: Store without compression.  Most of the content we care about is already compressed anyway.
+            zOut.setLevel(ZipArchiveOutputStream.STORED);
+
             addFileToZip(zOut, archivePath, ""); //add the directory which will then add all files recursively
 
             //create a sha1 hash of the zip
