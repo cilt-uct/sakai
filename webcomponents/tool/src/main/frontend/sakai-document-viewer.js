@@ -16,10 +16,10 @@ import {unsafeHTML} from "/webcomponents/assets/lit-html/directives/unsafe-html.
  * happen in an iframe. You can specify the height of that with the height attribute. Light dom is in use, so you can
  * style this from the usual Sakai SASS build.
  *
- * @example <caption>Usage:</caption>
+ * Usage:
  * <sakai-document-viewer height="400px" ref="/content/attachment/8c563fb1-6bf8-4e01-9e25-8881f4dc35e2/Assignments/77377d3d-6deb-4c78-b69c-2821c6d0602d/nndr 2015.odp"></sakai-document-viewer>
  *
- * @author Adrian Fish <adrian.r.fish@gmail.com>
+ * '@author Adrian Fish <adrian.r.fish@gmail.com>
  */
 class SakaiDocumentViewer extends SakaiElement {
 
@@ -40,8 +40,7 @@ class SakaiDocumentViewer extends SakaiElement {
   static get properties() {
 
     return {
-      preview: { type: Object },
-      content: { type: Object },
+      ref: String,
       height: String,
       //INTERNAL
       documentMarkup: String,
@@ -50,18 +49,18 @@ class SakaiDocumentViewer extends SakaiElement {
     };
   }
 
-  set preview(newValue) {
+  set ref(newValue) {
 
-    this._preview = newValue;
+    this._ref = newValue;
     this.loadDocumentMarkup(newValue);
   }
 
-  get preview() { return this._preview; }
+  get ref() { return this._ref; }
 
   render() {
 
     return html`
-      <div class="document-link">${this.i18n["viewing"]}: <a href="/access${this.content.ref}" target="_blank" rel="noopener">${this.content.name}</a></div>
+      <div class="document-link">${this.i18n["viewing"]}: <a href="/access${this.ref}" target="_blank" rel="noopener">${this.fileNameFromRef(this.ref)}</a></div>
       <div class="preview-outer">
         <div class="preview-middle">
           <div class="preview-inner ${this.nomargins ? "nomargins" : ""}" >
@@ -72,25 +71,22 @@ class SakaiDocumentViewer extends SakaiElement {
     `;
   }
 
-  loadDocumentMarkup(preview) {
+  fileNameFromRef(ref) { return ref.substring(ref.lastIndexOf("\/") + 1); }
 
-    let ref = preview.ref;
-    const type = preview.type;
+  loadDocumentMarkup(documentRef) {
 
     this.nomargins = false;
 
-    if (type === "application/pdf") {
+    if (documentRef.endsWith("\.pdf") || documentRef.endsWith("\.PDF")) {
       this.nomargins = true;
       // Let PDFJS handle this. We can just literally use the viewer, like Firefox and Chrome do.
-      this.documentMarkup = `<iframe src="/library/webjars/pdf-js/2.3.200/web/viewer.html?file=/access/${encodeURIComponent(ref)}" width="100%" height="${this.height}" />`;
-    } else if (type === "application/vnd.oasis.opendocument.presentation") {
+      this.documentMarkup = `<iframe src="/library/webjars/pdf-js/2.3.200/web/viewer.html?file=/access/${encodeURIComponent(documentRef)}" width="100%" height="${this.height}" />`;
+    } else if (documentRef.endsWith("\.odp") || documentRef.endsWith("\.ODP")) {
       this.nomargins = true;
-      this.documentMarkup = `<iframe src="/library/webjars/viewerjs/0.5.8/ViewerJS#/access${ref}" width="100%" height="${this.height}" />`;
-    } else if (type.includes("image/")) {
-      this.documentMarkup = `<img src="/access/${ref}" />`;
+      this.documentMarkup = `<iframe src="/library/webjars/viewerjs/0.5.8/ViewerJS#/access${documentRef}" width="100%" height="${this.height}" />`;
     } else {
-      let contentIndex = ref.indexOf("\/content\/");
-      ref = contentIndex >= 0 ? ref.substring(contentIndex + 8) : ref;
+      let contentIndex = documentRef.indexOf("\/content\/");
+      const ref = contentIndex >= 0 ? documentRef.substring(contentIndex + 8) : documentRef;
 
       fetch(`/direct/content/${portal.siteId}/htmlForRef.html?ref=${ref}`,
               {cache: "no-cache", credentials: "same-origin"})
