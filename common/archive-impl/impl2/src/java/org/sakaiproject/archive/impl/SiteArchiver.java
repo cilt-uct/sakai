@@ -158,6 +158,7 @@ public class SiteArchiver {
 			stack.pop();
 			
 			String fileName = storagePath + service.getLabel() + ".xml";
+
 			Xml.writeDocument(doc, fileName);
 		}
 
@@ -222,10 +223,20 @@ public class SiteArchiver {
 		Xml.writeDocument(doc, m_storagePath + siteId + "-archive/user.xml");
 
 
+		// Disabled for now.
+		// try {
+		// 	KalturaRewriter kw = new KalturaRewriter();
+		// 	kw.rewriteKalturaTags(siteId, m_storagePath);
+		// } catch (Exception e) {
+		// 	System.err.println("KALTURA REWRITE FAILED: " + e);
+		// 	e.printStackTrace();
+		// }
+
 		return results.toString();
 
 	}	// archive
-	
+
+
 	/**
 	* Archive the site definition.
 	* @param site the site.
