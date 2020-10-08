@@ -26,6 +26,7 @@ import java.util.Stack;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang.StringUtils;
+import org.sakaiproject.component.cover.HotReloadConfigurationService;
 import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.entity.api.EntityManager;
@@ -244,16 +245,17 @@ public class GradebookNgEntityProducer implements EntityProducer, EntityTransfer
 		List<Assignment> gradebookItems = this.gradebookNgBusinessService.getGradebookAssignments(siteId);
 
 		// apply external app blacklist
-		List<String> blacklistedExternalAppNames = Arrays.asList(ServerConfigurationService.getString("gradebookng.archive.external_app_name.blacklist", "").split(","));
+		List<String> blacklistedExternalAppNames = Arrays.asList(HotReloadConfigurationService.getString("gradebookng.archive.external_app_name.blacklist", "").split(","));
 		gradebookItems = gradebookItems.stream().filter(item -> {
 			return !item.isExternallyMaintained() || !blacklistedExternalAppNames.contains(item.getExternalAppName());
 		}).collect(Collectors.toList());
 
-		// apply external app whitelist
-		List<String> whitelistedExternalAppNames = Arrays.asList(ServerConfigurationService.getString("gradebookng.archive.external_app_name.whitelist", "").split(","));
-		gradebookItems = gradebookItems.stream().filter(item -> {
-			return !item.isExternallyMaintained() || whitelistedExternalAppNames.contains(item.getExternalAppName());
-		}).collect(Collectors.toList());
+//		Disable whitelist.
+//		// apply external app whitelist
+//		List<String> whitelistedExternalAppNames = Arrays.asList(ServerConfigurationService.getString("gradebookng.archive.external_app_name.whitelist", "").split(","));
+//		gradebookItems = gradebookItems.stream().filter(item -> {
+//			return !item.isExternallyMaintained() || whitelistedExternalAppNames.contains(item.getExternalAppName());
+//		}).collect(Collectors.toList());
 
 		Element gradebookItemsEl = doc.createElement("GradebookItems");
 		for (Assignment gradebookItem : gradebookItems) {
