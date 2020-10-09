@@ -244,17 +244,17 @@ public class GradebookNgEntityProducer implements EntityProducer, EntityTransfer
 		// <GradebookItems>
 		List<Assignment> gradebookItems = this.gradebookNgBusinessService.getGradebookAssignments(siteId);
 
-		// apply external app blacklist
-		List<String> blacklistedExternalAppNames = Arrays.asList(HotReloadConfigurationService.getString("gradebookng.archive.external_app_name.blacklist", "").split(","));
+		// apply external app denylist
+		List<String> blockedExternalAppNames = Arrays.asList(HotReloadConfigurationService.getString("gradebookng.archive.external_app_name.deny", "").split(","));
 		gradebookItems = gradebookItems.stream().filter(item -> {
-			return !item.isExternallyMaintained() || !blacklistedExternalAppNames.contains(item.getExternalAppName());
+			return !item.isExternallyMaintained() || !blockedExternalAppNames.contains(item.getExternalAppName());
 		}).collect(Collectors.toList());
 
-//		Disable whitelist.
-//		// apply external app whitelist
-//		List<String> whitelistedExternalAppNames = Arrays.asList(ServerConfigurationService.getString("gradebookng.archive.external_app_name.whitelist", "").split(","));
+//		Disable allowlist.
+//		// apply external app allowlist
+//		List<String> allowedExternalAppNames = Arrays.asList(ServerConfigurationService.getString("gradebookng.archive.external_app_name.allow", "").split(","));
 //		gradebookItems = gradebookItems.stream().filter(item -> {
-//			return !item.isExternallyMaintained() || whitelistedExternalAppNames.contains(item.getExternalAppName());
+//			return !item.isExternallyMaintained() || allowedExternalAppNames.contains(item.getExternalAppName());
 //		}).collect(Collectors.toList());
 
 		Element gradebookItemsEl = doc.createElement("GradebookItems");
