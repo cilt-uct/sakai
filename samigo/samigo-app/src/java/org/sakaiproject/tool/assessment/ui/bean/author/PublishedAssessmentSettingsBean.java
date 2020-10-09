@@ -104,7 +104,7 @@ import org.springframework.web.context.WebApplicationContext;
 @ManagedBean(name="publishedSettings")
 @SessionScoped
 public class PublishedAssessmentSettingsBean implements Serializable {
-  
+
   private static final IntegrationContextFactory integrationContextFactory =
     IntegrationContextFactory.getInstance();
   private static final PublishingTargetHelper ptHelper =
@@ -235,7 +235,7 @@ public class PublishedAssessmentSettingsBean implements Serializable {
   private final String HIDDEN_FEEDBACK_DATE_FIELD = "feedbackDateISO8601";
   private final String HIDDEN_FEEDBACK_END_DATE_FIELD = "feedbackEndDateISO8601";
 
-  private ResourceLoader assessmentSettingMessages;
+  private static final ResourceLoader assessmentSettingMessages = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AssessmentSettingsMessages");
 
   @Resource(name = "org.sakaiproject.service.gradebook.GradebookService")
   private GradebookService gradebookService;
@@ -257,7 +257,6 @@ public class PublishedAssessmentSettingsBean implements Serializable {
 
   public PublishedAssessmentSettingsBean(WebApplicationContext context) {
     context.getAutowireCapableBeanFactory().autowireBean(this);
-    this.assessmentSettingMessages = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AssessmentSettingsMessages");
   }
 
   public PublishedAssessmentFacade getAssessment() {
@@ -412,18 +411,8 @@ public class PublishedAssessmentSettingsBean implements Serializable {
       setIpAddresses(assessment);
 
       // publishedUrl
-      FacesContext context = FacesContext.getCurrentInstance();
-      ExternalContext extContext = context.getExternalContext();
-      // get the alias to the pub assessment
-      this.alias = assessment.getAssessmentMetaDataByLabel(
-          AssessmentMetaDataIfc.ALIAS);
-      String server = ( (javax.servlet.http.HttpServletRequest) extContext.
-                       getRequest()).getRequestURL().toString();
-      int index = server.indexOf(extContext.getRequestContextPath() + "/"); // "/samigo-app/"
-      server = server.substring(0, index);
-      String url = server + extContext.getRequestContextPath();
-      this.publishedUrl = url + "/servlet/Login?id=" + this.alias;
-      
+      this.publishedUrl = generatePublishedURL(assessment);
+
       // secure delivery
       SecureDeliveryServiceAPI secureDeliveryService = SamigoApiFactory.getInstance().getSecureDeliveryServiceAPI(); 
       this.secureDeliveryAvailable = secureDeliveryService.isSecureDeliveryAvaliable();
@@ -1822,7 +1811,7 @@ public void setFeedbackComponentOption(String feedbackComponentOption) {
   public void addExtendedTime() {
       ExtendedTime entry = this.extendedTime;
       FacesContext context = FacesContext.getCurrentInstance();
-      if (ExtendedTimeValidator.validateEntry(entry, context, this)) {
+      if (new ExtendedTimeValidator().validateEntry(entry, context, this)) {
           AssessmentAccessControlIfc accessControl = new AssessmentAccessControl();
           accessControl.setStartDate(this.startDate);
           accessControl.setDueDate(this.dueDate);
@@ -1889,5 +1878,18 @@ public void setFeedbackComponentOption(String feedbackComponentOption) {
 
   public void setCategorySelected(String categorySelected) {
     this.categorySelected = categorySelected;
+  }
+
+  public String generatePublishedURL(PublishedAssessmentFacade paf) {
+      FacesContext context = FacesContext.getCurrentInstance();
+      ExternalContext extContext = context.getExternalContext();
+
+      // get the alias to the pub assessment
+      this.alias = paf.getAssessmentMetaDataByLabel(AssessmentMetaDataIfc.ALIAS);
+      String server = ((javax.servlet.http.HttpServletRequest) extContext.getRequest()).getRequestURL().toString();
+      int index = server.indexOf(extContext.getRequestContextPath() + "/"); // "/samigo-app/"
+      server = server.substring(0, index);
+      String url = server + extContext.getRequestContextPath();
+      return url + "/servlet/Login?id=" + this.alias;
   }
 }
