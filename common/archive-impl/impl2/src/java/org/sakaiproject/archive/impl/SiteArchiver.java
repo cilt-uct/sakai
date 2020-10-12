@@ -223,14 +223,20 @@ public class SiteArchiver {
 		Xml.writeDocument(doc, m_storagePath + siteId + "-archive/user.xml");
 
 
-		// Disabled for now.
-		// try {
-		// 	KalturaRewriter kw = new KalturaRewriter();
-		// 	kw.rewriteKalturaTags(siteId, m_storagePath);
-		// } catch (Exception e) {
-		// 	System.err.println("KALTURA REWRITE FAILED: " + e);
-		// 	e.printStackTrace();
-		// }
+		try {
+			KalturaDetector kd = new KalturaDetector();
+			List<String> paths = kd.pathsWithKalturaTags(siteId, m_storagePath);
+			if (!paths.isEmpty()) {
+			    java.io.FileOutputStream fos = new java.io.FileOutputStream(m_storagePath + siteId + "-archive/kaltura.txt");
+			    for (String p : paths) {
+				fos.write(p.getBytes("UTF-8"));
+				fos.write("\n".getBytes("UTF-8"));
+			    }
+			}
+		} catch (Exception e) {
+			System.err.println("KALTURA DETECTOR FAILED: " + e);
+			e.printStackTrace();
+		}
 
 		return results.toString();
 
