@@ -136,7 +136,6 @@ public class LessonsRejigger {
                             int attIdx = mergedAttributes.getIndex("html");
                             mergedAttributes.setValue(attIdx,
                                                       mergedAttributes.getValue(attIdx) +
-                                                      "<hr>" +
                                                       victim.events.get(0).atts.getValue("html"));
 
                             startNode.atts = mergedAttributes;
