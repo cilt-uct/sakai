@@ -29,6 +29,8 @@ public class LessonsRejigger {
     private final AtomicBoolean insidePage = new AtomicBoolean(false);
     private final List<BufferedSAXEvent> bufferedItems = new LinkedList<>();
 
+    private static String IMAGE_EXTENSIONS = "(jpg|jpeg|png|gif|bmp|svg|jfif|pjpeg|pjp|ico|cur|tif|tiff|webp)";
+
     public boolean rewriteLessons(String path) {
         try {
             XMLReader xr = new XMLFilterImpl(XMLReaderFactory.createXMLReader()) {
@@ -77,8 +79,8 @@ public class LessonsRejigger {
                     // Multimedia items linking to Sakai resources can be rewritten as rich text
                     // TEXT items.
                     for (Item item : items) {
-                        if (item.type == ItemType.MULTIMEDIA &&
-                            item.events.get(0).atts.getValue("sakaiid").toLowerCase(Locale.ROOT).matches("^/.*\\.(jpg|jpeg|png|gif|bmp|svg|jfif|pjpeg|pjp|ico|cur|tif|tiff|webp)$")) {
+                        if (item.type.equals(ItemType.MULTIMEDIA) &&
+                            item.events.get(0).atts.getValue("sakaiid").toLowerCase(Locale.ROOT).matches("^/.*\\." + IMAGE_EXTENSIONS + "$")) {
                             // Transmogrify into rich text.  That's right: transmogrify.
                             BufferedSAXEvent elt = item.events.get(0);
                             AttributesImpl updatedAttributes = new AttributesImpl(elt.atts);
@@ -89,7 +91,7 @@ public class LessonsRejigger {
                             updatedAttributes.setValue(updatedAttributes.getIndex("sakaiid"), "");
                             updatedAttributes.setValue(updatedAttributes.getIndex("type"), "5"); // text
                             updatedAttributes.setValue(updatedAttributes.getIndex("html"),
-                                                       String.format("<p><img style=\"max-width: 100%\" alt=\"%s\" src=\"https://newclasses.nyu.edu/access/content%s\"></p>",
+                                                       String.format("<p><img style=\"max-width: 100%%\" alt=\"%s\" src=\"https://newclasses.nyu.edu/access/content%s\"></p>",
                                                                      altText,
                                                                      contentPath));
 
@@ -161,15 +163,26 @@ public class LessonsRejigger {
                             Item text = items.get(i);
                             BufferedSAXEvent elt = text.events.get(0);
 
-                            if (elt.atts.getValue("name").isEmpty()) {
-                                String generatedName = Jsoup.parse(elt.atts.getValue("html")).text();
+                            if (elt.atts.getValue("name").isEmpty() ||
+                                (i == 0 && elt.atts.getValue("name").toLowerCase(Locale.ROOT).matches(".*\\." + IMAGE_EXTENSIONS + "$"))) {
+                                // If our text item has no name, or if it's the first item on the page but it's
+                                // really just a header image... do better.
 
-                                if (generatedName.length() > 30) {
-                                    generatedName = generatedName.substring(0, 30) + "...";
-                                }
+                                org.jsoup.nodes.Element document = Jsoup.parse(elt.atts.getValue("html"));
+                                org.jsoup.nodes.Element header = document.selectFirst("h1");
 
-                                if (generatedName.isEmpty()) {
-                                    generatedName = "Embedded Item";
+                                String generatedName = "";
+
+                                if (header != null) {
+                                    // If we got a header, take it wholesale.
+                                    generatedName = header.text();
+                                } else {
+                                    // Otherwise, cobble a snippet together.
+                                    generatedName = document.text();
+
+                                    if (generatedName.length() > 30) {
+                                        generatedName = generatedName.substring(0, 30) + "...";
+                                    }
                                 }
 
                                 AttributesImpl updatedAttributes = new AttributesImpl(elt.atts);
@@ -178,7 +191,6 @@ public class LessonsRejigger {
                             }
                         }
                     }
-
 
                     for (Item item : items) {
                         for (BufferedSAXEvent event : item.events) {
