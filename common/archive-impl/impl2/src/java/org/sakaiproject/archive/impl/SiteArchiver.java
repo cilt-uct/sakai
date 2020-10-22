@@ -223,6 +223,11 @@ public class SiteArchiver {
 		Xml.writeDocument(doc, m_storagePath + siteId + "-archive/user.xml");
 
 
+		String lessonsExportPath = m_storagePath + siteId + "-archive/lessonbuilder.xml";
+		if (new File(lessonsExportPath).exists()) {
+		    new LessonsRejigger().rewriteLessons(lessonsExportPath);
+		}
+
 		try {
 			KalturaDetector kd = new KalturaDetector();
 			List<String> paths = kd.pathsWithKalturaTags(siteId, m_storagePath);
