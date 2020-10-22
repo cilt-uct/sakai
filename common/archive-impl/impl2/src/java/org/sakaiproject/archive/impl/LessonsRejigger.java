@@ -1,5 +1,7 @@
 package org.sakaiproject.archive.impl;
 
+import org.jsoup.Jsoup;
+
 import javax.xml.transform.Result;
 import javax.xml.transform.Source;
 import javax.xml.transform.TransformerFactory;
@@ -150,6 +152,31 @@ public class LessonsRejigger {
                             i -= 1;
                         }
                     }
+
+                    // Nameless text items get a name
+                    for (int i = 0; i < items.size(); i++) {
+                        if (items.get(i).type.equals(ItemType.TEXT)) {
+                            Item text = items.get(i);
+                            BufferedSAXEvent elt = text.events.get(0);
+
+                            if (elt.atts.getValue("name").isEmpty()) {
+                                String generatedName = Jsoup.parse(elt.atts.getValue("html")).text();
+
+                                if (generatedName.length() > 30) {
+                                    generatedName = generatedName.substring(0, 30) + "...";
+                                }
+
+                                if (generatedName.isEmpty()) {
+                                    generatedName = "Embedded Item";
+                                }
+
+                                AttributesImpl updatedAttributes = new AttributesImpl(elt.atts);
+                                updatedAttributes.setValue(updatedAttributes.getIndex("name"), generatedName);
+                                elt.atts = updatedAttributes;
+                            }
+                        }
+                    }
+
 
                     for (Item item : items) {
                         for (BufferedSAXEvent event : item.events) {
