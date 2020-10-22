@@ -251,6 +251,9 @@ public class LessonsRejigger {
             Source src = new SAXSource(xr, new InputSource(path));
             Result res = new StreamResult(new FileOutputStream(path + ".rewritten"));
             TransformerFactory.newInstance().newTransformer().transform(src, res);
+
+            // Overwrite the original path
+            new File(path + ".rewritten").renameTo(new File(path));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
