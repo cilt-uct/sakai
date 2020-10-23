@@ -90,6 +90,7 @@ public class LessonsRejigger {
 
                             updatedAttributes.setValue(updatedAttributes.getIndex("sakaiid"), "");
                             updatedAttributes.setValue(updatedAttributes.getIndex("type"), "5"); // text
+                            updatedAttributes.setValue(updatedAttributes.getIndex("name"), altText);
                             updatedAttributes.setValue(updatedAttributes.getIndex("html"),
                                                        String.format("<p><img style=\"max-width: 100%%\" alt=\"%s\" src=\"https://newclasses.nyu.edu/access/content%s\"></p>",
                                                                      altText,
@@ -97,6 +98,16 @@ public class LessonsRejigger {
 
                             elt.atts = updatedAttributes;
                             item.type = ItemType.TEXT;
+                        }
+                    }
+
+                    // <break><break> => <break>
+                    for (int i = 0; i < (items.size() - 1); i++) {
+                        if (items.get(i).type.equals(ItemType.BREAK) &&
+                            items.get(i + 1).type.equals(ItemType.BREAK)) {
+                            // Too many breaks!
+                            items.remove(i);
+                            i -= 1;
                         }
                     }
 
@@ -128,7 +139,7 @@ public class LessonsRejigger {
                     }
 
                     // Adjacent text items can be merged too
-                    // <text><break><text> => <text w/ hr>
+                    // <text><text> => <text>
                     for (int i = 0; i < (items.size() - 1); i++) {
                         if (items.get(i).type.equals(ItemType.TEXT) &&
                             items.get(i + 1).type.equals(ItemType.TEXT)) {
@@ -183,6 +194,10 @@ public class LessonsRejigger {
                                     if (generatedName.length() > 30) {
                                         generatedName = generatedName.substring(0, 30) + "...";
                                     }
+                                }
+
+                                if (generatedName.isEmpty()) {
+                                    generatedName = "Embedded Item";
                                 }
 
                                 AttributesImpl updatedAttributes = new AttributesImpl(elt.atts);
