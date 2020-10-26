@@ -19,6 +19,7 @@
 package org.sakaiproject.archive.impl;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -31,6 +32,7 @@ import java.util.regex.Matcher;
 
 import lombok.extern.slf4j.Slf4j;
 
+import org.apache.commons.io.FileUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -125,6 +127,14 @@ public class SiteArchiver {
 
 		// create the directory for the archive
 		File dir = new File(m_storagePath + siteId + "-archive/");
+
+		// NYU clear the directory (if site already archived) so resources are not duplicated
+		try {
+			FileUtils.deleteDirectory(dir);
+		} catch (IOException e) {
+			// We tried!
+		}
+
 		dir.mkdirs();
 
 		// for each registered ResourceService, give it a chance to archve
