@@ -238,6 +238,8 @@ public class SiteArchiver {
 		    new LessonsRejigger().rewriteLessons(lessonsExportPath);
 		}
 
+		new SiteInfoPoker().pokeAway(siteId, lessonsExportPath, now.toString(), fromSystem);
+
 		try {
 			KalturaDetector kd = new KalturaDetector();
 			List<String> paths = kd.pathsWithKalturaTags(siteId, m_storagePath);
