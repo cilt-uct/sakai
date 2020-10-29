@@ -150,7 +150,7 @@ public class SubPageWhacker {
                         candidateItems = referrers;
                     }
 
-                    Collections.sort(candidateItems, (a, b) -> b.depth - a.depth);
+                    Collections.sort(candidateItems, (a, b) -> a.depth - b.depth);
 
                     for (int i = 1; i < candidateItems.size(); i++) {
                         candidateItems.get(i).node.getParentNode().removeChild(candidateItems.get(i).node);
