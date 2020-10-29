@@ -236,6 +236,7 @@ public class SiteArchiver {
 		String lessonsExportPath = m_storagePath + siteId + "-archive/lessonbuilder.xml";
 		if (new File(lessonsExportPath).exists()) {
 		    new LessonsRejigger().rewriteLessons(lessonsExportPath);
+		    new SubPageWhacker().whack(lessonsExportPath);
 		}
 
 		new SiteInfoPoker().pokeAway(siteId, lessonsExportPath, now.toString(), fromSystem);
