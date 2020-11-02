@@ -241,6 +241,11 @@ public class SiteArchiver {
 
 		new SiteInfoPoker().pokeAway(siteId, lessonsExportPath, now.toString(), fromSystem);
 
+		String syllabusExportPath = m_storagePath + siteId + "-archive/syllabus.xml";
+		if (new File(syllabusExportPath).exists()) {
+		    new SyllabusRejigger().rewriteSyllabus(syllabusExportPath);
+		}
+
 		try {
 			KalturaDetector kd = new KalturaDetector();
 			List<String> paths = kd.pathsWithKalturaTags(siteId, m_storagePath);
