@@ -281,6 +281,9 @@ public class LessonsRejigger {
             Result res = new StreamResult(new FileOutputStream(path + ".rewritten"));
             TransformerFactory.newInstance().newTransformer().transform(src, res);
 
+            // Keep the original copy for reference
+            new File(path).renameTo(new File(path + ".pre_nyu_rewrite"));
+
             // Overwrite the original path
             new File(path + ".rewritten").renameTo(new File(path));
         } catch (Exception e) {
