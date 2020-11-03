@@ -43,6 +43,14 @@ public class SubPageWhacker {
     }
 
 
+    private static String nullToEmptyString(String maybeNull) {
+        if (maybeNull == null) {
+            return "";
+        }
+
+        return maybeNull;
+    }
+
     public boolean whack(String xmlPath) {
         try {
             Map<String, PageInfo> pageInfoByPageId = new HashMap<>();
@@ -66,9 +74,9 @@ public class SubPageWhacker {
                 Element page = (Element) pages.item(i);
 
                 PageInfo pageInfo = new PageInfo();
-                pageInfo.pageId = page.getAttribute("pageid");
-                pageInfo.parentId = page.getAttribute("parent");
-                pageInfo.toolId = page.getAttribute("toolid");
+                pageInfo.pageId = nullToEmptyString(page.getAttribute("pageid"));
+                pageInfo.parentId = nullToEmptyString(page.getAttribute("parent"));
+                pageInfo.toolId = nullToEmptyString(page.getAttribute("toolid"));
                 pageInfo.depth = -1;
 
                 pageInfoByPageId.put(pageInfo.pageId, pageInfo);
@@ -107,12 +115,12 @@ public class SubPageWhacker {
 
                     if ("2".equals(item.getAttribute("type"))) {
                         ItemInfo itemInfo = new ItemInfo();
-                        itemInfo.itemId = item.getAttribute("id");
-                        itemInfo.toolId = page.getAttribute("toolId");
-                        itemInfo.parentPageId = page.getAttribute("id");
-                        itemInfo.referencesPageId = item.getAttribute("sakaiid");
+                        itemInfo.itemId = nullToEmptyString(item.getAttribute("id"));
+                        itemInfo.toolId = nullToEmptyString(page.getAttribute("toolId"));
+                        itemInfo.parentPageId = nullToEmptyString(page.getAttribute("id"));
+                        itemInfo.referencesPageId = nullToEmptyString(item.getAttribute("sakaiid"));
 
-                        itemInfo.depth = pageInfoByPageId.get(page.getAttribute("pageid")).depth;
+                        itemInfo.depth = pageInfoByPageId.get(nullToEmptyString(page.getAttribute("pageid"))).depth;
                         itemInfo.node = item;
 
                         itemInfoByItemId.put(itemInfo.itemId, itemInfo);
