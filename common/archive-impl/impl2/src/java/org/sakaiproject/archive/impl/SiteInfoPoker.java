@@ -1,9 +1,11 @@
 package org.sakaiproject.archive.impl;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.cover.SiteService;
+import org.sakaiproject.time.cover.TimeService;
 import org.sakaiproject.util.Xml;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -17,10 +19,125 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Base64;
+import java.util.UUID;
 
 public class SiteInfoPoker {
+    public boolean pokeAsResource(String siteId, String exportPath) {
+        Site site;
+        try {
+            site = SiteService.getSite(siteId);
+        } catch (IdUnusedException e) {
+            return false;
+        }
+
+        String content = site.getDescription();
+
+        if (StringUtils.trimToNull(content) == null) {
+            return false;
+        }
+
+        String contentXmlPath = exportPath + "/content.xml";
+        if (!new File(contentXmlPath).exists()) {
+            // FIXME does this happen?
+            return false;
+        }
+
+        DocumentBuilder builder = null;
+        try {
+            XPath xPath = XPathFactory.newInstance().newXPath();
+            builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+            Document doc = builder.parse(new File(contentXmlPath));
+
+            Node chsEl = ((NodeList)xPath.evaluate("/archive/org.sakaiproject.content.api.ContentHostingService", doc, XPathConstants.NODESET)).item(0);
+
+            if (chsEl == null) {
+                throw new RuntimeException("No ContentHostingService element in content.xml");
+            }
+
+            String uuid = UUID.randomUUID().toString();
+
+            String siteInfoResourcePath = exportPath + "/" + uuid;
+            BufferedWriter writer = new BufferedWriter(new FileWriter(siteInfoResourcePath));
+            writer.write("<html><head><title>Site Information</title></head><body>");
+            writer.write(content);
+            writer.write("</body></html>");
+            writer.close();
+
+            Element siteInfoResource = doc.createElement("resource");
+            siteInfoResource.setAttribute("body-location", uuid);
+            siteInfoResource.setAttribute("content-length", String.valueOf(new File(siteInfoResourcePath).length()));
+            siteInfoResource.setAttribute("content-type", "text/html");
+            siteInfoResource.setAttribute("file-path", "/tmp/Site Information.html");
+            siteInfoResource.setAttribute("id", String.format("/group/%s/Site Information.html", siteId));
+            siteInfoResource.setAttribute("rel-id", "Site Information.html");
+            siteInfoResource.setAttribute("resource-type", "org.sakaiproject.content.types.fileUpload");
+            siteInfoResource.setAttribute("sakai:access_mode", "inherited");
+            siteInfoResource.setAttribute("sakai:hidden", "false");
+
+            String timeNow = TimeService.newTime().toString();
+
+            Element properties = doc.createElement("properties");
+
+            Element property = doc.createElement("property");
+            property.setAttribute("CHEF:creator", new String(Base64.getEncoder().encode("admin".getBytes())));
+            properties.appendChild(property);
+
+            property = doc.createElement("property");
+            property.setAttribute("CHEF:modifiedby", new String(Base64.getEncoder().encode("admin".getBytes())));
+            properties.appendChild(property);
+
+            property = doc.createElement("property");
+            property.setAttribute("CHEF:description", new String(Base64.getEncoder().encode("".getBytes())));
+            properties.appendChild(property);
+
+            property = doc.createElement("property");
+            property.setAttribute("CHEF:is-collection", new String(Base64.getEncoder().encode("false".getBytes())));
+            properties.appendChild(property);
+
+            property = doc.createElement("property");
+            property.setAttribute("DAV:getlastmodified", new String(Base64.getEncoder().encode(timeNow.getBytes())));
+            properties.appendChild(property);
+
+            property = doc.createElement("property");
+            property.setAttribute("SAKAI:content_priority", new String(Base64.getEncoder().encode("2".getBytes())));
+            properties.appendChild(property);
+
+            property = doc.createElement("property");
+            property.setAttribute("SAKAI:conditionalrelease", new String(Base64.getEncoder().encode("false".getBytes())));
+            properties.appendChild(property);
+
+            property = doc.createElement("property");
+            property.setAttribute("DAV:creationdate", new String(Base64.getEncoder().encode(timeNow.getBytes())));
+            properties.appendChild(property);
+
+            property = doc.createElement("property");
+            property.setAttribute("SAKAI:conditionalNotificationId", new String(Base64.getEncoder().encode("".getBytes())));
+            properties.appendChild(property);
+
+
+            property = doc.createElement("property");
+            property.setAttribute("DAV:displayname", new String(Base64.getEncoder().encode("Site Information".getBytes())));
+            properties.appendChild(property);
+
+            siteInfoResource.appendChild(properties);
+
+            chsEl.appendChild(siteInfoResource);
+
+            Xml.writeDocument(doc, contentXmlPath);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+
+        return true;
+    }
+
+
     public boolean pokeAway(String siteId, String path, String nowString, String fromSystem) {
         Site site;
         try {

@@ -239,7 +239,7 @@ public class SiteArchiver {
 		    new SubPageWhacker().whack(lessonsExportPath);
 		}
 
-		new SiteInfoPoker().pokeAway(siteId, lessonsExportPath, now.toString(), fromSystem);
+		new SiteInfoPoker().pokeAsResource(siteId, m_storagePath + siteId + "-archive");
 
 		String syllabusExportPath = m_storagePath + siteId + "-archive/syllabus.xml";
 		if (new File(syllabusExportPath).exists()) {
