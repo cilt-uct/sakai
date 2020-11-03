@@ -84,44 +84,64 @@ public class SiteInfoPoker {
             Element properties = doc.createElement("properties");
 
             Element property = doc.createElement("property");
-            property.setAttribute("CHEF:creator", new String(Base64.getEncoder().encode("admin".getBytes())));
+            property.setAttribute("enc", "BASE64");
+            property.setAttribute("name", "CHEF:creator");
+            property.setAttribute("value", new String(Base64.getEncoder().encode("admin".getBytes())));
             properties.appendChild(property);
 
             property = doc.createElement("property");
-            property.setAttribute("CHEF:modifiedby", new String(Base64.getEncoder().encode("admin".getBytes())));
+            property.setAttribute("enc", "BASE64");
+            property.setAttribute("name", "CHEF:modifiedby");
+            property.setAttribute("value", new String(Base64.getEncoder().encode("admin".getBytes())));
             properties.appendChild(property);
 
             property = doc.createElement("property");
-            property.setAttribute("CHEF:description", new String(Base64.getEncoder().encode("".getBytes())));
+            property.setAttribute("enc", "BASE64");
+            property.setAttribute("name", "CHEF:description");
+            property.setAttribute("value", new String(Base64.getEncoder().encode("".getBytes())));
             properties.appendChild(property);
 
             property = doc.createElement("property");
-            property.setAttribute("CHEF:is-collection", new String(Base64.getEncoder().encode("false".getBytes())));
+            property.setAttribute("enc", "BASE64");
+            property.setAttribute("name", "CHEF:is-collection");
+            property.setAttribute("value", new String(Base64.getEncoder().encode("false".getBytes())));
             properties.appendChild(property);
 
             property = doc.createElement("property");
-            property.setAttribute("DAV:getlastmodified", new String(Base64.getEncoder().encode(timeNow.getBytes())));
+            property.setAttribute("enc", "BASE64");
+            property.setAttribute("name", "DAV:getlastmodified");
+            property.setAttribute("value", new String(Base64.getEncoder().encode(timeNow.getBytes())));
             properties.appendChild(property);
 
             property = doc.createElement("property");
-            property.setAttribute("SAKAI:content_priority", new String(Base64.getEncoder().encode("2".getBytes())));
+            property.setAttribute("enc", "BASE64");
+            property.setAttribute("name", "SAKAI:content_priority");
+            property.setAttribute("value", new String(Base64.getEncoder().encode("2".getBytes())));
             properties.appendChild(property);
 
             property = doc.createElement("property");
-            property.setAttribute("SAKAI:conditionalrelease", new String(Base64.getEncoder().encode("false".getBytes())));
+            property.setAttribute("enc", "BASE64");
+            property.setAttribute("name", "SAKAI:conditionalrelease");
+            property.setAttribute("value", new String(Base64.getEncoder().encode("false".getBytes())));
             properties.appendChild(property);
 
             property = doc.createElement("property");
-            property.setAttribute("DAV:creationdate", new String(Base64.getEncoder().encode(timeNow.getBytes())));
+            property.setAttribute("enc", "BASE64");
+            property.setAttribute("name", "DAV:creationdate");
+            property.setAttribute("value", new String(Base64.getEncoder().encode(timeNow.getBytes())));
             properties.appendChild(property);
 
             property = doc.createElement("property");
-            property.setAttribute("SAKAI:conditionalNotificationId", new String(Base64.getEncoder().encode("".getBytes())));
+            property.setAttribute("enc", "BASE64");
+            property.setAttribute("name", "SAKAI:conditionalNotificationId");
+            property.setAttribute("value", new String(Base64.getEncoder().encode("".getBytes())));
             properties.appendChild(property);
 
 
             property = doc.createElement("property");
-            property.setAttribute("DAV:displayname", new String(Base64.getEncoder().encode("Site Information".getBytes())));
+            property.setAttribute("enc", "BASE64");
+            property.setAttribute("name", "DAV:displayname");
+            property.setAttribute("value", new String(Base64.getEncoder().encode("Site Information".getBytes())));
             properties.appendChild(property);
 
             siteInfoResource.appendChild(properties);
