@@ -1,10 +1,5 @@
 package org.sakaiproject.archive.impl;
 
-import org.apache.commons.lang.StringUtils;
-import org.sakaiproject.exception.IdUnusedException;
-import org.sakaiproject.site.api.Site;
-import org.sakaiproject.site.cover.SiteService;
-import org.sakaiproject.util.Xml;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -88,11 +83,12 @@ public class SubPageWhacker {
                 int depth = 0;
 
                 PageInfo current = pageInfo;
-                while (!current.parentId.isEmpty()) {
+                while (current != null && !current.parentId.isEmpty()) {
                     depth += 1;
+
+                    // Will return null if current.parentId is 0.  That's top-level, sorta.
                     current = pageInfoByPageId.get(current.parentId);
                 }
-
                 pageInfo.depth = depth;
             }
 
@@ -172,5 +168,10 @@ public class SubPageWhacker {
             throw new RuntimeException(e);
         }
     }
+
+    public static void main(String[] args) {
+        new SubPageWhacker().whack(args[0]);
+    }
+
 }
 
