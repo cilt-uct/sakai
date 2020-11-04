@@ -186,6 +186,49 @@ public class AssessmentEntityProducer implements EntityTransferrer,
             }
         }
 
+		// NYU published assessments
+		PublishedAssessmentService publishedAssessmentService = new PublishedAssessmentService();
+		List<PublishedAssessmentData> publishedAssessmentList = publishedAssessmentService.getAllPublishedAssessmentsForSite(siteId);
+		for (PublishedAssessmentData data : publishedAssessmentList) {
+			Element assessmentXml = doc.createElement(ARCHIVED_ELEMENT);
+			String publishedAssessmentId = data.getPublishedAssessmentId().toString();
+			assessmentXml.setAttribute("id", String.format("pub%s", publishedAssessmentId));
+			assessmentXml.setAttribute("published", "true");
+			assessmentXml.setAttribute("baseId", data.getAssessmentBaseId().toString());
+			FileWriter writer = null;
+			try {
+				File assessmentFile = new File(qtiPath + File.separator + ARCHIVED_ELEMENT + String.format("pub%s", publishedAssessmentId) + ".xml");
+				writer = new FileWriter(assessmentFile);
+				writer.write(qtiService.getExportedPublishedAssessmentAsString(publishedAssessmentId, QTI_VERSION));
+			} catch (IOException e) {
+				results.append(e.getMessage() + "\n");
+				log.error(e.getMessage(), e);
+			} finally {
+				if (writer != null) {
+					try {
+						writer.close();
+					} catch (Throwable t) {
+						log.error(t.getMessage(), t);
+					}
+				}
+			}
+			element.appendChild(assessmentXml);
+
+			for (String resourceId : fetchAllAttachmentResourceIds(data.getPublishedAssessmentId())) {
+				ContentResource resource = null;
+				try {
+					resource = ContentHostingService.getResource(resourceId);
+				} catch (PermissionException e) {
+					log.warn("Permission error fetching attachment: " + resourceId);
+				} catch (TypeException e) {
+					log.warn("TypeException error fetching attachment: " + resourceId);
+				} catch (IdUnusedException e) {
+					log.warn("IdUnusedException error fetching attachment: " + resourceId);
+				}
+				attachments.add(EntityManager.newReference(resource.getReference()));
+			}
+		}
+
         exportQuestionPools(siteId, archivePath, attachments);
 
         stack.pop();

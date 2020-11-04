@@ -120,6 +120,18 @@ public class AssessmentService {
 		}
 	}
 	
+
+	public PublishedAssessmentFacade getPublishedAssessment(String publishedAssessmentId) {
+		try {
+			return PersistenceService.getInstance()
+					.getPublishedAssessmentFacadeQueries().getPublishedAssessment(
+							Long.valueOf(publishedAssessmentId));
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			throw new RuntimeException(e);
+		}
+	}
+	
 	public AssessmentIfc getAssessment(Long assessmentId) {
 		try {
 			return PersistenceService.getInstance()
@@ -1014,7 +1026,17 @@ public class AssessmentService {
 			throw new RuntimeException(e);
 		}
 	}
-	
+
+	public List<PublishedAssessmentData> getAllPublishedAssessmentsForSite(String siteId) {
+		List<PublishedAssessmentData> result = new ArrayList<>();
+		List<PublishedAssessmentFacade> publist = PersistenceService.getInstance().getPublishedAssessmentFacadeQueries().getBasicInfoOfAllPublishedAssessments2(PublishedAssessmentFacadeQueries.DUE, true, siteId);
+		for (PublishedAssessmentFacade facade: publist) {
+			PublishedAssessmentData data = PersistenceService.getInstance().getPublishedAssessmentFacadeQueries().loadPublishedAssessment(facade.getPublishedAssessmentId());
+			result.add(data);
+		}
+		return result;
+	}
+
 	public void copyAssessment(String assessmentId, String apepndCopyTitle) {
 		try {
 			PersistenceService.getInstance().getAssessmentFacadeQueries()
