@@ -237,6 +237,7 @@ public class SiteArchiver {
 		if (new File(lessonsExportPath).exists()) {
 		    new LessonsRejigger().rewriteLessons(lessonsExportPath);
 		    new SubPageWhacker().whack(lessonsExportPath);
+		    new QuizTitleHappyMaker().makeHappy(lessonsExportPath);
 		}
 
 		new SiteInfoPoker().pokeAsResource(siteId, m_storagePath + siteId + "-archive");
