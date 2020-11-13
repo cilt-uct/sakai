@@ -819,7 +819,8 @@ $Id$
         <f:param name="sortAscending" value="true" />
         </h:commandLink>
       </f:facet>
-      <h:inputText value="#{description.roundedTotalAutoScore}" size="5" id="qscore" styleClass="adjustedScore#{description.assessmentGradingId}.#{questionScores.itemId}" required="false" onchange="toPoint(this.id);">
+      <h:inputText value="#{description.roundedTotalAutoScore}" size="5" id="qscore" styleClass="adjustedScore#{description.assessmentGradingId}.#{questionScores.itemId}" required="false" 
+                   onchange="toPoint(this.id);" validatorMessage="#{evaluationMessages.number_format_error_adjusted_score}">>
         <f:validateDoubleRange/>
       </h:inputText>
       <h:message for="qscore" style="color:red"/>
@@ -842,7 +843,8 @@ $Id$
            type="org.sakaiproject.tool.assessment.ui.listener.evaluation.QuestionScoreListener" />
           </h:commandLink>    
       </f:facet>
-	  <h:inputText value="#{description.roundedTotalAutoScore}" size="5" id="qscore2" styleClass="adjustedScore#{description.assessmentGradingId}" required="false" onchange="toPoint(this.id);">
+	  <h:inputText value="#{description.roundedTotalAutoScore}" size="5" id="qscore2" styleClass="adjustedScore#{description.assessmentGradingId}" required="false" onchange="toPoint(this.id);"
+                   validatorMessage="#{evaluationMessages.number_format_error_adjusted_score}">>
 	  	<f:validateDoubleRange/>
 	  </h:inputText>
 	  <h:message for="qscore2" style="color:red"/>
@@ -864,7 +866,8 @@ $Id$
            type="org.sakaiproject.tool.assessment.ui.listener.evaluation.QuestionScoreListener" />
           </h:commandLink>    
       </f:facet>
-	  <h:inputText value="#{description.roundedTotalAutoScore}" size="5" id="qscore3" styleClass="adjustedScore#{description.assessmentGradingId}" required="false" onchange="toPoint(this.id);">
+	  <h:inputText value="#{description.roundedTotalAutoScore}" size="5" id="qscore3" styleClass="adjustedScore#{description.assessmentGradingId}" required="false" onchange="toPoint(this.id);"
+                   validatorMessage="#{evaluationMessages.number_format_error_adjusted_score}">>
 	  	<f:validateDoubleRange/>
 	  </h:inputText>
 	  <h:message for="qscore2" style="color:red"/>
@@ -1221,7 +1224,7 @@ $Id$
 
 <p class="act">
    <%-- <h:commandButton value="#{evaluationMessages.save_exit}" action="author"/> --%>
-   <h:commandButton styleClass="active" value="#{evaluationMessages.saver}" action="questionScores" type="submit" >
+   <h:commandButton id="save" styleClass="active" value="#{evaluationMessages.saver}" action="questionScores" type="submit" >
       <f:actionListener
          type="org.sakaiproject.tool.assessment.ui.listener.evaluation.QuestionScoreUpdateListener" />
       <f:actionListener

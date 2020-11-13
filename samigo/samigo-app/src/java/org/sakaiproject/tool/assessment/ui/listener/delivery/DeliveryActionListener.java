@@ -111,14 +111,13 @@ public class DeliveryActionListener
 {
 
   static String alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  //private static ContextUtil cu;
   private boolean resetPageContents = true;
   private long previewGradingId = (long)(Math.random() * 1000);
   private static final ResourceBundle eventLogMessages = ResourceBundle.getBundle("org.sakaiproject.tool.assessment.bundle.EventLogMessages");
   private static final ResourceLoader rb = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.DeliveryMessages");
   private static final ResourceLoader ra = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AuthorMessages");
 
-    private final EventTrackingService eventTrackingService= ComponentManager.get( EventTrackingService.class );
+  private EventTrackingService eventTrackingService = ComponentManager.get(EventTrackingService.class);
 
   /**
    * ACTION.
@@ -134,7 +133,7 @@ public class DeliveryActionListener
     {
       PersonBean person = (PersonBean) ContextUtil.lookupBean("person");
       // 1. get managed bean
-      DeliveryBean delivery = (DeliveryBean) ContextUtil.lookupBean("delivery");      
+      DeliveryBean delivery = (DeliveryBean) ContextUtil.lookupBean("delivery");
       
       // set publishedId, note that id can be changed by isPreviewingMode()
       String id = getPublishedAssessmentId(delivery);
@@ -1400,8 +1399,17 @@ public class DeliveryActionListener
           // Randomize matching the same way for each
         }
 
+        // Show the answers in the same order that student did.
+        String agentString = "";
+        if (delivery.getActionMode() == DeliveryBean.GRADE_ASSESSMENT) {
+            StudentScoresBean studentscorebean = (StudentScoresBean) ContextUtil.lookupBean("studentScores");
+            agentString = studentscorebean.getStudentId();
+        } else {
+            agentString = getAgentString();
+        }
+
         String itemText = (item.getText() == null) ? "" : item.getText();
-        Collections.shuffle(shuffled, new Random( (long) itemText.hashCode() + (getAgentString() + "_" + item.getItemId().toString()).hashCode()));
+        Collections.shuffle(shuffled, new Random( (long) itemText.hashCode() + (agentString + "_" + item.getItemId().toString()).hashCode()));
         key2 = shuffled.iterator();
       }
       else
@@ -1674,7 +1682,17 @@ public class DeliveryActionListener
 
     if (item.getTypeId().equals(TypeIfc.MATCHING)) // matching
     {
-      populateMatching(item, itemBean, publishedAnswerHash);
+        // Show the answers in the same order that student did.
+        String agentString = "";
+
+        if (delivery.getActionMode() == DeliveryBean.GRADE_ASSESSMENT) {
+            StudentScoresBean studentscorebean = (StudentScoresBean) ContextUtil.lookupBean("studentScores");
+            agentString = studentscorebean.getStudentId();
+        } else {
+            agentString = getAgentString();
+        }
+
+        populateMatching(item, itemBean, publishedAnswerHash, agentString);
     }
     else if (item.getTypeId().equals(TypeIfc.EXTENDED_MATCHING_ITEMS))
     {
@@ -1776,7 +1794,7 @@ public class DeliveryActionListener
     bean.setIsMultipleItems(beans.size() > 1);
   }
 
-  public void populateMatching(ItemDataIfc item, ItemContentsBean bean, Map publishedAnswerHash)
+  public void populateMatching(ItemDataIfc item, ItemContentsBean bean, Map publishedAnswerHash, String agentString)
   {
 	  // used only for questions with distractors where the user has selected None of the Above
 	  final Long NONE_OF_THE_ABOVE = -1l;
@@ -1804,7 +1822,7 @@ public class DeliveryActionListener
       }
       Collections.shuffle(shuffled,
                           new Random( (long) item.getText().hashCode() +
-                          (getAgentString() + "_" + item.getItemId().toString()).hashCode()));
+                          (agentString + "_" + item.getItemId().toString()).hashCode()));
 
 /*
       Collections.shuffle

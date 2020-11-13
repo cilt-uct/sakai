@@ -256,12 +256,10 @@ document.links[newindex].onclick();
 <h:inputHidden id="showTimer" value="#{delivery.showTimer}"/>
 <h:inputHidden id="dueDate" value="#{delivery.dueDate.time}" rendered="#{delivery.dueDate != null}" />
 <h:inputHidden id="retractDate" value="#{delivery.retractDate.time}" rendered="#{delivery.retractDate != null}" />
-<h:inputHidden id="minutesLeft" value="#{delivery.minutesLeft}" rendered="#{delivery.minutesLeft != null}" />
-<h:inputHidden id="secondsLeft" value="#{delivery.secondsLeft}" rendered="#{delivery.secondsLeft != null}" />
 
 <!-- DONE BUTTON FOR PREVIEW -->
 <h:panelGroup rendered="#{delivery.actionString=='previewAssessment'}">
-  <div class="sak-banner-info">
+  <div class="previewMessage">
      <h:outputText value="#{deliveryMessages.ass_preview}" />
      <h:commandButton id="done" value="#{deliveryMessages.done}"
         action="#{person.cleanResourceIdListInPreview}"
@@ -431,7 +429,11 @@ document.links[newindex].onclick();
              <h:outputText value="#{deliveryMessages.time_expired2} " />
            </div>
            <div role="alert" class="sak-banner-error" style="display: none" id="autosave-timeleft-warning">
-             <h:outputFormat value="#{deliveryMessages.time_left}"><f:param value="#{delivery.minutesLeft}"/><f:param value="#{delivery.secondsLeft}"/></h:outputFormat>
+             <h:panelGroup rendered="#{(delivery.deadlineString != null && delivery.deadlineString ne '')}">
+               <h:outputFormat value="#{deliveryMessages.time_left}" escape="false">
+                 <f:param value="#{delivery.deadlineString}"/>
+               </h:outputFormat>
+             </h:panelGroup>
            </div>
            <div role="alert" class="sak-banner-error" style="display: none" id="autosave-failed-warning">
              <p><h:outputText value="#{deliveryMessages.autosaveFailed}" escape="false" /></p>
@@ -586,7 +588,7 @@ document.links[newindex].onclick();
 
 <!-- DONE BUTTON IN PREVIEW -->
 <h:panelGroup rendered="#{delivery.actionString=='previewAssessment'}">
- <f:verbatim><div class="sak-banner-info"></f:verbatim>
+ <f:verbatim><div class="previewMessage"></f:verbatim>
      <h:outputText value="#{deliveryMessages.ass_preview}" />
      <h:commandButton value="#{deliveryMessages.done}"
         action="#{person.cleanResourceIdListInPreview}"
