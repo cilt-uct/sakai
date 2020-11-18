@@ -31,33 +31,24 @@ public class QuizTitleHappyMaker {
                 }
 
                 Element page = (Element) pages.item(i);
-                String pageName = page.getAttribute("title");
-                if (pageName.length() > 30) {
-                    pageName = String.format("%s...", pageName.substring(0, 30));
-                }
 
-                NodeList items = page.getChildNodes();
+                NodeList questions = ((NodeList)xPath.evaluate("item[@type=11]",
+                        page,
+                        XPathConstants.NODESET));
 
-                int quizCount = 0;
-
-                for (int j = 0; j < items.getLength(); j++) {
-                    if (!(items.item(j) instanceof Element)) {
+                for (int j = 0; j < questions.getLength(); j++) {
+                    if (!(questions.item(j) instanceof Element)) {
                         continue;
                     }
 
-                    Element item = (Element) items.item(j);
+                    Element question = (Element) questions.item(j);
 
-                    if (!"item".equals(item.getTagName())) {
-                        continue;
+                    if (questions.getLength() == 1) {
+                        question.setAttribute("name", "Question");
+                    } else {
+                        String newQuizName = String.format("Question %d", j+1);
+                        question.setAttribute("name", newQuizName);
                     }
-
-                    if (!"11".equals(item.getAttribute("type"))) {
-                        continue;
-                    }
-
-                    quizCount++;
-                    String newQuizName = String.format("%s: Question %d", pageName, quizCount);
-                    item.setAttribute("name", newQuizName);
                 }
             }
 
