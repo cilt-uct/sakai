@@ -240,6 +240,12 @@ public class SiteArchiver {
 		    new QuizTitleHappyMaker().makeHappy(lessonsExportPath);
 		}
 
+		// Brightspace's importer is going to look for a special filename to process our
+		// customizations here.
+		new File(lessonsExportPath).renameTo(new File(String.format("%s%s-archive/NYULessonBuilder.xml",
+									    m_storagePath,
+									    siteId)));
+
 		new SiteInfoPoker().pokeAsResource(siteId, m_storagePath + siteId + "-archive");
 
 		String syllabusExportPath = m_storagePath + siteId + "-archive/syllabus.xml";
