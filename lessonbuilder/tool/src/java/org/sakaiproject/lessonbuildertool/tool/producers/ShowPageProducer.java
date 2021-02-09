@@ -111,6 +111,7 @@ import org.sakaiproject.memory.api.MemoryService;
 import org.sakaiproject.portal.util.CSSUtils;
 import org.sakaiproject.portal.util.PortalUtils;
 import org.sakaiproject.site.api.SiteService;
+import org.sakaiproject.site.api.SitePage;
 import org.sakaiproject.time.api.UserTimeService;
 import org.sakaiproject.tool.api.Placement;
 import org.sakaiproject.tool.api.Session;
@@ -4877,7 +4878,19 @@ public class ShowPageProducer implements ViewComponentProducer, DefaultView, Nav
 		makeCsrf(form, "csrf14");
 
 		UIOutput.make(form, "pageTitleLabel", messageLocator.getMessage("simplepage.pageTitle_label"));
-		UIInput.make(form, "pageTitle", "#{simplePageBean.pageTitle}");
+
+		final String placementId = toolManager.getCurrentPlacement() != null ? toolManager.getCurrentPlacement().getId() : null;
+		final SitePage sitePage = simplePageBean.getCurrentSite() != null ? simplePageBean.getCurrentSite().getPage(page.getToolId()) : null;
+		String externalPageTitle = null;
+		if (sitePage != null && StringUtils.isNotBlank(placementId)) {
+			 externalPageTitle = sitePage.getTools().stream()
+					.filter(t -> t.getId().equals(placementId))
+					.findFirst()
+					.map(Placement::getTitle)
+					.orElse("");
+		}
+		String effectivePageTitle = StringUtils.defaultIfBlank(externalPageTitle, page.getTitle());
+		UIInput.make(form, "pageTitle", "#{simplePageBean.pageTitle}", effectivePageTitle);
 
 		if (!simplePageBean.isStudentPage(page)) {
 			UIOutput.make(tofill, "hideContainer");
