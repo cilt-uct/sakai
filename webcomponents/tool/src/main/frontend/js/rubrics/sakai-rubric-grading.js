@@ -149,8 +149,12 @@ export class SakaiRubricGrading extends RubricsElement {
     }, 0);
   }
 
-  save() {
+  release() {
     this._dispatchRatingChanged(this.criteria, 2);
+  }
+
+  save() {
+    this._dispatchRatingChanged(this.criteria, 1);
   }
 
   decorateCriteria() {
@@ -199,6 +203,7 @@ export class SakaiRubricGrading extends RubricsElement {
     this.dispatchEvent(new CustomEvent("rubric-rating-tuned", { detail: detail, bubbles: true, composed: true }));
 
     this.updateTotalPoints();
+    this._dispatchRatingChanged(this.criteria, 1);
   }
 
   _dispatchRatingChanged(criteria, status) {

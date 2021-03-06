@@ -706,11 +706,6 @@ public class LTIAdminTool extends VelocityPortletPaneledAction {
 			tool.put(LTIService.LTI_SECRET, LTIService.SECRET_HIDDEN);
 		}
 
-		// If we are not admin, hide url, key, and secret
-		if (!ltiService.isAdmin(getSiteId(state))) {
-			mappingForm = foorm.filterForm(mappingForm, null, "^launch:.*|^consumerkey:.*|^secret:.*");
-		}
-
 		// Decrypt secrets for display
 		String tool_private = (String) tool.get(LTIService.LTI13_TOOL_PRIVATE);
 		if ( tool_private != null ) {
@@ -820,7 +815,7 @@ public class LTIAdminTool extends VelocityPortletPaneledAction {
 		context.put("messageSuccess", state.getAttribute(STATE_SUCCESS));
 		String[] mappingForm = ltiService.getToolModel(getSiteId(state));
 
-		mappingForm = foorm.filterForm(mappingForm, null, ".*:only=edit.*|.*:only=lti2.*|.*:hide=insert.*|.*:hideen=insert.*");
+		mappingForm = foorm.filterForm(mappingForm, null, ".*:only=edit.*|.*:hide=insert.*|.*:hidden=insert.*");
 
 		Properties previousPost = (Properties) state.getAttribute(STATE_POST);
 		String formInput = ltiService.formInput(previousPost, mappingForm);
@@ -1923,7 +1918,6 @@ public class LTIAdminTool extends VelocityPortletPaneledAction {
 		*/
 		String title = getString(item, DeepLinkResponse.TITLE);
 
-		// TODO: Check as to why this is missing
 		String text = getString(item, DeepLinkResponse.TEXT);
 		String url = getString(item, DeepLinkResponse.URL);
 		// If the URL is empty, assume it is the same as the launch URL
@@ -2149,6 +2143,11 @@ public class LTIAdminTool extends VelocityPortletPaneledAction {
 
 		// /acccess/blti/context/tool:12 (does not have a querystring)
 		String contentLaunch = ltiService.getToolLaunch(tool, placement.getContext());
+		if ( contentLaunch.indexOf("?") > 1 ) {
+			contentLaunch += "&flow=" + flow;
+		} else {
+			contentLaunch += "?flow=" + flow;
+		}
 
 		// Can set ContentItemSelection launch values or put in our own data items
 		// which will come back later.  Be mindful of GET length limitations enroute
@@ -2408,6 +2407,11 @@ public class LTIAdminTool extends VelocityPortletPaneledAction {
 
 		// /acccess/blti/context/tool:12 (does not have a querystring)
 		String contentLaunch = ltiService.getToolLaunch(tool, placement.getContext());
+		if ( contentLaunch.indexOf("?") > 1 ) {
+			contentLaunch += "&flow=" + flow;
+		} else {
+			contentLaunch += "?flow=" + flow;
+		}
 
 		// Can set ContentItemSelection launch values or put in our own data items
 		// which will come back later.  Be mindful of GET length limitations enroute
