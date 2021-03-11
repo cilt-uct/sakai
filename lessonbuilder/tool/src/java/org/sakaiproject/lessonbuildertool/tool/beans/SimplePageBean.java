@@ -3680,7 +3680,7 @@ public class SimplePageBean {
 
     // only makes sense for SimplePageItem.RESOURCE or .MULTIMEDIA
 	public String getContentType(SimplePageItem item) {
-	    String mimeType = item.getHtml();
+	    String mimeType = null;
 	    // for files the code no longer stores the mimetype in lessons
 	    // so if lessons doesn't have one, get it from the kernel
 	    
