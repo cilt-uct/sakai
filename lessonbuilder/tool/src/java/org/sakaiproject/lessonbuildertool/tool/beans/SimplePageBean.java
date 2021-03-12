@@ -3680,33 +3680,26 @@ public class SimplePageBean {
 
     // only makes sense for SimplePageItem.RESOURCE or .MULTIMEDIA
 	public String getContentType(SimplePageItem item) {
-	    String mimeType = item.getHtml();
-	    // for files the code no longer stores the mimetype in lessons
-	    // so if lessons doesn't have one, get it from the kernel
-	    
-	    // old code put URLs in html field. no legit types start with http
-	    if (mimeType != null && (mimeType.startsWith("http")))
-		mimeType = null;
+		String mimeType = null;
 
-	    if (mimeType == null || mimeType.equals("")) {
 		String mmDisplayType = item.getAttribute("multimediaDisplayType");
 		// 2 is the generic "use old display" so treat it as null
 		// only do this for type 2, since that's where there's an actual file
 		if (mmDisplayType == null || "".equals(mmDisplayType) || "2".equals(mmDisplayType)) {
-		    try {
-			ContentResource res = contentHostingService.getResource(item.getSakaiId());
-			mimeType = res.getContentType();
-		    } catch (Exception ignore) {
-		    }
+			try {
+				ContentResource res = contentHostingService.getResource(item.getSakaiId());
+				mimeType = res.getContentType();
+			} catch (Exception ignore) {
+			}
 		}
-	    }
-	    if("application/octet-stream".equals(mimeType)) {
-		// OS X reports octet stream for things like MS Excel documents.
-		// Force a mimeType lookup so we get a decent icon.
-		// Probably not needed for normal files, as kernel should sniff
-		// correctly, but we may need it for URLs
-		mimeType = null;
-	    }
+
+		if("application/octet-stream".equals(mimeType)) {
+			// OS X reports octet stream for things like MS Excel documents.
+			// Force a mimeType lookup so we get a decent icon.
+			// Probably not needed for normal files, as kernel should sniff
+			// correctly, but we may need it for URLs
+			mimeType = null;
+		}
 
 	    if (mimeType == null || mimeType.equals("")) {
 		String s = item.getSakaiId();
