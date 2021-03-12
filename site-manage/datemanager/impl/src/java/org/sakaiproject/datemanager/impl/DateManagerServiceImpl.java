@@ -220,7 +220,7 @@ public class DateManagerServiceImpl implements DateManagerService {
 				assobj.put("extraInfo", extraInfo);
 				jsonAssignments.add(assobj);
 			} catch (Exception e) {
-				log.error("Error while trying to add assignment {}", assignment.getId());
+				log.error("Error while trying to add assignment {}", assignment.getId(), e);
 			}
 		}
 		return jsonAssignments;
@@ -248,9 +248,8 @@ public class DateManagerServiceImpl implements DateManagerService {
 				}
 
 				String assignmentReference = assignmentService.assignmentReference(siteId, assignmentId);
-				boolean canUpdate = assignmentService.allowUpdateAssignment(assignmentReference);
 
-				if (!canUpdate) {
+				if (!assignmentService.allowUpdateAssignment(assignmentReference)) {
 					errors.add(new DateManagerError("assignment", rb.getString("error.update.permission.denied"), "assignments", toolTitle, idx));
 					continue;
 				}
@@ -588,7 +587,7 @@ public class DateManagerServiceImpl implements DateManagerService {
 		List<Object> updates = new ArrayList<>();
 
 		String toolTitle = toolManager.getTool(DateManagerConstants.COMMON_ID_GRADEBOOK).getTitle();
-		if(!gradebookService.currentUserHasEditPerm(getCurrentSiteId())) {
+		if (!gradebookItems.isEmpty() && !gradebookService.currentUserHasEditPerm(getCurrentSiteId())) {
 			errors.add(new DateManagerError("gbitem", rb.getString("error.update.permission.denied"), "gradebookItems", toolTitle, 0));
 		}
 
@@ -675,9 +674,8 @@ public class DateManagerServiceImpl implements DateManagerService {
 		List<DateManagerError> errors = new ArrayList<>();
 		List<Object> updates = new ArrayList<>();
 
-		boolean canUpdate = signupService.isAllowedToCreateinSite(getCurrentUserId(), getCurrentSiteId());
 		String toolTitle = toolManager.getTool(DateManagerConstants.COMMON_ID_SIGNUP).getTitle();
-		if (!canUpdate) {
+		if (!signupMeetings.isEmpty() && !signupService.isAllowedToCreateinSite(getCurrentUserId(), getCurrentSiteId())) {
 			errors.add(new DateManagerError("signup", rb.getString("error.update.permission.denied"), "signupMeetings", toolTitle, 0));
 		}
 		for (int i = 0; i < signupMeetings.size(); i++) {
@@ -739,7 +737,7 @@ public class DateManagerServiceImpl implements DateManagerService {
 			SignupMeeting meeting = (SignupMeeting) update.object;
 			meeting.setStartTime(Date.from(update.openDate));
 			meeting.setEndTime(Date.from(update.dueDate));
-			signupService.updateSignupMeeting(meeting, false);
+			signupService.updateSignupMeeting(meeting, true);
 		}
 	}
 
@@ -820,8 +818,7 @@ public class DateManagerServiceImpl implements DateManagerService {
 						continue;
 					}
 
-					boolean canUpdate = contentHostingService.allowUpdateResource(resourceId);
-					if (!canUpdate) {
+					if (!contentHostingService.allowUpdateResource(resourceId)) {
 						errors.add(new DateManagerError("resource", rb.getString("error.update.permission.denied"), "resources", toolTitle, idx));
 					}
 					update = new DateManagerUpdate(resource, openDate, dueDate, null);
@@ -832,8 +829,7 @@ public class DateManagerServiceImpl implements DateManagerService {
 						continue;
 					}
 
-					boolean canUpdate = contentHostingService.allowUpdateCollection(resourceId);
-					if (!canUpdate) {
+					if (!contentHostingService.allowUpdateCollection(resourceId)) {
 						errors.add(new DateManagerError("resource", rb.getString("error.update.permission.denied"), "resources", toolTitle, idx));
 					}
 					update = new DateManagerUpdate(folder, openDate, dueDate, null);
@@ -926,11 +922,10 @@ public class DateManagerServiceImpl implements DateManagerService {
 		List<Object> updates = new ArrayList<>();
 		String toolTitle = toolManager.getTool(DateManagerConstants.COMMON_ID_CALENDAR).getTitle();
 		Calendar c = getCalendar();
-		if (c != null) {
-			boolean canUpdate = calendarService.allowEditCalendar(c.getReference());
-			if (!canUpdate) {
-				errors.add(new DateManagerError("calendar", rb.getString("error.update.permission.denied"), "calendarEvents", toolTitle, 0));
-			}
+		CalendarEventEdit calendarEvent = null;
+
+		if (c != null && !calendarEvents.isEmpty() && !calendarService.allowEditCalendar(c.getReference())) {
+			errors.add(new DateManagerError("calendar", rb.getString("error.update.permission.denied"), "calendarEvents", toolTitle, 0));
 		}
 		for (int i = 0; i < calendarEvents.size(); i++) {
 			JSONObject jsonEvent = (JSONObject)calendarEvents.get(i);
@@ -947,37 +942,39 @@ public class DateManagerServiceImpl implements DateManagerService {
 				Instant dueDate = userTimeService.parseISODateInUserTimezone((String)jsonEvent.get("due_date")).toInstant();
 				boolean errored = false;
 				if (openDate == null) {
-					errors.add(new DateManagerError("open_date", rb.getString("error.open.date.not.found"), "calendarEvents", toolTitle, idx));
-					errored = true;
+					errored = errors.add(new DateManagerError("open_date", rb.getString("error.open.date.not.found"), "calendarEvents", toolTitle, idx));
 				}
-				if (dueDate == null) {
-					errors.add(new DateManagerError("due_date", rb.getString("error.due.date.not.found"), "calendarEvents", toolTitle, idx));
-					errored = true;
+				else if (dueDate == null) {
+					errored = errors.add(new DateManagerError("due_date", rb.getString("error.due.date.not.found"), "calendarEvents", toolTitle, idx));
+				}
+				else if (dueDate.isBefore(openDate)) {
+					errored = errors.add(new DateManagerError("open_date", rb.getString("error.open.date.before.due.date"), "calendarEvents", toolTitle, idx));
 				}
 				if (errored) {
 					continue;
 				}
 
-				boolean canUpdate = c.allowEditEvent(eventId);
-				if (!canUpdate) {
+				if (!c.allowEditEvent(eventId)) {
 					errors.add(new DateManagerError("calendar", rb.getString("error.event.permission"), "calendarEvents", toolTitle, idx));
 				}
-				CalendarEventEdit calendarEvent = c.getEditEvent(eventId, CalendarService.EVENT_MODIFY_CALENDAR);
-				if (calendarEvent == null) {
-					errors.add(new DateManagerError("calendar", rb.getFormattedMessage("error.item.not.found", new Object[]{rb.getString("tool.calendar.item.name")}), "calendarEvents", toolTitle, idx));
-					continue;
-				}
+				else {
+					calendarEvent = c.getEditEvent(eventId, CalendarService.EVENT_MODIFY_CALENDAR);
+					if (calendarEvent == null) {
+						errors.add(new DateManagerError("calendar", rb.getFormattedMessage("error.item.not.found", new Object[]{rb.getString("tool.calendar.item.name")}), "calendarEvents", toolTitle, idx));
+						continue;
+					}
 
-				DateManagerUpdate update = new DateManagerUpdate(calendarEvent, openDate, dueDate, null);
-				if (!update.openDate.isBefore(update.dueDate)) {
-					errors.add(new DateManagerError("open_date", rb.getString("error.open.date.before.due.date"), "calendarEvents", toolTitle, idx));
-					continue;
+					updates.add(new DateManagerUpdate(calendarEvent, openDate, dueDate, null));
 				}
-				updates.add(update);
 
 			} catch (Exception ex) {
 				errors.add(new DateManagerError("open_date", rb.getString("error.uncaught"), "calendarEvents", toolTitle, idx));
 				log.error("Cannot edit event {}", eventId);
+
+				// Clear out the lock
+				if (c != null && calendarEvent != null) {
+					c.cancelEvent(calendarEvent);
+				}
 			}
 		}
 
