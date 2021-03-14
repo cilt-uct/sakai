@@ -35,7 +35,7 @@ public class SakaiSeatGroupUpdatesTask {
         }
     }
 
-    private static List<ToProcess> findSitesToProcess(final long lastTime) {
+    private static List<ToProcess> findSitesToProcess(final long _lastTime) {
         final List<ToProcess> result = new ArrayList<>();
 
         DB.transaction
@@ -53,8 +53,7 @@ public class SakaiSeatGroupUpdatesTask {
                 db.run("SELECT q.site_id, q.last_sync_requested_time " +
                        " FROM seat_sync_queue q" +
                        " INNER JOIN sakai_site_tool sst ON sst.site_id = q.site_id AND sst.registration = 'nyu.seat-assignments'" +
-                       " WHERE q.last_sync_requested_time > ? AND q.last_sync_requested_time > q.last_sync_time")
-                    .param(lastTime)
+                       " WHERE q.last_sync_requested_time > q.last_sync_time")
                     .executeQuery()
                     .each((row) -> {
                             String siteId = row.getString("site_id");

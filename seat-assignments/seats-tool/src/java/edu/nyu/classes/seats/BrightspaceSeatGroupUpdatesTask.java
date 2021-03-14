@@ -86,7 +86,7 @@ public class BrightspaceSeatGroupUpdatesTask {
     }
 
 
-    private static List<ToProcess> findSitesToProcess(final long lastTime) {
+    private static List<ToProcess> findSitesToProcess(final long _lastTime) {
         final List<ToProcess> result = new ArrayList<>();
 
         DB.transaction
@@ -102,8 +102,7 @@ public class BrightspaceSeatGroupUpdatesTask {
 
                 db.run("SELECT q.site_id, q.last_sync_requested_time " +
                        " FROM seat_sync_queue q" +
-                       " WHERE q.site_id like 'brightspace:%' AND q.last_sync_requested_time > ? AND q.last_sync_requested_time > q.last_sync_time")
-                    .param(lastTime)
+                       " WHERE q.site_id like 'brightspace:%' AND q.last_sync_requested_time > q.last_sync_time")
                     .executeQuery()
                     .each((row) -> {
                             String siteId = row.getString("site_id");
