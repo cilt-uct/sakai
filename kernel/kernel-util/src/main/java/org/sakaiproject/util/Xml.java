@@ -288,6 +288,7 @@ public class Xml
 		catch (Exception any)
 		{
 			log.warn("writeDocument: " + any.toString());
+			any.printStackTrace();
 		}
 		finally {
 			if (out != null) {
@@ -335,6 +336,7 @@ public class Xml
 		catch (Exception any)
 		{
 			log.warn("writeDocumentToString: " + any.toString());
+			any.printStackTrace();
 			return null;
 		}
 	}
