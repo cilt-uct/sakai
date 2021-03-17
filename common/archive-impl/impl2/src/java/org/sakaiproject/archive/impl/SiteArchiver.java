@@ -36,6 +36,8 @@ import org.apache.commons.io.FileUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
+import org.w3c.dom.Node;
+import org.w3c.dom.NamedNodeMap;
 
 import org.sakaiproject.archive.api.ArchiveService;
 import org.sakaiproject.authz.api.AuthzGroup;
@@ -98,6 +100,48 @@ public class SiteArchiver {
 	public void setContentHostingService(ContentHostingService service) {
 		m_contentHostingService = service;
 	}
+
+
+    public static String pad(int level, String s) {
+        StringBuilder result = new StringBuilder();
+
+        for (int i = 0; i < level; i++) {
+            result.append(' ');
+        }
+
+        result.append(s);
+
+        return result.toString();
+    }
+
+
+    public static void dumpDOM(Node elt, int indent) {
+        System.err.println(pad(indent, elt.getNodeName()));
+        NamedNodeMap attributes = elt.getAttributes();
+
+        if (attributes != null) {
+            for (int i = 0; i < attributes.getLength(); i++) {
+                Node attribute = attributes.item(i);
+		String line = pad(indent + 2, String.format("%s=%s", attribute.getNodeName(), attribute.getNodeValue()));
+                System.err.println(line);
+
+		for (int ch = 0; ch < line.length(); ch++) {
+		    if ((int)line.charAt(ch) == 8) {
+			System.err.println("^^^^ BACKSPACE EMBEDDED HERE");
+		    }
+		}
+            }
+        }
+
+        NodeList children = elt.getChildNodes();
+
+        if (children != null) {
+            for (int i = 0; i < children.getLength(); i++) {
+                dumpDOM(children.item(i), indent + 4);
+            }
+        }
+    }
+
 
 	public String archive(String siteId, String m_storagePath, String fromSystem)
 	{
@@ -168,6 +212,12 @@ public class SiteArchiver {
 			stack.pop();
 			
 			String fileName = storagePath + service.getLabel() + ".xml";
+
+			// fileName
+			System.err.println("\n*** @DEBUG " + System.currentTimeMillis() + "[SiteArchiver.java:210 NoxiousEgret]: " + "\n    fileName => " + (fileName) + "\n");
+
+			dumpDOM(doc, 0);
+
 
 			Xml.writeDocument(doc, fileName);
 		}
