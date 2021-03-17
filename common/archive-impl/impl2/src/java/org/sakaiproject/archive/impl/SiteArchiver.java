@@ -216,7 +216,7 @@ public class SiteArchiver {
 			// fileName
 			System.err.println("\n*** @DEBUG " + System.currentTimeMillis() + "[SiteArchiver.java:210 NoxiousEgret]: " + "\n    fileName => " + (fileName) + "\n");
 
-			dumpDOM(doc, 0);
+			// dumpDOM(doc, 0);
 
 
 			Xml.writeDocument(doc, fileName);
