@@ -340,11 +340,5 @@
           </script>
         #end
 
-        #if ($hijackCourseSiteSetupEnabled)
-          <script src="$!{portalCDNPath}/portal/scripts/nyu-course-site-setup.js$!{portalCDNQuery}"></script>
-          <script type="text/template" id="hijackCourseSiteSetupContentTemplate">
-            ${hijackCourseSiteSetupContent}
-          </script>
-        #end
     </body>
 </html>

@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Enumeration;
@@ -1299,18 +1298,6 @@ public class SkinnableCharonPortal extends HttpServlet implements Portal
 		if (externalHelpSystem.isActive()) {
 			rcontext.put("usingExternalHelp", Boolean.valueOf(true));
 			rcontext.put("externalHelpMain", externalHelpSystem.getMainHelp());
-		}
-
-		try {
-			if ("true".equals(HotReloadConfigurationService.getString("hijack.coursesitesetup.enabled", "false"))) {
-				String rawContent = HotReloadConfigurationService.getString("hijack.coursesitesetup.content", "");
-				if (!"".equals(rawContent)) {
-					rcontext.put("hijackCourseSiteSetupContent", new String(Base64.getDecoder().decode(rawContent), "UTF-8"));
-					rcontext.put("hijackCourseSiteSetupEnabled", true);
-				}
-			}
-		} catch (Exception e) {
-			log.error("Failed to set hijack course site setup", e);
 		}
 
 		return rcontext;
