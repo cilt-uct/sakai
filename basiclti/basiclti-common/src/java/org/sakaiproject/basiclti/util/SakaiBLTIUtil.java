@@ -104,6 +104,9 @@ import net.oauth.SimpleOAuthValidator;
 import net.oauth.signature.OAuthSignatureMethod;
 
 import org.apache.commons.math3.util.Precision;
+import org.sakaiproject.component.cover.HotReloadConfigurationService;
+
+import org.sakaiproject.exception.IdUnusedException;
 
 /**
  * Some Sakai Utility code for IMS Basic LTI
@@ -533,10 +536,36 @@ public class SakaiBLTIUtil {
 
 	public static void addPlacementInfo(Properties props, String placementId)
 	{
-
 		// Get the placement to see if we are to release information
 		ToolConfiguration placement = SiteService.findTool(placementId);
 		Properties config = placement.getConfig();
+
+		// NYU CLASSES-3977 rewrite lis_course_section_sourcedid for Course Reserves
+		if ("nyu.ares".equals(placement.getToolId())) {
+			String siteId = placement.getSiteId();
+			try {
+			Site site = siteId != null ? SiteService.getSite(siteId) : null;
+
+			String termEid = site != null ? site.getProperties().getProperty(Site.PROP_SITE_TERM_EID) : null;
+
+			if (termEid != null &&
+			    termEid.substring(termEid.length() - 4, termEid.length()).compareTo("2021") >= 0 &&
+			    !termEid.equals("January_2021") &&
+			    !termEid.equals("Spring_2021")) {
+				String prop = "lis_course_offering_sourcedid";
+				String value = (String) props.getProperty(prop);
+				String prefix = HotReloadConfigurationService.getString("nyu.course-reserves.lti-prefix", "");
+
+				if (value != null && !value.isEmpty() && !prefix.isEmpty()) {
+					props.setProperty(prop, String.format("%s:%s", prefix, value));
+				}
+			}
+			} catch (IdUnusedException e) {
+				// Ignore
+				log.error("ARES override couldn't fetch site with ID: " + siteId);
+			}
+		}
+
 
 		// Start setting the Basici LTI parameters
 		setProperty(props,BasicLTIConstants.RESOURCE_LINK_ID,placementId);
