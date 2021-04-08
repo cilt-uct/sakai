@@ -490,6 +490,7 @@ public class AssessmentEntityProducer implements EntityTransferrer,
 					}
 					questionPool.setAttribute("sourcebank_ref", String.format("%d::%s", pool.getQuestionPoolId(), pool.getTitle()));
 					for (Object itemObj : pool.getQuestionPoolItems()) {
+					    try {
 						QuestionPoolItemData item = (QuestionPoolItemData)itemObj;
 						NodeList nodes = qtiService.getExportedItem(String.valueOf(item.getItemId()), QTI_VERSION).getChildNodes();
 						for (int i=0; i<nodes.getLength(); ++i) {
@@ -509,6 +510,10 @@ public class AssessmentEntityProducer implements EntityTransferrer,
 							}
 							attachments.add(EntityManager.newReference(resource.getReference()));
 						}
+					    } catch (Exception e) {
+						log.error(String.format("Caught an exception while exporting question pool %s (id=%s; title=%s) for instructor %s: %s", pool, pool.getQuestionPoolId(), pool.getTitle(), instructorId, e.getMessage()));
+						e.printStackTrace();
+					    }
 					}
 					questionPools.appendChild(questionPool);
 				}
