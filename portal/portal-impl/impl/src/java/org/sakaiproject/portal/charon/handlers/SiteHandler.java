@@ -1028,6 +1028,11 @@ public class SiteHandler extends WorksiteHandler
 		String uri = req.getRequestURI();
 		String commonToolId = siteTool.getToolId();
 		boolean matched = false;
+
+		if (req.getPathInfo().contains("/exportCc")) {
+			return true;
+		}
+
 		// Check the URL for a pattern match
 		String pattern = null;
 		Pattern p = null;
