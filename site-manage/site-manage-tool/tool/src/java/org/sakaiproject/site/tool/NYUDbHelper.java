@@ -453,12 +453,12 @@ public class NYUDbHelper {
 			// some false positives, and we'll whittle down the list in code momentarily.
 			PreparedStatement ps = db.prepareStatement("select" +
 								   "   br.strm as rule_strm," +
-								   "   br.acad_org as rule_acad_org," +
-								   "   br.acad_group as rule_acad_group," +
+								   "   br.acad_org as rule_department," +
+								   "   br.acad_group as rule_school," +
 								   "   br.stem_name as rule_stem_name," +
 								   "   cc.strm as roster_strm," +
-								   "   cc.acad_org as roster_acad_org," +
-								   "   cc.acad_group as roster_acad_group," +
+								   "   cc.acad_org as roster_department," +
+								   "   cc.acad_group as roster_school," +
 								   "   cc.stem_name as roster_stem_name," +
 								   "   replace(cc.stem_name, ':', '_') as roster_id" +
 								   " from nyu_t_course_catalog cc" +
@@ -484,8 +484,8 @@ public class NYUDbHelper {
 						// If the stem names match, that's an immediate match.  Nothing more to check.
 					} else {
 						// Otherwise, AND together the non-null criteria from our rules
-						for (String field : new String[] { "strm", "acad_org", "acad_group" }) {
-							if ("acad_group".equals(field) && "ALL_DEPARTMENTS".equals(rs.getString("rule_acad_group"))) {
+						for (String field : new String[] { "strm", "department", "school" }) {
+							if ("department".equals(field) && "ALL_DEPARTMENTS".equals(rs.getString("rule_department"))) {
 								// Any department is OK
 								continue;
 							}
