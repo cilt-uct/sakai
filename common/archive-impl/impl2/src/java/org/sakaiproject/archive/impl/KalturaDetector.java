@@ -25,11 +25,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class KalturaDetector {
 
     private static Set<String> ENCODED_ATTRIBUTES = new HashSet<>();
+    private static Set<String> NOT_ENCODED_ATTRIBUTES = new HashSet<>();
 
     static {
         ENCODED_ATTRIBUTES.add("body-html");
         ENCODED_ATTRIBUTES.add("syllabus_body-html");
         ENCODED_ATTRIBUTES.add("value");
+        NOT_ENCODED_ATTRIBUTES.add("html");
     }
 
     public List<String> pathsWithKalturaTags(String siteId, String storagePath) throws Exception {
@@ -63,8 +65,9 @@ public class KalturaDetector {
                                 String key = atts.getLocalName(i);
                                 String value = atts.getValue(i);
 
-                                if (ENCODED_ATTRIBUTES.contains(key.toLowerCase(Locale.ROOT)) && value != null) {
-                                    hasKaltura.set(findKalturaMarkup(value, true));
+                                String attribute = key.toLowerCase(Locale.ROOT);
+                                if ((ENCODED_ATTRIBUTES.contains(attribute) || NOT_ENCODED_ATTRIBUTES.contains(attribute)) && value != null) {
+                                    hasKaltura.set(findKalturaMarkup(value, ENCODED_ATTRIBUTES.contains(attribute)));
                                 }
                             }
                         }
