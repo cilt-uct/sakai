@@ -31,6 +31,32 @@ public class LessonsRejigger {
 
     private static String IMAGE_EXTENSIONS = "(jpg|jpeg|png|gif|bmp|svg|jfif|pjpeg|pjp|ico|cur|tif|tiff|webp)";
 
+    private static final char REPLACEMENT_CHAR = ' ';
+
+    private static String stripControlChars(String s) {
+        if (s == null) {
+            return s;
+        }
+
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < s.length(); i++) {
+            int ch = (int)s.charAt(i);
+
+            // 9 = tab, 10 = LF, 13 = CR
+            if (ch < 32) {
+                if (ch != 9 && ch != 10 && ch != 13) {
+                    System.err.println(String.format("Replacing 0x%02x with 0x%02x", ch, (int)REPLACEMENT_CHAR));
+                    ch = (int)REPLACEMENT_CHAR;
+                }
+            }
+
+            result.append((char)ch);
+        }
+
+        return result.toString();
+    }
+
+
     public boolean rewriteLessons(String path) {
         try {
             XMLReader xr = new XMLFilterImpl(XMLReaderFactory.createXMLReader()) {
@@ -195,6 +221,11 @@ public class LessonsRejigger {
                                         generatedName = generatedName.substring(0, 30) + "...";
                                     }
                                 }
+
+                                // Sometimes the content we've used to derive a name will have contained a
+                                // backspace character (or any other control character).  Drop them out before
+                                // they cause problems downstream.
+                                generatedName = stripControlChars(generatedName);
 
                                 if (generatedName.isEmpty()) {
                                     generatedName = "Embedded Item";
