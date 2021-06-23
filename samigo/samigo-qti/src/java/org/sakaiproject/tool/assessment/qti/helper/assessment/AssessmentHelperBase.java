@@ -48,6 +48,8 @@ import org.sakaiproject.tool.assessment.qti.util.Iso8601DateFormat;
 import org.sakaiproject.tool.assessment.qti.util.Iso8601TimeInterval;
 import org.sakaiproject.tool.assessment.qti.util.XmlUtil;
 
+import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedAttachmentData;
+
 /**
  * <p>Copyright: Copyright (c) 2005/p>
  * <p>Organization: Sakai Project</p>
@@ -454,17 +456,30 @@ import org.sakaiproject.tool.assessment.qti.util.XmlUtil;
   public void updateAttachmentSet(Assessment assessmentXml, Set attachmentSet)
   {
     Iterator iter = attachmentSet.iterator();
-    AttachmentData attachmentData = null;
     StringBuffer attachment = new StringBuffer();
     while (iter.hasNext())
     {
-    	attachmentData = (AttachmentData) iter.next();
-    	attachment.append(attachmentData.getResourceId().replaceAll(" ", ""));
-    	attachment.append("|");
-    	attachment.append(attachmentData.getFilename());
-    	attachment.append("|");
-    	attachment.append(attachmentData.getMimeType());
-    	attachment.append("\n");
+        Object elt = iter.next();
+
+        if (elt instanceof AttachmentData) {
+            AttachmentData attachmentData = (AttachmentData) elt;
+            attachment.append(attachmentData.getResourceId().replaceAll(" ", ""));
+            attachment.append("|");
+            attachment.append(attachmentData.getFilename());
+            attachment.append("|");
+            attachment.append(attachmentData.getMimeType());
+            attachment.append("\n");
+        } else if (elt instanceof PublishedAttachmentData) {
+            PublishedAttachmentData attachmentData = (PublishedAttachmentData) elt;
+            attachment.append(attachmentData.getResourceId().replaceAll(" ", ""));
+            attachment.append("|");
+            attachment.append(attachmentData.getFilename());
+            attachment.append("|");
+            attachment.append(attachmentData.getMimeType());
+            attachment.append("\n");
+        } else {
+            throw new RuntimeException("Unexpected element type: " + elt);
+        }
     }
     assessmentXml.setFieldentry("ATTACHMENT", attachment.toString());
   }
