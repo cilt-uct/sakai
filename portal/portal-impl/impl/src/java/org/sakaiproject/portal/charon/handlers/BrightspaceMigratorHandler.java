@@ -238,11 +238,14 @@ public class BrightspaceMigratorHandler extends BasePortalHandler {
                                   "      union all" +
                                   "      select site_id from NYU_T_SELFSERV_ROSTERS ssr where ssr.roster_id = ?" +
                                   "      union all" +
+                                  "      select site_id from NYU_T_SELFSERV_SITES sssq where sssq.site_id = ?" +
+                                  "      union all" +
                                   "      select site_id from textsearch where site_text match ?" +
                                   "    )"
                                   );
 
                 replacements.add(netid);
+                replacements.add(queryFilter);
                 replacements.add(queryFilter);
                 replacements.add(queryFilter);
                 replacements.add(escapeQuery(queryFilter));
