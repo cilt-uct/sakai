@@ -206,6 +206,10 @@ public class BrightspaceMigratorHandler extends BasePortalHandler {
             return dataSource.getConnection();
         }
 
+        private static String escapeQuery(String s) {
+            return s.replaceAll("[^\\p{L}\\p{N}]", " ");
+        }
+
         public InstructorSitePage instructorSites(String netid, String termFilter, String queryFilter, int page, int page_size) throws SQLException {
             Map<String, SiteToArchive> results = new LinkedHashMap<>();
 
@@ -226,18 +230,22 @@ public class BrightspaceMigratorHandler extends BasePortalHandler {
 
             String querySubSelect = "select site_id from NYU_T_SELFSERV_SITES";
             if (queryFilter != null && queryFilter.length() >= 3) {
-                querySubSelect = "select sss.site_id" +
-                    " from NYU_T_SELFSERV_MIG_ACCESS ma" +
-                    " inner join NYU_T_SELFSERV_SITES sss on sss.site_id = ma.site_id" +
-                    " left join NYU_T_SELFSERV_INSTRS ssi on ssi.site_id = sss.site_id" +
-                    " left join NYU_T_SELFSERV_ROSTERS ssr on ssr.site_id = sss.site_id" +
-                    " where " + userFilter +
-                    " and (ssi.netid = ? or ssr.roster_id = ? or instr(lower(sss.title), lower(?)) >= 1)";
+                querySubSelect = ("select distinct ma.site_id" +
+                                  "  from NYU_T_SELFSERV_MIG_ACCESS ma" +
+                                  "  where " + userFilter +
+                                  "    and ma.site_id in (" +
+                                  "      select site_id from NYU_T_SELFSERV_INSTRS ssi where ssi.netid = ?" +
+                                  "      union all" +
+                                  "      select site_id from NYU_T_SELFSERV_ROSTERS ssr where ssr.roster_id = ?" +
+                                  "      union all" +
+                                  "      select site_id from textsearch where site_text match ?" +
+                                  "    )"
+                                  );
 
                 replacements.add(netid);
                 replacements.add(queryFilter);
                 replacements.add(queryFilter);
-                replacements.add(queryFilter);
+                replacements.add(escapeQuery(queryFilter));
             }
 
             Connection db = null;
