@@ -206,6 +206,8 @@ public class SiteArchiver {
 			}
 			catch (Throwable t)
 			{
+				System.err.println("\n*** @DEBUG " + System.currentTimeMillis() + "[SiteArchiver.java:210] Uncaught exception\n    archiver: " + service.getClass().getName() + "\n    error: "  + t.toString() + "\n    stacktrace:\n");
+				t.printStackTrace();
 				results.append(t.toString() + "\n");
 			}
 
