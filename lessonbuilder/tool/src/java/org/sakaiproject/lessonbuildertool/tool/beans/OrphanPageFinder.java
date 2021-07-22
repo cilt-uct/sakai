@@ -76,12 +76,19 @@ public class OrphanPageFinder {
 		// really need the pages at all (it just uses the keys
 		// of this map as a set).  Could probably refactor this
 		// not to pull all the pages into memory if needed.
-		for (SimplePage p: simplePageToolDao.getSitePages(siteId)) {
+		List<SimplePage> pages = simplePageToolDao.getSitePages(siteId);
+		if (pages == null) {
+			pages = new ArrayList<>();
+		}
+		for (SimplePage p: pages) {
 			allPagesInSite.put(p.getPageId(), p);
 		}
 
 		// Get a list of the top-level lessons pages
 		List<SimplePageItem> topLevelPages =  simplePageToolDao.findItemsInSite(siteId);
+		if (topLevelPages == null) {
+			topLevelPages = new ArrayList<>();
+		}
 		Set<Long> topLevelPageIds = new HashSet<Long>();
 		for (SimplePageItem i : topLevelPages)
 			topLevelPageIds.add(Long.valueOf(i.getSakaiId()));
