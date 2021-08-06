@@ -1082,6 +1082,9 @@ public class ShowPageProducer implements ViewComponentProducer, DefaultView, Nav
 		simplePageBean.addPrevLink(tofill, pageItem);
 		simplePageBean.addNextLink(tofill, pageItem);
 
+		// swfObject is not currently used
+		boolean shownSwfObject = false;
+
 		long newItemId = -1L;
 		String newItemStr = (String)toolSession.getAttribute("lessonbuilder.newitem");
 		if (newItemStr != null) {
@@ -2166,6 +2169,17 @@ public class ShowPageProducer implements ViewComponentProducer, DefaultView, Nav
 				}
                             }
 
+                            // FLV is special. There's no player for flash video in
+                            // the browser
+                            // it shows with a special flash program, which I
+                            // supply. For the moment MP4 is
+                            // shown with the same player so it uses much of the
+                            // same code
+                            if (mimeType != null && (mimeType.equals("video/x-flv") || mimeType.equals("video/flv") || isMp4)) {
+                                mimeType = "application/x-shockwave-flash";
+                                movieUrl = "/lessonbuilder-tool/templates/StrobeMediaPlayback.swf";
+                                useFlvPlayer = true;
+                            }
                             // for IE, if we're not supplying a player it's safest
                             // to use embed
                             // otherwise Quicktime won't work. Oddly, with IE 9 only
@@ -4865,17 +4879,23 @@ public class ShowPageProducer implements ViewComponentProducer, DefaultView, Nav
 
 		UIOutput.make(form, "pageTitleLabel", messageLocator.getMessage("simplepage.pageTitle_label"));
 
-		final String placementId = toolManager.getCurrentPlacement() != null ? toolManager.getCurrentPlacement().getId() : null;
-		final SitePage sitePage = simplePageBean.getCurrentSite() != null ? simplePageBean.getCurrentSite().getPage(page.getToolId()) : null;
-		String externalPageTitle = null;
-		if (sitePage != null && StringUtils.isNotBlank(placementId)) {
-			 externalPageTitle = sitePage.getTools().stream()
-					.filter(t -> t.getId().equals(placementId))
-					.findFirst()
-					.map(Placement::getTitle)
-					.orElse("");
+		// If this is a subpage we don't have to check tool configuration (only top level tool instance can be renamed via Site Info -> Tool Order)
+		String effectivePageTitle = page.getTitle();
+		if (page.getParent() == null) {
+			final String placementId = toolManager.getCurrentPlacement() != null ? toolManager.getCurrentPlacement().getId() : null;
+			final SitePage sitePage = simplePageBean.getCurrentSite() != null ? simplePageBean.getCurrentSite().getPage(page.getToolId()) : null;
+			String externalPageTitle = null;
+			if (sitePage != null && StringUtils.isNotBlank(placementId)) {
+				 externalPageTitle = sitePage.getTools().stream()
+						.filter(t -> t.getId().equals(placementId))
+						.findFirst()
+						.map(Placement::getTitle)
+						.orElse("");
+			}
+
+			effectivePageTitle = StringUtils.defaultIfBlank(externalPageTitle, effectivePageTitle);
 		}
-		String effectivePageTitle = StringUtils.defaultIfBlank(externalPageTitle, page.getTitle());
+
 		UIInput.make(form, "pageTitle", "#{simplePageBean.pageTitle}", effectivePageTitle);
 
 		if (!simplePageBean.isStudentPage(page)) {

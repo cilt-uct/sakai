@@ -3349,10 +3349,7 @@ public class AssignmentAction extends PagedResourceActionII {
             }
 
             // show alert if student is working on a draft
-            if (!s.getSubmitted() // not submitted
-                    && ((s.getSubmittedText() != null && s.getSubmittedText().length() > 0) // has some text
-                    || (s.getAttachments() != null && s.getAttachments().size() > 0))) // has some attachment
-            {
+            if (assignmentToolUtils.isDraftSubmission(s)) {
                 if (s.getAssignment().getCloseDate().isAfter(Instant.now())) {
                     // not pass the close date yet
                     addGradeDraftAlert = true;
@@ -8157,7 +8154,7 @@ public class AssignmentAction extends PagedResourceActionII {
                                 header.setSubject(/* subject */rb.getFormattedMessage("assig5", title));
                             }
 
-                            String formattedOpenTime = assignmentService.getUsersLocalDateTimeString(openTime, FormatStyle.MEDIUM, FormatStyle.LONG);
+                            String formattedOpenTime = userTimeService.dateTimeFormat(openTime, FormatStyle.MEDIUM, FormatStyle.LONG);
                             if (updatedOpenDate) {
                                 // revised assignment open date
                                 message.setBody(/* body */ "<p>" + rb.getFormattedMessage("newope", formattedText.convertPlaintextToFormattedText(title), formattedOpenTime) + "</p>");
@@ -8327,7 +8324,7 @@ public class AssignmentAction extends PagedResourceActionII {
                         if (group != null) eGroups.add(group);
                     }
                 }
-		String formattedDueTime = assignmentService.getUsersLocalDateTimeString(dueTime);
+                String formattedDueTime = userTimeService.dateTimeFormat(dueTime, FormatStyle.MEDIUM, FormatStyle.LONG);
                 e = c.addEvent(/* TimeRange */timeService.newTimeRange(dueTime.toEpochMilli(), 0),
 						/* title */rb.getString("gen.due") + " " + title,
 			       /* description */rb.getFormattedMessage("assign_due_event_desc", title, formattedDueTime),

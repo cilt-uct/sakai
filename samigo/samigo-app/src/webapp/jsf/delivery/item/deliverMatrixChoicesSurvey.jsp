@@ -90,9 +90,16 @@ should be included in file importing DeliveryMessages
 </h:panelGrid>
 <h:inputHidden value="#{question.forceRanking}" id="forceRanking"/>
 </div>
+
+  <h:commandLink id="cmdclean" value="#{deliveryMessages.reset_selection}" action="#{delivery.cleanAndSaveRadioButton}" onclick="saveTime(); serializeImagePoints();" 
+	rendered="#{(delivery.actionString=='previewAssessment' || delivery.actionString=='previewAssessmentPublished'
+                || delivery.actionString=='takeAssessment'
+                || delivery.actionString=='takeAssessmentViaUrl')}">
+	<f:param name="radioId" value="#{question.itemData.itemId}" />
+  </h:commandLink>
   
   <h:panelGroup rendered="#{question.itemData.hasRationale}" >
-    <f:verbatim><br /></f:verbatim>
+    <f:verbatim><br /><br /></f:verbatim>
     <h:outputLabel for="rationale" value="#{deliveryMessages.rationale}" />
     <f:verbatim><br /></f:verbatim>
     <h:inputTextarea id="rationale" value="#{question.rationale}" rows="5" cols="40" 
@@ -102,13 +109,6 @@ should be included in file importing DeliveryMessages
         rendered="#{delivery.actionString=='reviewAssessment'
                  || delivery.actionString=='gradeAssessment'}" escape="false"/>
   </h:panelGroup>
-
-  <h:commandLink id="cmdclean" value="#{deliveryMessages.reset_selection}" action="#{delivery.cleanAndSaveRadioButton}" onclick="saveTime(); serializeImagePoints();" 
-	rendered="#{(delivery.actionString=='previewAssessment' || delivery.actionString=='previewAssessmentPublished'
-                || delivery.actionString=='takeAssessment'
-                || delivery.actionString=='takeAssessmentViaUrl')}">
-	<f:param name="radioId" value="#{question.itemData.itemId}" />
-</h:commandLink>
 
 <f:verbatim><br /></f:verbatim>
 <f:verbatim><br /></f:verbatim>
@@ -124,20 +124,12 @@ should be included in file importing DeliveryMessages
 </h:panelGroup>
 
 <h:panelGroup rendered="#{delivery.feedback eq 'true'}">
-  <h:panelGrid rendered="#{delivery.feedbackComponent.showCorrectResponse && !delivery.noFeedback=='true' && question.itemData.typeId != 3}" >
-    <h:panelGroup>
-      <h:outputLabel for="answerKeyMC" styleClass="answerkeyFeedbackCommentLabel" value="#{deliveryMessages.ans_key}#{deliveryMessages.column} " />
-      <h:outputText id="answerKeyMC" value="#{question.key}" escape="false" />
-    </h:panelGroup>
-    <h:outputText value=" "/>
-  </h:panelGrid>
 
   <h:panelGrid rendered="#{delivery.feedbackComponent.showItemLevel && !delivery.noFeedback=='true' && question.feedbackIsNotEmpty}">
     <h:panelGroup>
       <h:outputLabel for="feedSC" styleClass="answerkeyFeedbackCommentLabel" value="#{commonMessages.feedback}#{deliveryMessages.column} " />
       <h:outputText id="feedSC" value="#{question.feedback}" escape="false" />
     </h:panelGroup>
-    <h:outputText value=" "/>
   </h:panelGrid>
 
   <h:panelGrid rendered="#{delivery.actionString !='gradeAssessment' && delivery.feedbackComponent.showGraderComment && !delivery.noFeedback=='true' && (question.gradingCommentIsNotEmpty || question.hasItemGradingAttachment)}" columns="1" border="0">

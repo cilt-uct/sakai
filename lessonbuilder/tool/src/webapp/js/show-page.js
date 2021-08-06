@@ -2844,7 +2844,11 @@ function checkEditTitleForm() {
 	}else if ($("#page-gradebook").prop("checked") && !isFinite(safeParseInt($("#page-points").val()))) {
 		$('#edit-title-error').text(intError(safeParseInt($("#page-points").val())));
 		$('#edit-title-error-container').show();
-	}else {
+	} else if(/[\[\]{}\\|\^\`]/.test($('#pageTitle').val())) {
+		$('#edit-title-error').text(msg("simplepage.subpage_invalid_chars"));
+		$('#edit-title-error-container').show();
+		return false;
+	} else {
 		$('#edit-title-error-container').hide();
 		if ($("#page-releasedate").prop('checked'))
 		    $("#release_date_string").val($("#releaseDateISO8601").val());
@@ -2992,12 +2996,16 @@ function checkEditItemForm() {
 		$('#edit-item-error').text(msg("simplepage.item_notblank"));
 		$('#edit-item-error-container').show();
 		return false;
-        } else if ((requirementType === '3' || requirementType === '6') && 
-		   $("#item-required2").prop("checked") && !isFinite(safeParseInt($("#assignment-points").val()))) {
+	} else if ((requirementType === '3' || requirementType === '6') && 
+		$("#item-required2").prop("checked") && !isFinite(safeParseInt($("#assignment-points").val()))) {
 		$('#edit-item-error').text(intError(safeParseInt($("#assignment-points").val())));
 		$('#edit-item-error-container').show();
 		return false;
-	}else {
+	} else if(/[\[\]{}\\|\^\`]/.test($('#name').val())) {
+		$('#edit-item-error').text(msg("simplepage.subpage_invalid_chars"));
+		$('#edit-item-error-container').show();
+		return false;
+	} else {
 		if ($("#page-releasedate2").prop('checked'))
 			$("#release_date2").val($("#releaseDate2ISO8601").val());
 		else

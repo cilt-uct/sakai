@@ -159,7 +159,6 @@ import net.sf.json.JSONSerializer;
 import net.sf.json.JsonConfig;
 import org.sakaiproject.api.app.messageforums.events.ForumsMessageEventParams;
 import org.sakaiproject.api.app.messageforums.events.ForumsTopicEventParams;
-import static org.sakaiproject.component.app.messageforums.dao.hibernate.MessageImpl.DATE_COMPARATOR;
 
 /**
  * @author <a href="mailto:rshastri@iupui.edu">Rashmi Shastri</a>
@@ -7260,9 +7259,6 @@ public class DiscussionForumTool {
 		 setSelectedForumForCurrentTopic(topic);		
 		 selectedTopic = getDecoratedTopic(topic);
 		 selectedForum = getDecoratedForum(forum);
-		 if (!isInstructor()) {
-			 Collections.sort(selectedTopic.getMessages(), DATE_COMPARATOR);
-		 }
 
 		 if (uiPermissionsManager.isRead((DiscussionTopic)topic, forum)) {
 			 List messageList = messageManager.findMessagesByTopicId(topic.getId());
@@ -7722,23 +7718,16 @@ public class DiscussionForumTool {
 	newTopic.setAutoMarkThreadsRead(fromTopic.getAutoMarkThreadsRead());
 
 	// Get/set the topic's permissions
-
-	Set topicMembershipItemSet = uiPermissionsManager.getTopicItemsSet(fromTopic);
-
-	if (topicMembershipItemSet != null && !topicMembershipItemSet.isEmpty() ) { //&& allowedPermNames != null && !allowedPermNames.isEmpty()
-		log.debug("About to assign topicMembershipItemSet's iterator");
-		Iterator membershipIter = topicMembershipItemSet.iterator();
-		while (membershipIter.hasNext()) {
-			log.debug("About to get a member of membershipIter");
-			DBMembershipItem oldItem = (DBMembershipItem)membershipIter.next();
-				log.debug("About to getMembershipItemCopy()");
-				DBMembershipItem newItem = getMembershipItemCopy(oldItem);
-				if (newItem != null) {
-					newItem = permissionLevelManager.saveDBMembershipItem(newItem);
-					newTopic.addMembershipItem(newItem);
-				}
-		}
+	Set<DBMembershipItem> fromTopicMembershipItems = uiPermissionsManager.getTopicItemsSet(fromTopic);
+	if (fromTopicMembershipItems != null) {
+      for (DBMembershipItem fromTopicMembershipItem : fromTopicMembershipItems) {
+        DBMembershipItem membershipItemCopy = getMembershipItemCopy(fromTopicMembershipItem);
+        DBMembershipItem savedMembershipItem = permissionLevelManager.saveDBMembershipItem(membershipItemCopy);
+        newTopic.addMembershipItem(savedMembershipItem);
+        ((DBMembershipItemImpl) savedMembershipItem).setTopic(newTopic);
+      }
 	}
+
 	// Add the attachments
 	List fromTopicAttach = forumManager.getTopicByIdWithAttachments(originalTopicId).getAttachments();
 	if (fromTopicAttach != null && !fromTopicAttach.isEmpty()) {
@@ -7849,9 +7838,19 @@ public class DiscussionForumTool {
 		String oldExtendedDescription = oldForum.getExtendedDescription();
 		if (oldExtendedDescription == null) oldExtendedDescription = "";
 		forum.setExtendedDescription(oldExtendedDescription);
-        forum.setTitle(oldTitle);
+		forum.setTitle(oldTitle);
 
-		List fromForumAttach = oldForum.getAttachments();
+      Set<DBMembershipItem> fromForumMembershipItems = uiPermissionsManager.getForumItemsSet(oldForum);
+      if (fromForumMembershipItems != null) {
+        for (DBMembershipItem fromForumMembershipItem : fromForumMembershipItems) {
+          DBMembershipItem membershipItemCopy = getMembershipItemCopy(fromForumMembershipItem);
+          DBMembershipItem savedMembershipItem = permissionLevelManager.saveDBMembershipItem(membershipItemCopy);
+          forum.addMembershipItem(savedMembershipItem);
+          ((DBMembershipItemImpl) savedMembershipItem).setForum(forum);
+        }
+      }
+
+      List fromForumAttach = oldForum.getAttachments();
 		if (fromForumAttach != null && !fromForumAttach.isEmpty()) {
 			for (int topicAttach=0; topicAttach < fromForumAttach.size(); topicAttach++) {
 				Attachment thisAttach = (Attachment)fromForumAttach.get(topicAttach);

@@ -278,45 +278,42 @@ $( document ).ready( function() {
     });
 
     // validation for negative points
-    $( "#itemForm\\:answerdsc" ).change( function() {
-        var pointValue = parseFloat( $( "#itemForm\\:answerptr" ).val() );
-        var negValue = parseFloat ( $( this ).val() );
-        // minValue should not be equal to or greater than pointValue
-        if (negValue < 0 || negValue > pointValue) {
-            validationWarningSetDefault($( this ), "0")
+    const negField = document.getElementById("itemForm:answerdsc");
+    negField && negField.addEventListener("change", function () {
+
+      const pointValue = parseFloat(document.getElementById("itemForm:answerptr").value);
+      const negValue = parseFloat(this.value);
+      // minValue should not be equal to or greater than pointValue
+      if (negValue < 0 || negValue > pointValue) {
+          validationWarningSetDefault($(this), "0");
+      } else {
+        // negValue should 0 if using minPoints
+        const minField = document.getElementById("itemForm:minPoints:answerminptr");
+        const warning = document.getElementById("itemForm:minPoints:min-point-warning");
+        const info = document.getElementById("itemForm:minPoints:min-point-info");
+        if (negValue == 0.0) {
+          minField.disabled = false;
+          warning.style.display = "none";
+          info.style.display = "inline-block";
         } else {
-            // negValue should 0 if using minPoints
-            var minField = $( "#itemForm\\:minPoints\\:answerminptr" );
-            if (minField) {
-                var minValue = parseFloat(minField.val());
-                if (minValue > 0) {
-                    validationWarningSetDefault(minField, "");
-                }
-            }
+          if (minField) {
+            const minValue = parseFloat(minField.value);
+            minField.value = "";
+            minField.disabled = true;
+            warning.style.display = "inline-block";
+            info.style.display = "none";
+          }
         }
+      }
     });
 
-    $( function() {
-        // negValue should be 0 and minValue should be empty if using partial credit
-        var pcValue = $( "input[name='itemForm\\:partialCredit_NegativeMarking']:checked", "#itemForm" ).val();
-        if (pcValue == "true") {
-            var negField = $( "#itemForm\\:answerdsc" );
-            if (negField) {
-                var negValue = parseFloat(negField.val());
-                if (negValue > 0) {
-                    validationWarningSetDefault(negField, "0");
-                }
-            }
+    $(function() {
 
-            var minField = $( "#itemForm\\:minPoints\\:answerminptr" );
-            if (minField) {
-                var minValue = parseFloat(minField.val());
-                if (minValue > 0) {
-                    validationWarningSetDefault(minField, "");
-                }
-            }
+        if (document.querySelector("input[name='itemForm:partialCredit_NegativeMarking']:checked")) {
+          // This is the partial credit option
+          let minField = document.getElementById("itemForm:minPoints:answerminptr");
+          minField.value = "";
         }
-
     });
 
     // Fix the input value and display for the correct answer in Multiple Choice when entering with partial credit enabled.
