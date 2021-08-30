@@ -469,7 +469,9 @@ public class AssessmentEntityProducer implements EntityTransferrer,
 			List<String> instructorIds = new ArrayList<>();
 			for (Member member : site.getMembers()) {
 				if (maintainRole.equals(member.getRole().getId())) {
-					instructorIds.add(member.getUserId());
+					if (!"admin".equals(member.getUserId())) {
+						instructorIds.add(member.getUserId());
+					}
 				}
 			}
 
