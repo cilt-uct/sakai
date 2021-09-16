@@ -492,6 +492,7 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
                 try {
                     return new SimpleSubmission(as, simpleAssignment, activeSubmitters);
                 } catch (Exception e) {
+                    log.error("Exception while creating SimpleSubmission", e);
                     // This can happen if there are no submitters.
                     return null;
                 }
@@ -669,7 +670,6 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
 
         submission = assignmentToolUtils.gradeSubmission(submission, gradeOption, options, alerts);
 
-
         Set<String> activeSubmitters = site.getUsersIsAllowed(SECURE_ADD_ASSIGNMENT_SUBMISSION);
 
         if (submission != null) {
@@ -713,7 +713,7 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
         }
 
         try {
-            contentHostingService.removeResource(ref);
+            contentHostingService.removeResource(assignmentService.removeReferencePrefix(ref));
         } catch (Exception e) {
             log.warn("Exception caught while removing resource " + ref + ". It may have been removed previously.");
         }
@@ -1313,7 +1313,7 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
                     this.dateSubmitted
                         = userTimeService.dateTimeFormat(as.getDateSubmitted(), null, null);
                 }
-                if (dateSubmitted != null) {
+                if (as.getDateSubmitted() != null) {
                     this.late = as.getDateSubmitted().compareTo(as.getAssignment().getDueDate()) > 0;
                 }
 
