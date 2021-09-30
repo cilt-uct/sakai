@@ -25,7 +25,6 @@ import static org.sakaiproject.site.api.SiteService.SITE_TITLE_MAX_LENGTH;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -55,7 +54,6 @@ import org.sakaiproject.cheftool.menu.MenuField;
 import org.sakaiproject.cheftool.menu.MenuImpl;
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.component.cover.ServerConfigurationService;
-import org.sakaiproject.courier.api.ObservingCourier;
 import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.entity.api.ResourcePropertiesEdit;
 import org.sakaiproject.event.api.EventTrackingService;
@@ -81,6 +79,7 @@ import org.sakaiproject.user.api.UserNotDefinedException;
 import org.sakaiproject.util.ResourceLoader;
 import org.sakaiproject.util.Validator;
 import org.sakaiproject.util.api.FormattedText;
+import org.sakaiproject.util.comparator.ToolTitleComparator;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -343,21 +342,6 @@ public class AdminSitesAction extends PagedResourceActionII
 	protected void initState(SessionState state, VelocityPortlet portlet, JetspeedRunData rundata)
 	{
 		super.initState(state, portlet, rundata);
-
-		// // setup the observer to notify our main panel
-		// if (state.getAttribute(STATE_OBSERVER) == null)
-		// {
-		// // the delivery location for this tool
-		// String deliveryId = clientWindowId(state, portlet.getID());
-		//			
-		// // the html element to update on delivery
-		// String elementId = mainPanelUpdateId(portlet.getID());
-		//			
-		// // the event resource reference pattern to watch for
-		// String pattern = SiteService.siteReference("");
-		//
-		// state.setAttribute(STATE_OBSERVER, new EventObservingCourier(deliveryId, elementId, pattern));
-		// }
 	}
 
 	/**
@@ -492,11 +476,10 @@ public class AdminSitesAction extends PagedResourceActionII
 		}
 
 		// add the paging commands
-		//addListPagingMenus(bar, state);
 		int pageSize = Integer.valueOf(state.getAttribute(STATE_PAGESIZE).toString()).intValue();
-		int currentPageNubmer = Integer.valueOf(state.getAttribute(STATE_CURRENT_PAGE).toString()).intValue();
-		int startNumber = pageSize * (currentPageNubmer - 1) + 1;
-		int endNumber = pageSize * currentPageNubmer;
+		int currentPageNumber = Integer.valueOf(state.getAttribute(STATE_CURRENT_PAGE).toString()).intValue();
+		int startNumber = state.getAttribute(STATE_TOP_PAGE_MESSAGE) != null ? ((Integer) state.getAttribute(STATE_TOP_PAGE_MESSAGE)).intValue() + 1 : pageSize * (currentPageNumber - 1);
+		int endNumber = pageSize * currentPageNumber;
 
 		int totalNumber = 0;
 		try
@@ -535,17 +518,10 @@ public class AdminSitesAction extends PagedResourceActionII
 			bar.add(new MenuEntry(rb_praII.getString("sea.cleasea"), "doSearch_clear"));
 		}
 
-		// add the refresh commands
-		addRefreshMenus(bar, state);
-
 		if (bar.size() > 0)
 		{
 			context.put(Menu.CONTEXT_MENU, bar);
 		}
-
-		// inform the observing courier that we just updated the page...
-		// if there are pending requests to do so they can be cleared
-		justDelivered(state);
 
 		return "_list";
 
@@ -888,12 +864,6 @@ public class AdminSitesAction extends PagedResourceActionII
 	 */
 	private List findNonHelperTools()
 	{
-		class ToolTitleComparator implements Comparator{
-			public int compare(Object tool0, Object tool1) {
-				return ((Tool)tool0).getTitle().compareTo( ((Tool)tool1).getTitle() );
-			}
-		}
-		
 		// get all tools
 		Set all = toolManager.findTools(null, null);
 
@@ -953,11 +923,6 @@ public class AdminSitesAction extends PagedResourceActionII
 	{
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
 		state.setAttribute("mode", "new");
-
-		// disable auto-updates while in view mode
-		ObservingCourier courier = (ObservingCourier) state.getAttribute(STATE_OBSERVER);
-		if (courier != null) courier.disable();
-
 	} // doNew
 
 	/**
@@ -980,10 +945,6 @@ public class AdminSitesAction extends PagedResourceActionII
 				// state.setAttribute("realm", realm);
 
 				state.setAttribute("mode", "edit");
-
-				// disable auto-updates while in view mode
-				ObservingCourier courier = (ObservingCourier) state.getAttribute(STATE_OBSERVER);
-				if (courier != null) courier.disable();
 			}
 			catch (IdUnusedException e)
 			{
@@ -991,9 +952,6 @@ public class AdminSitesAction extends PagedResourceActionII
 
 				addAlert(state, rb.getFormattedMessage("siteact.site", new Object[]{id}));
 				state.removeAttribute("mode");
-
-				// make sure auto-updates are enabled
-				enableObserver(state);
 			}
 		}
 
@@ -1001,9 +959,6 @@ public class AdminSitesAction extends PagedResourceActionII
 		{
 			addAlert(state, rb.getFormattedMessage("youdonot1", new Object[]{id}));
 			state.removeAttribute("mode");
-
-			// make sure auto-updates are enabled
-			enableObserver(state);
 		}
 
 	} // doEdit
@@ -1163,9 +1118,6 @@ public class AdminSitesAction extends PagedResourceActionII
 		// return to main mode
 		state.removeAttribute("mode");
 
-		// make sure auto-updates are enabled
-		enableObserver(state);
-
 		// TODO: hard coding this frame id is fragile, portal dependent, and needs to be fixed -ggolden
 		schedulePeerFrameRefresh("sitenav");
 
@@ -1228,9 +1180,6 @@ public class AdminSitesAction extends PagedResourceActionII
 
 		// return to main mode
 		state.removeAttribute("mode");
-
-		// make sure auto-updates are enabled
-		enableObserver(state);
 
 		// TODO: hard coding this frame id is fragile, portal dependent, and needs to be fixed -ggolden
 		schedulePeerFrameRefresh("sitenav");
@@ -1299,9 +1248,6 @@ public class AdminSitesAction extends PagedResourceActionII
 		// return to main mode
 		state.removeAttribute("mode");
 
-		// make sure auto-updates are enabled
-		enableObserver(state);
-
 	} // doCancel
 
 	/**
@@ -1358,9 +1304,6 @@ public class AdminSitesAction extends PagedResourceActionII
 
 		// go to main mode
 		state.removeAttribute("mode");
-
-		// make sure auto-updates are enabled
-		enableObserver(state);
 
 		// TODO: hard coding this frame id is fragile, portal dependent, and needs to be fixed -ggolden
 		schedulePeerFrameRefresh("sitenav");
@@ -2519,9 +2462,6 @@ public class AdminSitesAction extends PagedResourceActionII
 
 		// start paging again from the top of the list
 		resetPaging(state);
-
-		// turn on auto refresh
-		enableObserver(state);
 
 	} // doSearch_clear
 

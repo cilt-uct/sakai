@@ -33,16 +33,19 @@ import java.util.Map;
 import java.util.Set;
 
 import lombok.extern.slf4j.Slf4j;
-import org.hibernate.Query;
+
+import org.hibernate.Hibernate;
+import org.hibernate.query.Query;
 import org.hibernate.type.LongType;
 import org.hibernate.type.StringType;
-import org.springframework.orm.hibernate4.HibernateCallback;
-import org.springframework.orm.hibernate4.HibernateOptimisticLockingFailureException;
-import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
+import org.springframework.orm.hibernate5.HibernateCallback;
+import org.springframework.orm.hibernate5.HibernateOptimisticLockingFailureException;
+import org.springframework.orm.hibernate5.support.HibernateDaoSupport;
 
 import org.sakaiproject.api.app.messageforums.Attachment;
 import org.sakaiproject.api.app.messageforums.BaseForum;
 import org.sakaiproject.api.app.messageforums.DiscussionForumService;
+import org.sakaiproject.api.app.messageforums.DraftRecipient;
 import org.sakaiproject.api.app.messageforums.Message;
 import org.sakaiproject.api.app.messageforums.MessageForumsMessageManager;
 import org.sakaiproject.api.app.messageforums.MessageForumsTypeManager;
@@ -176,7 +179,7 @@ public class MessageForumsMessageManagerImpl extends HibernateDaoSupport impleme
     	HibernateCallback<List<Object[]>> hcb = session -> {
             Query q = session.getNamedQuery("findDiscussionForumMessageCountsForTopicsWithMissingPermsForAllSites");
              q.setParameterList("siteList", siteList);
-             q.setString("userId", getCurrentUser());
+             q.setParameter("userId", getCurrentUser(), StringType.INSTANCE);
             return q.list();
         };
 
@@ -197,7 +200,7 @@ public class MessageForumsMessageManagerImpl extends HibernateDaoSupport impleme
     	HibernateCallback<List<Object[]>> hcb = session -> {
             Query q = session.getNamedQuery("findDiscussionForumReadMessageCountsForTopicsWithMissingPermsForAllSites");
              q.setParameterList("siteList", siteList);
-             q.setString("userId", getCurrentUser());
+             q.setParameter("userId", getCurrentUser(), StringType.INSTANCE);
             return q.list();
         };
 
@@ -218,7 +221,7 @@ public class MessageForumsMessageManagerImpl extends HibernateDaoSupport impleme
             Query q = session.getNamedQuery("findDiscussionForumMessageCountsForAllSitesByPermissionLevelId");
              q.setParameterList("siteList", siteList);
              q.setParameterList("roleList", roleList);
-             q.setString("userId", getCurrentUser());
+             q.setParameter("userId", getCurrentUser(),  StringType.INSTANCE);
             return q.list();
         };
 
@@ -239,8 +242,8 @@ public class MessageForumsMessageManagerImpl extends HibernateDaoSupport impleme
             Query q = session.getNamedQuery("findDiscussionForumMessageCountsForAllSitesByPermissionLevelName");
              q.setParameterList("siteList", siteList);
              q.setParameterList("roleList", roleList);
-             q.setString("userId", getCurrentUser());
-             q.setString("customTypeUuid", typeManager.getCustomLevelType());
+             q.setParameter("userId", getCurrentUser(), StringType.INSTANCE);
+             q.setParameter("customTypeUuid", typeManager.getCustomLevelType(), StringType.INSTANCE);
             return q.list();
         };
 
@@ -257,7 +260,7 @@ public class MessageForumsMessageManagerImpl extends HibernateDaoSupport impleme
             Query q = session.getNamedQuery("findDiscussionForumReadMessageCountsForAllSitesByPermissionLevelId");
             q.setParameterList("siteList", siteList);
             q.setParameterList("roleList", roleList);
-            q.setString("userId", getCurrentUser());
+            q.setParameter("userId", getCurrentUser(),  StringType.INSTANCE);
             return q.list();
         };
         
@@ -274,8 +277,8 @@ public class MessageForumsMessageManagerImpl extends HibernateDaoSupport impleme
             Query q = session.getNamedQuery("findDiscussionForumReadMessageCountsForAllSitesByPermissionLevelName");
             q.setParameterList("siteList", siteList);
             q.setParameterList("roleList", roleList);
-            q.setString("userId", getCurrentUser());
-            q.setString("customTypeUuid", typeManager.getCustomLevelType());
+            q.setParameter("userId", getCurrentUser(), StringType.INSTANCE);
+            q.setParameter("customTypeUuid", typeManager.getCustomLevelType(), StringType.INSTANCE);
             return q.list();
         };
         
@@ -293,8 +296,8 @@ public class MessageForumsMessageManagerImpl extends HibernateDaoSupport impleme
             Query q = session.getNamedQuery("findDiscussionForumMessageCountsForGroupedSitesByTopic");
             q.setParameterList("siteList", siteList);
             q.setParameterList("roleList", roleList);
-            q.setString("userId", getCurrentUser());
-            q.setString("customTypeUuid", typeManager.getCustomLevelType());
+            q.setParameter("userId", getCurrentUser(),  StringType.INSTANCE);
+            q.setParameter("customTypeUuid", typeManager.getCustomLevelType(), StringType.INSTANCE);;
             return q.list();
         };
         
@@ -312,8 +315,8 @@ public class MessageForumsMessageManagerImpl extends HibernateDaoSupport impleme
             Query q = session.getNamedQuery("findDiscussionForumReadMessageCountsForGroupedSitesByTopic");
             q.setParameterList("siteList", siteList);
             q.setParameterList("roleList", roleList);
-            q.setString("userId", getCurrentUser());
-            q.setString("customTypeUuid", typeManager.getCustomLevelType());
+            q.setParameter("userId", getCurrentUser(),  StringType.INSTANCE);
+            q.setParameter("customTypeUuid", typeManager.getCustomLevelType(),  StringType.INSTANCE);
             return q.list();
         };
         
@@ -337,8 +340,8 @@ public class MessageForumsMessageManagerImpl extends HibernateDaoSupport impleme
 
         HibernateCallback<Number> hcb = session -> {
             Query q = session.getNamedQuery(QUERY_COUNT_BY_AUTHORED);
-            q.setLong("topicId", topicId);
-            q.setString("userId", userId);
+            q.setParameter("topicId", topicId, LongType.INSTANCE);
+            q.setParameter("userId", userId, StringType.INSTANCE);
             return (Number) q.uniqueResult();
         };
 
@@ -355,8 +358,8 @@ public class MessageForumsMessageManagerImpl extends HibernateDaoSupport impleme
     	
         HibernateCallback<Number> hcb = session -> {
             Query q = session.getNamedQuery("findAuthoredMessageCountForStudent");
-            q.setString("contextId", getContextId());
-            q.setString("userId", userId);
+            q.setParameter("contextId", getContextId() , StringType.INSTANCE);
+            q.setParameter("userId", userId, StringType.INSTANCE);
             return (Number) q.uniqueResult();
         };
 
@@ -470,7 +473,7 @@ public class MessageForumsMessageManagerImpl extends HibernateDaoSupport impleme
     	
         HibernateCallback<List<Object[]>> hcb = session -> {
             Query q = session.getNamedQuery("findAuthoredMessageCountForAllStudents");
-            q.setString("contextId", getContextId());
+            q.setParameter("contextId", getContextId(), StringType.INSTANCE);
             return q.list();
         };
 
@@ -482,8 +485,8 @@ public class MessageForumsMessageManagerImpl extends HibernateDaoSupport impleme
     	
         HibernateCallback<List<Object[]>> hcb = session -> {
             Query q = session.getNamedQuery("findAuthoredMessageCountForAllStudentsByTopicId");
-            q.setString("contextId", getContextId());
-            q.setLong("topicId", topicId);
+            q.setParameter("contextId", getContextId(), StringType.INSTANCE);
+            q.setParameter("topicId", topicId, LongType.INSTANCE);
             return q.list();
         };
 
@@ -495,8 +498,8 @@ public class MessageForumsMessageManagerImpl extends HibernateDaoSupport impleme
     	
         HibernateCallback<List<Object[]>> hcb = session -> {
             Query q = session.getNamedQuery("findAuthoredMessageCountForAllStudentsByForumId");
-            q.setString("contextId", getContextId());
-            q.setLong("forumId", forumId);
+            q.setParameter("contextId", getContextId(), StringType.INSTANCE);
+            q.setParameter("forumId", forumId, LongType.INSTANCE);
             return q.list();
         };
 
@@ -515,8 +518,8 @@ public class MessageForumsMessageManagerImpl extends HibernateDaoSupport impleme
 
         HibernateCallback<Number> hcb = session -> {
             Query q = session.getNamedQuery(QUERY_COUNT_BY_READ);
-            q.setLong("topicId", topicId);
-            q.setString("userId", userId);
+            q.setParameter("topicId", topicId, LongType.INSTANCE);
+            q.setParameter("userId", userId, StringType.INSTANCE);
             return (Number) q.uniqueResult();
         };
 
@@ -533,8 +536,8 @@ public class MessageForumsMessageManagerImpl extends HibernateDaoSupport impleme
     	
         HibernateCallback<Number> hcb = session -> {
             Query q = session.getNamedQuery("findReadMessageCountForStudent");
-            q.setString("contextId", getContextId());
-            q.setString("userId", userId);
+            q.setParameter("contextId", getContextId(), StringType.INSTANCE);
+            q.setParameter("userId", userId, StringType.INSTANCE);
             return (Number) q.uniqueResult();
         };
 
@@ -607,7 +610,7 @@ public class MessageForumsMessageManagerImpl extends HibernateDaoSupport impleme
     	
         HibernateCallback<List<Object[]>> hcb = session -> {
             Query q = session.getNamedQuery("findReadMessageCountForAllStudents");
-            q.setString("contextId", getContextId());
+            q.setParameter("contextId", getContextId(), StringType.INSTANCE);
             return q.list();
         };
 
@@ -619,8 +622,8 @@ public class MessageForumsMessageManagerImpl extends HibernateDaoSupport impleme
     	
         HibernateCallback<List<Object[]>> hcb = session -> {
             Query q = session.getNamedQuery("findReadMessageCountForAllStudentsByTopicId");
-            q.setString("contextId", getContextId());
-            q.setLong("topicId", topicId);
+            q.setParameter("contextId", getContextId(), StringType.INSTANCE);
+            q.setParameter("topicId", topicId, LongType.INSTANCE);
             return q.list();
         };
 
@@ -632,8 +635,8 @@ public class MessageForumsMessageManagerImpl extends HibernateDaoSupport impleme
     	
         HibernateCallback<List<Object[]>> hcb = session -> {
             Query q = session.getNamedQuery("findReadMessageCountForAllStudentsByForumId");
-            q.setString("contextId", getContextId());
-            q.setLong("forumId", forumId);
+            q.setParameter("contextId", getContextId(), StringType.INSTANCE);
+            q.setParameter("forumId", forumId, LongType.INSTANCE);
             return q.list();
         };
 
@@ -655,8 +658,8 @@ public class MessageForumsMessageManagerImpl extends HibernateDaoSupport impleme
 
         HibernateCallback<Number> hcb = session -> {
             Query q = session.getNamedQuery(QUERY_COUNT_VIEWABLE_BY_TOPIC_ID);
-            q.setLong("topicId", topicId);
-            q.setString("userId", userId);
+            q.setParameter("topicId", topicId, LongType.INSTANCE);
+            q.setParameter("userId", userId, StringType.INSTANCE);
             return (Number) q.uniqueResult();
         };
 
@@ -767,8 +770,8 @@ public class MessageForumsMessageManagerImpl extends HibernateDaoSupport impleme
 
         HibernateCallback<Number> hcb = session -> {
             Query q = session.getNamedQuery(QUERY_COUNT_READ_VIEWABLE_BY_TOPIC_ID);
-            q.setLong("topicId", topicId);
-            q.setString("userId", userId);
+            q.setParameter("topicId", topicId, LongType.INSTANCE);
+            q.setParameter("userId", userId, StringType.INSTANCE);
             return (Number) q.uniqueResult();
         };
 
@@ -837,7 +840,7 @@ public class MessageForumsMessageManagerImpl extends HibernateDaoSupport impleme
 
         HibernateCallback<Number> hcb = session -> {
             Query q = session.getNamedQuery("findMessageCountByTopicId");
-            q.setLong("topicId", topicId);
+            q.setParameter("topicId", topicId, LongType.INSTANCE);
             return (Number) q.uniqueResult();
         };
 
@@ -854,7 +857,7 @@ public class MessageForumsMessageManagerImpl extends HibernateDaoSupport impleme
 
         HibernateCallback<List<Object[]>> hcb = session -> {
             Query q = session.getNamedQuery("findMessageCountByForumId");
-            q.setLong("forumId", forumId);
+            q.setParameter("forumId", forumId, LongType.INSTANCE);
             return q.list();
         };
 
@@ -944,7 +947,7 @@ public class MessageForumsMessageManagerImpl extends HibernateDaoSupport impleme
     public List<Object[]> findMessageCountTotal() {
     	HibernateCallback<List<Object[]>> hcb = session -> {
             Query q = session.getNamedQuery("findMessageCountTotal");
-            q.setString("contextId", getContextId());
+            q.setParameter("contextId", getContextId(), StringType.INSTANCE);
             return q.list();
         };
     	
@@ -1479,15 +1482,15 @@ public class MessageForumsMessageManagerImpl extends HibernateDaoSupport impleme
        }
 
        log.debug("getMessageByIdWithAttachments executing with messageId: " + messageId);
-        
 
-      HibernateCallback<Message> hcb = session -> {
-        Query q = session.getNamedQuery(QUERY_BY_MESSAGE_ID_WITH_ATTACHMENTS);
-        q.setParameter("id", messageId, LongType.INSTANCE);
-        return (Message) q.uniqueResult();
-      };
-
-      return getHibernateTemplate().execute(hcb);
+        Message message = getHibernateTemplate().execute(session -> {
+            Query q = session.getNamedQuery(QUERY_BY_MESSAGE_ID_WITH_ATTACHMENTS);
+            q.setParameter("id", messageId, LongType.INSTANCE);
+            Message msg = (Message) q.uniqueResult();
+            if (msg != null) msg.setTopic((Topic) Hibernate.unproxy(msg.getTopic()));
+            return msg;
+        });
+        return message;
     }
     
     public Attachment getAttachmentById(final Long attachmentId) {        
@@ -1700,7 +1703,7 @@ public class MessageForumsMessageManagerImpl extends HibernateDaoSupport impleme
      */
     
     public List findPvtMsgsBySearchText(final String typeUuid, final String searchText, 
-          final Date searchFromDate, final Date searchToDate, final boolean searchByText,
+          final Date searchFromDate, final Date searchToDate, final String selectedLabel, final boolean searchByText,
           final boolean searchByAuthor, final boolean searchByBody, final boolean searchByLabel, final boolean searchByDate) {
 
       log.debug("findPvtMsgsBySearchText executing with searchText: " + searchText);
@@ -1715,6 +1718,7 @@ public class MessageForumsMessageManagerImpl extends HibernateDaoSupport impleme
           q.setParameter("searchByDate", convertBooleanToInteger(searchByDate));
           q.setParameter("searchFromDate", (searchFromDate == null) ? new Date(0) : searchFromDate);
           q.setParameter("searchToDate", (searchToDate == null) ? new Date(System.currentTimeMillis()) : searchToDate);
+          q.setParameter("searchBySelectedLabel", selectedLabel);
           q.setParameter("userId", getCurrentUser());
           q.setParameter("contextId", toolManager.getCurrentPlacement().getContext());
           q.setParameter("typeUuid", typeUuid);
@@ -2091,4 +2095,23 @@ public class MessageForumsMessageManagerImpl extends HibernateDaoSupport impleme
 
 	}
 
+	@Override
+	public void saveDraftRecipients(long msgId, List<DraftRecipient> recipients) {
+		for (DraftRecipient dr : recipients) {
+			getHibernateTemplate().persist(dr);
+		}
+	}
+
+	@Override
+	public List<DraftRecipient> findDraftRecipientsByMessageId(long msgId) {
+		return getHibernateTemplate().execute(session -> session.getNamedQuery("findDraftRecipientsByMessageId"))
+				.setParameter("id", msgId, LongType.INSTANCE).list();
+	}
+
+	@Override
+	public void deleteDraftRecipientsByMessageId(long msgId) {
+		for (DraftRecipient dr : findDraftRecipientsByMessageId(msgId)) {
+			getHibernateTemplate().delete(dr);
+		}
+	}
 }

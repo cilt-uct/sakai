@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 import org.sakaiproject.component.cover.ComponentManager;
@@ -35,6 +36,11 @@ import org.sakaiproject.coursemanagement.api.CourseManagementService;
 
 public class PortalUtils
 {
+
+	/**
+	 * External libraries versions
+	 */
+	public static final String MOMENTJS_VERSION = "2.29.1";//TODO SAK-43259 : This string should be updated when the version of the library is modified
 
 	private static CourseManagementService courseManagementService = (CourseManagementService) ComponentManager.get(CourseManagementService.class);
 
@@ -215,6 +221,14 @@ public class PortalUtils
 		}
 
 		return tabsMoreSortedTermList;
+	}
+
+	public static String getLocaleString(Locale locale) {
+
+		String localeString = locale.getLanguage();
+		String country = locale.getCountry();
+		if (country.length() > 0) localeString += "-" + country;
+		return localeString;
 	}
 }
 

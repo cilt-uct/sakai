@@ -9,10 +9,14 @@
 	<parent>
 		<artifactId>content-review-impl</artifactId>
 		<groupId>org.sakaiproject.contentreview</groupId>
-		<version>21-SNAPSHOT</version>
+		<version>22-SNAPSHOT</version>
 	</parent>
 
 	<dependencies>
+		<dependency>
+			<groupId>jakarta.xml.soap</groupId>
+			<artifactId>jakarta.xml.soap-api</artifactId>
+		</dependency>
 		<!-- Content Review dependencies -->
 		<dependency>
 			<groupId>org.sakaiproject.contentreview</groupId>
@@ -126,14 +130,13 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.hibernate</groupId>
-            <artifactId>hibernate-ehcache</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.javassist</groupId>
             <artifactId>javassist</artifactId>
             <scope>test</scope>
         </dependency>
+		<dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>hibernate-core</artifactId>
+		</dependency>
 	</dependencies>
 </project>

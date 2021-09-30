@@ -22,6 +22,7 @@
 package org.sakaiproject.tool.assessment.ui.bean.author;
 
 import java.io.Serializable;
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -39,7 +40,7 @@ import javax.faces.model.SelectItemGroup;
 
 import lombok.Getter;
 import lombok.Setter;
-import org.apache.commons.math3.util.Precision;
+import org.apache.commons.lang3.StringUtils;
 
 import org.sakaiproject.tool.assessment.data.ifc.assessment.ItemDataIfc;
 import org.sakaiproject.component.cover.ServerConfigurationService;
@@ -49,6 +50,7 @@ import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 import org.sakaiproject.tool.assessment.services.assessment.AssessmentService; 
 import org.sakaiproject.tool.assessment.data.dao.assessment.FavoriteColChoices;
 import org.sakaiproject.tool.assessment.data.dao.assessment.FavoriteColChoicesItem;
+import static org.sakaiproject.tool.assessment.ui.listener.author.ItemAddListener.MAX_FEEDBACK_CHARS;
 import org.sakaiproject.util.ResourceLoader;
 
 
@@ -151,6 +153,7 @@ public class ItemBean
   private String origSection;  // section id for the item to be added to
   private String selectedSection="0";  // section id for the item to be assigned to
 
+  private String markersPair = "{}";
 
   private boolean caseSensitiveForFib=false;
   private boolean mutuallyExclusiveForFib=false;
@@ -693,9 +696,9 @@ public class ItemBean
 	  String selfSequence = MatchItemBean.CONTROLLING_SEQUENCE_DEFAULT;
 	  String distractorSequence = MatchItemBean.CONTROLLING_SEQUENCE_DISTRACTOR;
 	  
-	  SelectItem selfOption = new SelectItem(selfSequence, selfSequence, selfSequence);
+	  SelectItem selfOption = new SelectItem(selfSequence, "*" + RB_AUTHOR_MESSAGES.getString("new") + "*", RB_AUTHOR_MESSAGES.getString("new_desc"));
 	  options.add(selfOption);
-	  SelectItem distractorOption = new SelectItem(distractorSequence, distractorSequence, distractorSequence);
+	  SelectItem distractorOption = new SelectItem(distractorSequence, "*" + RB_AUTHOR_MESSAGES.getString("none_above") + "*", RB_AUTHOR_MESSAGES.getString("none_above_desc"));
 	  options.add(distractorOption);
 	  
 	  List<SelectItem> subOptions = new ArrayList<SelectItem>();
@@ -719,8 +722,7 @@ public class ItemBean
 	  }
 	  if (subOptions.size() > 0) {
 		  SelectItem[] selectItems = subOptions.toArray(new SelectItem[]{});
-		  SelectItemGroup group = new SelectItemGroup("Existing");
-		  group.setSelectItems(selectItems);
+		  SelectItemGroup group = new SelectItemGroup(RB_AUTHOR_MESSAGES.getString("existing"), RB_AUTHOR_MESSAGES.getString("existing_desc"), false, selectItems);
 		  options.add(group);
 	  }
 	  return options;
@@ -1135,6 +1137,13 @@ public class ItemBean
 	    context.addMessage(null,new FacesMessage(RB_AUTHOR_MESSAGES.getString("match_error")));
 	    return true;
 	}
+
+    // Choice level feedback cannot exceed 4000 characters
+    if(StringUtils.length(currentMatchPair.getCorrMatchFeedback()) > MAX_FEEDBACK_CHARS || StringUtils.length(currentMatchPair.getIncorrMatchFeedback()) > MAX_FEEDBACK_CHARS) {
+        FacesContext context = FacesContext.getCurrentInstance();
+        context.addMessage(null, new FacesMessage(MessageFormat.format(RB_AUTHOR_MESSAGES.getString("feedbackTooLong"), new Object[]{MAX_FEEDBACK_CHARS})));
+        return true;
+    }
 	return false;
     }
 
@@ -1165,7 +1174,7 @@ public class ItemBean
 	    newpair.setIsCorrect(Boolean.TRUE);
 	    newpair.setControllingSequence(currpair.getControllingSequence());
 	    if (MatchItemBean.CONTROLLING_SEQUENCE_DISTRACTOR.equals(newpair.getControllingSequence())) {
-	  	  newpair.setMatch(MatchItemBean.CONTROLLING_SEQUENCE_DISTRACTOR);
+	  	  newpair.setMatch("*" + RB_AUTHOR_MESSAGES.getString("none_above") + "*");
 	    } else if (!MatchItemBean.CONTROLLING_SEQUENCE_DEFAULT.equals(newpair.getControllingSequence())) {
 	  	  Iterator<MatchItemBean> listIter = list.iterator();
 	  	  while (listIter.hasNext()) {
@@ -1265,6 +1274,22 @@ public class ItemBean
 			this.setImageMapItemBeanList(list);
 		}
 	}
+
+  /**
+   * ￼ * for fib questions
+   *
+   * @param param the pair of markers
+   */
+  public void setMarkersPair(String param) {
+    String paramTmp = param;
+    if ((paramTmp == null) || (paramTmp.length() < 2)) paramTmp = "{}";
+    this.markersPair = paramTmp;
+  }
+
+  /** for fib questions, the pair of markers ￼ * @return ￼ */
+  public String getMarkersPair() {
+    return markersPair;
+  }
 
   /**
    * for fib, case sensitive for grading?
@@ -1960,4 +1985,15 @@ public class ItemBean
 	public List<ItemTagBean> getItemTags() { return itemTags; }
 
 	public void setItemTags(List<ItemTagBean> itemTags) { this.itemTags = itemTags; }
+
+    public boolean getRenderDiscountBlock() {
+
+        return itemType.equals("4") || (itemType.equals("1") && (partialCreditFlag.equals("false") || !partialCreditEnabled)
+            || itemType.equals("12") || (itemType.equals("2") && mcmsPartialCredit.equals("false")));
+    }
+
+    public boolean getRenderMinPointsWarning() {
+        return (itemType.equals("1") && partialCreditFlag.equals("true")) || (getRenderDiscountBlock() && getItemDiscount() > 0);
+    }
+
 }

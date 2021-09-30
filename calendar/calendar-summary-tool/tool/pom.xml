@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.sakaiproject.calendar</groupId>
         <artifactId>calendar</artifactId>
-        <version>21-SNAPSHOT</version>
+        <version>22-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
@@ -54,12 +54,12 @@
             </exclusions>
         </dependency>
         <dependency>
-            <groupId>org.sakaiproject.jsf</groupId>
-            <artifactId>jsf-tool</artifactId>
+            <groupId>org.sakaiproject.jsf2</groupId>
+            <artifactId>jsf2-tool</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.sakaiproject.jsf</groupId>
-            <artifactId>jsf-app</artifactId>
+            <groupId>org.sakaiproject.jsf2</groupId>
+            <artifactId>jsf2-app</artifactId>
             <exclusions>
                 <exclusion>
                     <groupId>javax.faces</groupId>
@@ -68,12 +68,12 @@
             </exclusions>
         </dependency>
         <dependency>
-            <groupId>org.sakaiproject.jsf</groupId>
-            <artifactId>myfaces-widgets-depend</artifactId>
+            <groupId>org.sakaiproject.jsf2</groupId>
+            <artifactId>jsf2-widgets-sun-depend</artifactId>
             <exclusions>
                 <exclusion>
                     <groupId>org.apache.myfaces.tomahawk</groupId>
-                    <artifactId>tomahawk</artifactId>
+                    <artifactId>tomahawk21</artifactId>
                 </exclusion>
             </exclusions>
             <type>pom</type>
@@ -93,7 +93,16 @@
         <dependency>
             <groupId>joda-time</groupId>
             <artifactId>joda-time</artifactId>
-            <version>${joda.time.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.weld.servlet</groupId>
+            <artifactId>weld-servlet-shaded</artifactId>
+            <version>${sakai.weld.shaded.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.servlet.jsp.jstl</groupId>
+            <artifactId>jakarta.servlet.jsp.jstl-api</artifactId>
+            <version>${sakai.jakarta.jstl-api.version}</version>
         </dependency>
     </dependencies>
 </project>

@@ -1,0 +1,8 @@
+**/*.js
+!js/**/*.js
+!src/**/*.js
+!.config/*.js
+!stories/**/*.js
+!.storybook/*.js
+!.eslintrc.js
+!test/**

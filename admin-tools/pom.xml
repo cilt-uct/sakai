@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.sakaiproject</groupId>
         <artifactId>master</artifactId>
-        <version>21-SNAPSHOT</version>
+        <version>22-SNAPSHOT</version>
         <relativePath>../master/pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -29,10 +29,6 @@
         <dependency>
             <groupId>org.sakaiproject.common</groupId>
             <artifactId>archive-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.sakaiproject.courier</groupId>
-            <artifactId>sakai-courier-api</artifactId>
         </dependency>
         <dependency>
             <groupId>org.sakaiproject.velocity</groupId>
@@ -62,6 +58,11 @@
             <groupId>net.tanesha.recaptcha4j</groupId>
             <artifactId>recaptcha4j</artifactId>
             <version>0.0.7</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.any23</groupId>
+            <artifactId>apache-any23-encoding</artifactId>
+            <version>2.4</version>
         </dependency>
         <dependency>
             <groupId>com.opencsv</groupId>

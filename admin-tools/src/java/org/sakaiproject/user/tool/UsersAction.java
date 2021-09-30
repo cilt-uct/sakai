@@ -21,7 +21,9 @@
 
 package org.sakaiproject.user.tool;
 
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.MessageFormat;
 import java.util.ArrayList;
@@ -34,6 +36,8 @@ import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.any23.encoding.TikaEncodingDetector;
+import org.apache.commons.io.input.BOMInputStream;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.routines.EmailValidator;
@@ -407,11 +411,10 @@ public class UsersAction extends PagedResourceActionII
 		}
 
 		// add the paging commands
-		//addListPagingMenus(bar, state);
 		int pageSize = Integer.valueOf(state.getAttribute(STATE_PAGESIZE).toString()).intValue();
-		int currentPageNubmer = Integer.valueOf(state.getAttribute(STATE_CURRENT_PAGE).toString()).intValue();
-		int startNumber = pageSize * (currentPageNubmer - 1) + 1;
-		int endNumber = pageSize * currentPageNubmer;
+		int currentPageNumber = Integer.valueOf(state.getAttribute(STATE_CURRENT_PAGE).toString()).intValue();
+		int startNumber = state.getAttribute(STATE_TOP_PAGE_MESSAGE) != null ? ((Integer) state.getAttribute(STATE_TOP_PAGE_MESSAGE)).intValue() + 1 : pageSize * (currentPageNumber - 1);
+		int endNumber = pageSize * currentPageNumber;
 
 		int totalNumber = 0;
 		Object[] params;
@@ -443,9 +446,6 @@ public class UsersAction extends PagedResourceActionII
 
 		// add the search commands
 		addSearchMenus(bar, state, rb.getString("useact.search"));
-
-		// add the refresh commands
-		addRefreshMenus(bar, state);
 
 		if (bar.size() > 0)
 		{
@@ -673,9 +673,6 @@ public class UsersAction extends PagedResourceActionII
 			catch (UserLockedException e)
 			{
 			}
-
-			// disable auto-updates while not in list mode
-			disableObservers(state);
 		}
 		catch (UserNotDefinedException e)
 		{
@@ -684,9 +681,6 @@ public class UsersAction extends PagedResourceActionII
 			Object[] params = new Object[]{id};
 			addAlert(state, rb.getFormattedMessage("useact.use_notfou", params));
 			state.removeAttribute("mode");
-
-			// make sure auto-updates are enabled
-			enableObserver(state);
 		}
 
 		return "_view";
@@ -786,9 +780,6 @@ public class UsersAction extends PagedResourceActionII
 		// mark the user as new, so on cancel it can be deleted
 		state.setAttribute("new", "true");
 
-		// disable auto-updates while not in list mode
-		disableObservers(state);
-
 	} // doNew
 
 	/**
@@ -849,9 +840,6 @@ public class UsersAction extends PagedResourceActionII
 			//cleanup
 			state.removeAttribute("importedUsers");
 			state.removeAttribute("mode");
-			
-			// make sure auto-updates are enabled
-			enableObserver(state);
 		}
 		
 	} // doImport
@@ -874,9 +862,6 @@ public class UsersAction extends PagedResourceActionII
 			UserEdit user = userDirectoryService.editUser(id);
 			state.setAttribute("user", user);
 			state.setAttribute("mode", "edit");
-
-			// disable auto-updates while not in list mode
-			disableObservers(state);
 		}
 		catch (UserNotDefinedException e)
 		{
@@ -885,25 +870,16 @@ public class UsersAction extends PagedResourceActionII
 			Object[] params = new Object[]{id};
 			addAlert(state, rb.getFormattedMessage("useact.use_notfou", params));
 			state.removeAttribute("mode");
-
-			// make sure auto-updates are enabled
-			enableObserver(state);
 		}
 		catch (UserPermissionException e)
 		{
 			addAlert(state, rb.getFormattedMessage("useact.youdonot1", new Object[]{id}));
 			state.removeAttribute("mode");
-
-			// make sure auto-updates are enabled
-			enableObserver(state);
 		}
 		catch (UserLockedException e)
 		{
 			addAlert(state, rb.getFormattedMessage("useact.somels", new Object[]{id}));
 			state.removeAttribute("mode");
-
-			// make sure auto-updates are enabled
-			enableObserver(state);
 		}
 
 	} // doEdit
@@ -926,9 +902,6 @@ public class UsersAction extends PagedResourceActionII
 			UserEdit user = userDirectoryService.editUser(id);
 			state.setAttribute("user", user);
 			state.setAttribute("mode", "edit");
-
-			// disable auto-updates while not in list mode
-			disableObservers(state);
 		}
 		catch (UserNotDefinedException e)
 		{
@@ -937,25 +910,16 @@ public class UsersAction extends PagedResourceActionII
 			Object[] params = new Object[]{id};
 			addAlert(state, rb.getFormattedMessage("useact.use_notfou", params));
 			state.removeAttribute("mode");
-
-			// make sure auto-updates are enabled
-			enableObserver(state);
 		}
 		catch (UserPermissionException e)
 		{
 			addAlert(state, rb.getFormattedMessage("useact.youdonot1", new Object[]{id}));
 			state.removeAttribute("mode");
-
-			// make sure auto-updates are enabled
-			enableObserver(state);
 		}
 		catch (UserLockedException e)
 		{
 			addAlert(state, rb.getFormattedMessage("useact.somels", new Object[]{id}));
 			state.removeAttribute("mode");
-
-			// make sure auto-updates are enabled
-			enableObserver(state);
 		}
 
 	} // doModify
@@ -1020,9 +984,6 @@ public class UsersAction extends PagedResourceActionII
 
 		// return to main mode
 		state.removeAttribute("mode");
-
-		// make sure auto-updates are enabled
-		enableObserver(state);
 
 		if ((user != null) && ((Boolean) state.getAttribute("create-login")).booleanValue())
 		{
@@ -1103,9 +1064,6 @@ public class UsersAction extends PagedResourceActionII
 		// return to main mode
 		state.removeAttribute("mode");
 
-		// make sure auto-updates are enabled
-		enableObserver(state);
-
 	} // doCancel
 	
 	/**
@@ -1129,9 +1087,6 @@ public class UsersAction extends PagedResourceActionII
 
 		// return to main mode
 		state.removeAttribute("mode");
-
-		// make sure auto-updates are enabled
-		enableObserver(state);
 
 	} // doCancelImport
 
@@ -1215,9 +1170,6 @@ public class UsersAction extends PagedResourceActionII
 
 		// go to main mode
 		state.removeAttribute("mode");
-
-		// make sure auto-updates are enabled
-		enableObserver(state);
 
 	} // doRemove_confirmed
 
@@ -1888,31 +1840,15 @@ public class UsersAction extends PagedResourceActionII
 				addAlert(state, rb.getString("import.error"));
 				return;
 			}
-			//SAK-21405 SAK-21884 original parse method, auto maps column headers to bean properties
-			/*
-			HeaderColumnNameTranslateMappingStrategy<ImportedUser> strat = new HeaderColumnNameTranslateMappingStrategy<ImportedUser>();
-			strat.setType(ImportedUser.class);
-
-			//map the column headers to the field names in the ImportedUser class
-			Map<String, String> map = new HashMap<String, String>();
-			map.put("user id", "eid");
-			map.put("first name", "firstName");
-			map.put("last name", "lastName");
-			map.put("email", "email");
-			map.put("password", "password");
-			map.put("type", "type");
-			map.put("properties", "rawProps"); //specially formatted string, see ImportedUser class.
-			
-			strat.setColumnMapping(map);
-
-			CsvToBean<ImportedUser> csv = new CsvToBean<ImportedUser>();
-			List<ImportedUser> list = new ArrayList<ImportedUser>();
-			
-			list = csv.parse(strat, new CSVReader(new InputStreamReader(resource.streamContent())));
-			*/
 			
 			//SAK-21884 manual parse method so we can support arbitrary columns
-			CSVReader reader = new CSVReader(new InputStreamReader(resource.streamContent()));
+			InputStream in = resource.streamContent();
+			String charset = new TikaEncodingDetector().guessEncoding(resource.streamContent());
+			if(StandardCharsets.UTF_8.name().equals(charset)) {
+				in = new BOMInputStream(in);
+			}
+	
+			CSVReader reader = new CSVReader(new InputStreamReader(in, charset));
 		    String [] nextLine;
 		    int lineCount = 0;
 		    List<ImportedUser> list = new ArrayList<ImportedUser>();

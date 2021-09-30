@@ -43,7 +43,7 @@ import org.sakaiproject.profile2.logic.ProfileWorksiteLogic;
 import org.sakaiproject.profile2.logic.SakaiProxy;
 import org.sakaiproject.profile2.model.Person;
 import org.sakaiproject.profile2.tool.components.ErrorLevelsFeedbackMessageFilter;
-import org.sakaiproject.profile2.tool.components.IconWithClueTip;
+import org.sakaiproject.profile2.tool.components.IconWithToolTip;
 import org.sakaiproject.profile2.util.ProfileConstants;
 import org.sakaiproject.profile2.util.ProfileUtils;
 import static org.sakaiproject.site.api.SiteService.SITE_TITLE_MAX_LENGTH;
@@ -146,7 +146,7 @@ public class CreateWorksitePanel extends Panel {
 
 				if (titleError) {
 					formFeedback.setDefaultModel(errorMsg);
-					formFeedback.add(new AttributeModifier("class", true, new Model<>("alertMessage")));
+					formFeedback.add(new AttributeModifier("class", new Model<>("alertMessage")));
 					target.add(formFeedback);
 					return;
 				}
@@ -160,7 +160,7 @@ public class CreateWorksitePanel extends Panel {
 				} else {
 					formFeedback.setDefaultModel(new ResourceModel(
 							"error.worksite.create.failed"));
-					formFeedback.add(new AttributeModifier("class", true,
+					formFeedback.add(new AttributeModifier("class",
 							new Model<String>("alertMessage")));
 					target.add(formFeedback);
 					return;
@@ -171,7 +171,7 @@ public class CreateWorksitePanel extends Panel {
 		createButton.setModel(new ResourceModel("button.worksite.create"));
 		form.add(createButton);
 		
-		form.add(new IconWithClueTip("createWorksiteToolTip", ProfileConstants.INFO_IMAGE, new ResourceModel("text.worksite.create")));
+		form.add(new IconWithToolTip("createWorksiteToolTip", ProfileConstants.INFO_ICON, new ResourceModel("text.worksite.create")));
 		
 		Label refreshLabel = new Label("refreshLabel", new ResourceModel("text.worksite.refresh"));
 		form.add(refreshLabel);

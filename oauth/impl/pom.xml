@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.sakaiproject.oauth</groupId>
         <artifactId>oauth-base</artifactId>
-        <version>21-SNAPSHOT</version>
+        <version>22-SNAPSHOT</version>
     </parent>
 
     <artifactId>oauth-impl</artifactId>
@@ -47,10 +47,6 @@
         <dependency>
             <groupId>net.oauth.core</groupId>
             <artifactId>oauth</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>joda-time</groupId>
-            <artifactId>joda-time</artifactId>
         </dependency>
     </dependencies>
 

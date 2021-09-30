@@ -6,13 +6,14 @@
   <f:view>
     <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
       <head><%= request.getAttribute("html.head") %>
-      <title><h:outputText value="EventLog"/></title>
-      <script>
-        var deletedText = '<h:outputText value="#{eventLogMessages.assessment_deleted}" />';
-      </script>
-      <script src="/samigo-app/js/eventInfo.js"></script>
+        <title><h:outputText value="EventLog"/></title>
+        <script>
+          var deletedText = '<h:outputText value="#{eventLogMessages.assessment_deleted}" />';
+          var searchHint = '<h:outputText value="#{eventLogMessages.search_hint}"/>';
+        </script>
+        <script type="text/javascript" src="/samigo-app/js/eventInfo.js"></script>
       </head>
-    <body onload="<%= request.getAttribute("html.body.onload") %>;initHelpValue('<h:outputText value="#{eventLogMessages.search_hint}"/>', 'eventLogId:filteredUser');">
+    <body onload="<%= request.getAttribute("html.body.onload") %>;">
 
 <div class="portletBody container-fluid">
   <h:form id="eventLogId">
@@ -23,36 +24,32 @@
 
   <div class="page-header">
     <h1>
-      <h:outputText value="#{eventLog.siteTitle} "/>
-      <small>
-        <h:outputText value="#{eventLogMessages.log}"/>
-      </small>
+      <h:outputText value="#{eventLogMessages.log}"/>
     </h1>
   </div>
 
-  <h:panelGroup layout="block" styleClass="pull-right">
-    <h:commandButton action="eventLog" value="#{eventLogMessages.previous}" disabled="#{!eventLog.hasPreviousPage}" title="#{eventLogMessages.previous}">
-        <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.author.EventLogPreviousPageListener" />
+  <h:panelGroup layout="block" styleClass="sakai-table-buttonContainer act pull-right clear">
+    <h:commandButton action="eventLog" value="#{eventLogMessages.previous}" disabled="#{!eventLog.hasPreviousPage}" title="#{eventLogMessages.previous}" styleClass="button" id="previousEventPage">
+      <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.author.EventLogPreviousPageListener" />
     </h:commandButton>
-    <h:commandButton action="eventLog" value="#{eventLogMessages.next}" disabled="#{!eventLog.hasNextPage}" title="#{eventLogMessages.previous}">
-        <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.author.EventLogNextPageListener" />
+    <h:commandButton action="eventLog" value="#{eventLogMessages.next}" disabled="#{!eventLog.hasNextPage}" title="#{eventLogMessages.previous}" styleClass="button">
+      <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.author.EventLogNextPageListener" />
     </h:commandButton>
   </h:panelGroup>
 
  <div class="divContainer row">
    <div class="divLeft col-lg-6 col-md-4 col-sm-5 col-xs-12">
-     <h:outputLabel value="#{eventLogMessages.filterBy}"  />
+     <h:outputLabel value="#{eventLogMessages.filterBy}" />
+     <h:outputText value="&#160;" escape="false" />
      <h:selectOneMenu value="#{eventLog.filteredAssessmentId}" id="assessmentTitle"
          required="true" onchange="document.forms[0].submit();">
         <f:selectItems value="#{eventLog.assessments}"/>
         <f:valueChangeListener type="org.sakaiproject.tool.assessment.ui.listener.author.EventLogListener" />
      </h:selectOneMenu>
    </div>
-   <div class="divRight col-md-8 col-lg-6 col-sm-7 col-xs-12">
+   <div class="divRight col-md-8 col-lg-6 col-sm-7 col-xs-12" id="eventSearchContainer">
       <h:inputText id="IE_hidden" value="" disabled="true" style="display: none;" />
-      <h:inputText id="filteredUser" value="#{eventLog.filteredUser}" size="30"
-         onfocus="resetHelpValue('#{eventLogMessages.search_hint}', 'eventLogId:filteredUser')"
-         onclick="resetHelpValue('#{eventLogMessages.search_hint}', 'eventLogId:filteredUser')"/>
+      <h:inputText id="filteredUser" value="#{eventLog.filteredUser}" size="30" autocomplete="off" />
       <h:outputText value="&#160;" escape="false" />
       <h:commandButton value="#{eventLogMessages.search}" type="submit" id="search" accesskey="#{eventLogMessages.a_search}">
          <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.author.EventLogListener" />

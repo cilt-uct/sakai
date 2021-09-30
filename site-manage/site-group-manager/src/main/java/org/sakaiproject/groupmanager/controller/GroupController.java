@@ -20,11 +20,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.sakaiproject.util.comparator.AlphaNumericComparator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Controller;
@@ -37,17 +39,19 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.sakaiproject.authz.api.AuthzGroup.RealmLockMode;
 import org.sakaiproject.authz.api.AuthzRealmLockException;
 import org.sakaiproject.authz.api.Member;
+import org.sakaiproject.entity.api.ResourceProperties;
 import org.sakaiproject.groupmanager.constants.GroupManagerConstants;
 import org.sakaiproject.groupmanager.form.GroupForm;
 import org.sakaiproject.groupmanager.service.SakaiService;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
-import org.sakaiproject.site.util.SiteComparator;
 import org.sakaiproject.site.util.SiteConstants;
 import org.sakaiproject.site.util.SiteGroupHelper;
 import org.sakaiproject.sitemanage.api.SiteHelper;
+import org.sakaiproject.sitemanage.api.SiteManageConstants;
 import org.sakaiproject.user.api.User;
+import org.sakaiproject.util.comparator.UserSortNameComparator;
 
 @Slf4j
 @Controller
@@ -83,6 +87,8 @@ public class GroupController {
         groupForm.setGroupAllowPreviewMembership(false);
         groupForm.setGroupUnjoinable(false);
 
+        // The list of sections assigned to the group, only for existing groups.
+        List<Member> sectionProvidedUsers = new ArrayList<>();
         // The list of roles assigned to the group, only for existing groups.
         List<String> roleProviderList = new ArrayList<String>();
         // The list of members assigned to the group, only for existing groups.
@@ -94,6 +100,17 @@ public class GroupController {
         // Group and Section lists for the group filter.
         List<Group> groupList = new ArrayList<Group>();
         List<Group> sectionList = new ArrayList<Group>();
+
+        // Filter by groups or sections
+        site.getGroups().forEach(group -> {
+            String wsetupCreated = group.getProperties().getProperty(Group.GROUP_PROP_WSETUP_CREATED);
+            if (StringUtils.isNotBlank(wsetupCreated) && Boolean.valueOf(wsetupCreated)) {
+                groupList.add(group);
+            } else {
+                sectionList.add(group);
+            }
+        });
+
         // Selected group as a filter, display the members of that group only.
         Group filterGroup = null;
         Optional<Group> optionalFilterGroup = sakaiService.findGroupById(filterByGroupId);
@@ -113,24 +130,37 @@ public class GroupController {
                     return GroupManagerConstants.REDIRECT_MAIN_TEMPLATE;
                 }
 
+                ResourceProperties groupProperties = group.getProperties();
+                String optionalFilteredBy = groupProperties.getProperty(Group.GROUP_PROP_FILTERED_BY);
+
                 // After finding the group, assign all the existing values to the form.
                 groupForm.setGroupId(groupId);
                 groupForm.setGroupTitle(group.getTitle());
                 groupForm.setGroupDescription(group.getDescription());
                 groupForm.setGroupAllowViewMembership(group.getProperties().get(Group.GROUP_PROP_VIEW_MEMBERS) != null && Boolean.valueOf(group.getProperties().getProperty(Group.GROUP_PROP_VIEW_MEMBERS)).booleanValue());
+                if (StringUtils.isEmpty(filterByGroupId) && StringUtils.isNotBlank(optionalFilteredBy)) {
+                    groupForm.setFilterByGroupId(optionalFilteredBy);
+                }
                 String roleProviderId = group.getProperties().getProperty(SiteConstants.GROUP_PROP_ROLE_PROVIDERID);
                 // Get the roles currently assigned to the group.
                 roleProviderList = StringUtils.isNotBlank(roleProviderId) ? (ArrayList<String>) SiteGroupHelper.unpack(roleProviderId) : new ArrayList<String>();
 
-                // Add members to the membership selector only if they were not provided by a role.
+                for (Group section : sectionList) {
+                    if (roleProviderList.contains(section.getTitle())) {
+                        sectionProvidedUsers.addAll(section.getMembers());
+                    }
+                }
+
+                // Add members to the membership selector only if they were not provided by a role or a section
                 for (Member member : group.getMembers()) {
-                    if (!roleProviderList.contains(member.getRole().getId())) {
+                    if (!roleProviderList.contains(member.getRole().getId()) && sectionProvidedUsers.stream().noneMatch(m -> m.getUserId().equals(member.getUserId()))) {
                         currentGroupMembers.add(member.getUserId());
                     }
                 }
 
                 // Add the current members to the existing roles.
                 roleProviderList.addAll(currentGroupMembers);
+
                 // Set the list with the roles and the users in the form of an existing group.
                 groupForm.setGroupMembers(roleProviderList);
 
@@ -151,37 +181,28 @@ public class GroupController {
                 joinableSetList.add(joinableSet);
             }
         });
-        Collections.sort(joinableSetList);
+        Collections.sort(joinableSetList, new AlphaNumericComparator());
 
         // For every member of the site or the filtered group, add it to the selector except if they were provided by a role.
         for (Member member : filterGroup == null ? site.getMembers() : filterGroup.getMembers()) {
-            if (!roleProviderList.contains(member.getRole().getId())) {
+            if (!roleProviderList.contains(member.getRole().getId()) && sectionProvidedUsers.stream().noneMatch(m -> m.getUserId().equals(member.getUserId()))) {
                 Optional<User> memberUserOptional = sakaiService.getUser(member.getUserId());
                 if (memberUserOptional.isPresent()) {
                     siteMemberList.add(memberUserOptional.get());
                 }
             }
         }
-        //Sort the members of the site by the existing comparator.
-        Collections.sort(siteMemberList, new SiteComparator(SiteConstants.SORTED_BY_MEMBER_NAME, Boolean.TRUE.toString()));
-
-        // Filter by groups or sections
-        site.getGroups().forEach(group -> {
-            String wsetupCreated = group.getProperties().getProperty(Group.GROUP_PROP_WSETUP_CREATED);
-            if (StringUtils.isNotBlank(wsetupCreated) && Boolean.valueOf(wsetupCreated)) {
-                groupList.add(group);
-            } else {
-                sectionList.add(group);
-            }
-        });
+        //Sort the members of the site by sort name.
+        Collections.sort(siteMemberList, new UserSortNameComparator());
 
         // Add the attributes to the model
         model.addAttribute("groupForm", groupForm);
-        model.addAttribute("siteRoleList", site.getRoles());
+        model.addAttribute("siteRoleList", site.getRoles().stream().filter(role -> !role.getId().startsWith(".")).collect(Collectors.toList()));
         model.addAttribute("joinableSetList", joinableSetList);
         model.addAttribute("siteMemberList", siteMemberList);
         model.addAttribute("groupList", groupList);
-        model.addAttribute("sectionList", sectionList);        
+        model.addAttribute("sectionList", sectionList);
+        model.addAttribute("groupFilterEnabled", sakaiService.getBooleanProperty(SiteManageConstants.PROP_SITEINFO_GROUP_FILTER_ENABLED, true));
 
         return GroupManagerConstants.GROUP_TEMPLATE;
     }
@@ -209,6 +230,12 @@ public class GroupController {
         List<Member> currentGroupMembers = null;
         List<String> selectedProviderIdList = new ArrayList<String>();
         List<String> addedGroupMemberList = new ArrayList<String>();
+        // Build the section list.
+        List<Group> sectionList = site.getGroups().stream()
+            .filter(
+                section -> section.getProperties().getProperty(Group.GROUP_PROP_WSETUP_CREATED) == null || 
+                !Boolean.valueOf(section.getProperties().getProperty(Group.GROUP_PROP_WSETUP_CREATED)).booleanValue()
+            ).collect(Collectors.toList());
 
         //Ensure the group title is provided
         if (StringUtils.isBlank(groupTitle)) {
@@ -265,6 +292,11 @@ public class GroupController {
         group.setDescription(groupForm.getGroupDescription());
         group.getProperties().addProperty(Group.GROUP_PROP_VIEW_MEMBERS, String.valueOf(groupForm.isGroupAllowViewMembership()));
 
+        // Assign a group filter
+        if (StringUtils.isNotBlank(filterByGroupId)) {
+            group.getProperties().addProperty(Group.GROUP_PROP_FILTERED_BY, filterByGroupId);
+        }
+
         // Assign or delete the joinable set
         if (StringUtils.isNotBlank(joinableSetName)) {
             group.getProperties().addProperty(Group.GROUP_PROP_JOINABLE_SET, joinableSetName);
@@ -290,8 +322,18 @@ public class GroupController {
                         addedGroupMemberList.add(member.getUserId());
                     }
                 }
-            // If the selected member is not a role, add it as individual member.
+            } else if (sectionList.stream().anyMatch(s -> selectedGroupMember.equals(s.getTitle()))) {
+                // If the selected member is a section, add all the members of this section to the group
+                selectedProviderIdList.add(selectedGroupMember);
+                Group section = sectionList.stream().filter(s -> selectedGroupMember.equals(s.getTitle())).findAny().orElse(null);
+                if (section != null) {
+                    for (Member member : section.getMembers()) {
+                        group.addMember(member.getUserId(), member.getRole().getId(), member.isActive(), false);
+                        addedGroupMemberList.add(member.getUserId());
+                    }
+                }
             } else {
+                // If the selected member is not a role, add it as individual member.                
                 Member member = site.getMember(selectedGroupMember);
                 if (member != null) {
                     group.addMember(member.getUserId(), member.getRole().getId(), member.isActive(), false);

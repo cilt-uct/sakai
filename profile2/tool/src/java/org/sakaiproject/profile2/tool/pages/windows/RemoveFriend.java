@@ -35,7 +35,7 @@ import org.sakaiproject.profile2.model.ProfilePrivacy;
 import org.sakaiproject.profile2.tool.components.ProfileImage;
 import org.sakaiproject.profile2.tool.models.FriendAction;
 import org.sakaiproject.profile2.util.ProfileConstants;
-import org.sakaiproject.util.FormattedText;
+import org.sakaiproject.util.api.FormattedText;
 
 public class RemoveFriend extends Panel {
 
@@ -52,6 +52,9 @@ public class RemoveFriend extends Panel {
 	
 	@SpringBean(name="org.sakaiproject.profile2.logic.ProfileConnectionsLogic")
 	private ProfileConnectionsLogic connectionsLogic;
+	
+	@SpringBean(name="org.sakaiproject.util.api.FormattedText")
+	private FormattedText formattedText;
 
 	/*
 	 * userX is the current user
@@ -62,7 +65,7 @@ public class RemoveFriend extends Panel {
         super(id);
       
         //get friendName
-        final String friendName = FormattedText.processFormattedText(sakaiProxy.getUserDisplayName(userY), new StringBuffer());
+        final String friendName = formattedText.processFormattedText(sakaiProxy.getUserDisplayName(userY), new StringBuffer());
                 
         //window setup
 		window.setTitle(new ResourceModel("title.friend.remove")); 
@@ -103,7 +106,7 @@ public class RemoveFriend extends Panel {
 				if(!friend) {
 					text.setDefaultModel(new StringResourceModel("error.friend.not.friend", null, new Object[]{ friendName } ));
 					this.setEnabled(false);
-					this.add(new AttributeModifier("class", true, new Model("disabled")));
+					this.add(new AttributeModifier("class", new Model("disabled")));
 					target.add(text);
 					target.add(this);
 					return;
@@ -121,7 +124,7 @@ public class RemoveFriend extends Panel {
 				} else {
 					text.setDefaultModel(new StringResourceModel("error.friend.remove.failed", null, new Object[]{ friendName } ));
 					this.setEnabled(false);
-					this.add(new AttributeModifier("class", true, new Model("disabled")));
+					this.add(new AttributeModifier("class", new Model("disabled")));
 					target.add(text);
 					target.add(this);
 					return;
@@ -130,7 +133,7 @@ public class RemoveFriend extends Panel {
             }
 		};
 		//submitButton.add(new FocusOnLoadBehaviour());
-		submitButton.add(new AttributeModifier("title", true, new StringResourceModel("accessibility.connection.remove", null, new Object[]{ friendName } )));
+		submitButton.add(new AttributeModifier("title", new StringResourceModel("accessibility.connection.remove", null, new Object[]{ friendName } )));
 		form.add(submitButton);
 		
         

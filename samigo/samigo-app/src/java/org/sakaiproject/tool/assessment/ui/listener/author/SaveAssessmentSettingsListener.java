@@ -22,6 +22,7 @@
 package org.sakaiproject.tool.assessment.ui.listener.author;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
@@ -46,6 +47,7 @@ import org.sakaiproject.tool.assessment.ui.bean.author.AuthorBean;
 import org.sakaiproject.tool.assessment.ui.bean.authz.AuthorizationBean;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 import org.sakaiproject.tool.assessment.util.TextFormat;
+import org.sakaiproject.tool.assessment.util.TimeLimitValidator;
 import org.sakaiproject.util.api.FormattedText;
 
 /**
@@ -104,8 +106,8 @@ public class SaveAssessmentSettingsListener
     	error=true;
     }
 
-    // check if RetractDate needs to be nulled
-    if ("2".equals(assessmentSettings.getLateHandling())){
+    // check if RetractDate needs to be nulled if not accepting late submissions
+    if (AssessmentAccessControlIfc.NOT_ACCEPT_LATE_SUBMISSION.toString().equals(assessmentSettings.getLateHandling())){
         assessmentSettings.setRetractDateString(null);
     }
 
@@ -129,6 +131,17 @@ public class SaveAssessmentSettingsListener
     	error = true;
     }
 
+    // if using a time limit, ensure open window is greater than or equal to time limit
+    boolean hasTimer = TimeLimitValidator.hasTimer(assessmentSettings.getTimedHours(), assessmentSettings.getTimedMinutes());
+    if(hasTimer) {
+        Date due = assessmentSettings.getRetractDate() != null && AssessmentAccessControlIfc.ACCEPT_LATE_SUBMISSION.toString().equals(assessmentSettings.getLateHandling()) ? assessmentSettings.getRetractDate() : assessmentSettings.getDueDate();
+        boolean availableLongerThanTimer = TimeLimitValidator.availableLongerThanTimer(assessmentSettings.getStartDate(), due, assessmentSettings.getTimedHours(), assessmentSettings.getTimedMinutes(),
+                                                                                        "org.sakaiproject.tool.assessment.bundle.AssessmentSettingsMessages", "open_window_less_than_time_limit", context);
+        if(!availableLongerThanTimer) {
+            error = true;
+        }
+    }
+
     if (assessmentSettings.getReleaseTo().equals(AssessmentAccessControl.RELEASE_TO_SELECTED_GROUPS)) {
     	String[] groupsAuthorized = assessmentSettings.getGroupsAuthorizedToSave(); //getGroupsAuthorized();
     	if (groupsAuthorized == null || groupsAuthorized.length == 0) {
@@ -141,23 +154,30 @@ public class SaveAssessmentSettingsListener
     		assessmentSettings.setNoGroupSelectedError(false);
     	}
     }
-    
-    //  if timed assessment, does it has value for time
-    Object time=assessmentSettings.getValueMap().get("hasTimeAssessment");
-    boolean isTime=false;
-    try
-    {
-      if (time != null)
-      {
-        isTime = ( (Boolean) time).booleanValue();
-      }
-    }
-    catch (Exception ex)
-    {
-      // keep default
-      log.warn("Expecting Boolean hasTimeAssessment, got: " + time);
 
-    }
+	//  if timed assessment, does it has value for time
+	Object time=assessmentSettings.getValueMap().get("hasTimeAssessment");
+	boolean isTime=false;
+	try
+	{
+		if (time != null) {
+			if (time instanceof String) {
+				String timeStr = time.toString();
+				if ("true".equals(timeStr)) {
+					isTime = true;
+				} else if ("false".equals(timeStr)) {
+					isTime = false;
+				}
+			} else {
+				isTime = ( (Boolean) time).booleanValue();
+			}
+		}
+	}
+	catch (Exception ex)
+	{
+		// keep default
+		log.warn("Expecting Boolean or String true/false for hasTimeAssessment, got: " + time + ", exception: " + ex.getMessage());
+	}
     if((isTime) &&((assessmentSettings.getTimeLimit().intValue())==0)){
 	String time_err=ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.AssessmentSettingsMessages","timeSelect_error");
 	context.addMessage(null,new FacesMessage(time_err));
@@ -226,16 +246,18 @@ public class SaveAssessmentSettingsListener
     		String  date_err=ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.AssessmentSettingsMessages","date_error");
     		context.addMessage(null,new FacesMessage(date_err));
     	}
-    	else if(!assessmentSettings.getIsValidFeedbackDate()){
+    	else {
+    		if(StringUtils.isNotBlank(assessmentSettings.getFeedbackEndDateString()) && assessmentSettings.getFeedbackDate().after(assessmentSettings.getFeedbackEndDate())){
+                String feedbackDateErr = ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.GeneralMessages","invalid_feedback_ranges");
+                context.addMessage(null,new FacesMessage(feedbackDateErr));
+                error=true;
+            }
+    	}
+
+    	if(!assessmentSettings.getIsValidFeedbackDate()){
         	String feedbackDateErr = ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.GeneralMessages","invalid_feedback_date");
         	context.addMessage(null,new FacesMessage(feedbackDateErr));
         	error=true;
-        }
-
-        if(StringUtils.isNotBlank(assessmentSettings.getFeedbackEndDateString()) && assessmentSettings.getFeedbackDate().after(assessmentSettings.getFeedbackEndDate())){
-            String feedbackDateErr = ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.GeneralMessages","invalid_feedback_ranges");
-            context.addMessage(null,new FacesMessage(feedbackDateErr));
-            error=true;
         }
 
 		boolean scoreThresholdEnabled = assessmentSettings.getFeedbackScoreThresholdEnabled();

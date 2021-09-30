@@ -47,12 +47,12 @@ import org.sakaiproject.sitestats.tool.facade.Locator;
 import org.sakaiproject.sitestats.tool.util.Tools;
 import org.sakaiproject.sitestats.tool.wicket.components.LastJobRun;
 import org.sakaiproject.sitestats.tool.wicket.components.Menus;
-import org.sakaiproject.sitestats.tool.wicket.components.SakaiAjaxButton;
-import org.sakaiproject.sitestats.tool.wicket.components.SakaiDateTimeField;
 import org.sakaiproject.sitestats.tool.wicket.components.useractivity.UserTrackingResultsPanel;
 import org.sakaiproject.sitestats.tool.wicket.models.LoadableDisplayUserListModel;
 import org.sakaiproject.sitestats.tool.wicket.models.LoadableDisplayUserListModel.DisplayUser;
 import org.sakaiproject.sitestats.tool.wicket.models.LoadableToolIdListModel;
+import org.sakaiproject.wicket.component.SakaiAjaxButton;
+import org.sakaiproject.wicket.component.SakaiDateTimeField;
 
 /**
  * Page for the User Activity feature
@@ -60,6 +60,7 @@ import org.sakaiproject.sitestats.tool.wicket.models.LoadableToolIdListModel;
  */
 public class UserActivityPage extends BasePage
 {
+	private static final long serialVersionUID = 1L;
 	private final String siteId;
 	private String user = ReportManager.WHO_NONE;  // cannot be made final, though your IDE may tell you so; is bound to the user filter drop down choice
 	private String tool = ReportManager.WHAT_EVENTS_ALLTOOLS;	// cannot be made final, though your IDE may tell you so; is bound to the tool filter drop down choice
@@ -169,13 +170,13 @@ public class UserActivityPage extends BasePage
 		ZoneId tz = Locator.getFacade().getUserTimeService().getLocalTimeZone().toZoneId();
 		startDate = ZonedDateTime.now(tz).truncatedTo(ChronoUnit.DAYS);
 		SakaiDateTimeField startDateField = new SakaiDateTimeField("startDate", new PropertyModel<>(this, "startDate"), tz);
-		startDateField.setLabel(new ResourceModel("de_dateRangeFrom"));
+		startDateField.setAllowEmptyDate(false).setLabel(new ResourceModel("de_dateRangeFrom"));
 		form.add(new SimpleFormComponentLabel("startDateLabel", startDateField));
 		form.add(startDateField);
 
 		endDate = startDate.plusDays(1);
 		SakaiDateTimeField endDateField = new SakaiDateTimeField("endDate", new PropertyModel<>(this, "endDate"), tz);
-		endDateField.setLabel(new ResourceModel("de_dateRangeTo"));
+		endDateField.setAllowEmptyDate(false).setLabel(new ResourceModel("de_dateRangeTo"));
 		form.add(new SimpleFormComponentLabel("endDateLabel", endDateField));
 		form.add(endDateField);
 

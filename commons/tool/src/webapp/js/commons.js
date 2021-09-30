@@ -37,6 +37,8 @@ commons.switchState = function (state, arg) {
     $("#commons-post-editor").toggle(commons.currentUserPermissions.postCreate);
 
     if (commons.states.POSTS === state) {
+        $('#commons-toolbar > li > span').removeClass('current');
+        $('#commons-main-link > span').addClass('current');
 
         var templateData = {
                 currentUserId: commons.userId,
@@ -108,13 +110,13 @@ commons.switchState = function (state, arg) {
             }
 
             editor.click(function (e) {
-
                 if (this.innerHTML == commons.i18n['post_editor_initial_text']) {
                     this.innerHTML = '';
                     $('#commons-editor-post-button').prop('disabled', false);
                     editorPostButton.prop('disabled', false);
                     editorCancelButton.prop('disabled', false);
                 }
+                editor.focus();
             }).on('paste', function (e) {
 
                 var cd = e.originalEvent.clipboardData;
@@ -128,7 +130,10 @@ commons.switchState = function (state, arg) {
                 commons.selectedText = (document.selection) ? sel.createRange().htmlText : sel.toString();
                 commons.currentRange = sel.getRangeAt(0);
             });
-
+            if(commons.currentUserPermissions.postDeleteAny){   //if the user can delete any post, we will give them access to Hi-Priority posting too.
+                document.getElementById('commons-editor-priority-container').removeAttribute('style');
+                $('[data-toggle="popover"]').popover(); //we need the popover to work only when Hi-Priority is exposed.
+            }
             editorPostButton.click(function (e) {
 
                 commons.utils.savePost('', editor.html(), function (post) {
@@ -272,6 +277,8 @@ commons.switchState = function (state, arg) {
             }
         });
     } else if (commons.states.POST === state) {
+        $('#commons-toolbar > li > span').removeClass('current');
+        $('#commons-main-link > span').addClass('current');
         var url = "/direct/commons/post.json?postId=" + arg.postId;
         $.ajax( { url : url, dataType: "json", cache: false, timeout: commons.AJAX_TIMEOUT })
             .done(function (data) {
@@ -308,6 +315,10 @@ commons.switchState = function (state, arg) {
 
         if (commons.embedder === 'SITE') {
             commons.utils.renderTemplate('toolbar', {} ,'commons-toolbar');
+
+            $('#commons-main-link>span>a').click(function (e) {
+                commons.switchState(commons.states.POSTS);
+            });
 
             $('#commons-permissions-link>span>a').click(function (e) {
                 commons.switchState(commons.states.PERMISSIONS);

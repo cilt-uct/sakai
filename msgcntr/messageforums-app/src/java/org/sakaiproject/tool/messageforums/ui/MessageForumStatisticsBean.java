@@ -61,7 +61,7 @@ import org.sakaiproject.api.app.messageforums.ui.DiscussionForumManager;
 import org.sakaiproject.api.app.messageforums.ui.UIPermissionsManager;
 import org.sakaiproject.authz.api.Member;
 import org.sakaiproject.authz.api.SecurityService;
-import org.sakaiproject.component.app.messageforums.MembershipItem;
+import org.sakaiproject.api.app.messageforums.MembershipItem;
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.event.api.EventTrackingService;
@@ -371,6 +371,7 @@ public class MessageForumStatisticsBean {
 	private static final String FORUM_TITLE = "forumTitle";
 
 	private static final String MESSAGECENTER_BUNDLE = "org.sakaiproject.api.app.messagecenter.bundle.Messages";
+	private static final ResourceLoader rb = new ResourceLoader(MESSAGECENTER_BUNDLE);
 
 	private static final String FORUM_STATISTICS = "dfStatisticsList";
 	private static final String FORUM_STATISTICS_BY_ALL_TOPICS = "dfStatisticsListByAllTopics";
@@ -2183,6 +2184,9 @@ public class MessageForumStatisticsBean {
 		return (String) paramMap.get(parameterId);    
 	}
 
+	public boolean getIsAuthor() {
+		return selectedSiteUserId.equals(userDirectoryService.getCurrentUser().getId());
+	}
 
 	public String getButtonUserName() {
 		String userName;
@@ -2212,14 +2216,11 @@ public class MessageForumStatisticsBean {
 		this.buttonUserName = buttonUserName;
 	}
 
-	public static String getResourceBundleString(String key) 
-	{
-		final ResourceLoader rb = new ResourceLoader(MESSAGECENTER_BUNDLE);
+	public static String getResourceBundleString(String key) {
 		return rb.getString(key);
 	}
 
 	public static String getResourceBundleString(String key, Object[] args) {
-		final ResourceLoader rb = new ResourceLoader(MESSAGECENTER_BUNDLE);
 		return rb.getFormattedMessage(key, args);
 	}
 
@@ -2309,8 +2310,13 @@ public class MessageForumStatisticsBean {
 				String anonId = userIdToAnonIdMap.get(u.getId());
 				if (anonId != null)
 				{
-					item.setName(anonId);
-					list.add(item);
+					list.add(MembershipItem.makeMembershipItem(
+							anonId,
+							item.getType(),
+							item.getGroup(),
+							item.getRole(),
+							item.getUser(),
+							item.isViewable()));
 				}
 			}
 		}
@@ -2582,6 +2588,7 @@ public class MessageForumStatisticsBean {
 		else 
 		{ 
 			selectedGroup = changeAssign; 
+			FacesContext.getCurrentInstance().renderResponse();
 			return null;
 		} 
 	}
@@ -2600,14 +2607,17 @@ public class MessageForumStatisticsBean {
 	} 
 	
 	public void setDefaultSelectedAssign(){
-		if(!gradebookItemChosen){
-			if(selectedAllTopicsTopicId != null && !"".equals(selectedAllTopicsTopicId)){
-				String defaultAssignName = forumManager.getTopicById(Long.parseLong(selectedAllTopicsTopicId)).getDefaultAssignName();
-				setDefaultSelectedAssign(defaultAssignName);
-			}else{
-				String defaultAssignName = forumManager.getForumById(Long.parseLong(selectedAllTopicsForumId)).getDefaultAssignName();
-				setDefaultSelectedAssign(defaultAssignName);
-			}			
+		if (!gradebookItemChosen) {
+			String defaultAssignName;
+			if (StringUtils.isNotBlank(selectedAllTopicsTopicId)) {
+				defaultAssignName = forumManager.getTopicById(Long.parseLong(selectedAllTopicsTopicId)).getDefaultAssignName();
+			} else {
+				defaultAssignName = forumManager.getForumById(Long.parseLong(selectedAllTopicsForumId)).getDefaultAssignName();
+			}
+			if (StringUtils.isNotBlank(defaultAssignName)) {
+				Assignment assignment = getGradebookService().getAssignmentByNameOrId(toolManager.getCurrentPlacement().getContext(), defaultAssignName);
+				setDefaultSelectedAssign(assignment.getName());
+			}
 		}
 		gradebookItemChosen = false;
 	}
@@ -2632,18 +2642,13 @@ public class MessageForumStatisticsBean {
 		selAssignName = "";
 	}
 	
-	private void setDefaultSelectedAssign(String assign){
+	private void setDefaultSelectedAssign(final String assign){
 		selectedAssign = DEFAULT_GB_ITEM;
 		selAssignName = "";
-		if(assign != null){
-			for (SelectItem item : getAssignments()) {
-				if(assign.equals(item.getLabel())){
-					selectedAssign = item.getValue().toString();
-					selAssignName = assign;
-				}
-			}
-		}
-		
+		getAssignments().stream().filter(item -> item.getLabel().equals(assign)).findAny().ifPresent(item -> {
+			selectedAssign = item.getValue().toString();
+			selAssignName = assign;
+		});
 	}
 	
 	private Map<String, DecoratedGradebookAssignment> getGradebookAssignment(){
@@ -2905,7 +2910,7 @@ public class MessageForumStatisticsBean {
 		}
 		catch (NumberFormatException e) 
 		{
-			log.error(e.getMessage(), e);
+			log.warn("Could not parse grade [{}] as a Double, {}", validateString, e.getMessage());
 			return false;
 		}
 	}
@@ -3109,6 +3114,23 @@ public class MessageForumStatisticsBean {
 		// return false
 
 		// Condenses to:
-		return topic.getPostAnonymous() && (!topic.getRevealIDsToRoles() || !uiPermissionsManager.isIdentifyAnonAuthors(topic));
+		return topic.getPostAnonymous() && (!topic.getRevealIDsToRoles() || !uiPermissionsManager.isIdentifyAnonAuthors((DiscussionTopic) topic));
+	}
+
+	public double getPercentRead()
+	{
+		int totalPosts = 0;
+		List<Object[]> studentAuthoredStats = messageManager.findAuthoredMessageCountForAllStudents();
+		for (Object[] pair : studentAuthoredStats)
+		{
+			totalPosts += ((Long) pair[1]).intValue();
+		}
+
+		if (totalPosts == 0)
+		{
+			return 0;
+		}
+		int numRead = getUserReadStatistics().size();
+		return ((double)numRead / (double)totalPosts);
 	}
 }

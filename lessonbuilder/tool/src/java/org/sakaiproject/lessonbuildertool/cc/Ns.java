@@ -17,7 +17,7 @@ package org.sakaiproject.lessonbuildertool.cc;
 
 import java.util.Map;
 import java.util.HashMap;
-import org.jdom.Namespace;
+import org.jdom2.Namespace;
 
 // all version dependencies should be in this file. 
 // Parser sets the right index for the current version
@@ -208,10 +208,10 @@ public class Ns  {
 	resourceTypes.put("imswl_xmlv1p1", WEBLINK);
 	resourceTypes.put("imswl_xmlv1p2", WEBLINK);
 	resourceTypes.put("imswl_xmlv1p3", WEBLINK);
-	resourceTypes.put("imsdt_xmlv1p0", TOPIC);
-	resourceTypes.put("imsdt_xmlv1p1", TOPIC);
-	resourceTypes.put("imsdt_xmlv1p2", TOPIC);
-	resourceTypes.put("imsdt_xmlv1p3", TOPIC);
+	resourceTypes.put("imsdt_v1p0", TOPIC);
+	resourceTypes.put("imsdt_v1p1", TOPIC);
+	resourceTypes.put("imsdt_v1p2", TOPIC);
+	resourceTypes.put("imsdt_v1p3", TOPIC);
 	resourceTypes.put("imsqti_xmlv1p2/imscc_xmlv1p0/assessment", ASSESSMENT);
 	resourceTypes.put("imsqti_xmlv1p2/imscc_xmlv1p1/assessment", ASSESSMENT);
 	resourceTypes.put("imsqti_xmlv1p2/imscc_xmlv1p2/assessment", ASSESSMENT);

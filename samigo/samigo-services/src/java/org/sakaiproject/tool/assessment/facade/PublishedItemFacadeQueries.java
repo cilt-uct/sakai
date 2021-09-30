@@ -27,7 +27,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
-import org.hibernate.Query;
+import org.hibernate.query.Query;
 import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedItemAttachment;
 import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedItemData;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.ItemAttachmentIfc;
@@ -35,8 +35,8 @@ import org.sakaiproject.tool.assessment.data.ifc.assessment.ItemDataIfc;
 import org.sakaiproject.tool.assessment.integration.helper.ifc.TagServiceHelper;
 import org.sakaiproject.tool.assessment.osid.shared.impl.IdImpl;
 import org.sakaiproject.tool.assessment.services.PersistenceService;
-import org.springframework.orm.hibernate4.HibernateCallback;
-import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
+import org.springframework.orm.hibernate5.HibernateCallback;
+import org.springframework.orm.hibernate5.support.HibernateDaoSupport;
 
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -86,7 +86,7 @@ public class PublishedItemFacadeQueries extends HibernateDaoSupport implements
 	public Map<String, ItemFacade> getPublishedItemsByHash(String hash) {
 		final HibernateCallback<List<PublishedItemData>> hcb = session -> {
 				Query q = session.createQuery("from PublishedItemData where hash = ? ");
-				q.setString(0, hash);
+				q.setParameter(0, hash);
 				return q.list();
 		};
 		List<PublishedItemData> list1 = getHibernateTemplate().execute(hcb);
@@ -189,7 +189,7 @@ public class PublishedItemFacadeQueries extends HibernateDaoSupport implements
 	public Long getPublishedAssessmentId(Long itemId) {
 		final HibernateCallback<List<Long>> hcb = session -> {
 			Query q = session.createQuery("select s.assessment.publishedAssessmentId from PublishedSectionData s, PublishedItemData i where s.id = i.section AND i.itemId = ?");
-			q.setLong(0, itemId);
+			q.setParameter(0, itemId);
 			return q.list();
 		};
 		List<Long> list1 = getHibernateTemplate().execute(hcb);

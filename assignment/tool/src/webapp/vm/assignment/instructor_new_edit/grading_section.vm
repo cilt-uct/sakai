@@ -53,11 +53,23 @@ This section contains the options for grading this assignment, including rubrics
 
 			## Rubrics
 			<div class="form-group">
-				<sakai-rubric-association token="$!rbcs-token" dont-associate-label="$tlang.getString("dont.associate.label")"
-					dont-associate-value="0" associate-label="$tlang.getString("associate.label")" associate-value="1" tool-id="sakai.assignment"
-					#if("$!assignment.Id" != "") entity-id="$assignment.Id"	#end
-					#if($rbcs-state-details && "$!rbcs-state-details" != "") state-details="$rbcs-state-details" #end
-					fine-tune-points="$tlang.getString("option.pointsoverride")" hide-student-preview="$tlang.getString("option.studentpreview")">
+				<sakai-rubric-association
+					token="$!rbcs-token"
+					dont-associate-label="$tlang.getString("dont.associate.label")"
+					dont-associate-value="0"
+					associate-label="$tlang.getString("associate.label")"
+					associate-value="1"
+					#if("$!rubric_association" != "")
+					association='$rubric_association'
+					#else
+					#if("$!assignment.Id" != "")
+					entity-id="$assignment.Id"
+					#end
+					tool-id="sakai.assignment"
+					#end
+					fine-tune-points="$tlang.getString("option.pointsoverride")"
+					hide-student-preview="$tlang.getString("option.studentpreview")"
+				>
 				</sakai-rubric-association>
 			</div>
 
@@ -107,7 +119,7 @@ This section contains the options for grading this assignment, including rubrics
 
 							## if there are assignment entries in Gradebook
 							#if (!$!gradebookAssignmentsLabel.isEmpty())
-								<div class="radio">  ## Associate with Existing Gradebook Item
+								<div class="radio" #if(!$allowLinkToExistingGradebookItem)style="display: none;"#end>  ## Associate with Existing Gradebook Item
 									<label id="radioAssocWithGbLabel" for="$!gradebookChoice_associate">
 										<input type="radio"	name="$!name_Addtogradebook" id="$!gradebookChoice_associate" value="$!gradebookChoice_associate"
 											#if($!gradebookChoice.equals("$!gradebookChoice_associate"))checked#end
@@ -115,7 +127,7 @@ This section contains the options for grading this assignment, including rubrics
 										$tlang.getString("grading.associate")
 									</label>
 								</div>
-								<div id="gradebookList" class="indnt3">
+								<div id="gradebookList" class="indnt3" #if(!$allowLinkToExistingGradebookItem)style="display: none;"#end>
 									<label for="gradebookItemSelect" class="sr-only">$tlang.getString("grading.select")</label>
 									<select name="$!name_AssociateGradebookAssignment" id="gradebookItemSelect">
 										<option value="">$tlang.getString("grading.select")</option>

@@ -411,7 +411,7 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 			// if use has no email address we can't send it
 			if ((to == null) || (to.length() == 0)) return;
 
-			String from = "postmaster@" + serverConfigurationService.getServerName();
+			String from = serverConfigurationService.getString("setup.request", "postmaster@" + serverConfigurationService.getServerName());
 			String subject = serverConfigurationService.getString("ui.service", "Sakai") + " " + rb.getString("notif") + " "
 			+ period.firstTime().toStringLocalDate();
 
@@ -641,7 +641,7 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 		// Resource Bundle
 		String resourceClass = serverConfigurationService.getString(RESOURCECLASS, DEFAULT_RESOURCECLASS);
 		String resourceBundle = serverConfigurationService.getString(RESOURCEBUNDLE, DEFAULT_RESOURCEBUNDLE);
-		rb = new Resource().getLoader(resourceClass, resourceBundle);
+		rb = Resource.getResourceLoader(resourceClass, resourceBundle);
 
 		// USE A TIMER INSTEAD OF CREATING A NEW THREAD -AZ
 		// start();

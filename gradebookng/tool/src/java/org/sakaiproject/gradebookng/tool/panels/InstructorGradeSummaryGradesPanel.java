@@ -93,7 +93,9 @@ public class InstructorGradeSummaryGradesPanel extends BasePanel {
 				userRole,
 				isCourseGradeVisible,
 				gradebook.isCoursePointsDisplayed(),
-				true);
+				true,
+				false,
+                this.businessService.getShowCalculatedGrade());
 
 		// TODO catch if this is null, the get(0) will throw an exception
 		// TODO also catch the GbException
@@ -124,7 +126,6 @@ public class InstructorGradeSummaryGradesPanel extends BasePanel {
 		}
 		Map<String, CategoryDefinition> categoriesMap = businessService.getGradebookCategories().stream()
 				.collect(Collectors.toMap(cat -> cat.getName(), cat -> cat));
-		Collections.sort(categoryNames);
 
 		// build the model for table
 		final Map<String, Object> tableModel = new HashMap<>();

@@ -222,7 +222,6 @@ $(document).ready(function() {
     newGradeItemPopoverMessage: TrimPath.parseTemplate(
        $("#newGradeItemPopoverMessage").html().trim().toString()),
   };
-
 });
 
 GbGradeTable.courseGradeRenderer = function (instance, td, row, col, prop, value, cellProperties) {
@@ -661,17 +660,20 @@ GbGradeTable.renderTable = function (elementId, tableData) {
     editor: false,
     width: GbGradeTable.settings.showPoints ? 220 : 140,
     sortCompare: function(a, b) {
-        var a_points = parseFloat(a[1]);
-        var b_points = parseFloat(b[1]);
+        const a_percent = parseFloat(a[1]);
+        const b_percent = parseFloat(b[1]);
+        const aIsNaN = isNaN(a_percent);
+        const bIsNaN = isNaN(b_percent);
 
-        if (a_points > b_points) {
+        // treat NaN as less than real numbers
+        if (a_percent > b_percent || (!aIsNaN && bIsNaN)) {
             return 1;
         }
-        if (a_points < b_points) {
+        if (a_percent < b_percent || (aIsNaN && !bIsNaN)) {
             return -1;
         }
         return 0;
-    },
+    }
   });
 
   if (GbGradeTable.settings.isStudentNumberVisible) {
@@ -685,6 +687,10 @@ GbGradeTable.renderTable = function (elementId, tableData) {
   GbGradeTable.FIXED_COLUMN_OFFSET = GbGradeTable.getFixedColumns().length;
   GbGradeTable.COURSE_GRADE_COLUMN_INDEX = GbGradeTable.FIXED_COLUMN_OFFSET - 1; // course grade is always the last fixed column
   GbGradeTable.domElement.addClass('gb-fixed-columns-' + GbGradeTable.FIXED_COLUMN_OFFSET);
+
+  if (sakai && sakai.locale && sakai.locale.userLanguage) {
+    GbGradeTable.numFmt = new Intl.NumberFormat(sakai.locale.userLanguage);
+  }
 
   GbGradeTable.grades = GbGradeTable.mergeColumns(GbGradeTable.unpack(tableData.serializedGrades,
                                                                       tableData.rowCount,
@@ -1236,7 +1242,6 @@ GbGradeTable.renderTable = function (elementId, tableData) {
         $togglePanel.find('.gb-item-filter :checkbox[value='+$(this).data('assignmentid')+']').trigger('click');
       } else if ($(this).data('categoryid')) {
         // Skip if column is already not rendered
-        if (!GbGradeTable.isColumnRendered(GbGradeTable.instance, col)) return false;
         var colIndex = GbGradeTable.colForCategoryScore($(this).data('categoryid'));
         var col = GbGradeTable.instance.view.settings.columns[colIndex]._data_;
         $togglePanel.find('.gb-item-category-score-filter :checkbox[value="'+col.categoryName+'"]').trigger('click');
@@ -1245,11 +1250,7 @@ GbGradeTable.renderTable = function (elementId, tableData) {
   on("click", ".gb-dropdown-menu .gb-message-students", function (event) {
 
     $(`#gb-messager-for-${event.target.dataset.assignmentId}`)
-      .dialog({ width: 500, close: function () { $(this).dialog("destroy"); } })
-      .on("submission-message-sent", function (e) {
-        $(this).dialog("destroy");
-        $(this).off("submission-message-sent");
-      });
+      .dialog({ width: 500, close: function () { $(this).dialog("destroy"); } });
   }).
   // View Course Grade Statistics
   on("click", ".gb-dropdown-menu .gb-view-course-grade-statistics", function() {
@@ -1743,6 +1744,9 @@ GbGradeTable.applyStudentFilter = function(data) {
 
       var student = row[GbGradeTable.STUDENT_COLUMN_INDEX];
       var searchableFields = [student.firstName, student.lastName, student.eid];
+      if (GbGradeTable.settings.isStudentNumberVisible) {
+          searchableFields.push(student.studentNumber);
+      }
       var studentSearchString = searchableFields.join(";")
 
       for (var i=0; i<queryStrings.length; i++) {
@@ -1787,6 +1791,8 @@ GbGradeTable.setupToggleGradeItems = function() {
     var $group = $itemFilter.closest(".gb-item-filter-group");
     var $label = $group.find(".gb-item-category-filter label");
     var $input = $group.find(".gb-item-category-filter input");
+    const $hideThisCategory = $group.find(".gb-hide-this-category");
+    const $showThisCategory = $group.find(".gb-show-this-category");
 
     var checkedItemFilters = $group.find(".gb-item-filter :input:checked, .gb-item-category-score-filter :input:checked").length;
     var itemFilters = $group.find(".gb-item-filter :input, .gb-item-category-score-filter :input").length;
@@ -1796,16 +1802,19 @@ GbGradeTable.setupToggleGradeItems = function() {
       removeClass("off").
       find(".gb-filter-partial-signal").remove();
 
-    if (checkedItemFilters == 0) {
+    if (checkedItemFilters === 0) {
       $input.prop("checked", false);
       $label.addClass("off");
-    } else if (checkedItemFilters == itemFilters) {
+      $hideThisCategory.hide();
+    } else if (checkedItemFilters === itemFilters) {
       $input.prop("checked", true);
+      $showThisCategory.hide();
     } else {
       $input.prop("checked", false);
       $label.addClass("partial");
-      $label.find(".gb-item-filter-signal").
-        append($("<span>").addClass("gb-filter-partial-signal"));
+      $label.find(".gb-item-filter-signal").append($("<span>").addClass("gb-filter-partial-signal"));
+      $hideThisCategory.show();
+      $showThisCategory.show();
     }
   };
 
@@ -1882,6 +1891,10 @@ GbGradeTable.setupToggleGradeItems = function() {
         .attr("data-suppress-update-view-preferences", "true")
         .trigger("click");
 
+    // Everything in every category is shown, so we should hide the "show this category" menu options
+    $panel.find(".gb-show-this-category").hide();
+    $panel.find(".gb-hide-this-category").show();
+
     GbGradeTable.updateViewPreferences();
   };
 
@@ -1891,6 +1904,10 @@ GbGradeTable.setupToggleGradeItems = function() {
     $panel.find(".gb-item-filter :input:checked, .gb-item-category-score-filter :input:checked")
         .attr("data-suppress-update-view-preferences", "true")
         .trigger("click");
+
+    // Everything in every category is hidden, so we should hide the "hide this category" menu options
+    $panel.find(".gb-hide-this-category").hide();
+    $panel.find(".gb-show-this-category").show();
 
     GbGradeTable.updateViewPreferences();
   };
@@ -2037,8 +2054,17 @@ GbGradeTable.setupToggleGradeItems = function() {
         on("click", ".gb-toggle-this-category", function(event) {
           event.preventDefault();
 
-          var $filter = $(event.target).closest(".gb-item-category-filter");
-          $filter.find(":input").trigger("click");
+          const hide = event.target.className.includes("hide");
+          const $filter = $(event.target).closest(".gb-item-filter-group");
+          if (hide) {
+            $filter.find("div.gb-filter").not(".off").find(":input").trigger("click");
+            $filter.find(".gb-hide-this-category").hide();
+            $filter.find(".gb-show-this-category").show();
+          } else {
+            $filter.find("div.off").find(":input").trigger("click");
+            $filter.find(".gb-hide-this-category").show();
+            $filter.find(".gb-show-this-category").hide();
+          }
           $(this).focus();
         }).
         on("click", ".gb-toggle-this-item", function(event) {
@@ -2144,7 +2170,19 @@ GbGradeTable.setupColumnSorting = function() {
   $table.on("click", ".gb-title", function() {
     var $handle = $(this);
 
-    var colIndex = $handle.closest("th").index();
+    let colIndex = -1;
+    const $colHeader = $handle.closest("th").find(".colHeader");
+    if ($colHeader.length > 0 && "colIndex" in $colHeader[0].dataset) {
+        const index = parseInt($colHeader[0].dataset.colIndex, 10);
+        if (!isNaN(index)) {
+            colIndex = index;
+        }
+    }
+
+    if (colIndex < 0) {
+        log.error("Unable to find column index for sorting.");
+        return;
+    }
 
     if (GbGradeTable.currentSortColumn != colIndex) {
       GbGradeTable.currentSortColumn = colIndex;
@@ -2665,7 +2703,7 @@ GbGradeTable.setupKeyboardNavigation = function() {
 
         $dropdown.dropdown("toggle");
         setTimeout(function() {
-          $(".dropdown-menu:visible a:first").focus();
+          $(".dropdown-menu:visible li:not(.hidden):first a").focus();
         });
       }
 
@@ -3087,8 +3125,8 @@ GbGradeTable.localizeNumber = function(number) {
         return;
     }
 
-    if (sakai && sakai.locale && sakai.locale.userLanguage) {
-        return parseFloat(number).toLocaleString(sakai.locale.userLanguage);
+    if (GbGradeTable.numFmt) {
+        return GbGradeTable.numFmt.format(parseFloat(number));
     }
 
     return '' + number;
@@ -3267,7 +3305,7 @@ GbGradeTable.focusColumnForAssignmentId = function(assignmentId, showPopupForNew
             $selectedField.attr('data-content',GbGradeTable.templates['newGradeItemPopoverMessage'].process());
             $selectedField.attr('data-title',GbGradeTable.templates['newGradeItemPopoverTitle'].process());
 
-            $('body').on('click keyup touchend', function (e) {
+            $('body, button').on('click keyup touchend', function (e) {
               if ($(e.target).data('toggle') !== 'popover'
                   && $(e.target).parents('.popover.in').length === 0) { 
                   $('[data-toggle="popover"]').popover('hide');

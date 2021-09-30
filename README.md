@@ -2,7 +2,7 @@
 
 This is the source code for the Sakai CLE.
 
-The master branch is the most current development release, Sakai 20.
+The master branch is the most current development release, Sakai 21.
 The other branches are currently or previously supported releases. See below for more information on the release plan and support schedule.
 
 ## Building
@@ -70,21 +70,28 @@ If you can't find your  "at institution.edu" on the Apereo signup page then send
 
 ## Community supported versions
 
-Sakai 19.3 ([release](http://source.sakaiproject.org/release/19.3/) | [notes](https://confluence.sakaiproject.org/display/DOC/Sakai+19+Release+Notes))
-Is the community supported release of Sakai 19.
+Sakai 21.1 ([release](http://source.sakaiproject.org/release/21.1/) | [fixes](https://confluence.sakaiproject.org/display/DOC/21.1+Fixes+by+tool) | [notes](https://confluence.sakaiproject.org/display/DOC/Sakai+21+Release+Notes))
+Is the community supported release of Sakai 21.
+
+Sakai 20.4 ([release](http://source.sakaiproject.org/release/20.4/) | [fixes](https://confluence.sakaiproject.org/display/DOC/20.4+Fixes+by+tool) | [notes](https://confluence.sakaiproject.org/display/DOC/Sakai+20+Release+Notes))
+Is the community supported release of Sakai 20.
+
+Sakai 19.6 ([release](http://source.sakaiproject.org/release/19.6/) | [fixes](https://confluence.sakaiproject.org/display/DOC/19.6+Fixes+by+tool) | [notes](https://confluence.sakaiproject.org/display/DOC/Sakai+19+Release+Notes))
+19.n versions are no longer supported by the community and will only receive security changes.
 
 Sakai 12.7 ([release](http://source.sakaiproject.org/release/12.7/) | [notes](https://confluence.sakaiproject.org/display/DOC/Sakai+12+Release+Notes))
-Is the community supported release of Sakai 12.
+12.n versions are no longer supported by the community and will only receive security changes.
 
 Sakai 11.4 ([release](http://source.sakaiproject.org/release/11.4/))
-And earlier are no longer supported by the community.
+11.n versions are no longer supported by the community and will only receive security changes.
 
 For full history of supported releases please see our [release information on confluence](https://confluence.sakaiproject.org/display/DOC/Sakai+Release+Date+list).
 
 ## Under Development
-[Sakai 19.4](https://confluence.sakaiproject.org/display/REL/Sakai+19+Straw+person) is the current developement release of Sakai 19. It is expected to release Q4 2019.
 
-Sakai 12.8 is the current development branch of Sakai 12.
+[Sakai 21.2](https://confluence.sakaiproject.org/display/REL/Sakai+20+Straw+person) is the current developement release of Sakai 21. It is expected to release Q3 2021.
+
+[Sakai 20.5](https://confluence.sakaiproject.org/display/REL/Sakai+20+Straw+person) is the current developement release of Sakai 20. It is expected to release Q4 2021.
 
 ## Accessibility
 [The Sakai Accessibility Working Group](https://confluence.sakaiproject.org/display/2ACC/Accessibility+Working+Group) is responsible for ensuring that the Sakai framework and its tools are accessible to persons with disabilities. [The Sakai Ra11y plan](https://confluence.sakaiproject.org/display/2ACC/rA11y+Plan) is working towards a VPAT and/or a WCAG2 certification.
@@ -105,6 +112,7 @@ From its inception, the Sakai project has been envisioned and designed for globa
 | ------ | ------ |
 | en_US | English (Default) |
 | ca_ES | Catalán |
+| de_DE | German |
 | es_ES | Español |
 | eu | Euskera |
 | fa_IR | Farsi |
@@ -116,6 +124,7 @@ From its inception, the Sakai project has been envisioned and designed for globa
 | sv_SE | Swedish |
 | tr_TR | Turkish |
 | zh_CN | Chinese |
+| ar | Arabic |
 
 ### Other languages
 

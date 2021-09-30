@@ -68,11 +68,11 @@
 
             if (sub_page.hidden == 'true') {
                 $submenu_action.classList.add('is-invisible');
-                if (sub_page.releaseDate) {
-                    title_string += ' ' + self.i18n.hidden_with_release_date.replace(/\{releaseDate\}/, sub_page.releaseDate);
-                } else {
-                    title_string += ' ' + self.i18n.hidden;
-                }
+            }
+
+            if(sub_page.disabled == 'true'){
+                $submenu_action.classList.add('is-invisible');
+                title_string += ' ' + self.i18n.hidden_with_release_date.replace(/\{releaseDate\}/, sub_page.releaseDate);
             }
 
             if(sub_page.required == 'true') {
@@ -401,9 +401,6 @@
                 var sub_pages = self.data[page_id];
                 sub_pages.forEach(function(sub_page) {
                     if (prereqData.hasOwnProperty(sub_page.sakaiPageId)) {
-                        if ($PBJQ.inArray(sub_page.itemId, prereqData[sub_page.sakaiPageId].invisible) >= 0) {
-			    $PBJQ(sub_page.submenu_item).remove();
-			}
                         if (sub_page.prerequisite == 'true' && $PBJQ.inArray(sub_page.itemId, prereqData[sub_page.sakaiPageId].unavailable) >= 0) {
                             var $link = $PBJQ(sub_page.submenu_item).find('> a');
                             $link.addClass('has-prerequisite');

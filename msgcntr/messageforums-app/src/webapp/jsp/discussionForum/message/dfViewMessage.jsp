@@ -1,4 +1,4 @@
-<%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
+// <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
 <%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://sakaiproject.org/jsf/messageforums" prefix="mf" %>
@@ -13,8 +13,7 @@
 			<h:inputHidden id="currentTopicId" value="#{ForumTool.selectedTopic.topic.id}"/>
 			<h:inputHidden id="currentForumId" value="#{ForumTool.selectedForum.forum.id}"/>
 			<script>includeLatestJQuery("msgcntr");</script>
-			<script src="/library/webjars/qtip2/3.0.3/jquery.qtip.min.js"></script>
-			<link rel="stylesheet" type="text/css" href="/library/webjars/qtip2/3.0.3/jquery.qtip.min.css" />
+			<script>includeWebjarLibrary("qtip2");</script>
 			<script src="/messageforums-tool/js/forum.js"></script>
 			<script src="/messageforums-tool/js/sak-10625.js"></script>
 			<script src="/messageforums-tool/js/messages.js"></script>
@@ -44,10 +43,16 @@
 					});
 					var msgBody = document.getElementById("messageBody").innerHTML;
 					msgBody = msgBody.replace(/\n/g,',').replace(/\s/g,' ').replace(/  ,/g,',');
-					fckeditor_word_count_fromMessage(msgBody, "counttotal");
+					msgcntr_word_count(msgBody);
+
+					var menuLink = $('#forumsMainMenuLink');
+					var menuLinkSpan = menuLink.closest('span');
+					menuLinkSpan.addClass('current');
+					menuLinkSpan.html(menuLink.text());
 
 					});
 			</script>
+            <%@ include file="/jsp/discussionForum/menu/forumsMenu.jsp" %>
 
 			<%--breadcrumb and thread nav grid--%>
 			<h:panelGroup layout="block" styleClass="navPanel row">
@@ -55,7 +60,7 @@
 					<h3>
 						<h:commandLink action="#{ForumTool.processActionHome}" value="#{msgs.cdfm_message_forums}" title=" #{msgs.cdfm_message_forums}"
 							rendered="#{ForumTool.messagesandForums}" />
-						<h:commandLink action="#{ForumTool.processActionHome}" value="#{msgs.cdfm_discussion_forums}" title=" #{msgs.cdfm_discussion_forums}"
+						<h:commandLink action="#{ForumTool.processActionHome}" value="#{msgs.cdfm_discussions}" title=" #{msgs.cdfm_discussions}"
 							rendered="#{ForumTool.forumsTool}" />
 						<h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " />
 						<h:commandLink action="#{ForumTool.processActionDisplayForum}" 
@@ -119,13 +124,13 @@
 				<h:panelGroup layout="block">
 					<p id="openLinkBlock" class="toggleParent openLinkBlock display-none">
 						<a href="#" id="showMessage" class="toggle show">
-							<h:graphicImage url="/images/expand.gif" alt=""/>
+							<h:graphicImage url="/images/collapse.gif" alt=""/>
 							<h:outputText value=" #{msgs.cdfm_read_full_description}" />
 						</a>
 					</p>
 					<p id="hideLinkBlock" class="toggleParent hideLinkBlock">
 						<a href="#" id="hideMessage" class="toggle show">
-							<h:graphicImage url="/images/collapse.gif" alt="" />
+							<h:graphicImage url="/images/expand.gif" alt="" />
 							<h:outputText value=" #{msgs.cdfm_hide_full_description}"/>
 						</a>
 					</p>
@@ -177,7 +182,7 @@
 					</h:commandLink>
 					<%-- Email --%>
 					<h:outputLink styleClass="button"  id="createEmail1" value="mailto:#{ForumTool.selectedMessage.authorEmail}" rendered="#{ForumTool.selectedMessage.userCanEmail && ForumTool.selectedMessage.authorEmail != '' && ForumTool.selectedMessage.authorEmail != null}"> 
-						<f:param value="Feedback on #{ForumTool.selectedMessage.message.title}" name="subject" />
+						<f:param value="#{msgs.cdfm_feedback_on} #{ForumTool.selectedMessage.message.title}" name="subject" />
 						<h:graphicImage value="/../../library/image/silk/email_edit.png" alt="#{msgs.cdfm_button_bar_email}" />
   						<h:outputText value=" #{msgs.cdfm_button_bar_email}"/>
 					</h:outputLink>

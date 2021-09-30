@@ -42,7 +42,7 @@ import org.sakaiproject.tool.assessment.data.ifc.assessment.ItemTextIfc;
 public class ItemText
     implements Serializable, ItemTextIfc, Comparable<ItemTextIfc> {
 
-  static ResourceBundle rb =
+  private static final ResourceBundle rb =
     ResourceBundle.getBundle("org.sakaiproject.tool.assessment.bundle.Messages");
 
   private static final long serialVersionUID = 7526471155622776147L;
@@ -162,7 +162,7 @@ public class ItemText
           Answer distractor = new Answer();
           distractor.setId(new Long(0));
           distractor.setLabel(rb.getString("choice_labels").split(":")[answersSorted.size()]);
-          distractor.setText(NONE_OF_THE_ABOVE);
+          distractor.setText("none_above");
           distractor.setIsCorrect(false);
           distractor.setScore(this.getItem().getScore());
           distractor.setSequence(new Long(answers.size()));

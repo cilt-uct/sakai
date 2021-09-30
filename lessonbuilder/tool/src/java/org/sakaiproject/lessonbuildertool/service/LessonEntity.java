@@ -31,6 +31,7 @@ import java.util.Set;
 import java.util.Map;
 import java.util.Date;
 
+import org.sakaiproject.lessonbuildertool.SimplePageItem;
 import org.sakaiproject.lessonbuildertool.service.LessonSubmission;
 import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean;
 
@@ -119,20 +120,7 @@ public interface LessonEntity {
     // only assignments
     public int getTypeOfGrade();
 
-    // the following methods all take references. So they're in effect static.
-    // They ignore the entity from which they're called.
-    // The reason for not making them a normal method is that many of the
-    // implementations seem to let you set access control and find submissions
-    // from a reference, without needing the actual object. So doing it this
-    // way could save some database activity
-
-    // access control
-    public boolean addEntityControl(String siteId, String groupId) throws IOException;
-    public boolean removeEntityControl(String siteId, String groupId) throws IOException;
-
     // submission
-    // one or the other must be defined. For forums at the moment we just get count
-    public boolean needSubmission();  // do we need the data from submission?
     public LessonSubmission getSubmission(String user);
     public int getSubmissionCount(String user);
 
@@ -197,4 +185,7 @@ public interface LessonEntity {
     public String getSiteId();
     
     public void setSimplePageBean(SimplePageBean simplePageBean); 
+
+	// Let an entity know that it is about to be shown - optional
+	public void preShowItem(SimplePageItem simplePageItem);
 }

@@ -22,8 +22,15 @@
 
 package org.sakaiproject.tool.assessment.util;
 
-import java.util.*;
-import java.text.*;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 
 
 /**
@@ -32,6 +39,7 @@ import java.text.*;
  * @author $author$
  * @version $Id$
  */
+@Slf4j
 public class BeanDateComparator
   extends BeanSortComparator
 {
@@ -76,41 +84,36 @@ public class BeanDateComparator
     if(s1 == null) s1="";
     if(s2 == null) s2="";
 
-    DateFormat dateFormat=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+    // This is one Date string observed: Mon Oct 05 18:48:15 CDT 2020
+    // EventLog uses 2021-02-10 13:19:28.0
+    List<SimpleDateFormat> possiblePatterns = new ArrayList<>();
+    possiblePatterns.add(new SimpleDateFormat("EEE MMM dd HH:mm:ss zzz yyyy"));
+    possiblePatterns.add(new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'"));
+    possiblePatterns.add(new SimpleDateFormat("yyyy-MM-dd'T'HH:mm.ss'Z'"));
+    possiblePatterns.add(new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss"));
+    possiblePatterns.add(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S"));
+    possiblePatterns.add(new SimpleDateFormat("yyyy-MM-dd HH:mm"));
+
     Date i1 = null;
     Date i2 = null;
 
-    boolean firstDateValid = true;
-    boolean secondDateValid = true;
-
-    try
-    {
-      i1 = dateFormat.parse(s1);
-    }
-    catch (ParseException e)
-    {
-      firstDateValid = false;
+    for (SimpleDateFormat sdf : possiblePatterns) {
+      try {
+        i1 = sdf.parse(s1);
+        i2 = sdf.parse(s2);
+        break;
+      } catch (ParseException e) {
+        // Ignore and log only if all parsers fail
+      }
     }
 
-    try
-    {
-      i2 = dateFormat.parse(s2);
-    }
-    catch (ParseException e)
-    {
-      secondDateValid = false;
+    if (StringUtils.isNoneBlank(s1, s2) && i1 == null && i2 == null) {
+      log.warn("Could not parse date patterns for s1={}, s2={}", s1, s2);
     }
 
-    int returnValue=0;
-   	if (firstDateValid && secondDateValid) {
-   		if (i1 != null) {
-   			returnValue = i1.compareTo(i2);
-   		}
-    }
-    if (firstDateValid && !secondDateValid) returnValue = 1;
-    if (!firstDateValid && secondDateValid) returnValue = -1;
-    if (!firstDateValid && !secondDateValid) returnValue = 0;
-
-    return returnValue;
+    if (i1 != null && i2 != null) return i1.compareTo(i2);
+    if (i1 != null && i2 == null) return 1;
+    if (i1 == null && i2 != null) return -1;
+    return 0;
   }
 }

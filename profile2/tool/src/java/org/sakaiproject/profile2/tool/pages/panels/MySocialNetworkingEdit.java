@@ -39,7 +39,7 @@ import org.sakaiproject.profile2.model.SocialNetworkingInfo;
 import org.sakaiproject.profile2.model.UserProfile;
 import org.sakaiproject.profile2.tool.components.ComponentVisualErrorBehaviour;
 import org.sakaiproject.profile2.tool.components.FeedbackLabel;
-import org.sakaiproject.profile2.tool.components.IconWithClueTip;
+import org.sakaiproject.profile2.tool.components.IconWithToolTip;
 import org.sakaiproject.profile2.util.ProfileConstants;
 import org.sakaiproject.profile2.util.ProfileUtils;
 
@@ -107,7 +107,7 @@ public class MySocialNetworkingEdit extends Panel {
 		facebookUrl.setOutputMarkupId(true);
 		facebookUrl.add(new UrlValidator());
 		facebookContainer.add(facebookUrl);
-		facebookContainer.add(new IconWithClueTip("facebookToolTip", ProfileConstants.INFO_IMAGE, new ResourceModel("text.profile.facebook.tooltip")));
+		facebookContainer.add(new IconWithToolTip("facebookToolTip", ProfileConstants.INFO_ICON, new ResourceModel("text.profile.facebook.tooltip")));
 		
 		//feedback
         final FeedbackLabel facebookUrlFeedback = new FeedbackLabel("facebookUrlFeedback", facebookUrl);
@@ -133,7 +133,7 @@ public class MySocialNetworkingEdit extends Panel {
 		linkedinUrl.setOutputMarkupId(true);
 		linkedinUrl.add(new UrlValidator());
 		linkedinContainer.add(linkedinUrl);
-		linkedinContainer.add(new IconWithClueTip("linkedinToolTip", ProfileConstants.INFO_IMAGE, new ResourceModel("text.profile.linkedin.tooltip")));
+		linkedinContainer.add(new IconWithToolTip("linkedinToolTip", ProfileConstants.INFO_ICON, new ResourceModel("text.profile.linkedin.tooltip")));
 		
 		//feedback
 		final FeedbackLabel linkedinUrlFeedback = new FeedbackLabel("linkedinUrlFeedback", linkedinUrl);
@@ -159,7 +159,7 @@ public class MySocialNetworkingEdit extends Panel {
 		myspaceUrl.setOutputMarkupId(true);
 		myspaceUrl.add(new UrlValidator());
 		myspaceContainer.add(myspaceUrl);
-		myspaceContainer.add(new IconWithClueTip("myspaceToolTip", ProfileConstants.INFO_IMAGE, new ResourceModel("text.profile.myspace.tooltip")));
+		myspaceContainer.add(new IconWithToolTip("myspaceToolTip", ProfileConstants.INFO_ICON, new ResourceModel("text.profile.myspace.tooltip")));
 		
 		//feedback
 		final FeedbackLabel myspaceUrlFeedback = new FeedbackLabel("myspaceUrlFeedback", myspaceUrl);
@@ -169,6 +169,32 @@ public class MySocialNetworkingEdit extends Panel {
 		myspaceUrl.add(new ComponentVisualErrorBehaviour("onblur", myspaceUrlFeedback));
 		
 		form.add(myspaceContainer);
+		
+		//instagram
+		WebMarkupContainer instagramContainer = new WebMarkupContainer("instagramContainer");
+		instagramContainer.add(new Label("instagramLabel", new ResourceModel("profile.socialnetworking.instagram.edit")));
+		final TextField<String> instagramUrl = new TextField<String>("instagramUrl", new PropertyModel<String>(userProfile, "socialInfo.instagramUrl")) {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			protected void convertInput() {
+				validateUrl(this);
+			}
+		};
+		instagramUrl.setMarkupId("instagramurlinput");
+		instagramUrl.setOutputMarkupId(true);
+		instagramUrl.add(new UrlValidator());
+		instagramContainer.add(instagramUrl);
+		instagramContainer.add(new IconWithToolTip("instagramToolTip", ProfileConstants.INFO_ICON, new ResourceModel("text.profile.instagram.tooltip")));
+		
+		//feedback
+		final FeedbackLabel instagramUrlFeedback = new FeedbackLabel("instagramUrlFeedback", instagramUrl);
+        instagramUrlFeedback.setMarkupId("instagramUrlFeedback");
+		instagramUrlFeedback.setOutputMarkupId(true);
+		instagramContainer.add(instagramUrlFeedback);
+		instagramUrl.add(new ComponentVisualErrorBehaviour("onblur", instagramUrlFeedback));
+		
+		form.add(instagramContainer);
 		
 		//twitter
 		WebMarkupContainer twitterContainer = new WebMarkupContainer("twitterContainer");
@@ -185,7 +211,7 @@ public class MySocialNetworkingEdit extends Panel {
 		twitterUrl.setOutputMarkupId(true);
 		twitterUrl.add(new UrlValidator());
 		twitterContainer.add(twitterUrl);
-		twitterContainer.add(new IconWithClueTip("twitterToolTip", ProfileConstants.INFO_IMAGE, new ResourceModel("text.profile.twitter.tooltip")));
+		twitterContainer.add(new IconWithToolTip("twitterToolTip", ProfileConstants.INFO_ICON, new ResourceModel("text.profile.twitter.tooltip")));
 		
 		//feedback
 		final FeedbackLabel twitterUrlFeedback = new FeedbackLabel("twitterUrlFeedback", twitterUrl);
@@ -233,7 +259,7 @@ public class MySocialNetworkingEdit extends Panel {
 
 				} else {
 					formFeedback.setDefaultModel(new ResourceModel("error.profile.save.business.failed"));
-					formFeedback.add(new AttributeModifier("class", true,new Model<String>("save-failed-error")));
+					formFeedback.add(new AttributeModifier("class", new Model<String>("save-failed-error")));
 					target.add(formFeedback);
 				}
 			}
@@ -257,6 +283,11 @@ public class MySocialNetworkingEdit extends Panel {
 					myspaceUrl.add(new AttributeAppender("class", new Model<String>("invalid"), " "));
 					target.add(myspaceUrl);
 					target.add(myspaceUrlFeedback);
+				}
+				if(!instagramUrl.isValid()) {
+					instagramUrl.add(new AttributeAppender("class", new Model<String>("invalid"), " "));
+					target.add(instagramUrl);
+					target.add(instagramUrlFeedback);
 				}
 				if(!twitterUrl.isValid()) {
 					twitterUrl.add(new AttributeAppender("class", new Model<String>("invalid"), " "));
@@ -318,15 +349,17 @@ public class MySocialNetworkingEdit extends Panel {
 		String tFacebook = ProfileUtils.truncate(userProfile.getSocialInfo().getFacebookUrl(), 255, false);
 		String tLinkedin = ProfileUtils.truncate(userProfile.getSocialInfo().getLinkedinUrl(), 255, false);
 		String tMyspace = ProfileUtils.truncate(userProfile.getSocialInfo().getMyspaceUrl(), 255, false);
+		String tInstagram = ProfileUtils.truncate(userProfile.getSocialInfo().getInstagramUrl(), 255, false);
 		String tSkype = ProfileUtils.truncate(userProfile.getSocialInfo().getSkypeUsername(), 255, false);
 		String tTwitter = ProfileUtils.truncate(userProfile.getSocialInfo().getTwitterUrl(), 255, false);
 
 		socialNetworkingInfo.setFacebookUrl(tFacebook);
 		socialNetworkingInfo.setLinkedinUrl(tLinkedin);
+		socialNetworkingInfo.setInstagramUrl(tInstagram);
 		socialNetworkingInfo.setMyspaceUrl(tMyspace);
 		socialNetworkingInfo.setSkypeUsername(tSkype);
 		socialNetworkingInfo.setTwitterUrl(tTwitter);
-		
+
 		return profileLogic.saveSocialNetworkingInfo(socialNetworkingInfo);
 		
 	}

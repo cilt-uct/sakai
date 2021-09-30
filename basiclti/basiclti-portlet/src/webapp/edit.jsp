@@ -66,7 +66,6 @@ Boolean allowRoster = (Boolean) rReq.getAttribute("allowRoster");
         allow(sp,"newpage") || 
         allow(sp,"frameheight") || allow(sp, "debug") ||
         allow(sp, "releasename") || allow(sp,"releaseemail")  ||
-        allow(sp, "sha256") ||
 		allow(sp,"custom") || 
 		allow(sp,"allowsettings") || allow(sp, "allowroster") || 
         allow(sp, "allowoutcomes") || allow(sp, "splash") ||
@@ -78,7 +77,10 @@ Boolean allowRoster = (Boolean) rReq.getAttribute("allowRoster");
 	<% } %>
 
 <script type="text/javascript" src="/library/js/headscripts.js"></script>
-<script>includeLatestJQuery('portlet edit.jsp');</script>
+<script>
+	includeLatestJQuery('portlet edit.jsp');
+	includeWebjarLibrary('fontawesome-iconpicker');
+</script>
 
 <ul class="navIntraTool actionToolBar">
 	<li class="firstToolBarItem">
@@ -175,12 +177,11 @@ if ( document.getElementById("UISwitcher") ) switchui();
 
 <% if ( allow(sp,"fa_icon") ) { %>
 <p  class="shorttext" style="clear:none;">
-<label for="imsti_fa_icon"><%=rb.getString("tool.fa_icon") %></label>
-<input type="text" name="imsti.fa_icon" id="imsti_fa_icon" size="20" value="<%=ov.getProperty("imsti.fa_icon","")%>"> 
+<div class=form-group">
+	<label for="imsti_fa_icon"><%=rb.getString("tool.fa_icon") %></label>
+	<input type="text" name="imsti.fa_icon" id="imsti_fa_icon" size="20" value="<%=ov.getProperty("imsti.fa_icon","")%>"> 
+</div>
 </p>
-<script type="text/javascript" src="/library/js/fontIconPicker/2.0.1-cs/jquery.fonticonpicker.min.js"></script>
-<link rel="stylesheet" type="text/css" href="/library/js/fontIconPicker/2.0.1-cs/css/jquery.fonticonpicker.css" />
-<link rel="stylesheet" type="text/css" href="/library/js/fontIconPicker/2.0.1-cs/themes/grey-theme/jquery.fonticonpicker.grey.min.css" />
 <script type="text/javascript">$(document).ready(function () { fontawesome_icon_picker('#imsti_fa_icon'); });</script>
 </p>
 <% } %>
@@ -237,21 +238,6 @@ if ( document.getElementById("UISwitcher") ) switchui();
 <span class="textPanelFooter"><%=rb.getString("iframe.height.detail") %></span>
 </p>
 <% } %>
-<% if ( allow(sp,"sha256") ) { %>
-	<p>
-		<label for="imsti.sha256">
-			<input type="checkbox" size="10" name="imsti.sha256" id="imsti.sha256"
-			<% if ( ov.getProperty("imsti.sha256",null) != null ) { %>
-            checked="yes" />
-			<% } else { %>
-            />
-			<% } %>
-			<%=rb.getString("sha256.legend") %>
-		</label>
-<span class="textPanelFooter"><%=rb.getString("imsti.sha256.detail") %></span>
-</p>
-<% } %>
-
 <% if ( allow(sp,"debug") ) { %>
 <p>
 <label for="imsti.debug">

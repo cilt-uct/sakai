@@ -1,7 +1,7 @@
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://myfaces.apache.org/tomahawk" prefix="t" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <f:view locale="#{UserLocale.locale}">
 	<jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
 	   <jsp:setProperty name="msgs" property="baseName" value="messages"/>
@@ -30,8 +30,12 @@
 					
 					//due to recuring meetings, make sure even/odd Rows display correctly
 					reprocessEvenOddRowClasses();
-					
-					});
+
+					var menuLink = $('#signupExportMenuLink');
+					menuLink.addClass('current');
+					menuLink.html(menuLink.find('a').text());
+
+				});
 				
 
 				function reprocessEvenOddRowClasses(){
@@ -166,8 +170,9 @@
 		</script>
 		
 		<sakai:view_content>
-			<h:outputText value="#{msgs.event_error_alerts} #{messageUIBean.errorMessage}" styleClass="alertMessage" escape="false" rendered="#{messageUIBean.error}"/> 
 			<h:form id="items">
+				<%@ include file="/signup/menu/signupMenu.jsp" %>
+				<h:outputText value="#{msgs.event_error_alerts} #{messageUIBean.errorMessage}" styleClass="alertMessage" escape="false" rendered="#{messageUIBean.error}"/>
 				<div class="page-header">
 					<sakai:view_title value="#{msgs.signup_download}"/>
 				</div>
@@ -237,6 +242,14 @@
 							</h:panelGroup>
 							<%-- normal checkbox --%>
 							<h:selectBooleanCheckbox id="selectItem" value="#{wrapper.toDownload}" rendered="#{wrapper.recurEventsSize < 1}" styleClass="#{wrapper.recurId}"/>
+						</t:column>
+
+						<t:column defaultSorted="true" sortable="true">
+							<f:facet name="header" >
+								<t:commandSortHeader columnName="#{DownloadEventBean.signupSorter.titleColumn}" immediate="true" arrow="true">
+									<h:outputText value="#{msgs.tab_event_name}" escape="false"/>
+								</t:commandSortHeader>
+							</f:facet>
 							<h:panelGroup rendered="#{wrapper.firstOneRecurMeeting && wrapper.recurEventsSize >1}" styleClass="toggleMeetings toggleDownload">
 								<h:outputText value="<span id='imageOpen_RM_#{wrapper.recurId}' style='display:none'>"  escape="false"/>
 								<h:outputLink value="javascript:showDetails('imageOpen_RM_#{wrapper.recurId}','imageClose_RM_#{wrapper.recurId}');showAllRelatedRecurMeetings('#{wrapper.recurId}','#{DownloadEventBean.iframeId}');">
@@ -252,14 +265,7 @@
 		   	    				
 		   	    				<h:outputText value="&nbsp;" escape="false"/>
 		   	    			</h:panelGroup>
-						</t:column>		
-						
-						<t:column defaultSorted="true" sortable="true">
-							<f:facet name="header" >
-								<t:commandSortHeader columnName="#{DownloadEventBean.signupSorter.titleColumn}" immediate="true" arrow="true">
-									<h:outputText value="#{msgs.tab_event_name}" escape="false"/>
-								</t:commandSortHeader>
-							</f:facet>							
+
 							<h:outputText  value="#{wrapper.meeting.title}" />
 							
 						</t:column>

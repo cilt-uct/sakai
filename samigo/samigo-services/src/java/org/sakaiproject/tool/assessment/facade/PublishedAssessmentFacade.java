@@ -111,6 +111,7 @@ public class PublishedAssessmentFacade
   private int groupCount;
   private boolean selected;
   private Long categoryId;
+  private boolean pastDue = false;
 
   public PublishedAssessmentFacade() {
   }
@@ -752,7 +753,7 @@ public class PublishedAssessmentFacade
 
       while (iter2.hasNext()){
         ItemDataIfc item = (ItemDataIfc)iter2.next();
-        if (item.getIsExtraCredit()==null || !item.getIsExtraCredit()) {
+        if (!item.getIsExtraCredit()) {
           total = total.add(BigDecimal.valueOf(item.getScore()));
         }
       }
@@ -900,4 +901,13 @@ public class PublishedAssessmentFacade
   public void setCategoryId(Long categoryId) {
     this.categoryId = categoryId;
   }
+
+  public boolean getPastDue() {
+    return pastDue;
+  }
+
+  public void setPastDue(boolean pastDue) {
+    this.pastDue = pastDue;
+  }
+
 }

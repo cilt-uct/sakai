@@ -5,7 +5,7 @@
     <parent>
         <artifactId>external-calendaring-service</artifactId>
         <groupId>org.sakaiproject.calendaring</groupId>
-        <version>21-SNAPSHOT</version>
+        <version>22-SNAPSHOT</version>
     </parent>
     
 	<name>External Calendaring Service :: Implementation</name>
@@ -94,24 +94,12 @@
         </resources>
         
         <!-- unit testing -->
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <!-- 
-                    By default, the surefire plugin will automatically include all test classes with the following wildcard patterns:
-                    "**/Test*.java" - includes all of its subdirectory and all java filenames that start with "Test".
-                    "**/*Test.java" - includes all of its subdirectory and all java filenames that end with "Test".
-                    "**/*TestCase.java" - includes all of its subdirectory and all java filenames that end with "TestCase".
-                -->
-            </plugin>
-        </plugins>
         <testResources>
             <testResource>
                 <directory>${basedir}/src/test</directory>
                 <includes>
                     <include>test-components.xml</include>
-                    <include>log4j.properties</include>
+                    <include>log4j2.properties</include>
                 </includes>
             </testResource>
         </testResources>

@@ -23,7 +23,6 @@ package org.sakaiproject.assignment.api;
 
 import java.io.OutputStream;
 import java.time.Instant;
-import java.time.format.FormatStyle;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +32,7 @@ import java.util.Set;
 import org.sakaiproject.assignment.api.model.Assignment;
 import org.sakaiproject.assignment.api.model.AssignmentSubmission;
 import org.sakaiproject.assignment.api.model.AssignmentSubmissionSubmitter;
+import org.sakaiproject.content.api.ContentResource;
 import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.entity.api.EntityProducer;
 import org.sakaiproject.entity.api.Reference;
@@ -92,6 +92,17 @@ public interface AssignmentService extends EntityProducer {
     public boolean allowAddAssignment(String context);
 
     /**
+     * Check permissions for adding an Assignment.
+     *
+     * @param context -
+     *                Describes the portlet context - generated with DefaultId.getChannel().
+     * @param user -
+     *             The user for which the permission will be checked
+     * @return True if the provided User is allowed to add an Assignment, false if not.
+     */
+    public boolean allowAddAssignment(String context, String userId);
+
+    /**
      * Check permissions for updating an Assignment based on context.
      *
      * @param context -
@@ -144,6 +155,16 @@ public interface AssignmentService extends EntityProducer {
      * @return The Collection (Group) of groups defined for the context of this site that the end user has add assignment permissions in, empty if none.
      */
     public Collection<Group> getGroupsAllowAddAssignment(String context);
+
+    /**
+     * Get the collection of Groups defined for the context of this site that the end user has add assignment permissions in.
+     * @param context -
+     *                Describes the portlet context - generated with DefaultId.getChannel().
+     * @param userId -
+     *               The user for which the permission will be checked
+     * @return The Collection (Group) of groups defined for the context of this site that the end user has add assignment permissions in, empty if none.
+     */
+    public Collection<Group> getGroupsAllowAddAssignment(String context, String userId);
 
     /**
      * Get the collection of Groups defined for the context of this site that the end user has update assignment permissions in.
@@ -269,9 +290,8 @@ public interface AssignmentService extends EntityProducer {
     /**
      * Creates and adds a new Assignment to the service.
      *
-     * @param context -
-     *                Describes the portlet context - generated with DefaultId.getChannel().
-     * @return AssignmentEdit The new Assignment object.
+     * @param context The site id for this assignment
+     * @return Assignment The new Assignment object, ready for editing.
      * @throws IdInvalidException  if the id contains prohibited characers.
      * @throws IdUsedException     if the id is already used in the service.
      * @throws PermissionException if current User does not have permission to do this.
@@ -471,7 +491,7 @@ public interface AssignmentService extends EntityProducer {
      * @param submissionId
      * @return
      */
-    public AssignmentConstants.SubmissionStatus getSubmissionCannonicalStatus(AssignmentSubmission s);
+    AssignmentConstants.SubmissionStatus getSubmissionCanonicalStatus(AssignmentSubmission submission, boolean canGrade);
 
     /**
      * @param submissionId
@@ -639,13 +659,14 @@ public interface AssignmentService extends EntityProducer {
      *
      * @param context               The site id
      * @param assignmentId          The assignment id
-     * @param allowReadAssignment   Is the curent user allowed to read?
-     * @param allowAddAssignment    Is the curent user allowed to add assignments?
-     * @param allowSubmitAssignment Is the curent user allowed to submit assignments?
+     * @param allowReadAssignment   Is the current user allowed to read?
+     * @param allowAddAssignment    Is the current user allowed to add assignments?
+     * @param allowSubmitAssignment Is the current user allowed to submit assignments?
+     * @param allowGradeAssignment Is the current user allowed to grade assignments?
      * @return The url as a String
      */
     public String getDeepLinkWithPermissions(String context, String assignmentId, boolean allowReadAssignment
-            , boolean allowAddAssignment, boolean allowSubmitAssignment) throws Exception;
+            , boolean allowAddAssignment, boolean allowSubmitAssignment, boolean allowGradeAssignment) throws Exception;
 
     /**
      * Get a link directly into an assignment itself. Depending on your status, you
@@ -737,14 +758,18 @@ public interface AssignmentService extends EntityProducer {
     public void postReviewableSubmissionAttachments(AssignmentSubmission submission);
 
     /**
-    * This will return the internationalized title of the tool.
-    * This is used when creating a new gradebook item.
-    */
+     * This will return the internationalized title of the tool.
+     * This is used when creating a new gradebook item.
+     */
     public String getToolTitle();
 
-    String getUsersLocalDateTimeString(Instant date);
+    /**
+     * This will return the reference removing from it the auxiliar prefix.
+     * This is used when interacting with the ContentHostingService.
+     */
+    public String removeReferencePrefix(String referenceId);
 
-    String getUsersLocalDateTimeString(Instant date, FormatStyle dateStyle, FormatStyle timeStyle);
+    String getUsersLocalDateTimeString(Instant date);
 
     public List<ContentReviewResult> getContentReviewResults(AssignmentSubmission submission);
 
@@ -757,6 +782,11 @@ public interface AssignmentService extends EntityProducer {
      * @return true if content review results for the given submission can be displayed.
      */
     public boolean isContentReviewVisibleForSubmission(AssignmentSubmission submission);
+
+    /**
+     * Gets all attachments in the submission that are acceptable to the content review service
+     */
+    public List<ContentResource> getAllAcceptableAttachments(AssignmentSubmission submission);
 
     /**
      * Get an assignment that is linked with a gradebook item
@@ -786,4 +816,15 @@ public interface AssignmentService extends EntityProducer {
      * @return list of submission group users with multiple group memberships and the groups they belong to
      */
     public List<MultiGroupRecord> checkSubmissionForUsersInMultipleGroups(String siteId, Group submissionGroup, Collection<Group> asnGroups);
+
+    /**
+     * Returns true if the content review implementation successfully created the assignment
+     * @param a
+     * @param assignmentRef
+     * @param openTime
+     * @param dueTime
+     * @param closeTime
+     * @return
+     */
+    public String createContentReviewAssignment(Assignment a, String assignmentRef, Instant openTime, Instant dueTime, Instant closeTime);
 }

@@ -114,10 +114,9 @@
  *# ------------------------------------------------------------------
 #macro (chef_flashnotif)
 	#if($flashNotif)
-		<div id="flashNotif" >
+		<div id="flashNotif" class="sak-banner-success">
 			<span class="flashNotifMessage">$flashNotif</span>
-			<a href="#" onclick = "event.preventDefault();$('#flashNotif').hide();" class="flashNotifClose" title=$flashNotifCloseTitle>&times;
-			<span class="skip">$flashNotifCloseTitle</span></a>
+			<a href="#" onclick = "event.preventDefault();$('#flashNotif').hide();" class="dismiss" title=$flashNotifCloseTitle><span class="skip">$flashNotifCloseTitle</span></a>
 		</div>
 	#end
 #end
@@ -150,21 +149,12 @@
 #macro (chef_start)
 #if ($sakai_fragment=='false')
 <!DOCTYPE html>
-<html lang="#if($language)$language#{else}en#end" dir="#if($dir)$dir#{else}ltr#end">
+<html lang="#if($language)$language#{else}en#end" dir="#if($dir)$dir#{else}ltr#end" class="Mrphs-html $!{userTheme}">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <meta http-equiv="Content-Style-Type" content="text/css" />
     <title>$!{toolTitle}</title>
-    $!sakai_head	
-    
-    	## setup wysiwyg editor
-        ########################### This should already be handled by portal or sakai-editor/editor.js
-    #*
-	#set($editor_path = "vm/editor/$!sakai_editor/sakai_header.vm") 
-	<!-- $editor_path -->
-	#parse("$editor_path")
-    *#
-    
+    $!sakai_head
 #if ($frameRefresh)
 	#foreach ($id in $frameRefresh)
 	<script type="text/javascript">
@@ -209,7 +199,7 @@
 	</script>
 #end
   </head>
-  <body #if ($sakai_onload) onload="${sakai_onload}" #end >
+  <body #if ($sakai_onload) onload="${sakai_onload}" #end #if ($sakai_class) class="${sakai_class}" #end >
 #end
 ## no comment
 #end
@@ -572,17 +562,7 @@ ${extra}")
 # $textarea_id - The HTML id of the textarea form element already in the HTML document
 *# ------------------------------------------------------------------
 #macro (chef_setuphtmldocumenttextarea $textarea_id)
-
-	#*
-	## setup wysiwyg editor
-	#set($editor_path = "vm/editor/$!sakai_editor/sakai_body.vm") 
-	<!-- $editor_path -->
-	#parse("$editor_path")
-
-	<script type="text/javascript" defer="1">chef_setuphtmldocumenttextarea('$textarea_id');</script>
-	*#
-	<script type="text/javascript" defer="1">sakai.editor.launch('$textarea_id');</script>
-	
+	<script defer="1">sakai.editor.launch('$textarea_id');</script>
 #end
 
 
@@ -608,16 +588,6 @@ ${extra}")
 *#
 #macro (css $url $attrs)
     <link type="text/css" href="${url}$!{portalCdnQuery}" rel="stylesheet" $!{attrs}/>
-#end
-
-#macro (sakai_courier)
-#if ($courier)
-<script type="text/javascript">
-updateTime = ${courierTimeout}000;
-updateUrl = "$courier";
-scheduleUpdate();
-</script>
-#end
 #end
 
 #* ------------------------------------------------------------------
@@ -646,8 +616,6 @@ scheduleUpdate();
 #macro (chatlogLink $chatlogLinkPanel)$sakai_ActionURL.setParameter("$param_panel","$chatlogLinkPanel")#end
 
 #macro (contentLink $contentLinkPanel)$sakai_ActionURL.setParameter("$param_panel","$contentLinkPanel")#end
-
-#macro (contentCourierLink $contentCourierLinkPanel)$sakai_ActionURL.setParameter("$param_panel","$contentCourierLinkPanel")#end
 
 #macro (toolLinkParam $toolLinkJunk $toolLinkAction $toolLinkQuery)$sakai_ActionURL.setParameter("sakai_action","$toolLinkAction").setQueryString("$toolLinkQuery")#end
 

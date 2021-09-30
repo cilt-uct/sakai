@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.sakaiproject.jsf2</groupId>
         <artifactId>jsf2</artifactId>
-        <version>21-SNAPSHOT</version>
+        <version>22-SNAPSHOT</version>
     </parent>
 
     <name>Sakai JSF 2 Tool using Sun's RI (jsf2-sun-ri-tool)</name>
@@ -27,12 +27,12 @@
             <artifactId>javax.servlet-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>javax.faces</groupId>
-            <artifactId>javax.faces-api</artifactId>
+            <groupId>jakarta.faces</groupId>
+            <artifactId>jakarta.faces-api</artifactId>
         </dependency>
         <dependency>
             <groupId>org.glassfish</groupId>
-            <artifactId>javax.faces</artifactId>
+            <artifactId>jakarta.faces</artifactId>
         </dependency>
         <dependency>
             <groupId>commons-fileupload</groupId>
@@ -43,8 +43,9 @@
             <artifactId>javax.servlet.jsp-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>javax.servlet</groupId>
-            <artifactId>jstl</artifactId>
+            <groupId>jakarta.servlet.jsp.jstl</groupId>
+            <artifactId>jakarta.servlet.jsp.jstl-api</artifactId>
+            <version>${sakai.jakarta.jstl-api.version}</version>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>

@@ -34,7 +34,8 @@ $Id$
     <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
       <head><%= request.getAttribute("html.head") %>
       <title><h:outputText value="#{evaluationMessages.title_question}" /></title>
-      <script type="module" src="/rubrics-service/webcomponents/rubric-association-requirements.js<h:outputText value="#{questionScores.CDNQuery}" />"></script>
+      <script src="/webcomponents/rubrics/sakai-rubrics-utils.js<h:outputText value="#{questionScores.CDNQuery}" />"></script>
+      <script type="module" src="/webcomponents/rubrics/rubric-association-requirements.js<h:outputText value="#{questionScores.CDNQuery}" />"></script>
       </head>
       <body onload="<%= request.getAttribute("html.body.onload") %>">
 
@@ -42,6 +43,14 @@ $Id$
 <%@ include file="/js/delivery.js" %>
 
 <script>
+  $(document).ready(function(){
+    // The current class is assigned using Javascript because we don't use facelets and the include directive does not support parameters.
+    var currentLink = $('#editTotalResults\\:questionScoresMenuLink');
+    currentLink.addClass('current');
+    // Remove the link of the current option
+    currentLink.html(currentLink.find('a').text());
+  });
+
   function toPoint(id) {
 
     var x = document.getElementById(id).value;
@@ -60,7 +69,6 @@ $Id$
       , <h:outputText value="'#{evaluationMessages.saverubricgrading}'"/>);
   }
 </script>
-
 <!-- content... -->
 <div class="portletBody container-fluid">
 <h:form id="editTotalResults">
@@ -70,79 +78,15 @@ $Id$
   <!-- HEADINGS -->
   <%@ include file="/jsf/evaluation/evaluationHeadings.jsp" %>
 
-  <div class="page-header">
+  <h:panelGroup layout="block" styleClass="page-header">
     <h1>
-  	  <h:outputText value="#{evaluationMessages.part} #{questionScores.partName}#{evaluationMessages.column} #{evaluationMessages.question} #{questionScores.itemName} " escape="false"/>
-      <small>
-  	    <h:outputText value="(#{totalScores.assessmentName}) " escape="false"/>
-      </small>
+      <h:outputText value="#{evaluationMessages.part} #{questionScores.partName}#{evaluationMessages.column} #{evaluationMessages.question} #{questionScores.itemName} " escape="false"/>
+      <small><h:outputText value="(#{totalScores.assessmentName}) " escape="false"/></small>
     </h1>
-  </div>
-  
-  <!-- Per UX, for formatting -->
-  <div class="textBelowHeader">
-    <h:outputText value=""/>
-  </div>
-  
-  <h:outputText value="<ul class='navIntraTool actionToolbar' role='menu'>" escape="false"/>
-    <h:outputText value="<li role='menuitem' class='firstToolBarItem'><span>" escape="false"/>
+  </h:panelGroup>
 
-    <h:commandLink title="#{evaluationMessages.t_submissionStatus}" action="submissionStatus" immediate="true">
-      <h:outputText value="#{evaluationMessages.sub_status}" />
-      <f:param name="allSubmissions" value="true"/>
-      <f:actionListener
-        type="org.sakaiproject.tool.assessment.ui.listener.evaluation.SubmissionStatusListener" />
-    </h:commandLink>
-
-    <h:outputText value="<li role='menuitem'><span>" escape="false"/>
-    <h:commandLink title="#{evaluationMessages.t_totalScores}" action="totalScores" immediate="true">
-    <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.evaluation.ResetTotalScoreListener" />
-    <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.evaluation.TotalScoreListener" />
-      <h:outputText value="#{commonMessages.total_scores}" />
-    </h:commandLink>
-
-    <h:outputText value="</span><li role='menuitem'><span class='current'>" escape="false"/>
-  
-    <h:outputText value="#{evaluationMessages.q_view}" />
-
-    <h:outputText value="</span><li role='menuitem'><span>" escape="false" rendered="#{totalScores.firstItem ne ''}" /> 
-     
-	<h:commandLink title="#{evaluationMessages.t_histogram}" action="histogramScores" immediate="true"
-      rendered="#{totalScores.firstItem ne ''}" >
-      <h:outputText value="#{evaluationMessages.stat_view}" />
-      <f:param name="hasNav" value="true"/>
-      <f:actionListener
-        type="org.sakaiproject.tool.assessment.ui.listener.evaluation.HistogramListener" />
-    </h:commandLink>
-
-    <h:outputText value="</span><li role='menuitem'><span>" escape="false" rendered="#{totalScores.firstItem ne ''}" />   
-  
-	<h:commandLink title="#{evaluationMessages.t_itemAnalysis}" action="detailedStatistics" immediate="true"
-      rendered="#{totalScores.firstItem ne ''}" >
-      <h:outputText value="#{evaluationMessages.item_analysis}" />
-      <f:param name="hasNav" value="true"/>
-      <f:actionListener
-        type="org.sakaiproject.tool.assessment.ui.listener.evaluation.HistogramListener" />
-    </h:commandLink>
-
-    <h:outputText value="</span><li role='menuitem'><span>" escape="false" />
-    
-    <h:commandLink title="#{commonMessages.export_action}" action="exportResponses" immediate="true">
-      <h:outputText value="#{commonMessages.export_action}" />
-  	  <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.evaluation.ExportResponsesListener" />
-    </h:commandLink>
-    
-    <h:outputText value="</span><li role='menuitem'><span>" escape="false" rendered="#{totalScores.hasFileUpload}"/>
-
-    <h:commandLink title="#{evaluationMessages.t_title_download_file_submissions}" action="downloadFileSubmissions" immediate="true" rendered="#{totalScores.hasFileUpload}">
-      <h:outputText value="#{evaluationMessages.title_download_file_submissions}" />
-        <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.evaluation.ResetQuestionScoreListener" />
-        <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.evaluation.DownloadFileSubmissionsListener" />
-    </h:commandLink>
-    
-  <h:outputText value="</span></li></ul>" escape="false"/>
-
-<br/>
+  <!-- EVALUATION SUBMENU -->
+  <%@ include file="/jsf/evaluation/evaluationSubmenu.jsp" %>
 
 <div class="tier1">
   <h:messages styleClass="sak-banner-error" rendered="#{! empty facesContext.maximumSeverity}" layout="table"/>
@@ -286,6 +230,10 @@ $Id$
 
   <div class="samigo-question-callout">
   <t:dataList value="#{questionScores.deliveryItem}" var="question">
+  <div id="questionScoreItemAttachments">
+      <%@ include file="/jsf/evaluation/questionScoreItemAttachment.jsp" %>
+  </div>
+
   <h:panelGroup rendered="#{questionScores.typeId == '7'}">
     <f:subview id="displayAudioRecording">
       <%@ include file="/jsf/evaluation/item/displayAudioRecordingQuestion.jsp" %>
@@ -417,9 +365,8 @@ $Id$
   <h:panelGroup styleClass="form-inline" layout="block" rendered="#{totalScores.anonymous eq 'false'}">
 
       <h:panelGroup styleClass="form-group" rendered="#{questionScores.typeId == '6'}" layout="block">
-        <h:outputText value="&nbsp;#{evaluationMessages.separator}&nbsp;&nbsp;" style="color: #999999;" escape="false"/>
-        <h:outputLink title="#{evaluationMessages.t_fileUpload}"  value="/samigo-app/servlet/DownloadAllMedia?publishedId=#{questionScores.publishedId}&publishedItemId=#{questionScores.itemId}&createdBy=#{question.itemData.createdBy}&partNumber=#{part.partNumber}&anonymous=#{totalScores.anonymous}&scoringType=#{questionScores.allSubmissions}">
-            <h:graphicImage url="/images/DownloadButton12px.png"/>
+        <h:outputLink styleClass="btn btn-default" title="#{evaluationMessages.download_responses}"  value="/samigo-app/servlet/DownloadAllMedia?publishedId=#{questionScores.publishedId}&publishedItemId=#{questionScores.itemId}&createdBy=#{question.itemData.createdBy}&partNumber=#{part.partNumber}&anonymous=#{totalScores.anonymous}&scoringType=#{questionScores.allSubmissions}">
+          <h:outputText value="#{evaluationMessages.download_responses}"/>
         </h:outputLink>
       </h:panelGroup>
       
@@ -484,8 +431,8 @@ $Id$
       <h:outputText value="&nbsp;#{evaluationMessages.separator}&nbsp;&nbsp;" style="color: #999999;" rendered="#{questionScores.typeId == '6'}" escape="false"/>
       <h:outputText value="&nbsp;" rendered="#{questionScores.typeId != '6'}" escape="false"/>
         
-      <h:outputLink title="#{evaluationMessages.t_fileUpload}" rendered="#{questionScores.typeId == '6'}" value="/samigo-app/servlet/DownloadAllMedia?publishedId=#{questionScores.publishedId}&publishedItemId=#{questionScores.itemId}&createdBy=#{question.itemData.createdBy}&partNumber=#{part.partNumber}&anonymous=#{totalScores.anonymous}&scoringType=#{questionScores.allSubmissions}">
-		<h:graphicImage url="/images/DownloadButton12px.png"/>
+      <h:outputLink styleClass="btn btn-default" title="#{evaluationMessages.t_fileUpload}" rendered="#{questionScores.typeId == '6'}" value="/samigo-app/servlet/DownloadAllMedia?publishedId=#{questionScores.publishedId}&publishedItemId=#{questionScores.itemId}&createdBy=#{question.itemData.createdBy}&partNumber=#{part.partNumber}&anonymous=#{totalScores.anonymous}&scoringType=#{questionScores.allSubmissions}">
+        <h:outputText value="#{evaluationMessages.download_responses}"/>
       </h:outputLink>   
       <h:outputText value="&nbsp;" rendered="#{questionScores.typeId != '6'}" escape="false"/>  
      
@@ -871,12 +818,11 @@ $Id$
         <f:param name="sortAscending" value="true" />
         </h:commandLink>
       </f:facet>
-      <h:inputText value="#{description.roundedTotalAutoScore}" size="5" id="qscore" styleClass="adjustedScore#{description.assessmentGradingId}" required="false" onchange="toPoint(this.id);">
-        <f:validateDoubleRange/>
+      <h:inputText value="#{description.roundedTotalAutoScore}" size="5" id="qscore" styleClass="adjustedScore#{description.assessmentGradingId}.#{questionScores.itemId}" required="false" onchange="toPoint(this.id);">
       </h:inputText>
       <h:message for="qscore" style="color:red"/>
        <h:outputLink title="#{evaluationMessages.saverubricgrading}" rendered="#{questionScores.hasAssociatedRubric}" value="#" onclick="initRubricDialogWrapper(#{description.assessmentGradingId}); return false;" onkeypress="initRubricDialogWrapper(#{description.assessmentGradingId}); return false;" >
-        <h:outputText styleClass="fa fa-table" id="rubrics-question-icon1" title="#{authorMessages.question_use_rubric}" style="margin-left:0.5em"/>
+        <h:outputText styleClass="fa icon-sakai--sakai-rubrics" id="rubrics-question-icon1" title="#{authorMessages.question_use_rubric}" style="margin-left:0.5em"/>
       </h:outputLink>
       <%@ include file="/jsf/evaluation/rubricModal.jsp" %> 
  </h:column>
@@ -895,11 +841,10 @@ $Id$
           </h:commandLink>    
       </f:facet>
 	  <h:inputText value="#{description.roundedTotalAutoScore}" size="5" id="qscore2" styleClass="adjustedScore#{description.assessmentGradingId}" required="false" onchange="toPoint(this.id);">
-	  	<f:validateDoubleRange/>
 	  </h:inputText>
 	  <h:message for="qscore2" style="color:red"/>
 	  <h:outputLink title="#{evaluationMessages.saverubricgrading}" rendered="#{questionScores.hasAssociatedRubric}" value="#" onclick="initRubricDialogWrapper(#{description.assessmentGradingId}); return false;" onkeypress="initRubricDialogWrapper(#{description.assessmentGradingId}); return false;" >
-	  	<h:outputText styleClass="fa fa-table" id="rubrics-question-icon2" title="#{authorMessages.question_use_rubric}" style="margin-left:0.5em"/>
+	  	<h:outputText styleClass="fa icon-sakai--sakai-rubrics" id="rubrics-question-icon2" title="#{authorMessages.question_use_rubric}" style="margin-left:0.5em"/>
 	  </h:outputLink>
 	  <%@ include file="/jsf/evaluation/rubricModal.jsp" %>
     </h:column>    
@@ -917,11 +862,10 @@ $Id$
           </h:commandLink>    
       </f:facet>
 	  <h:inputText value="#{description.roundedTotalAutoScore}" size="5" id="qscore3" styleClass="adjustedScore#{description.assessmentGradingId}" required="false" onchange="toPoint(this.id);">
-	  	<f:validateDoubleRange/>
 	  </h:inputText>
 	  <h:message for="qscore2" style="color:red"/>
 	  <h:outputLink title="#{evaluationMessages.saverubricgrading}" rendered="#{questionScores.hasAssociatedRubric}" value="#" onclick="initRubricDialogWrapper(#{description.assessmentGradingId}); return false;" onkeypress="initRubricDialogWrapper(#{description.assessmentGradingId}); return false;" >
-	  	<h:outputText styleClass="fa fa-table" id="rubrics-question-icon3" title="#{authorMessages.question_use_rubric}" style="margin-left:0.5em"/>
+	  	<h:outputText styleClass="fa icon-sakai--sakai-rubrics" id="rubrics-question-icon3" title="#{authorMessages.question_use_rubric}" style="margin-left:0.5em"/>
 	  </h:outputLink>
        <%@ include file="/jsf/evaluation/rubricModal.jsp" %>
     </h:column>
@@ -972,6 +916,7 @@ $Id$
     </h:panelGroup>
     
     <h:panelGroup rendered="#{(questionScores.typeId == '1' || questionScores.typeId == '2' || questionScores.typeId == '12' || questionScores.typeId == '4') && description.rationale ne '' && questionScores.selectedSARationaleView == '2'}">
+		<br /><br />
 		<h:outputText escape="false" value="#{description.rationale}"/>
     </h:panelGroup>
 
@@ -1273,7 +1218,7 @@ $Id$
 
 <p class="act">
    <%-- <h:commandButton value="#{evaluationMessages.save_exit}" action="author"/> --%>
-   <h:commandButton styleClass="active" value="#{evaluationMessages.saver}" action="questionScores" type="submit" >
+   <h:commandButton id="save" styleClass="active" value="#{evaluationMessages.saver}" action="questionScores" type="submit" >
       <f:actionListener
          type="org.sakaiproject.tool.assessment.ui.listener.evaluation.QuestionScoreUpdateListener" />
       <f:actionListener

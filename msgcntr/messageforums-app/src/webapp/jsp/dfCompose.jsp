@@ -17,8 +17,15 @@
        		<script src="/messageforums-tool/js/forum.js"></script>
        		<script src="/messageforums-tool/js/messages.js"></script>
 
-
-
+      <script>
+          $(document).ready(function(){
+              var menuLink = $('#forumsMainMenuLink');
+              var menuLinkSpan = menuLink.closest('span');
+              menuLinkSpan.addClass('current');
+              menuLinkSpan.html(menuLink.text());
+          });
+      </script>
+      <%@ include file="/jsp/discussionForum/menu/forumsMenu.jsp" %>
       <h3><h:outputText value="#{msgs.cdfm_tool_bar_message}" /></h3>
 			<table class="topicBloc topicBlocLone specialLink">
 				<tr>
@@ -30,13 +37,13 @@
 						<div>
 							<p id="openLinkBlock" class="toggleParent openLinkBlock display-none">
 								<a href="#" id="showMessage" class="toggle show">
-									<h:graphicImage url="/images/expand.gif" alt=""/>
+									<h:graphicImage url="/images/collapse.gif" alt=""/>
 									<h:outputText value=" #{msgs.cdfm_read_full_description}" />
 								</a>
 							</p>
 							<p id="hideLinkBlock" class="toggleParent hideLinkBlock">
 								<a href="#" id="hideMessage" class="toggle show">
-									<h:graphicImage url="/images/collapse.gif" alt="" />
+									<h:graphicImage url="/images/expand.gif" alt="" />
 									<h:outputText value=" #{msgs.cdfm_hide_full_description}"/>
 								</a>
 							</p>
@@ -74,10 +81,6 @@
 
 				<p><h:message for="df_compose_body" styleClass="messageAlert" id="bodyErrorMessages" /></p>
 	            <h:outputText value="#{msgs.cdfm_message}" />
-	            
-			
-			<span style="margin-left:3em"><img src="/library/image/silk/table_add.png" />&nbsp;<h:outputText value="#{msgs.cdfm_message_count}" />:&nbsp;<span  id="counttotal"> </span></span>
-					
 
 	            <sakai:inputRichText textareaOnly="#{PrivateMessagesTool.mobileSession}" value="#{ForumTool.composeBody}" id="df_compose_body" rows="#{ForumTool.editorRows}" cols="132">
 				</sakai:inputRichText>

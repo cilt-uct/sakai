@@ -138,7 +138,7 @@ public class SettingsGradingSchemaPanel extends BasePanel implements IFormModelU
 		// create map of grading scales to use for the dropdown
 		final Map<String, String> gradeMappingMap = new LinkedHashMap<>();
 		for (final GradeMappingDefinition gradeMapping : this.gradeMappings) {
-			gradeMappingMap.put(gradeMapping.getId(), gradeMapping.getName());
+			gradeMappingMap.put(gradeMapping.getId(), new ResourceModel("settingspage.gradingschema.gradetypes." + gradeMapping.getName()).getObject());
 		}
 
 		final WebMarkupContainer settingsGradingSchemaPanel = new WebMarkupContainer("settingsGradingSchemaPanel");
@@ -301,8 +301,8 @@ public class SettingsGradingSchemaPanel extends BasePanel implements IFormModelU
 				// repaint table
 				target.add(SettingsGradingSchemaPanel.this.schemaWrap);
 
-				// Note that we don't need to worry about showing warnings about modifications here as the change notifications will handle
-				// that once a value has been added to the schema
+				// focus the new grading schema input
+				target.appendJavaScript("sakai.gradebookng.settings.gradingschemas.focusLastRow();");
 			}
 		};
 		addMapping.setDefaultFormProcessing(false);
@@ -488,9 +488,12 @@ public class SettingsGradingSchemaPanel extends BasePanel implements IFormModelU
 		@Override
 		protected void onUpdate(final AjaxRequestTarget t) {
 			this.target = t;
+			this.target.prependJavaScript("sakai.gradebookng.settings.gradingschemas.getFocusedCell();");
 			refreshGradingSchemaTable();
 			refreshCourseGradeChart(this.target);
 			refreshMessages();
+			this.target.appendJavaScript("sakai.gradebookng.settings.gradingschemas.focusPreviousCell();");
+			this.target.appendJavaScript("sakai.gradebookng.settings.gradingschemas.addCategoryFunction();");
 		}
 
 		/**

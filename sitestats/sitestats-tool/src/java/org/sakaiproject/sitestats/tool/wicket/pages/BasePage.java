@@ -20,21 +20,19 @@ package org.sakaiproject.sitestats.tool.wicket.pages;
 
 import javax.servlet.http.HttpServletRequest;
 
-import org.apache.wicket.Component;
 import org.apache.wicket.AttributeModifier;
+import org.apache.wicket.Component;
+import org.apache.wicket.devutils.debugbar.DebugBar;
+import org.apache.wicket.markup.head.IHeaderResponse;
+import org.apache.wicket.markup.head.JavaScriptHeaderItem;
+import org.apache.wicket.markup.head.StringHeaderItem;
 import org.apache.wicket.markup.head.filter.HeaderResponseContainer;
 import org.apache.wicket.markup.html.IHeaderContributor;
-import org.apache.wicket.markup.head.IHeaderResponse;
-import org.apache.wicket.markup.html.WebPage;
 import org.apache.wicket.markup.html.TransparentWebMarkupContainer;
+import org.apache.wicket.markup.html.WebPage;
 import org.apache.wicket.markup.html.basic.Label;
 import org.apache.wicket.model.IModel;
 import org.apache.wicket.model.StringResourceModel;
-import org.apache.wicket.markup.head.CssHeaderItem;
-import org.apache.wicket.markup.head.JavaScriptHeaderItem;
-import org.apache.wicket.markup.head.StringHeaderItem;
-import org.apache.wicket.devutils.debugbar.DebugBar;
-
 import org.sakaiproject.sitestats.api.StatsManager;
 import org.sakaiproject.util.ResourceLoader;
 
@@ -45,8 +43,6 @@ public class BasePage extends WebPage implements IHeaderContributor {
 	public static final String		COMMONSCRIPT		= StatsManager.SITESTATS_WEBAPP+"/script/common.js";
 	public static final String		JQUERYSCRIPT		= "/library/webjars/jquery/1.12.4/jquery.min.js";
 	public static final String		LAST_PAGE			= "lastSiteStatsPage";
-	public static final String		DATEPICKERSCRIPT	= "/library/js/lang-datepicker/lang-datepicker.js";
-	public static final String		JQUERYUISCRIPT		= "/library/webjars/jquery-ui/1.12.1/jquery-ui.min.js";
 
 	public BasePage(){
 		// Set Sakai Locale
@@ -73,8 +69,6 @@ public class BasePage extends WebPage implements IHeaderContributor {
 		response.render(StringHeaderItem.forString(request.getAttribute("sakai.html.head").toString()));
 		response.render(JavaScriptHeaderItem.forUrl(COMMONSCRIPT));
 
-		// include (this) tool style (CSS)
-		response.render(CssHeaderItem.forUrl(StatsManager.SITESTATS_WEBAPP+"/css/sitestats.css"));
 	}
 	
 	@Override

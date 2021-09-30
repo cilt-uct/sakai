@@ -37,13 +37,12 @@
 <%@ include file="/js/samigotree.js" %>
               function flagFolders() {
 	          collapseAllRowsForSelectList();
-                  flagRows();
               }
               window.onload = flagFolders;
 </script>
 <script src="/library/js/spinner.js"></script>
       </head>
-<body onload="collapseAllRowsForSelectList();flagRows();;<%= request.getAttribute("html.body.onload") %>">
+<body onload="collapseAllRowsForSelectList();<%= request.getAttribute("html.body.onload") %>">
   
 <!-- content... -->
  <div class="portletBody">
@@ -100,13 +99,13 @@
     onclick="SPNR.disableControlsAndSpin(this, null);">
   </h:commandButton>
 
-	<h:commandButton id="cancel" value="#{commonMessages.cancel_action}" action="#{questionpool.cancelPool}"
+	<h:commandButton id="cancel" value="#{commonMessages.cancel_action}" action="#{questionpool.cancelPool}" immediate="true"
 					 rendered="#{questionpool.actionType == 'pool'}" onclick="SPNR.disableControlsAndSpin(this, null);">
 		<f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.questionpool.CancelPoolListener" />
 		<f:attribute name="returnToParentPool" value="true"/>
 	</h:commandButton>
 
-	<h:commandButton id="cancelItem" value="#{commonMessages.cancel_action}" action="#{questionpool.cancelPool}"
+	<h:commandButton id="cancelItem" value="#{commonMessages.cancel_action}" action="#{questionpool.cancelPool}" immediate="true"
 					 rendered="#{questionpool.actionType == 'item'}" onclick="SPNR.disableControlsAndSpin(this, null);">
 		<f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.questionpool.CancelPoolListener" />
 		<f:attribute name="returnToParentPool" value="false"/>

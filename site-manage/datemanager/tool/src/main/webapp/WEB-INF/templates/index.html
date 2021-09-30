@@ -6,7 +6,6 @@
 	</head>
 	<body class="portalBody Mrphs-portalBody Mrphs-sakai-datemanager-tool">
 		<link media="all" href="/library/skin/tool_base.css" rel="stylesheet" type="text/css" />
-		<link href="/library/skin/morpheus-default/tool.css" type="text/css" rel="stylesheet" media="all" />
 		<script src="/library/js/headscripts.js" type="text/javascript"></script>
 		<script th:inline="javascript">
 			/*<![CDATA[*/
@@ -19,10 +18,26 @@
 			/*]]>*/
 		</script>
 		<script type="text/javascript" src="/library/js/lang-datepicker/lang-datepicker.js"></script>
+		<script th:src="@{/js/initDatePicker.js}"></script>
 		<meta http-equiv="Content-Style-Type" content="text/css" />
 
 		<div class="page-header">
 			<h1 th:text="#{page.instructions}">Add/Edit Options in batch</h1>
+		</div>
+
+		<div class="date-manager-shifter panel-group">
+			<p>
+				<div class="sak-banner-error hidden" id="dateShifterError">
+					<span th:text="#{dateshifter.error.nonnumeric}"></span>
+				</div>
+				<label>
+					<span th:text="#{dateshifter.label.before}" th:remove="tag"></span>
+					<input id="dateShifterDays" type="text"></input>
+					<span th:text="#{dateshifter.label.after}" th:remove="tag"></span>
+				</label>
+			</p>
+			<button id="shiftAllDates" th:text="#{dateshifter.all.button}" disabled></button>
+			<button id="shiftVisibleDates" th:text="#{dateshifter.visible.button}" disabled></button>
 		</div>
 
 		<form class="panel-group" id="date-manager-form" method="POST">
@@ -38,7 +53,7 @@
 			<div th:if="${assignments != null}" class="panel panel-default">
 				<div class="panel-heading">
 					<h4 class="panel-title">
-						<a data-toggle="collapse" data-parent="#accordion" href="#collapse-assignments" class="collapsed" aria-expanded="false"><span th:text="${assignmentsToolTitle}">Assignments</span></a>
+						<a data-toggle="collapse" data-parent="#accordion" href="#collapse-assignments" class="collapsed" aria-expanded="false"><span th:text="${assignmentsToolTitle}">Assignments</span><span class="allocatedSpinPlaceholder"></span></a>
 					</h4>
 				</div>
 				<div th:replace="tool_fragment :: tool_fragment(items=${assignments}, toolId='assignments', collapseId='collapse-assignments')"></div>
@@ -46,7 +61,7 @@
 			<div th:if="${assessments != null}" class="panel panel-default">
 				<div class="panel-heading">
 					<h4 class="panel-title">
-						<a data-toggle="collapse" data-parent="#accordion" href="#collapse-assessments" class="collapsed" aria-expanded="false"><span th:text="${assessmentsToolTitle}">Tests & Quizzes</span></a>
+						<a data-toggle="collapse" data-parent="#accordion" href="#collapse-assessments" class="collapsed" aria-expanded="false"><span th:text="${assessmentsToolTitle}">Tests & Quizzes</span><span class="allocatedSpinPlaceholder"></span></a>
 					</h4>
 				</div>
 				<div th:replace="tool_fragment :: tool_fragment(items=${assessments}, toolId='assessments', collapseId='collapse-assessments')"></div>
@@ -54,7 +69,7 @@
 			<div th:if="${signupMeetings != null}" class="panel panel-default">
 				<div class="panel-heading">
 					<h4 class="panel-title">
-						<a data-toggle="collapse" data-parent="#accordion" href="#collapse-signup" class="collapsed" aria-expanded="false"><span th:text="${signupMeetingsToolTitle}">Sign up</span></a>
+						<a data-toggle="collapse" data-parent="#accordion" href="#collapse-signup" class="collapsed" aria-expanded="false"><span th:text="${signupMeetingsToolTitle}">Sign up</span><span class="allocatedSpinPlaceholder"></span></a>
 					</h4>
 				</div>
 				<div th:replace="tool_fragment :: tool_fragment(items=${signupMeetings}, toolId='signupMeetings', collapseId='collapse-signup')"></div>
@@ -62,7 +77,7 @@
 			<div th:if="${gradebookItems != null}" class="panel panel-default">
 				<div class="panel-heading">
 					<h4 class="panel-title">
-						<a data-toggle="collapse" data-parent="#accordion" href="#collapse-gradebook" class="collapsed" aria-expanded="false"><span th:text="${gradebookItemsToolTitle}">Gradebook</span></a>
+						<a data-toggle="collapse" data-parent="#accordion" href="#collapse-gradebook" class="collapsed" aria-expanded="false"><span th:text="${gradebookItemsToolTitle}">Gradebook</span><span class="allocatedSpinPlaceholder"></span></a>
 					</h4>
 				</div>
 				<div th:replace="tool_fragment :: tool_fragment(items=${gradebookItems}, toolId='gradebookItems', collapseId='collapse-gradebook')"></div>
@@ -70,7 +85,7 @@
 			<div th:if="${resources != null}" class="panel panel-default">
 				<div class="panel-heading">
 					<h4 class="panel-title">
-						<a data-toggle="collapse" data-parent="#accordion" href="#collapse-resources" class="collapsed" aria-expanded="false"><span th:text="${resourcesToolTitle}">Resources</span></a>
+						<a data-toggle="collapse" data-parent="#accordion" href="#collapse-resources" class="collapsed" aria-expanded="false"><span th:text="${resourcesToolTitle}">Resources</span><span class="allocatedSpinPlaceholder"></span></a>
 					</h4>
 				</div>
 				<div th:replace="tool_fragment :: tool_fragment(items=${resources}, toolId='resources', collapseId='collapse-resources')"></div>
@@ -78,7 +93,7 @@
 			<div th:if="${calendarEvents != null}" class="panel panel-default">
 				<div class="panel-heading">
 					<h4 class="panel-title">
-						<a data-toggle="collapse" data-parent="#accordion" href="#collapse-calendar" class="collapsed" aria-expanded="false"><span th:text="${calendarEventsToolTitle}">Calendar</span></a>
+						<a data-toggle="collapse" data-parent="#accordion" href="#collapse-calendar" class="collapsed" aria-expanded="false"><span th:text="${calendarEventsToolTitle}">Calendar</span><span class="allocatedSpinPlaceholder"></span></a>
 					</h4>
 				</div>
 				<div th:replace="tool_fragment :: tool_fragment(items=${calendarEvents}, toolId='calendarEvents', collapseId='collapse-calendar')"></div>
@@ -86,7 +101,7 @@
 			<div th:if="${forums != null}" class="panel panel-default">
 				<div class="panel-heading">
 					<h4 class="panel-title">
-						<a data-toggle="collapse" data-parent="#accordion" href="#collapse-forums" class="collapsed" aria-expanded="false"><span th:text="${forumsToolTitle}">Forums</span></a>
+						<a data-toggle="collapse" data-parent="#accordion" href="#collapse-forums" class="collapsed" aria-expanded="false"><span th:text="${forumsToolTitle}">Forums</span><span class="allocatedSpinPlaceholder"></span></a>
 					</h4>
 				</div>
 				<div th:replace="tool_fragment :: tool_fragment(items=${forums}, toolId='forums', collapseId='collapse-forums')"></div>
@@ -94,7 +109,7 @@
 			<div th:if="${announcements != null}" class="panel panel-default">
 				<div class="panel-heading">
 					<h4 class="panel-title">
-						<a data-toggle="collapse" data-parent="#accordion" href="#collapse-announcements" class="collapsed" aria-expanded="false"><span th:text="${announcementsToolTitle}">Announcements</span></a>
+						<a data-toggle="collapse" data-parent="#accordion" href="#collapse-announcements" class="collapsed" aria-expanded="false"><span th:text="${announcementsToolTitle}">Announcements</span><span class="allocatedSpinPlaceholder"></span></a>
 					</h4>
 				</div>
 				<div th:replace="tool_fragment :: tool_fragment(items=${announcements}, toolId='announcements', collapseId='collapse-announcements')"></div>
@@ -102,7 +117,7 @@
 			<div th:if="${lessons != null}" class="panel panel-default">
 				<div class="panel-heading">
 					<h4 class="panel-title">
-						<a data-toggle="collapse" data-parent="#accordion" href="#collapse-lessons" class="collapsed" aria-expanded="false"><span th:text="${lessonsToolTitle}">Lessons</span></a>
+						<a data-toggle="collapse" data-parent="#accordion" href="#collapse-lessons" class="collapsed" aria-expanded="false"><span th:text="${lessonsToolTitle}">Lessons</span><span class="allocatedSpinPlaceholder"></span></a>
 					</h4>
 				</div>
 				<div th:replace="tool_fragment :: tool_fragment(items=${lessons}, toolId='lessons', collapseId='collapse-lessons')"></div>
@@ -121,7 +136,7 @@
 							<h4 th:text="#{modal.confirm}" class="modal-title">Confirm</h4>
 						</div>
 						<div class="modal-body">
-							<p th:text="#{modal.confirm.instruction}">You are about to modify the next course dates:</p>
+							<p th:text="#{modal.confirm.instruction}">You are about to modify the following course dates:</p>
 							<ul id="modified-dates"></ul>
 						</div>
 						<div class="modal-footer act">
@@ -170,6 +185,8 @@
 						assessmentJson.open_date_day_of_week = undefined;
 						assessmentJson.due_date_day_of_week = undefined;
 						assessmentJson.accept_until_day_of_week = undefined;
+						assessmentJson.feedback_start_day_of_week = undefined;
+						assessmentJson.feedback_end_day_of_week = undefined;
 						updates.assessments.push(assessmentJson);
 					/*[/]*/
 
@@ -231,67 +248,8 @@
 
 					var notModified = [];
 
-					$('.datepicker').each(function (idx, elt) {
-						var $td = $(elt).closest('td');
-						var $hidden = $td.find('input[type=hidden]');
-
-						var dataTool = $hidden.data('tool');
-						var dataField = $hidden.data('field');
-						var dataIdx = $hidden.data('idx');
-						$td.attr('id', 'cell_' + dataTool + '_' + dataField + '_' + dataIdx);
-
-						$hidden.on('change', function () {
-							var idx = $(this).data('idx');
-							var field = $(this).data('field');
-							var tool = $(this).data('tool');
-
-							updates[tool][idx][field] = $(this).val().split('+')[0];
-							updates[tool][idx][field + '_label'] = $(this).siblings('input.datepicker').val();
-							// Show day of the week in case there is a date selected
-							if ($(this).parent().find('.datepicker').val() !== '') {
-								updates[tool][idx][field + '_day_of_week'] = moment(updates[tool][idx][field]).locale(sakai.locale.userLocale).format('dddd');
-								$(this).parent().find('.day-of-week').text(updates[tool][idx][field + '_day_of_week']);
-							}
-
-							if (notModified.includes(tool + idx + field)) {
-								updates[tool][idx].idx = idx;
-								updates[tool + 'Upd'][idx] = updates[tool][idx];
-								$('#submit-form-button').prop('disabled', false);
-							}
-							notModified.push(tool + idx + field);
-						});
-
-						$hidden.attr('id', 'hidden_datepicker_' + idx);
-						var dateFormat = 'YYYY-MM-DD HH:mm:ss';
-						var toolTime = 1;
-						if(dataTool == 'gradebookItems') {
-							dateFormat = 'YYYY-MM-DD';
-							toolTime = 0;
-						}
-						var datepickerOpts = {
-							input: elt,
-							useTime: toolTime,
-							parseFormat: dateFormat,
-							allowEmptyDate: false,
-							ashidden: {
-								iso8601: 'hidden_datepicker_' + idx,
-							}
-						};
-						if ($hidden.val() != '') datepickerOpts.val = $hidden.val();
-						localDatePicker(datepickerOpts);
-
-						// Disable accept_until date input if no late submissions (assessments) allowed
-						if (dataTool == 'assessments' && dataField == 'accept_until') {
-							var disabled = !updates[dataTool][dataIdx].late_handling;
-							$(elt).prop('disabled', disabled);
-							$td.find('.ui-datepicker-trigger').prop('disabled', disabled);
-						}
-						if (dataTool == 'forums' && (dataField == 'open_date' || dataField == 'due_date')) {
-							var disabled = !updates[dataTool][dataIdx].restricted;
-							$(elt).prop('disabled', disabled);
-							$td.find('.ui-datepicker-trigger').prop('disabled', disabled);
-						}
-					});
+					DTMN.initDatePicker(updates, notModified);
+					DTMN.initShifter(updates, notModified);
 
 					function printErrors() {
 						$('.errors').empty();
@@ -304,7 +262,7 @@
 							var $cell = $('#' + id);
 							$cell.addClass('ajax-error');
 							$cell.find('.errors').text(elt.msg);
-							$('#form-errors').find('ul').append('<li>' + elt.toolTitle + ' - ' + updates[elt.toolId][elt.idx].title + ' - ' + elt.msg + '</li>');
+							$('#form-errors').find('ul').append('<li>' + elt.toolTitle + ' - ' + elt.msg + '</li>');
 						});
 						$('html, body').animate({ scrollTop: 0 }, 'slow');
 					}

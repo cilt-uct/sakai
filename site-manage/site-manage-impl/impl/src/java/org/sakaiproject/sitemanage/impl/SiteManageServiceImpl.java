@@ -1,10 +1,27 @@
+/**
+ * Copyright (c) 2003-2019 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.sitemanage.impl;
 
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -29,6 +46,8 @@ import org.sakaiproject.entity.api.EntityManager;
 import org.sakaiproject.entity.api.EntityProducer;
 import org.sakaiproject.entity.api.EntityTransferrer;
 import org.sakaiproject.entity.api.Reference;
+import org.sakaiproject.entity.api.ResourceProperties;
+import org.sakaiproject.entity.api.ResourcePropertiesEdit;
 import org.sakaiproject.event.api.EventTrackingService;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.exception.PermissionException;
@@ -57,6 +76,7 @@ import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.sakaiproject.event.api.NotificationService;
+import org.tsugi.lti13.LTICustomVars;
 
 @Slf4j
 public class SiteManageServiceImpl implements SiteManageService {
@@ -404,56 +424,122 @@ public class SiteManageServiceImpl implements SiteManageService {
                 }
             }
 
+            Set<String> siteIds = new LinkedHashSet<String>();
             Map<String, String> transversalMap = new HashMap<>();
+            final String toSiteId = site.getId();
 
             // import resources first
             boolean resourcesImported = false;
             for (int i = 0; i < toolIds.size() && !resourcesImported; i++) {
                 String toolId = toolIds.get(i);
-
                 if (StringUtils.equalsIgnoreCase(toolId, SiteManageConstants.RESOURCES_TOOL_ID) && importTools.containsKey(toolId)) {
-                    List<String> importSiteIds = importTools.get(toolId);
-
-                    for (String fromSiteId : importSiteIds) {
-                        String toSiteId = site.getId();
-
+                    for (String fromSiteId : importTools.get(toolId)) {
                         String fromSiteCollectionId = contentHostingService.getSiteCollection(fromSiteId);
                         String toSiteCollectionId = contentHostingService.getSiteCollection(toSiteId);
-
                         transversalMap.putAll(transferCopyEntities(toolId, fromSiteCollectionId, toSiteCollectionId, toolOptions, cleanup));
                         transversalMap.putAll(getDirectToolUrlEntityReferences(toolId, fromSiteId, toSiteId));
+                        siteIds.add(fromSiteId);
                         resourcesImported = true;
                     }
                 }
             }
 
-            // import other tools then
+            // Now gradebook. Several tools depend on gradebook and may well bring in gradebook items. If
+            // the gradebook import happens after that, in replace mode, the gradebook import will clean
+            // out all the items imported by the other tools, like Assignments.
             for (String toolId : toolIds) {
-                if (!StringUtils.equalsIgnoreCase(toolId, SiteManageConstants.RESOURCES_TOOL_ID) && importTools.containsKey(toolId)) {
-                    List<String> importSiteIds = importTools.get(toolId);
+                if (StringUtils.equalsIgnoreCase(toolId, SiteManageConstants.GRADEBOOK_TOOL_ID) && importTools.containsKey(toolId)) {
+                    for (String fromSiteId : importTools.get(toolId)) {
+                        transversalMap.putAll(transferCopyEntities(toolId, fromSiteId, toSiteId, toolOptions, cleanup));
+                        transversalMap.putAll(getDirectToolUrlEntityReferences(toolId, fromSiteId, toSiteId));
+                        siteIds.add(fromSiteId);
+                    }
+                }
+            }
 
-                    for (String fromSiteId : importSiteIds) {
-                        String toSiteId = site.getId();
+            // Now calendar. Same reason as gradebook.
+            for (String toolId : toolIds) {
+                if (StringUtils.equalsIgnoreCase(toolId, SiteManageConstants.CALENDAR_TOOL_ID) && importTools.containsKey(toolId)) {
+                    for (String fromSiteId : importTools.get(toolId)) {
+                        transversalMap.putAll(transferCopyEntities(toolId, fromSiteId, toSiteId, toolOptions, cleanup));
+                        transversalMap.putAll(getDirectToolUrlEntityReferences(toolId, fromSiteId, toSiteId));
+                        siteIds.add(fromSiteId);
+                    }
+                }
+            }
+
+            // Now import the rest of the tools
+            for (String toolId : toolIds) {
+                if (!StringUtils.equalsIgnoreCase(toolId, SiteManageConstants.RESOURCES_TOOL_ID)
+                        && !StringUtils.equalsIgnoreCase(toolId, SiteManageConstants.GRADEBOOK_TOOL_ID)
+                        && !StringUtils.equalsIgnoreCase(toolId, SiteManageConstants.CALENDAR_TOOL_ID)
+                        && importTools.containsKey(toolId)) {
+                    for (String fromSiteId : importTools.get(toolId)) {
                         if (SiteManageConstants.SITE_INFO_TOOL_ID.equals(toolId)) {
                             site = copySiteInformation(fromSiteId, toSiteId);
                         } else {
                             transversalMap.putAll(transferCopyEntities(toolId, fromSiteId, toSiteId, toolOptions, cleanup));
                             transversalMap.putAll(getDirectToolUrlEntityReferences(toolId, fromSiteId, toSiteId));
                         }
+                        siteIds.add(fromSiteId);
                     }
                 }
             }
 
-            //update entity references
+            // Update entity references
             for (String toolId : toolIds) {
                 if (importTools.containsKey(toolId)) {
-                    List<String> importSiteIds = importTools.get(toolId);
-                    for (int k = 0; k < importSiteIds.size(); k++) {
-                        String toSiteId = site.getId();
-                        updateEntityReferences(toolId, toSiteId, transversalMap, site);
-                    }
+                    updateEntityReferences(toolId, toSiteId, transversalMap, site);
                 }
             }
+
+            // Handle the Context.id.history
+            mergeContextIdHistory(siteIds, site);
+        }
+    }
+
+    /**
+     * Compute the Context.id.history for the new site and insert it
+     *
+     * @param siteIds  a set of site ids to merge into the Context.id.history
+     * @param site       the site to save
+     */
+    private void mergeContextIdHistory(Set<String> siteIds, Site site) {
+        Set<String> new_set = new LinkedHashSet<String>();
+        for(String fromSiteId : siteIds) {
+            try {
+                Site fromSite = siteService.getSite(fromSiteId);
+                ResourceProperties rp = fromSite.getProperties();
+                String old_id_history = rp.getProperty(LTICustomVars.CONTEXT_ID_HISTORY);
+                if ( StringUtils.isBlank(old_id_history) ) old_id_history = "";
+                List<String> old_id_list = Arrays.asList(old_id_history.split(","));
+
+                // Pull in the old ids.
+                for ( String old_id : old_id_list ) {
+                    if ( StringUtils.isNotBlank(old_id) ) new_set.add(old_id);
+                }
+            } catch (Exception e) {
+                log.warn("Can't get site, {}", e.getMessage());
+                continue;
+            }
+
+            // Add the actual containing site
+            new_set.add(fromSiteId);
+        }
+
+        if ( new_set.size() < 1 ) return;
+
+        String id_history = String.join(",", new_set);
+
+        // Grab our own edit to save the property - if you use the site variable and save it
+        // you will perturb an import in progress when it is running in a background thread
+        try {
+            Site tmpSite = siteService.getSite(site.getId());
+            ResourcePropertiesEdit rp = tmpSite.getPropertiesEdit();
+            rp.addProperty(LTICustomVars.CONTEXT_ID_HISTORY, id_history);
+            saveSite(tmpSite);
+        } catch (IdUnusedException iue) {
+            log.warn("Site not found, {}", iue.getMessage());
         }
     }
 

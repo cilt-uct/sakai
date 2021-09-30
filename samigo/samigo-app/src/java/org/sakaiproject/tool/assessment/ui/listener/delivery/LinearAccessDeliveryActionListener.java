@@ -21,9 +21,7 @@
 
 package org.sakaiproject.tool.assessment.ui.listener.delivery;
 
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
@@ -63,7 +61,7 @@ import org.sakaiproject.util.api.FormattedText;
 public class LinearAccessDeliveryActionListener extends DeliveryActionListener
   implements ActionListener
 {
-  private static ResourceBundle eventLogMessages = ResourceBundle.getBundle("org.sakaiproject.tool.assessment.bundle.EventLogMessages");
+  private static final ResourceBundle eventLogMessages = ResourceBundle.getBundle("org.sakaiproject.tool.assessment.bundle.EventLogMessages");
   private final EventTrackingService eventTrackingService= ComponentManager.get( EventTrackingService.class );
 
   /**
@@ -92,7 +90,12 @@ public class LinearAccessDeliveryActionListener extends DeliveryActionListener
       setShowStudentScore(delivery, publishedAssessment);
       setShowStudentQuestionScore(delivery, publishedAssessment);
       setDeliverySettings(delivery, publishedAssessment);
-      
+
+      // If the assessment is not yet available return before a grading record is created
+      if (!delivery.isAvailable()) {
+        return;
+      }
+
       if (ae != null && ae.getComponent().getId().startsWith("beginAssessment")) {
     	  // #1. check password
     	  if (!delivery.getSettings().getPassword().equals(""))

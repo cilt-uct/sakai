@@ -41,7 +41,7 @@ import org.apache.wicket.model.StringResourceModel;
 import org.sakaiproject.profile2.exception.ProfilePreferencesNotDefinedException;
 import org.sakaiproject.profile2.model.ProfilePreferences;
 import org.sakaiproject.profile2.tool.components.EnablingCheckBox;
-import org.sakaiproject.profile2.tool.components.IconWithClueTip;
+import org.sakaiproject.profile2.tool.components.IconWithToolTip;
 import org.sakaiproject.profile2.tool.pages.panels.TwitterPrefsPane;
 import org.sakaiproject.profile2.util.ProfileConstants;
 
@@ -369,7 +369,7 @@ public class MyPreferences extends BasePage{
 		kudosSetting.setOutputMarkupId(true);
 		kudosContainer.add(kudosSetting);
 		//tooltip
-		kudosContainer.add(new IconWithClueTip("kudosToolTip", ProfileConstants.INFO_IMAGE, new ResourceModel("preferences.widget.kudos.tooltip")));
+		kudosContainer.add(new IconWithToolTip("kudosToolTip", ProfileConstants.INFO_ICON, new ResourceModel("preferences.widget.kudos.tooltip")));
 		
 
 		//updater
@@ -395,7 +395,7 @@ public class MyPreferences extends BasePage{
 		galleryFeedSetting.setOutputMarkupId(true);
 		galleryFeedContainer.add(galleryFeedSetting);
 		//tooltip
-		galleryFeedContainer.add(new IconWithClueTip("galleryFeedToolTip", ProfileConstants.INFO_IMAGE, new ResourceModel("preferences.widget.gallery.tooltip")));
+		galleryFeedContainer.add(new IconWithToolTip("galleryFeedToolTip", ProfileConstants.INFO_ICON, new ResourceModel("preferences.widget.gallery.tooltip")));
 		
 		//updater
 		galleryFeedSetting.add(new AjaxFormComponentUpdatingBehavior("onchange") {
@@ -420,7 +420,7 @@ public class MyPreferences extends BasePage{
 		onlineStatusSetting.setOutputMarkupId(true);
 		onlineStatusContainer.add(onlineStatusSetting);
 		//tooltip
-		onlineStatusContainer.add(new IconWithClueTip("onlineStatusToolTip", ProfileConstants.INFO_IMAGE, new ResourceModel("preferences.widget.onlinestatus.tooltip")));
+		onlineStatusContainer.add(new IconWithToolTip("onlineStatusToolTip", ProfileConstants.INFO_ICON, new ResourceModel("preferences.widget.onlinestatus.tooltip")));
 		
 		//updater
 		onlineStatusSetting.add(new AjaxFormComponentUpdatingBehavior("onchange") {
@@ -453,19 +453,19 @@ public class MyPreferences extends BasePage{
 				ProfilePreferences profilePreferences = (ProfilePreferences) form.getModelObject();
 				
 				formFeedback.setDefaultModel(new ResourceModel("success.preferences.save.ok"));
-				formFeedback.add(new AttributeModifier("class", true, new Model<String>("success")));
+				formFeedback.add(new AttributeModifier("class", new Model<String>("success")));
 				
 				//save
 				if(preferencesLogic.savePreferencesRecord(profilePreferences)) {
 					formFeedback.setDefaultModel(new ResourceModel("success.preferences.save.ok"));
-					formFeedback.add(new AttributeModifier("class", true, new Model<String>("success")));
+					formFeedback.add(new AttributeModifier("class", new Model<String>("success")));
 					
 					//post update event
 					sakaiProxy.postEvent(ProfileConstants.EVENT_PREFERENCES_UPDATE, "/profile/"+userUuid, true);
 					
 				} else {
 					formFeedback.setDefaultModel(new ResourceModel("error.preferences.save.failed"));
-					formFeedback.add(new AttributeModifier("class", true, new Model<String>("alertMessage")));	
+					formFeedback.add(new AttributeModifier("class", new Model<String>("alertMessage")));	
 				}
 				
 				//resize iframe

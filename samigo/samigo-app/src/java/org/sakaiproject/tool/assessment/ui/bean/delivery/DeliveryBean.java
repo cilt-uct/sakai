@@ -28,7 +28,9 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.TimeZone;
@@ -101,7 +103,7 @@ import org.sakaiproject.tool.assessment.util.ExtendedTimeDeliveryService;
 import org.sakaiproject.tool.assessment.util.MimeTypesLocator;
 import org.sakaiproject.tool.cover.SessionManager;
 import org.sakaiproject.tool.cover.ToolManager;
-import org.sakaiproject.util.ResourceLoader;
+import org.sakaiproject.user.api.PreferencesService;
 import org.sakaiproject.util.api.FormattedText;
 
 import lombok.Getter;
@@ -116,6 +118,7 @@ public class DeliveryBean implements Serializable {
 
   //SAM-2517
   private UserTimeService userTimeService = ComponentManager.get(UserTimeService.class);
+  private PreferencesService preferencesService = ComponentManager.get(PreferencesService.class);
   
   private static final String MATHJAX_SRC_PATH_SAKAI_PROP = "portal.mathjax.src.path";
   private static final String MATHJAX_SRC_PATH = ServerConfigurationService.getString(MATHJAX_SRC_PATH_SAKAI_PROP);
@@ -126,6 +129,9 @@ public class DeliveryBean implements Serializable {
   private String assessmentTitle;
   @Getter @Setter
   private boolean honorPledge;
+  private Locale locale;
+  @Getter
+  private String localeString;
   @Getter @Setter
   private List markedForReview;
   @Getter @Setter
@@ -300,11 +306,6 @@ public class DeliveryBean implements Serializable {
   @Getter @Setter
   private Map itemContentsMap;
 
-  @Getter @Setter
-  private String minutesLeft;
-  @Getter @Setter
-  private String secondsLeft;
-  
   // For paging
   @Getter @Setter
   private int partIndex;
@@ -369,7 +370,7 @@ public class DeliveryBean implements Serializable {
   private String javaScriptEnabledCheck;
 
   //cwent
-  @Setter
+  @Setter @Getter
   private String siteId;
 
   @Getter @Setter
@@ -442,14 +443,14 @@ public class DeliveryBean implements Serializable {
   @Getter @Setter
   private String rbcsToken;
 
-  private static String ACCESSBASE = ServerConfigurationService.getAccessUrl();
-  private static String RECPATH = ServerConfigurationService.getString("samigo.recommendations.path");
+  private static final String ACCESSBASE = ServerConfigurationService.getAccessUrl();
+  private static final String RECPATH = ServerConfigurationService.getString("samigo.recommendations.path");
 
-  private static ResourceBundle eventLogMessages = ResourceBundle.getBundle("org.sakaiproject.tool.assessment.bundle.EventLogMessages");
+  private static final ResourceBundle eventLogMessages = ResourceBundle.getBundle("org.sakaiproject.tool.assessment.bundle.EventLogMessages");
 
-  private static String questionProgressUnansweredPath = ServerConfigurationService.getString("samigo.questionprogress.unansweredpath", "/images/whiteBubble15.png");
-  private static String questionProgressAnsweredPath = ServerConfigurationService.getString("samigo.questionprogress.answeredpath", "/images/blackBubble15.png");
-  private static String questionProgressMardPath = ServerConfigurationService.getString("samigo.questionprogress.mardpath", "/images/questionMarkBubble15.png");
+  private static final String questionProgressUnansweredPath = ServerConfigurationService.getString("samigo.questionprogress.unansweredpath", "/images/whiteBubble15.png");
+  private static final String questionProgressAnsweredPath = ServerConfigurationService.getString("samigo.questionprogress.answeredpath", "/images/blackBubble15.png");
+  private static final String questionProgressMardPath = ServerConfigurationService.getString("samigo.questionprogress.mardpath", "/images/questionMarkBubble15.png");
 
   // delivery action
   public static final int TAKE_ASSESSMENT = 1;
@@ -481,11 +482,16 @@ public class DeliveryBean implements Serializable {
   @Getter @Setter
   private List attachmentList;
 
+  @Getter @Setter
+  private String secureToken;
+
   /**
    * Creates a new DeliveryBean object.
    */
   public DeliveryBean() {
     deliveryAgent = new AgentFacade();
+    locale = preferencesService.getLocale(deliveryAgent.getAgentString());
+    localeString = PortalUtils.getLocaleString(locale);
   }
 
   public TimeZone getUserTimeZone() {
@@ -497,7 +503,7 @@ public class DeliveryBean implements Serializable {
 	      return "";
 	    }
 
-      return userTimeService.dateTimeFormat(beginTime, new ResourceLoader().getLocale(), DateFormat.MEDIUM);
+      return userTimeService.dateTimeFormat(beginTime, locale, DateFormat.MEDIUM);
   }
 
   public String getCurrentTimeElapse() {
@@ -587,6 +593,8 @@ public class DeliveryBean implements Serializable {
         sb.append(publishedAssessment.getPublishedAssessmentId()).append("\n");
         sb.append("         - Assessment Title       : ").append(publishedAssessment.getTitle()).append("\n");
         sb.append("         - Assessment Site ID     : ").append(publishedAssessment.getOwnerSiteId());
+        // Setting the siteId in the bean may help in contexts like taking the exam via URL or lessons.
+        this.setSiteId(publishedAssessment.getOwnerSiteId());
         BeginDeliveryActionListener listener = new BeginDeliveryActionListener();
         //settings variable may be populated by populateBeanFromPub
         listener.populateBeanFromPub(this, publishedAssessment);
@@ -609,7 +617,7 @@ public class DeliveryBean implements Serializable {
       return "";
     }
 
-    return userTimeService.dateTimeFormat(adjustedTimedAssesmentDueDate, new ResourceLoader().getLocale(), DateFormat.MEDIUM);
+    return userTimeService.dateTimeFormat(adjustedTimedAssesmentDueDate, locale, DateFormat.MEDIUM);
   }
 
   public Date getRetractDate() {
@@ -664,6 +672,9 @@ public class DeliveryBean implements Serializable {
         int submissionsRemaining = control.getSubmissionsAllowed().intValue() - totalSubmissions;
         setNumberRetake(
             gradingService.getNumberRetake(publishedAssessmentId, AgentFacade.getAgentString()));
+
+        // dont return a negative value in case of retakes
+        if (submissionsRemaining < 0) submissionsRemaining = 0;
         setSubmissionsRemaining(submissionsRemaining);
       }
     }
@@ -715,7 +726,11 @@ public class DeliveryBean implements Serializable {
 	  
 	  SessionUtil.setSessionTimeout(FacesContext.getCurrentInstance(), this, false);
 
+	  // Sync time and write it to the DB
 	  syncTimeElapsedWithServer();
+	  GradingService gradingService = new GradingService();
+	  gradingService.saveOrUpdateAssessmentGradingOnly(adata);
+	  log.debug("submitForGrade: aid={}, timeElapsed={}, forGrade={}", adata.getAssessmentGradingId(), adata.getTimeElapsed(), adata.getForGrade());
 	  
 	  SubmitToGradingActionListener listener = new SubmitToGradingActionListener();
 	  // submission remaining and totalSubmissionPerAssessmentHash is updated inside 
@@ -733,7 +748,6 @@ public class DeliveryBean implements Serializable {
 	  // We don't need to call completeItemGradingData to create new ItemGradingData for linear access
 	  // because each ItemGradingData is created when it is viewed/answered 
 	  if (!"1".equals(navigation)) {
-		  GradingService gradingService = new GradingService();
 		  gradingService.completeItemGradingData(adata);
 	  }
 
@@ -778,7 +792,7 @@ public class DeliveryBean implements Serializable {
 			  HttpServletRequest request = (HttpServletRequest) FacesContext.getCurrentInstance().getExternalContext().getRequest();
 			  PhaseStatus status = secureDelivery.validatePhase(moduleId, Phase.ASSESSMENT_FINISH, publishedAssessment, request );
 			  	setSecureDeliveryHTMLFragment( 
-			  			secureDelivery.getHTMLFragment(moduleId, publishedAssessment, request, Phase.ASSESSMENT_FINISH, status, new ResourceLoader().getLocale() ) );
+					secureDelivery.getHTMLFragment(moduleId, publishedAssessment, request, Phase.ASSESSMENT_FINISH, status, locale) );
 		  }
 	  }
 	 
@@ -788,12 +802,16 @@ public class DeliveryBean implements Serializable {
  	  List eventLogDataList = eventService.getEventLogData(adata.getAssessmentGradingId());
 	  if(eventLogDataList != null && eventLogDataList.size() > 0) {
 	 	  EventLogData eventLogData= (EventLogData) eventLogDataList.get(0);
-	 	  eventLogData.setErrorMsg(eventLogMessages.getString("no_error"));
+	 	  if (submitFromTimeoutPopup) {
+	 	    eventLogData.setErrorMsg(eventLogMessages.getString("timer_submit"));
+	 	  } else {
+	 	    eventLogData.setErrorMsg(eventLogMessages.getString("no_error"));
+	 	  }
 	 	  Date endDate = new Date();
 	 	  eventLogData.setEndDate(endDate);
 	 	  if(eventLogData.getStartDate() != null) {
 	 	      double minute= 1000*60;
-	 	      int eclipseTime = (int)Math.ceil(((endDate.getTime() - eventLogData.getStartDate().getTime())/minute));
+	 	      int eclipseTime = (int)Math.round(((endDate.getTime() - eventLogData.getStartDate().getTime())/minute));
 	 	      eventLogData.setEclipseTime(eclipseTime);
 	 	  } else {
 	 	      eventLogData.setEclipseTime(null);
@@ -1113,7 +1131,8 @@ public class DeliveryBean implements Serializable {
               new SubmitToGradingActionListener();
           TimedAssessmentQueue queue = TimedAssessmentQueue.getInstance();
           TimedAssessmentGradingModel timedAG = queue.get(adata.getAssessmentGradingId());
-          if (timedAG != null && Integer.parseInt(timeElapse) >= timedAG.getTimeLimit()) {
+          long effectiveTimeLimit = getEffectiveTimeLimit(timedAG);
+          if (timedAG != null && Integer.parseInt(timeElapse) >= effectiveTimeLimit) {
 			  // This is a final save after thread timer expiration
 			  // remove the buffers to speed up the submit.
 			  // setup the confirmation for AJAX request
@@ -1145,6 +1164,30 @@ public class DeliveryBean implements Serializable {
       l2.processAction(null);
       reload = false;
       return "takeAssessment";
+  }
+
+  /**
+   * For a timed assessment returns the smaller of these two:
+   * -The duration from the attempt's start time until the retract date
+   * -The time limit
+   * @param timedAG the TimedAssessmentGradingModel - accepts null if assessment isn't timed
+   * @return the duration in seconds, or 0 if a retract date / time limit is not set
+   */
+  private long getEffectiveTimeLimit(TimedAssessmentGradingModel timedAG)
+  {
+    long startToRetract = 0;
+    if (adata != null)
+    {
+      long attemptStart = adata.getAttemptDate().getTime();
+      Date retractDate = getRetractOrExtendedDate();
+      if (retractDate != null)
+      {
+        long retractTime = retractDate.getTime();
+        startToRetract = (retractTime - attemptStart)/1000;
+      }
+      return timedAG == null ? startToRetract : Math.min(startToRetract, timedAG.getTimeLimit());
+    }
+    return startToRetract;
   }
 
   public String previous() {
@@ -1229,9 +1272,11 @@ public class DeliveryBean implements Serializable {
         getIpAddress();
       if (next != null && next.contains( "*" )) {
         next = next.substring(0, next.indexOf("*"));
+        if (thisIp.trim().startsWith(next.trim())) {
+        	return "takeAssessment";
+        }
       }
-      if (next == null || next.trim().equals("") ||
-          thisIp.trim().startsWith(next.trim())) {
+      if (next == null || next.trim().equals("") || next.trim().equals(thisIp.trim())) {
         // in post 2.1, clicking at Begin Assessment takes users to the 1st question.
         return "takeAssessment";
       }
@@ -1278,7 +1323,7 @@ public class DeliveryBean implements Serializable {
     		  HttpServletRequest request = (HttpServletRequest) FacesContext.getCurrentInstance().getExternalContext().getRequest();
     		  PhaseStatus status = secureDelivery.validatePhase(moduleId, Phase.ASSESSMENT_START, publishedAssessment, request );
     		  setSecureDeliveryHTMLFragment( 
-    		  			secureDelivery.getHTMLFragment(moduleId, publishedAssessment, request, Phase.ASSESSMENT_START, status, new ResourceLoader().getLocale() ) );
+				secureDelivery.getHTMLFragment(moduleId, publishedAssessment, request, Phase.ASSESSMENT_START, status, locale));
     		  setBlockDelivery( PhaseStatus.FAILURE == status );
     		  if ( PhaseStatus.SUCCESS == status ) {
     			  results = "takeAssessment";
@@ -1603,6 +1648,7 @@ public class DeliveryBean implements Serializable {
     log.debug("***7. addMediaToItemGrading, adata={}", adata);
     itemGradingData.setAnswerText(mediaId + "");
     gradingService.saveItemGrading(itemGradingData);
+    EventTrackingService.post(EventTrackingService.newEvent(SamigoConstants.EVENT_ASSESSMENT_ATTACHMENT_NEW, "itemGradingId=" + itemGradingData.getItemGradingId() + ", " + mediaData.getFilename(), null, true, NotificationService.NOTI_REQUIRED));
     // 3. if saveToDB, remove file from file system
     try {
       	if (SAVETODB) {
@@ -1622,7 +1668,7 @@ public class DeliveryBean implements Serializable {
     FacesContext context = FacesContext.getCurrentInstance();
     ExternalContext external = context.getExternalContext();
     Long fileSize = (Long)((ServletContext)external.getContext()).getAttribute("TEMP_FILEUPLOAD_SIZE");
-    Long maxSize = Long.valueOf(ServerConfigurationService.getInt("samigo.sizeMax", 40960));
+    Long maxSize = Long.valueOf(ServerConfigurationService.getInt("samigo.sizeMax", 20480));
 
     ((ServletContext)external.getContext()).removeAttribute("TEMP_FILEUPLOAD_SIZE");
     if (fileSize!=null){
@@ -1648,7 +1694,7 @@ public class DeliveryBean implements Serializable {
   public void setPublishedAssessment(PublishedAssessmentFacade publishedAssessment) {
 	  this.publishedAssessment = publishedAssessment;
 	  //Setup extendedTimeDeliveryService
-	  if (extendedTimeDeliveryService == null && 
+	  if ((extendedTimeDeliveryService == null || StringUtils.isBlank(extendedTimeDeliveryService.getAgentId())) &&
 			  (publishedAssessment != null && publishedAssessment.getPublishedAssessmentId() != null)) {
 		  extendedTimeDeliveryService = new ExtendedTimeDeliveryService(publishedAssessment);
 	  }
@@ -1685,11 +1731,16 @@ public class DeliveryBean implements Serializable {
   }
 
   public String getSiteId() {
-    siteId = null;
-    Placement currentPlacement = ToolManager.getCurrentPlacement();
-    if(currentPlacement != null)
-      siteId = currentPlacement.getContext();
-    return siteId;
+
+    if (StringUtils.isNotBlank(siteId)) {
+      return siteId;
+    } else {
+      Placement currentPlacement = ToolManager.getCurrentPlacement();
+      if (currentPlacement != null) {
+        siteId = currentPlacement.getContext();
+      }
+      return siteId;
+    }
   }
 
   public String getAgentAccessString() {
@@ -1793,14 +1844,12 @@ public class DeliveryBean implements Serializable {
 	         }
 	         return;
 	      }
-	      TimedAssessmentQueue queue = TimedAssessmentQueue.getInstance();
-	      TimedAssessmentGradingModel timedAG = queue.get(adata.getAssessmentGradingId());
-	      if (timedAG != null){
 	        int timeElapsed  = Math.round((new Date().getTime() - adata.getAttemptDate().getTime())/1000.0f);
-	        log.debug("***setTimeElapsed={}", timeElapsed);
-	        adata.setTimeElapsed(timeElapsed);
-	        setTimeElapse(adata.getTimeElapsed().toString());
-	      }
+	        log.debug("***setTimeElapsed={}, aid={}", timeElapsed, adata.getAssessmentGradingId());
+	        // If timer submit exceeds timeLimit by one second, set the elapsed time to the time limit
+	        setTimeElapse(String.valueOf(timeElapsed));
+	        adata.setTimeElapsed(Integer.valueOf(getTimeElapse()));
+
 	    }
 	  }
 	  
@@ -1812,15 +1861,11 @@ public class DeliveryBean implements Serializable {
 		          }
 		          return;
 		      }
-		      TimedAssessmentQueue queue = TimedAssessmentQueue.getInstance();
-		      TimedAssessmentGradingModel timedAG = queue.get(adata.getAssessmentGradingId());
-		      if (timedAG != null){
 		    	int timeElapsed  = Math.round((new Date().getTime() - adata.getAttemptDate().getTime())/1000.0f);
 		        adata.setTimeElapsed(timeElapsed);
 		        GradingService gradingService = new GradingService();
 		        gradingService.saveOrUpdateAssessmentGradingOnly(adata);
 		        setTimeElapse(adata.getTimeElapsed().toString());
-		      }
 		    }
 	  }
 
@@ -1914,7 +1959,30 @@ public class DeliveryBean implements Serializable {
     log.debug("check 2");
     // check 2: is it still available?
     if (!isFromTimer && isRetracted(isSubmitForGrade) && acceptLateSubmission){
-     return "isRetracted";
+      // Assessment is retracted. If the attempt started at such a time that retraction time elapsed before the timer, we should lead the user to the submission confirmation screen.
+      // Otherwise, show them that the assessment is retracted.
+      if (adata != null) {
+        long attemptStart = adata.getAttemptDate().getTime();
+        Date retractDate =  getRetractOrExtendedDate();
+        if (retractDate != null)
+        {
+          long retractTime = retractDate.getTime();
+
+          TimedAssessmentQueue queue = TimedAssessmentQueue.getInstance();
+          TimedAssessmentGradingModel timedAG = queue.get(adata.getAssessmentGradingId());
+          // timedAG might no longer be in the queue; fall back to assessment access control as necessary
+          int timeLimit = timedAG == null ? getPublishedAssessment().getAssessmentAccessControl().getTimeLimit() : timedAG.getTimeLimit();
+          // Convert to milliseconds; value is and remains 0 if no time limit is present
+          timeLimit*=1000;
+
+          if (timeLimit != 0 && retractTime - attemptStart <= timeLimit && attemptStart <= retractTime)
+          {
+            // leads to js callback; saves user's response to the current question and sends them to "submitAssessment" face.
+            return "safeToProceed";
+          }
+        }
+      }
+      return "isRetracted";
     }
     
     log.debug("check 3");
@@ -1952,7 +2020,7 @@ public class DeliveryBean implements Serializable {
     	
     log.debug("check 7");
     // check 7: any submission attempt left?
-    if (!getHasSubmissionLeft(numberRetake)){
+    if (!getHasSubmissionLeft(numberRetake, actualNumberRetake)) {
       return "noSubmissionLeft";
     }
 
@@ -2031,7 +2099,7 @@ public class DeliveryBean implements Serializable {
 	  return checkBeforeProceed(isSubmitForGrade, isFromTimer, isViaUrlLogin);
   }
 
-  private boolean getHasSubmissionLeft(int numberRetake){
+  private boolean getHasSubmissionLeft(final int numberRetake, final int actualNumberRetake) {
     boolean hasSubmissionLeft = false;
     int maxSubmissionsAllowed = 9999;
     if ( (Boolean.FALSE).equals(publishedAssessment.getAssessmentAccessControl().getUnlimitedSubmissions())){
@@ -2043,16 +2111,19 @@ public class DeliveryBean implements Serializable {
       settingsDeliveryBean.setMaxAttempts(maxSubmissionsAllowed);
       settings = settingsDeliveryBean;
     }
+    log.debug("getHasSubmissionLeft: totalSubmissions={}, maxSubmissionsAllowed={}, actualNumberTakes={}, numberRetakeAllowed={}", 
+    		totalSubmissions, maxSubmissionsAllowed, actualNumberRetake, numberRetake);
     if (totalSubmissions < maxSubmissionsAllowed + numberRetake){
       hasSubmissionLeft = true;
     }
     return hasSubmissionLeft;
   }
 
-  private boolean isAvailable(){
+  public boolean isAvailable(){
 	  boolean isAvailable = true;
 	  Date currentDate = new Date();
 		Date startDate;
+		verifyExtendedTimeDeliveryService();
 		if (extendedTimeDeliveryService.hasExtendedTime()) {
 			startDate = extendedTimeDeliveryService.getStartDate();
 		} else {
@@ -2067,6 +2138,7 @@ public class DeliveryBean implements Serializable {
   public boolean pastDueDate(){
     boolean pastDueDate = true;
     Date currentDate = new Date();
+    verifyExtendedTimeDeliveryService();
     Date due = extendedTimeDeliveryService.hasExtendedTime() ? extendedTimeDeliveryService.getDueDate() : publishedAssessment.getAssessmentAccessControl().getDueDate();
 
     if (due == null && AssessmentAccessControlIfc.ACCEPT_LATE_SUBMISSION.equals(publishedAssessment.getAssessmentAccessControl().getLateHandling())) {
@@ -2085,6 +2157,7 @@ public class DeliveryBean implements Serializable {
   public boolean isAcceptLateSubmission() {
 	  boolean acceptLateSubmission = AssessmentAccessControlIfc.ACCEPT_LATE_SUBMISSION.equals(publishedAssessment.getAssessmentAccessControl().getLateHandling());
 	  //If using extended Time Delivery, the late submission setting is based on retracted
+	  verifyExtendedTimeDeliveryService();
 	  if (extendedTimeDeliveryService.hasExtendedTime()) {
 		  //Accept it if it's not retracted on the extended time entry
 		  acceptLateSubmission = (extendedTimeDeliveryService.getRetractDate() != null) ? !isRetracted(false) : false;
@@ -2093,19 +2166,26 @@ public class DeliveryBean implements Serializable {
   }
 
   public boolean isRetracted(boolean isSubmitForGrade){
-    boolean isRetracted = true;
     Date currentDate = new Date();
+    Date retractDate = getRetractOrExtendedDate();
+    return retractDate != null && retractDate.before(currentDate);
+  }
+
+  /**
+   * Gets the retract date.
+   * Returns the retract date provided by the ExtendedTimeDeliveryService when applicable
+   */
+  public Date getRetractOrExtendedDate()
+  {
     Date retractDate = null;
     boolean acceptLateSubmission = AssessmentAccessControlIfc.ACCEPT_LATE_SUBMISSION.equals(publishedAssessment.getAssessmentAccessControl().getLateHandling());
+    verifyExtendedTimeDeliveryService();
     if (extendedTimeDeliveryService.hasExtendedTime()) {
     	retractDate = extendedTimeDeliveryService.getRetractDate();
     } else if (acceptLateSubmission) {
     	retractDate = publishedAssessment.getAssessmentAccessControl().getRetractDate();
     }
-    if (retractDate == null || retractDate.after(currentDate)){
-        isRetracted = false;
-    }
-    return isRetracted;
+    return retractDate;
   }
 
   private boolean canAccess(boolean fromUrl) {
@@ -2281,7 +2361,7 @@ public class DeliveryBean implements Serializable {
 		      return "";
 		    }
 
-		    return userTimeService.dateTimeFormat(deadline, new ResourceLoader().getLocale(), DateFormat.MEDIUM);
+		    return userTimeService.dateTimeFormat(deadline, locale, DateFormat.MEDIUM);
 	  }
 
 	  public void setDeadline() {
@@ -2453,11 +2533,6 @@ public class DeliveryBean implements Serializable {
   	    return ServerConfigurationService.getInt("samigo.autoSave.repeat.milliseconds", 300000);
 	  }
 
-	  public boolean getStudentRichText() {
-	      String studentRichText = ServerConfigurationService.getString("samigo.studentRichText", "true");
-		  return Boolean.parseBoolean(studentRichText);
-	  }
-
 	  public String getRecURL() {
   	    if (RECPATH == null || RECPATH.trim().equals("")) {
   	    	return "";
@@ -2530,16 +2605,29 @@ public class DeliveryBean implements Serializable {
       return ServerConfigurationService.getString("samigo.ajaxTimerMinReqScale","5000");
     }
 
-    public void calculateMinutesAndSecondsLeft() {
-        int milliseconds = getAutoSaveRepeatMilliseconds();
-        if (milliseconds > 0) {
-            Date d = new Date(milliseconds);
-            this.setMinutesLeft(String.valueOf(d.getMinutes()));
-            this.setSecondsLeft(String.valueOf(d.getSeconds()));
-        }
-    }
-
     public String getCDNQuery() {
         return PortalUtils.getCDNQuery();
+    }
+
+    public String getPublishedURL() {
+        PublishedAssessmentSettingsBean pasBean = (PublishedAssessmentSettingsBean) ContextUtil.lookupBean("publishedSettings");
+        return pasBean.generatePublishedURL(publishedAssessment);
+    }
+
+    public String getSubmittedDateString() {
+        return userTimeService.timeFormat(getAssessmentGrading().getSubmittedDate(), locale, DateFormat.MEDIUM);
+    }
+
+    public void setSubmittedDateString(String value) {
+        // derived property but JSF needs a setter to be happy
+    }
+
+    /**
+     * Ensure that the ExtendedTimeDeliveryService instance is making reference to the correct assessment.
+     */
+    private void verifyExtendedTimeDeliveryService() {
+        if(!Objects.equals(extendedTimeDeliveryService.getPublishedAssessmentId(), publishedAssessment.getPublishedAssessmentId())) {
+            extendedTimeDeliveryService = new ExtendedTimeDeliveryService(publishedAssessment);
+        }
     }
 }

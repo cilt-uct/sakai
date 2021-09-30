@@ -22,6 +22,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import lombok.extern.slf4j.Slf4j;
@@ -51,6 +52,8 @@ import org.sakaiproject.gradebookng.tool.model.ImportWizardModel;
 import org.sakaiproject.gradebookng.tool.pages.GradebookPage;
 import org.sakaiproject.gradebookng.tool.pages.ImportExportPage;
 import org.sakaiproject.gradebookng.tool.panels.BasePanel;
+import org.sakaiproject.rubrics.logic.RubricsConstants;
+import org.sakaiproject.rubrics.logic.model.Rubric;
 import org.sakaiproject.service.gradebook.shared.Assignment;
 import org.sakaiproject.service.gradebook.shared.AssignmentHasIllegalPointsException;
 import org.sakaiproject.service.gradebook.shared.ConflictingAssignmentNameException;
@@ -71,6 +74,7 @@ public class GradeImportConfirmationStep extends BasePanel {
 
 	private final String yes = MessageHelper.getString("importExport.confirmation.yes");
 	private final String no = MessageHelper.getString("importExport.confirmation.no");
+	private final String none = MessageHelper.getString("importExport.confirmation.none");
 
 	private boolean errors = false;
 
@@ -153,12 +157,13 @@ public class GradeImportConfirmationStep extends BasePanel {
 
 					Long assignmentId = null;
 					try {
+						ProcessedGradeItem pgi = entry.getKey();
 						assignmentId = GradeImportConfirmationStep.this.businessService.addAssignment(assignment);
+						rubricsService.saveRubricAssociation(RubricsConstants.RBCS_TOOL_GRADEBOOKNG, assignmentId.toString(), pgi.getRubricParameters());
 
 						success(MessageHelper.getString("notification.addgradeitem.success", assignment.getName()));
 
 						// set the processedGradeItem's itemId so we can later save scores from the spreadsheet
-						ProcessedGradeItem pgi = entry.getKey();
 						pgi.setItemId(assignmentId);
 
 						// since it's new, add this item to the list of items that have grades that need to be written
@@ -202,11 +207,14 @@ public class GradeImportConfirmationStep extends BasePanel {
 					final Assignment assignment = GradeImportConfirmationStep.this.businessService.getAssignment(item.getItemTitle());
 					assignment.setPoints(points);
 
-					final boolean updated = GradeImportConfirmationStep.this.businessService.updateAssignment(assignment);
-					if (!updated) {
+					try {
+						GradeImportConfirmationStep.this.businessService.updateAssignment(assignment);
+					}
+					catch (final Exception e) {
 						getSession().error(MessageHelper.getString("importExport.error.pointsmodification", assignment.getName()));
 						GradeImportConfirmationStep.this.errors = true;
 						errorColumns.add(item);
+						log.warn("An error occurred updating the assignment", e);
 					}
 
 					assignmentMap.put(StringUtils.trim(assignment.getName()), assignment.getId());
@@ -387,8 +395,9 @@ public class GradeImportConfirmationStep extends BasePanel {
 			protected void populateItem(final ListItem<Assignment> item) {
 				final Assignment assignment = item.getModelObject();
 
+
 				String extraCredit = assignment.isExtraCredit() ? yes : no;
-				String dueDate = FormatHelper.formatDate(assignment.getDueDate(), "");
+				String dueDate = GradeImportConfirmationStep.this.businessService.formatDate(assignment.getDueDate(), "");
 				String releaseToStudents = assignment.isReleased() ? yes : no;
 				String includeInCourseGrades = assignment.isCounted() ? yes : no;
 
@@ -398,6 +407,28 @@ public class GradeImportConfirmationStep extends BasePanel {
 				item.add(new Label("dueDate", dueDate));
 				item.add(new Label("releaseToStudents", releaseToStudents));
 				item.add(new Label("includeInCourseGrades", includeInCourseGrades));
+
+				ImportWizardModel importWizardModel = GradeImportConfirmationStep.this.model.getObject();
+
+				Optional<ProcessedGradeItem> optPgi
+					= importWizardModel.getAssignmentsToCreate().keySet().stream()
+						.filter(e -> e.getItemTitle().equals(assignment.getName())).findFirst();
+
+				String rubricTitle = none;
+				if (optPgi.isPresent()) {
+					String rubricId = optPgi.get().getRubricParameters().get(RubricsConstants.RBCS_LIST);
+					if (rubricId != null) {
+						try {
+							Optional<Rubric> optRubric = rubricsService.getRubric(Long.parseLong(rubricId));
+							if (optRubric.isPresent()) {
+								rubricTitle = optRubric.get().getTitle();
+							}
+						} catch (Exception e) {
+							log.error("Failed to get rubric for id {}", rubricId, e);
+						}
+					}
+				}
+				item.add(new Label("rubricId", rubricTitle));
 			}
 		};
 

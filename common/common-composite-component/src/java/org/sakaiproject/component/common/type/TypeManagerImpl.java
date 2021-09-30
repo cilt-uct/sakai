@@ -24,15 +24,15 @@ package org.sakaiproject.component.common.type;
 import lombok.extern.slf4j.Slf4j;
 
 import org.hibernate.HibernateException;
-import org.hibernate.Query;
+import org.hibernate.query.Query;
 import org.hibernate.Session;
 
 import org.sakaiproject.api.common.type.Type;
 import org.sakaiproject.api.common.type.TypeManager;
 import org.sakaiproject.component.common.manager.PersistableHelper;
 import org.sakaiproject.id.cover.IdManager;
-import org.springframework.orm.hibernate4.HibernateCallback;
-import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
+import org.springframework.orm.hibernate5.HibernateCallback;
+import org.springframework.orm.hibernate5.support.HibernateDaoSupport;
 
 /**
  * @author <a href="mailto:lance@indiana.edu">Lance Speelmon </a>
@@ -131,9 +131,8 @@ public class TypeManagerImpl extends HibernateDaoSupport implements TypeManager
 			public Object doInHibernate(Session session) throws HibernateException
 			{
 				Query q = session.getNamedQuery(FINDTYPEBYUUID);
-				q.setString(UUID, uuid);
+				q.setParameter(UUID, uuid);
 				q.setCacheable(cacheFindTypeByUuid);
-				q.setCacheRegion(Type.class.getCanonicalName());
 				return q.uniqueResult();
 			}
 		};
@@ -160,11 +159,10 @@ public class TypeManagerImpl extends HibernateDaoSupport implements TypeManager
 			public Object doInHibernate(Session session) throws HibernateException
 			{
 				Query q = session.getNamedQuery(FINDTYPEBYTUPLE);
-				q.setString(AUTHORITY, authority);
-				q.setString(DOMAIN, domain);
-				q.setString(KEYWORD, keyword);
+				q.setParameter(AUTHORITY, authority);
+				q.setParameter(DOMAIN, domain);
+				q.setParameter(KEYWORD, keyword);
 				q.setCacheable(cacheFindTypeByTuple);
-				q.setCacheRegion(Type.class.getCanonicalName());
 				return q.uniqueResult();
 			}
 		};

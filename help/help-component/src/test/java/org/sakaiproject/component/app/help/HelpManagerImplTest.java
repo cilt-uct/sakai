@@ -1,4 +1,31 @@
+/**
+ * Copyright (c) 2003-2019 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.component.app.help;
+
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasProperty;
+import static org.hamcrest.Matchers.hasSize;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThat;
+
+import java.util.Set;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -12,12 +39,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
-
-import java.util.Iterator;
-import java.util.Set;
-
-import static org.hamcrest.Matchers.*;
-import static org.junit.Assert.*;
 
 @ActiveProfiles("test")
 @RunWith(SpringRunner.class)
@@ -54,10 +75,8 @@ public class HelpManagerImplTest {
     public void testSearch() {
         Set<Resource> test = helpManager.searchResources("test");
         assertNotNull(test);
-        Iterator<Resource> iterator = test.iterator();
-        assertTrue(iterator.hasNext());
-        Resource resource = iterator.next();
-        assertEquals("Sample Resource Name", resource.getName());
+        assertEquals(1, test.size());
+        assertEquals("Sample Resource Name", test.toArray(new Resource[0])[0].getName());
     }
 
     @Test

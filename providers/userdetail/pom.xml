@@ -4,7 +4,7 @@
   <parent>
     <artifactId>providers-base</artifactId>
     <groupId>org.sakaiproject</groupId>
-    <version>21-SNAPSHOT</version>
+    <version>22-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
   <name>sakai-userdetail-provider</name>
@@ -31,30 +31,7 @@
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-lang3</artifactId>
     </dependency>
-<!-- This exists strictly so we can control logging
-    	levels in Maven-executed unit tests -->
-    <dependency>
-      <groupId>log4j</groupId>
-      <artifactId>log4j</artifactId>
-      <version>1.2.8</version>
-      <scope>test</scope>
-    </dependency>
   </dependencies>
   <build>
-    <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <configuration>
-          <systemProperties>
-            <property>
-              <name>log4j.configuration</name>
-              <value>log4j.properties</value>
-            </property>
-          </systemProperties>
-        </configuration>
-      </plugin>
-    </plugins>
-<!-- java source -->
   </build>
 </project>

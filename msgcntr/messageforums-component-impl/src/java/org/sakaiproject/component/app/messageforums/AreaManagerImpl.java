@@ -25,12 +25,12 @@ import java.util.Iterator;
 
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.HibernateException;
-import org.hibernate.Query;
+import org.hibernate.query.Query;
 import org.hibernate.Session;
 import org.hibernate.collection.internal.PersistentSet;
 import org.hibernate.type.StringType;
-import org.springframework.orm.hibernate4.HibernateCallback;
-import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
+import org.springframework.orm.hibernate5.HibernateCallback;
+import org.springframework.orm.hibernate5.support.HibernateDaoSupport;
 
 import org.sakaiproject.api.app.messageforums.Area;
 import org.sakaiproject.api.app.messageforums.AreaManager;
@@ -60,6 +60,8 @@ public class AreaManagerImpl extends HibernateDaoSupport implements AreaManager 
     private static final String MESSAGECENTER_BUNDLE = "org.sakaiproject.api.app.messagecenter.bundle.Messages";
     private static final String MESSAGES_TITLE = "cdfm_message_pvtarea";
     private static final String FORUMS_TITLE = "cdfm_discussion_forums";
+
+    private ResourceLoader rb;
 
     private IdManager idManager;
 
@@ -97,6 +99,7 @@ public class AreaManagerImpl extends HibernateDaoSupport implements AreaManager 
 
 	public void init() {
        log.info("init()");
+       rb = new ResourceLoader(MESSAGECENTER_BUNDLE);
        DEFAULT_AUTO_MARK_READ = serverConfigurationService.getBoolean("msgcntr.forums.default.auto.mark.threads.read", false);
     }
 
@@ -378,16 +381,12 @@ public class AreaManagerImpl extends HibernateDaoSupport implements AreaManager 
      */
     public String getResourceBundleString(String key) 
     {
-    	final ResourceLoader rb = new ResourceLoader(MESSAGECENTER_BUNDLE);
     	return rb.getString(key);
     }
     
     private String getResourceBundleString(String key, Object[] replacementValues) 
     {
-    	final ResourceLoader rb = new ResourceLoader(MESSAGECENTER_BUNDLE);
     	return rb.getFormattedMessage(key, replacementValues);
-    	
-    	
     }
 
 }

@@ -93,7 +93,7 @@ import org.sakaiproject.util.api.FormattedText;
  public class TotalScoreListener
   implements ActionListener, ValueChangeListener
 {
-  private static BeanSort bs;
+  private BeanSort bs;
 
   private RubricsService rubricsService = ComponentManager.get(RubricsService.class);
 
@@ -352,12 +352,10 @@ import org.sakaiproject.util.api.FormattedText;
         boolean isAutoScored = true;
         boolean hasFileUpload = false;
 		while (sectionIter.hasNext()) {
-			if (!isAutoScored) {
+			if (!isAutoScored && hasFileUpload) {
 				break;
 			}
-			if (hasFileUpload) {
-				break;
-			}
+
 			PublishedSectionData section = (PublishedSectionData) sectionIter.next();
 			Set itemSet = section.getItemSet();
 			Iterator itemIter = itemSet.iterator();
@@ -369,7 +367,6 @@ import org.sakaiproject.util.api.FormattedText;
 				{ 
 					bean.setIsAutoScored(false); 
 					isAutoScored = false;
-					break; 
 				}
 				
 				if (typeId.equals(TypeIfc.FILE_UPLOAD))

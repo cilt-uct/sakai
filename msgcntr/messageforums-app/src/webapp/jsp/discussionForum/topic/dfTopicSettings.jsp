@@ -26,8 +26,13 @@
 					resizeFrame('grow');
 					return false;
 				});
+				var menuLink = $('#forumsMainMenuLink');
+				var menuLinkSpan = menuLink.closest('span');
+				menuLinkSpan.addClass('current');
+				menuLinkSpan.html(menuLink.text());
 			});
 		</script>
+		<%@ include file="/jsp/discussionForum/menu/forumsMenu.jsp" %>
 		<%
 	  	String thisId = request.getParameter("panel");
   		if (thisId == null) 
@@ -41,9 +46,9 @@
 <!--jsp/discussionForum/topic/dfTopicSettings.jsp-->
 		<%--<sakai:tool_bar_message value="#{msgs.cdfm_delete_topic_title}"/>--%>
         
-		<h:outputText id="alert-delete" styleClass="messageAlert" style="display:block" value="#{msgs.cdfm_delete_topic}" rendered="#{ForumTool.selectedTopic.markForDeletion}"/>
-        <h:outputText styleClass="messageAlert" value="#{msgs.cdfm_duplicate_topic_confirm}" rendered="#{ForumTool.selectedTopic.markForDuplication}" style="display:block" />
-		<div class="topicBloc" style="padding:0 .5em"><h:messages styleClass="messageAlert" id="errorMessages" rendered="#{! empty facesContext.maximumSeverity}" />
+		<h:outputText id="alert-delete" styleClass="sak-banner-warn" style="display:block" value="#{msgs.cdfm_delete_topic}" rendered="#{ForumTool.selectedTopic.markForDeletion}"/>
+        <h:outputText styleClass="sak-banner-warn" value="#{msgs.cdfm_duplicate_topic_confirm}" rendered="#{ForumTool.selectedTopic.markForDuplication}" style="display:block" />
+		<div class="topicBloc" style="padding:0 .5em"><h:messages styleClass="sak-banner-warn" id="errorMessages" rendered="#{! empty facesContext.maximumSeverity}" />
 			<p>
 				<span class="title">
 					<h:graphicImage url="/images/silk/lock.png" alt="#{msgs.cdfm_forum_locked}" rendered="#{ForumTool.selectedTopic.topic.locked=='true'}"  style="margin-right:.3em"/>
@@ -67,13 +72,13 @@
 			<h:panelGroup>
 				<h:panelGroup layout="block" id="openLinkBlock" styleClass="toggleParent openLinkBlock">
 					<a href="#" id="showMessage" class="toggle show">
-						<h:graphicImage url="/images/expand.gif" alt=""/>
+						<h:graphicImage url="/images/collapse.gif" alt=""/>
 						<h:outputText value=" #{msgs.cdfm_read_full_description}" />
 					</a>
 				</h:panelGroup>
 				<h:panelGroup layout="block" id="hideLinkBlock" styleClass="toggleParent hideLinkBlock display-none">
 					<a href="#" id="hideMessage" class="toggle show">
-						<h:graphicImage url="/images/collapse.gif" alt="" />
+						<h:graphicImage url="/images/expand.gif" alt="" />
 						<h:outputText value=" #{msgs.cdfm_hide_full_description}"/>
 					</a>
 				</h:panelGroup>
@@ -96,114 +101,7 @@
 					</h:dataTable>
 				</div>
 			</h:panelGroup>
-		</div>	
-		<%-- originally hidden
-		   <h4><h:outputText  value="Anonymous Responses"/></h4>
-		   <h:selectBooleanCheckbox   title= "#{msgs.cdfm_topic_allow_anonymous_postings}" disabled="true" value="false" />
-		   <h:outputText   value="  #{msgs.cdfm_topic_allow_anonymous_postings}" /> 
-		   <br/>
-		   <h:selectBooleanCheckbox  disabled="true" title= "#{msgs.cdfm_topic_author_identity}"  value="false" />
-		   <h:outputText   value="  #{msgs.cdfm_topic_author_identity}" />
-       <h4><h:outputText  value="Post Before Reading"/></h4>
-    	   <p class="shorttext">
-				<h:panelGrid columns="2">
-					<h:panelGroup><h:outputLabel id="outputLabel5" for="topic_reading"  value="Users must post a response before reading others"/>	</h:panelGroup>
-					<h:panelGroup>
-						<h:selectOneRadio disabled ="true" layout="pageDirection"  id="topic_reading" value="#{ForumTool.selectedTopic.mustRespondBeforeReading}">
-	    					<f:selectItem itemValue="true" itemLabel="Yes"/>
-	    					<f:selectItem itemValue="false" itemLabel="No"/>
-	  					</h:selectOneRadio>
-					</h:panelGroup>
-				</h:panelGrid>
-			</p>
-
-		  
-				<div id="permissionReadOnly">	  
-	  <%@ include file="/jsp/discussionForum/permissions/permissions_include.jsp"%>
-				 </div> 
-		  --%>	    
-	  <%--
-      <mf:forumHideDivision title="#{msgs.cdfm_access}" id="access_perm" hideByDefault="true">
-	  	<p class="shorttext">
-			<h:panelGrid columns="2" width="50%">
-				<h:panelGroup><h:outputLabel id="outputLabelCont" for="contributors"  value="#{msgs.cdfm_contributors}"/>	</h:panelGroup>
-				<h:panelGroup>
-					<h:selectManyListbox disabled ="true" id="contributors"  value="#{ForumTool.selectedTopic.contributorsList}" size="5" style="width:200px;">
-    					<f:selectItems value="#{ForumTool.totalComposeToList}" />
-  					</h:selectManyListbox>
-				</h:panelGroup>
-
-			  <h:panelGroup><h:outputLabel id="outputLabelRead" for="readOnly"  value="#{msgs.cdfm_read_only_access}"/>	</h:panelGroup>
-				<h:panelGroup>
-					<h:selectManyListbox  disabled ="true" id="readOnly"  value="#{ForumTool.selectedTopic.accessorList}" size="5" style="width:200px;">
-    					<f:selectItems value="#{ForumTool.totalComposeToList}"  />
-  					</h:selectManyListbox>
-				</h:panelGroup>
-			</h:panelGrid>
-		</p>
-	  </mf:forumHideDivision>
-      <mf:forumHideDivision title="#{msgs.cdfm_control_permissions}" id="cntrl_perm" hideByDefault="true">
-          <h:dataTable styleClass="table table-hover table-striped table-bordered" id="control_permissions" value="#{ForumTool.topicControlPermissions}" var="cntrl_settings">
-   			<h:column>
-				<f:facet name="header"><h:outputText value="#{msgs.perm_role}" /></f:facet>
-				<h:outputText value="#{cntrl_settings.role}"/>
-			</h:column> 			 
-			<h:column>
-				<f:facet name="header"><h:outputText value="#{msgs.perm_new_response}" /></f:facet>
-				<h:selectBooleanCheckbox disabled="true" value="#{cntrl_settings.newResponse}"/>
-			</h:column>
-			<h:column>
-				<f:facet name="header"><h:outputText value="#{msgs.perm_response_to_response}" /></f:facet>
-				<h:selectBooleanCheckbox disabled="true" value="#{cntrl_settings.responseToResponse}"/>
-			</h:column>
-		    <h:column>
-				<f:facet name="header">	<h:outputText value="#{msgs.perm_move_postings}" /></f:facet>
-				<h:selectBooleanCheckbox disabled="true" value="#{cntrl_settings.movePostings}"/>
-			</h:column>
-			<h:column>
-				<f:facet name="header"><h:outputText value="#{msgs.perm_change_settings}" /></f:facet>
-				<h:selectBooleanCheckbox disabled="true" value="#{cntrl_settings.changeSettings}"/>
-			</h:column>
-			<h:column>
-				<f:facet name="header"><h:outputText value="#{msgs.perm_post_to_gradebook}" /></f:facet>
-				<h:selectBooleanCheckbox disabled="true" value="#{cntrl_settings.postToGradebook}"/>
-			</h:column>
-		</h:dataTable>
-      </mf:forumHideDivision>
-      <mf:forumHideDivision title="#{msgs.cdfm_message_permissions}" id="msg_perm" hideByDefault="true">
-      <h:dataTable styleClass="table table-hover table-striped table-bordered" id="message_permissions" value="#{ForumTool.topicMessagePermissions}" var="msg_settings">
-   			<h:column>
-				<f:facet name="header"><h:outputText value="#{msgs.perm_role}" /></f:facet>
-				<h:outputText value="#{msg_settings.role}"/>
-			</h:column>
-			 <h:column>
-				<f:facet name="header"><h:outputText value="#{msgs.perm_read}" /></f:facet>
-				<h:selectBooleanCheckbox disabled="true" value="#{msg_settings.read}"/>
-			</h:column>
-			<h:column>
-				<f:facet name="header"><h:outputText value="#{msgs.perm_revise_any}" /></f:facet>
-				<h:selectBooleanCheckbox disabled="true" value="#{msg_settings.reviseAny}"/>
-			</h:column>
-			<h:column>
-				<f:facet name="header">	<h:outputText value="#{msgs.perm_revise_own}" /></f:facet>
-				<h:selectBooleanCheckbox disabled="true" value="#{msg_settings.reviseOwn}"/>
-			</h:column>
-			<h:column>
-				<f:facet name="header"><h:outputText value="#{msgs.perm_delete_any}" /></f:facet>
-				<h:selectBooleanCheckbox disabled="true" value="#{msg_settings.deleteAny}"/>
-			</h:column>
-			<h:column>
-				<f:facet name="header">	<h:outputText value="#{msgs.perm_delete_own}" /></f:facet>
-				<h:selectBooleanCheckbox disabled="true" value="#{msg_settings.deleteOwn}"/>
-			</h:column>
-			<h:column>
-				<f:facet name="header"><h:outputText value="#{msgs.perm_mark_as_read}" /></f:facet>
-				<h:selectBooleanCheckbox disabled="true" value="#{msg_settings.markAsRead}"/>
-			</h:column>			 		
-		</h:dataTable>	 	
-      </mf:forumHideDivision>
-      --%>
-    
+		</div>
        <div class="act">
           <h:commandButton action="#{ForumTool.processActionReviseTopicSettings}" id="revise"  
                            value="#{msgs.cdfm_button_bar_revise}" rendered="#{!ForumTool.selectedTopic.markForDeletion && !ForumTool.selectedTopic.markForDuplication}"

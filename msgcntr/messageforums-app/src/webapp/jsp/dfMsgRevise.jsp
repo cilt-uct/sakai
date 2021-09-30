@@ -20,6 +20,15 @@
        		<script src="/messageforums-tool/js/sak-10625.js"></script>
        		<script src="/messageforums-tool/js/forum.js"></script>
 			<script src="/messageforums-tool/js/messages.js"></script>
+        <script>
+            $(document).ready(function () {
+                var menuLink = $('#forumsMainMenuLink');
+                var menuLinkSpan = menuLink.closest('span');
+                menuLinkSpan.addClass('current');
+                menuLinkSpan.html(menuLink.text());
+            });
+        </script>
+        <%@ include file="/jsp/discussionForum/menu/forumsMenu.jsp" %>
      <h3><h:outputText value="#{msgs.cdfm_revise_forum_msg}" /></h3>
 
 			<table class="topicBloc topicBlocLone">
@@ -56,7 +65,6 @@
 
 
 	            <h:outputText value="#{msgs.cdfm_message}" />
-			<span style="margin-left:3em"><img src="/library/image/silk/table_add.png" />&nbsp;<h:outputText value="#{msgs.cdfm_message_count}" />:&nbsp;<span  id="counttotal"> </span></span>	
 
 	            <sakai:inputRichText textareaOnly="#{PrivateMessagesTool.mobileSession}" value="#{ForumTool.composeBody}" id="df_compose_body" rows="#{ForumTool.editorRows}" cols="132">
 				</sakai:inputRichText>
@@ -111,13 +119,13 @@
 
 			<p style="padding:0" class="act">
 				<h:commandButton 
-					rendered="#{empty ForumTool.attachments}"
+					rendered="#{empty ForumTool.attachments && empty facesContext.maximumSeverity}"
 						action="#{ForumTool.processAddAttachmentRedirect}" 
 						value="#{msgs.cdfm_button_bar_add_attachment_redirect}" 
 						accesskey="a" 
 						style="font-size:95%"/>
 				<h:commandButton
-					rendered="#{!empty ForumTool.attachments}"
+					rendered="#{not empty ForumTool.attachments && empty facesContext.maximumSeverity}"
 						action="#{ForumTool.processAddAttachmentRedirect}"
 						value="#{msgs.cdfm_button_bar_add_attachment_more_redirect}"
 						accesskey="a"
@@ -141,11 +149,11 @@
           </table>
         </sakai:panel_titled>
 --%>		        
-			<p style="padding:0" class="act">
-        <h:commandButton action="#{ForumTool.processDfMsgRevisedPost}" value="#{msgs.cdfm_button_bar_post_revised_msg}" accesskey="s" styleClass="active blockMeOnClick" />
+      <p style="padding:0" class="act">
+        <h:commandButton action="#{ForumTool.processDfMsgRevisedPost}" value="#{msgs.cdfm_button_bar_post_revised_msg}" rendered="#{empty facesContext.maximumSeverity}" accesskey="s" styleClass="active blockMeOnClick" />
         <h:commandButton action="#{ForumTool.processDfMsgRevisedCancel}" value="#{msgs.cdfm_button_bar_cancel}"  accesskey="x" />
         <h:outputText styleClass="sak-banner-info" style="display:none" value="#{msgs.cdfm_processing_submit_message}" />
-        	</p>	
+      </p>
     </h:form>
      
     </sakai:view_content>

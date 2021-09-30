@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2003-2019 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.assignment.tool;
 
 import java.util.ArrayList;
@@ -17,14 +32,12 @@ import org.sakaiproject.assignment.api.AssignmentReferenceReckoner;
 import org.sakaiproject.assignment.api.AssignmentService;
 import org.sakaiproject.assignment.api.MultiGroupRecord;
 import org.sakaiproject.assignment.api.model.Assignment;
-import org.sakaiproject.authz.api.AuthzGroup;
 import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.cheftool.Context;
 import org.sakaiproject.cheftool.RunData;
 import org.sakaiproject.cheftool.VelocityPortletPaneledAction;
 import org.sakaiproject.event.api.SessionState;
 import org.sakaiproject.exception.IdUnusedException;
-import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
@@ -212,77 +225,6 @@ class RangeAndGroupsDelegate
 		}
 
 		return new RangeAndGroupSettings(isGroupSubmit, range, groups);
-	}
-
-	void postSaveAssignmentGroupLocking(SessionState state, boolean post, RangeAndGroupSettings settings, Collection<String> aOldGroups, String siteId, String assignmentReference)
-	{
-		List<String> lockedGroupsReferences = new ArrayList<>();
-		if (post && settings.isGroupSubmit && !settings.groups.isEmpty())
-		{
-			for (Group group : settings.groups)
-			{
-				// Prior to SAK-41172 the string concatenation:
-				// 'group.getReference() + "/assignment/" + a.getId()'
-				// was used to create the reference for a lock
-				// this was simplified to the assignment reference
-				lockedGroupsReferences.add(group.getReference());
-				log.debug("Adding group to lock list: {}", group.getReference());
-
-				if (!aOldGroups.contains(group.getReference()) || group.getLockForReference(assignmentReference) == AuthzGroup.RealmLockMode.NONE)
-				{
-					log.debug("locking group: {}", group.getReference());
-					group.setLockForReference(assignmentReference, AuthzGroup.RealmLockMode.ALL);
-					log.debug("locked group: {}", group.getReference());
-
-					try
-					{
-						siteService.save(group.getContainingSite());
-					}
-					catch (IdUnusedException e)
-					{
-						log.warn("Cannot find site with id {}", siteId);
-						VelocityPortletPaneledAction.addAlert(state, rb.getFormattedMessage("options_cannotFindSite", siteId));
-					}
-					catch (PermissionException e)
-					{
-						log.warn("Do not have permission to edit site with id {}", siteId);
-						VelocityPortletPaneledAction.addAlert(state, rb.getFormattedMessage("options_cannotEditSite", siteId));
-					}
-				}
-			}
-		}
-
-		if (post && !aOldGroups.isEmpty())
-		{
-			try
-			{
-				Site site = siteService.getSite(siteId);
-
-				for (String reference : aOldGroups)
-				{
-					if (!lockedGroupsReferences.contains(reference))
-					{
-						log.debug("Not contains: {}", reference);
-						Group group = site.getGroup(reference);
-						if (group != null)
-						{
-							group.setLockForReference(assignmentReference, AuthzGroup.RealmLockMode.NONE);
-							siteService.save(group.getContainingSite());
-						}
-					}
-				}
-			}
-			catch (IdUnusedException e)
-			{
-				log.warn(".post_save_assignment: Cannot find site with id {}", siteId);
-				VelocityPortletPaneledAction.addAlert(state, rb.getFormattedMessage("options_cannotFindSite", siteId));
-			}
-			catch (PermissionException e)
-			{
-				log.warn(".post_save_assignment: Do not have permission to edit site with id {}", siteId);
-				VelocityPortletPaneledAction.addAlert(state, rb.getFormattedMessage("options_cannotEditSite", siteId));
-			}
-		}
 	}
 
 	void doEditAssignment(SessionState state, Assignment a)

@@ -25,10 +25,9 @@ should be included in file importing DeliveryMessages
 --%>
 -->
 
-<script src="/library/js/swfobject/swfobject.js"></script>
+<script src="/library/webjars/wavesurfer.js/5.1.0/dist/wavesurfer.min.js"></script>
+<script src="/library/webjars/wavesurfer.js/5.1.0/dist/plugin/wavesurfer.microphone.min.js"></script>
 <script src="/library/js/recorder/recorder.js"></script>
-<script src="/library/js/recorder/jRecorder.js"></script>
-<script src="/library/js/sakai-recorder.js"></script>
 <script src="/library/js/sakai-recorder.js"></script>
 <script>includeWebjarLibrary('featherlight');</script>
 <script>
@@ -36,10 +35,12 @@ should be included in file importing DeliveryMessages
     if (typeof initiatedFeatherlight === "undefined") {
       var $elems = $("a[id$='deliverAudioRecording:openRecord']");
       $elems.each(function(index, elem) {
-        var questionId = $(elem).parent().find("input[name=questionId]").val();
-        elem.dataset.featherlight = ".audioRecordingPopup-" + questionId;
-        elem.dataset.featherlightPersist = true;
-        elem.dataset.featherlightBeforeClose = "$('.audioRecordingPopup-" + questionId + " #audio-stop:enabled').click();";
+        setTimeout(function() {
+          var questionId = $(elem).parent().find("input[name=questionId]").val();
+          elem.dataset.featherlight = ".audioRecordingPopup-" + questionId;
+          elem.dataset.featherlightPersist = true;
+          elem.dataset.featherlightBeforeClose = "$('.audioRecordingPopup-" + questionId + " .audio-stop:enabled').click();";
+        }, 0);
       });
       initiatedFeatherlight = true;
     }
@@ -54,7 +55,9 @@ should be included in file importing DeliveryMessages
 <h:outputText escape="false" value="
 <input type=\"hidden\" name=\"mediaLocation_#{question.itemData.itemId}\" value=\"jsf/upload_tmp/assessment#{delivery.assessmentId}/question#{question.itemData.itemId}/#{person.eid}/audio_#{delivery.assessmentGrading.assessmentGradingId}.au\"/>" />
 
-<h:outputText value="#{question.text} "  escape="false"/>
+<h:outputText value="#{question.text} "  escape="false">
+  <f:converter converterId="org.sakaiproject.tool.assessment.jsf.convert.SecureContentWrapper" />
+</h:outputText>
 <!-- ATTACHMENTS -->
 <%@ include file="/jsf/delivery/item/attachment.jsp" %>
 

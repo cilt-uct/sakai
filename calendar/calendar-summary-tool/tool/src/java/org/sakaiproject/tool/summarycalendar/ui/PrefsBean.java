@@ -37,6 +37,7 @@ import javax.faces.model.SelectItem;
 
 import lombok.extern.slf4j.Slf4j;
 
+import org.sakaiproject.portal.util.PortalUtils;
 import org.sakaiproject.util.CalendarEventType;
 import org.sakaiproject.util.CalendarUtil;
 import org.sakaiproject.component.api.ServerConfigurationService;
@@ -68,7 +69,7 @@ public class PrefsBean {
 	public static String						SAKPROP_BASE				= "calendarSummary.";
 
 	/** Resource bundle */
-	private transient ResourceLoader			msgs						= new ResourceLoader("calendar");
+	private static final ResourceLoader			msgs						= new ResourceLoader("calendar");
 	
 	private CalendarUtil calendarUtil = new CalendarUtil();
 	
@@ -584,6 +585,10 @@ public class PrefsBean {
 		lists.dataList = list;
 		lists.tempList = temp;
 		return lists;
+	}
+
+	public String getCDNQuery() {
+		return PortalUtils.getCDNQuery();
 	}
 }
 

@@ -166,7 +166,7 @@ public class FilePickerAction extends PagedResourceHelperAction
 	private static final String RESOURCEBUNDLE = "resource.bundle.shared";
 	private String resourceClass = ServerConfigurationService.getString(RESOURCECLASS, DEFAULT_RESOURCECLASS);
 	private String resourceBundle = ServerConfigurationService.getString(RESOURCEBUNDLE, DEFAULT_RESOURCEBUNDLE);
-	private ResourceLoader srb = new Resource().getLoader(resourceClass, resourceBundle);
+	private ResourceLoader srb = Resource.getResourceLoader(resourceClass, resourceBundle);
 	
 	/** CloudStorage **/
 	private boolean onedriveOn = ServerConfigurationService.getBoolean(OneDriveService.ONEDRIVE_ENABLED, Boolean.FALSE);
@@ -909,10 +909,6 @@ public class FilePickerAction extends PagedResourceHelperAction
 		state.removeAttribute(STATE_NEED_TO_EXPAND_ALL);
         List cPath = getCollectionPath(state);
         context.put ("collectionPath", cPath);
-		// inform the observing courier that we just updated the page...
-		// if there are pending requests to do so they can be cleared
-		// justDelivered(state);
-
 		// pick the template based on whether client wants links or copies
 		String template = TEMPLATE_SELECT;
 		

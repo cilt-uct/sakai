@@ -23,6 +23,8 @@ import java.io.PrintWriter;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.Base64;
+import java.util.Enumeration;
+import java.util.Properties;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
@@ -33,6 +35,8 @@ import org.json.simple.JSONObject;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+
+import org.tsugi.basiclti.BasicLTIUtil;
 
 import org.tsugi.lti13.objects.LaunchJWT;
 import org.tsugi.lti13.objects.LTI11Transition;
@@ -50,13 +54,12 @@ public class LTI13Util {
 		KeyPair kp = keyGen.genKeyPair();
 		byte[] publicKey = kp.getPublic().getEncoded();
 		byte[] privateKey = kp.getPrivate().getEncoded();
-		Base64.Encoder encoder = Base64.getEncoder();
 
 		String publicRSA = "-----BEGIN PUBLIC KEY-----\n"
-				+ encoder.encodeToString(privateKey)
+				+ base64Encode(privateKey)
 				+ "\n-----END PUBLIC KEY-----\n";
 		String privateRSA = "-----BEGIN PRIVATE KEY-----\n"
-				+ encoder.encodeToString(privateKey)
+				+ base64Encode(privateKey)
 				+ "\n-----END PRIVATE KEY-----\n";
 
 		// If we need a pem style for these keys
@@ -74,10 +77,10 @@ public class LTI13Util {
 		privateKey = kp.getPrivate().getEncoded();
 
 		publicRSA = "-----BEGIN RSA PUBLIC KEY-----\n"
-				+ encoder.encodeToString(privateKey)
+				+ base64Encode(privateKey)
 				+ "\n-----END RSA PUBLIC KEY-----\n";
 		privateRSA = "-----BEGIN RSA PRIVATE KEY-----\n"
-				+ encoder.encodeToString(privateKey)
+				+ base64Encode(privateKey)
 				+ "\n-----END RSA PRIVATE KEY-----\n";
 
 		returnMap.put("tool_public", publicRSA);
@@ -85,6 +88,12 @@ public class LTI13Util {
 
 		return returnMap;
 
+	}
+
+	public static String base64Encode(byte[] input) {
+		Base64.Encoder encoder = Base64.getEncoder();
+		String retval = encoder.encodeToString(input);
+		return retval;
 	}
 
 	public static String stripPKCS8(String input) {
@@ -116,18 +125,47 @@ public class LTI13Util {
 		}
 	}
 
+	/*
+	 * The B64 Format is like the PEM format but no headers and all one line - it
+	 * is like the SSH format
+	 */
+	public static String getKeyB64(Key key) {
+		byte[] encodeArray = key.getEncoded();
+		String publicRSA = base64Encode(encodeArray);
+		return publicRSA;
+	}
+
+	public static String getPublicB64(KeyPair kp) {
+		return getKeyB64(kp.getPublic());
+	}
+
+
 	public static String getPublicEncoded(KeyPair kp) {
 		return getPublicEncoded(kp.getPublic());
 	}
 
 	public static String getPublicEncoded(Key key) {
-		byte[] encodeArray = key.getEncoded();
-		Base64.Encoder encoder = Base64.getEncoder();
+		return getPublicEncoded(getKeyB64(key));
+	}
+
+	public static String getPublicEncoded(String keyStr) {
+		// Don't double convert
+		if ( keyStr.startsWith("-----BEGIN ") ) return keyStr;
 
 		String publicRSA = "-----BEGIN PUBLIC KEY-----\n"
-				+ breakKeyIntoLines(encoder.encodeToString(encodeArray))
+				+ breakKeyIntoLines(keyStr)
 				+ "\n-----END PUBLIC KEY-----\n";
 		return publicRSA;
+	}
+
+	public static String getPrivateB64(KeyPair kp) {
+		return getKeyB64(kp.getPrivate());
+	}
+
+	public static String getPrivateB64(Key key) {
+		byte[] encodeArray = key.getEncoded();
+		String privateRSA = base64Encode(encodeArray);
+		return privateRSA;
 	}
 
 	public static String getPrivateEncoded(KeyPair kp) {
@@ -135,11 +173,15 @@ public class LTI13Util {
 	}
 
 	public static String getPrivateEncoded(Key key) {
-		byte[] encodeArray = key.getEncoded();
-		Base64.Encoder encoder = Base64.getEncoder();
+		return getPrivateEncoded(getPrivateB64(key));
+	}
+
+	public static String getPrivateEncoded(String keyStr) {
+		// Don't double convert
+		if ( keyStr.startsWith("-----BEGIN ") ) return keyStr;
 
 		String privateRSA = "-----BEGIN PRIVATE KEY-----\n"
-				+ breakKeyIntoLines(encoder.encodeToString(encodeArray))
+				+ breakKeyIntoLines(keyStr)
 				+ "\n-----END PRIVATE KEY-----\n";
 		return privateRSA;
 	}
@@ -190,6 +232,19 @@ public class LTI13Util {
 		} catch (NoSuchAlgorithmException e) {
 			throw new RuntimeException(e);
 		}
+	}
+
+	public static KeyPair strings2KeyPair(String pubKeyStr, String privKeyStr) {
+		if ( pubKeyStr == null || privKeyStr == null) return null;
+		String pubEncoded = LTI13Util.getPublicEncoded(pubKeyStr);
+        String privEncoded = LTI13Util.getPrivateEncoded(privKeyStr);
+		if ( pubEncoded == null || privEncoded == null) return null;
+
+		PublicKey pubKey = (PublicKey) LTI13Util.string2PublicKey(pubEncoded);
+        PrivateKey privKey = (PrivateKey) LTI13Util.string2PrivateKey(privEncoded);
+		if ( pubKey == null || privKey == null) return null;
+		KeyPair retval = new KeyPair(pubKey, privKey);
+		return retval;
 	}
 
 	// https://www.imsglobal.org/spec/lti/v1p3/migr#lti-1-1-migration-claim
@@ -306,7 +361,7 @@ public class LTI13Util {
 			// return Base64.getEncoder().encodeToString((md.digest(convertme));
 			// md.update(input.getBytes());
 			// byte[] output = Base64.encode(md.digest());
-			String hash = Base64.getEncoder().encodeToString(md.digest(input.getBytes()));
+			String hash = base64Encode(md.digest(input.getBytes()));
 			return hash;
 		} catch (NoSuchAlgorithmException e) {
 			throw new RuntimeException(e);
@@ -335,7 +390,7 @@ public class LTI13Util {
 			SecretKeySpec secret_key = new SecretKeySpec(secret.getBytes(), "HmacSHA256");
 			sha256_HMAC.init(secret_key);
 
-			String hash = Base64.getEncoder().encodeToString(sha256_HMAC.doFinal(message.getBytes()));
+			String hash = base64Encode(sha256_HMAC.doFinal(message.getBytes()));
 			return hash;
 		}
 		catch (Exception e){
@@ -373,5 +428,173 @@ public class LTI13Util {
 	public static void return400(HttpServletResponse response, String error) {
 		return400(response, error, null);
 	}
+
+    public static void substituteCustom(Properties custom, Properties lti2subst)
+    {
+        if ( custom == null || lti2subst == null ) return;
+        Enumeration<?> e = custom.propertyNames();
+        while (e.hasMoreElements()) {
+            String key = (String) e.nextElement();
+            String value =  custom.getProperty(key);
+            if ( value == null || value.length() < 1 ) continue;
+            // Allow both User.id and $User.id
+            if ( value.startsWith("$") && value.length() > 1 ) {
+                value = value.substring(1);
+            }
+            String newValue = lti2subst.getProperty(value);
+            if ( newValue == null ||  newValue.length() < 1 ) continue;
+            setProperty(custom, key, (String) newValue);
+        }
+    }
+
+    // Place the custom values into the launch
+    public static void addCustomToLaunch(Properties ltiProps, Properties custom)
+    {
+        Enumeration<?> e = custom.propertyNames();
+        while (e.hasMoreElements()) {
+            String keyStr = (String) e.nextElement();
+            String value =  custom.getProperty(keyStr);
+            setProperty(ltiProps,"custom_"+keyStr,value);
+            String mapKeyStr = BasicLTIUtil.mapKeyName(keyStr);
+            if ( ! mapKeyStr.equals(keyStr) ) {
+                setProperty(ltiProps,"custom_"+mapKeyStr,value);
+            }
+        }
+    }
+
+	@SuppressWarnings("deprecation")
+    public static void setProperty(Properties props, String key, String value) {
+        BasicLTIUtil.setProperty(props, key, value);
+    }
+
+    /**
+     * timeStamp - Add a time-stamp to the beginning of a string
+     */
+    public static String timeStamp(String token) {
+        long now = (new java.util.Date()).getTime()/1000;
+        String retval = now + ":" + token;
+        return retval;
+    }
+
+    /**
+     * timeStampCheck - Check a time-stamp at the beginning of a string
+     */
+    public static boolean timeStampCheck(String token, int seconds) {
+        String [] pieces = token.split(":");
+        if ( pieces.length < 2 ) return false;
+
+        long now = (new java.util.Date()).getTime()/1000;
+        long token_now = getLong(pieces[0]);
+        long delta = now - token_now;
+        boolean retval = (delta >= 0) && (delta <= seconds);
+        return retval;
+    }
+
+    /**
+     * timeStampSign - Take a one-time token and add a timestamp
+     *
+     * timestamp:token:signature
+     */
+    public static String timeStampSign(String token, String secret) {
+        String timeStamped = timeStamp(token);
+        String base_string = timeStamped + ":" + secret;
+        String signature = sha256(base_string);
+        String retval = timeStamped + ":" + signature;
+        return retval;
+    }
+
+    /**
+     * timeStampCheckSign - check to see if a token has not expired and is signed
+     */
+    public static boolean timeStampCheckSign(String token, String secret, int seconds) {
+        if ( ! timeStampCheck(token, seconds) ) return false;
+        String [] pieces = token.split(":");
+        if ( pieces.length != 3 ) return false;
+        String token_signature = pieces[2];
+        String base_string = pieces[0] + ":" + pieces[1] + ":" + secret;
+        String signature = sha256(base_string);
+        if ( ! signature.equals(token_signature) ) return false;
+        return true;
+    }
+
+    public static String toNull(String str) {
+        return BasicLTIUtil.toNull(str);
+    }
+
+    public static int getInt(Object o) {
+        if (o instanceof String) {
+            try {
+                return (new Integer((String) o)).intValue();
+            } catch (NumberFormatException e) {
+                return -1;
+            }
+        }
+        if (o instanceof Number) {
+            return ((Number) o).intValue();
+        }
+        return -1;
+    }
+
+    public static Long getLongKey(Object key) {
+        return getLong(key);
+    }
+
+    public static Long getLong(Object key) {
+        Long retval = getLongNull(key);
+        if (retval != null) {
+            return retval;
+        }
+        return new Long(-1);
+    }
+
+    public static Long getLongNull(Object key) {
+        if (key == null) {
+            return null;
+        }
+        if (key instanceof Number) {
+            return new Long(((Number) key).longValue());
+        }
+        if (key instanceof String) {
+            if (((String) key).length() < 1) {
+                return new Long(-1);
+            }
+            try {
+                return new Long((String) key);
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    public static Double getDoubleNull(Object key) {
+        if (key == null) {
+            return null;
+        }
+        if (key instanceof Number) {
+            return ((Number) key).doubleValue();
+        }
+        if (key instanceof String) {
+            if (((String) key).length() < 1) {
+                return null;
+            }
+            try {
+                return new Double((String) key);
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    public static String getStringNull(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof String) {
+            return (String) value;
+        }
+        return null;
+    }
 
 }

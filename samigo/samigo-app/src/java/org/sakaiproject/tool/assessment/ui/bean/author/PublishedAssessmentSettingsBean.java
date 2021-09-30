@@ -33,29 +33,29 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
-import javax.faces.application.FacesMessage;
 import javax.faces.bean.ManagedBean;
 import javax.faces.bean.SessionScoped;
 import javax.faces.context.ExternalContext;
 import javax.faces.context.FacesContext;
 import javax.faces.model.SelectItem;
 
-import lombok.Getter;
-import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
-
 import org.apache.commons.lang3.StringUtils;
-
+import org.sakaiproject.content.api.ContentResource;
+import org.sakaiproject.content.api.FilePickerHelper;
+import org.sakaiproject.entity.api.Reference;
+import org.sakaiproject.entity.cover.EntityManager;
 import org.sakaiproject.exception.IdUnusedException;
-import org.sakaiproject.tool.api.SessionManager;
-import org.sakaiproject.tool.api.ToolManager;
-import org.sakaiproject.tool.assessment.facade.*;
-import org.sakaiproject.component.cover.ComponentManager;
-import org.sakaiproject.exception.IdUnusedException;
+import org.sakaiproject.exception.PermissionException;
+import org.sakaiproject.exception.TypeException;
+import org.sakaiproject.samigo.util.SamigoConstants;
+import org.sakaiproject.section.api.SectionAwareness;
+import org.sakaiproject.section.api.coursemanagement.EnrollmentRecord;
+import org.sakaiproject.section.api.facade.Role;
 import org.sakaiproject.service.gradebook.shared.Assignment;
 import org.sakaiproject.service.gradebook.shared.CategoryDefinition;
 import org.sakaiproject.service.gradebook.shared.GradebookInformation;
@@ -64,21 +64,13 @@ import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.cover.SiteService;
 import org.sakaiproject.time.api.UserTimeService;
+import org.sakaiproject.tool.api.SessionManager;
+import org.sakaiproject.tool.api.ToolManager;
+import org.sakaiproject.tool.api.ToolSession;
 import org.sakaiproject.tool.assessment.api.SamigoApiFactory;
+import org.sakaiproject.tool.assessment.data.dao.assessment.AssessmentAccessControl;
 import org.sakaiproject.tool.assessment.data.dao.assessment.ExtendedTime;
 import org.sakaiproject.tool.assessment.data.dao.authz.AuthorizationData;
-import org.sakaiproject.content.api.ContentResource;
-import org.sakaiproject.content.api.FilePickerHelper;
-import org.sakaiproject.exception.PermissionException;
-import org.sakaiproject.exception.TypeException;
-import org.sakaiproject.section.api.SectionAwareness;
-import org.sakaiproject.section.api.coursemanagement.EnrollmentRecord;
-import org.sakaiproject.section.api.facade.Role;
-import org.sakaiproject.tool.api.ToolSession;
-import org.sakaiproject.entity.api.Reference;
-import org.sakaiproject.entity.cover.EntityManager;
-import org.sakaiproject.samigo.util.SamigoConstants;
-import org.sakaiproject.tool.assessment.data.dao.assessment.AssessmentAccessControl;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentAccessControlIfc;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentFeedbackIfc;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentMetaDataIfc;
@@ -86,6 +78,10 @@ import org.sakaiproject.tool.assessment.data.ifc.assessment.AttachmentIfc;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.EvaluationModelIfc;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.RegisteredSecureDeliveryModuleIfc;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.SecuredIPAddressIfc;
+import org.sakaiproject.tool.assessment.facade.AgentFacade;
+import org.sakaiproject.tool.assessment.facade.AuthzQueriesFacadeAPI;
+import org.sakaiproject.tool.assessment.facade.ExtendedTimeFacade;
+import org.sakaiproject.tool.assessment.facade.PublishedAssessmentFacade;
 import org.sakaiproject.tool.assessment.integration.context.IntegrationContextFactory;
 import org.sakaiproject.tool.assessment.integration.helper.ifc.GradebookServiceHelper;
 import org.sakaiproject.tool.assessment.integration.helper.ifc.PublishingTargetHelper;
@@ -96,17 +92,24 @@ import org.sakaiproject.tool.assessment.shared.api.assessment.SecureDeliveryServ
 import org.sakaiproject.tool.assessment.ui.listener.author.SaveAssessmentAttachmentListener;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 import org.sakaiproject.tool.assessment.ui.listener.util.TimeUtil;
+import org.sakaiproject.tool.assessment.util.ExtendedTimeValidator;
 import org.sakaiproject.util.ResourceLoader;
 import org.sakaiproject.util.api.FormattedText;
-import org.springframework.web.context.ContextLoader;
-import org.springframework.web.context.WebApplicationContext;
+import org.sakaiproject.util.comparator.AlphaNumericComparator;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.web.context.support.SpringBeanAutowiringSupport;
+
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 /* For author: Assessment Settings backing bean.*/
 @Slf4j
 @ManagedBean(name="publishedSettings")
 @SessionScoped
-public class PublishedAssessmentSettingsBean implements Serializable {
-  
+public class PublishedAssessmentSettingsBean extends SpringBeanAutowiringSupport implements Serializable {
+
   private static final IntegrationContextFactory integrationContextFactory =
     IntegrationContextFactory.getInstance();
   private static final PublishingTargetHelper ptHelper =
@@ -237,29 +240,32 @@ public class PublishedAssessmentSettingsBean implements Serializable {
   private final String HIDDEN_FEEDBACK_DATE_FIELD = "feedbackDateISO8601";
   private final String HIDDEN_FEEDBACK_END_DATE_FIELD = "feedbackEndDateISO8601";
 
-  private ResourceLoader assessmentSettingMessages;
+  private static final ResourceLoader assessmentSettingMessages = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AssessmentSettingsMessages");
 
-  @Resource(name = "org.sakaiproject.service.gradebook.GradebookService")
+  @Autowired
+  @Qualifier("org.sakaiproject.service.gradebook.GradebookService")
   private GradebookService gradebookService;
-  @Resource(name = "org.sakaiproject.tool.api.SessionManager")
+
+  @Autowired
+  @Qualifier("org.sakaiproject.tool.api.SessionManager")
   private SessionManager sessionManager;
-  @Resource(name = "org.sakaiproject.tool.api.ToolManager")
+
+  @Autowired
+  @Qualifier("org.sakaiproject.tool.api.ToolManager")
   private ToolManager toolManager;
-  @Resource(name = "org.sakaiproject.util.api.FormattedText")
+
+  @Autowired
+  @Qualifier("org.sakaiproject.util.api.FormattedText")
   private FormattedText formattedText;
-  @Resource(name = "org.sakaiproject.time.api.UserTimeService")
+
+  @Autowired
+  @Qualifier("org.sakaiproject.time.api.UserTimeService")
   private UserTimeService userTimeService;
 
   /*
    * Creates a new AssessmentBean object.
    */
   public PublishedAssessmentSettingsBean() {
-    this(ContextLoader.getCurrentWebApplicationContext());
-  }
-
-  public PublishedAssessmentSettingsBean(WebApplicationContext context) {
-    context.getAutowireCapableBeanFactory().autowireBean(this);
-    this.assessmentSettingMessages = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AssessmentSettingsMessages");
   }
 
   public PublishedAssessmentFacade getAssessment() {
@@ -414,18 +420,8 @@ public class PublishedAssessmentSettingsBean implements Serializable {
       setIpAddresses(assessment);
 
       // publishedUrl
-      FacesContext context = FacesContext.getCurrentInstance();
-      ExternalContext extContext = context.getExternalContext();
-      // get the alias to the pub assessment
-      this.alias = assessment.getAssessmentMetaDataByLabel(
-          AssessmentMetaDataIfc.ALIAS);
-      String server = ( (javax.servlet.http.HttpServletRequest) extContext.
-                       getRequest()).getRequestURL().toString();
-      int index = server.indexOf(extContext.getRequestContextPath() + "/"); // "/samigo-app/"
-      server = server.substring(0, index);
-      String url = server + extContext.getRequestContextPath();
-      this.publishedUrl = url + "/servlet/Login?id=" + this.alias;
-      
+      this.publishedUrl = generatePublishedURL(assessment);
+
       // secure delivery
       SecureDeliveryServiceAPI secureDeliveryService = SamigoApiFactory.getInstance().getSecureDeliveryServiceAPI(); 
       this.secureDeliveryAvailable = secureDeliveryService.isSecureDeliveryAvaliable();
@@ -486,7 +482,7 @@ public class PublishedAssessmentSettingsBean implements Serializable {
       String gradebookUid = toolManager.getCurrentPlacement().getContext();
       categoryDefinitions = gradebookService.getCategoryDefinitions(gradebookUid);
 
-      selectList.add(new SelectItem("-1","Uncategorized")); // -1 for a cat id means unassigned
+      selectList.add(new SelectItem("-1", assessmentSettingMessages.getString("gradebook_uncategorized"))); // -1 for a cat id means unassigned
       for (CategoryDefinition categoryDefinition: categoryDefinitions) {
         selectList.add(new SelectItem(categoryDefinition.getId().toString(), categoryDefinition.getName()));
       }
@@ -1135,7 +1131,7 @@ public void setFeedbackComponentOption(String feedbackComponentOption) {
       return this.originalStartDateString;
     }
     else {
-      return userTimeService.dateTimeFormat(startDate, new ResourceLoader().getLocale(), DateFormat.MEDIUM);
+      return userTimeService.dateTimeFormat(startDate, assessmentSettingMessages.getLocale(), DateFormat.LONG);
     }
   }
 
@@ -1175,7 +1171,7 @@ public void setFeedbackComponentOption(String feedbackComponentOption) {
       return this.originalDueDateString;
     }
     else {
-      return userTimeService.dateTimeFormat(dueDate, new ResourceLoader().getLocale(), DateFormat.MEDIUM);
+      return userTimeService.dateTimeFormat(dueDate, assessmentSettingMessages.getLocale(), DateFormat.LONG);
     }
   }
 
@@ -1247,7 +1243,7 @@ public void setFeedbackComponentOption(String feedbackComponentOption) {
       return this.originalFeedbackDateString;
     }
     else {
-      return userTimeService.dateTimeFormat(feedbackDate, new ResourceLoader().getLocale(), DateFormat.MEDIUM);
+      return userTimeService.dateTimeFormat(feedbackDate, assessmentSettingMessages.getLocale(), DateFormat.LONG);
     }
   }
 
@@ -1286,7 +1282,7 @@ public void setFeedbackComponentOption(String feedbackComponentOption) {
       return this.originalFeedbackEndDateString;
     }
     else {
-      return userTimeService.dateTimeFormat(feedbackEndDate, new ResourceLoader().getLocale(), DateFormat.MEDIUM);
+      return userTimeService.dateTimeFormat(feedbackEndDate, assessmentSettingMessages.getLocale(), DateFormat.LONG);
     }
   }
 
@@ -1481,36 +1477,25 @@ public void setFeedbackComponentOption(String feedbackComponentOption) {
 	 * Returns all groups for site
 	 * @return
 	 */
-	public SelectItem[] getGroupsForSite() {
-		SelectItem[] groupSelectItems = new SelectItem[0];
-		TreeMap sortedSelectItems = new TreeMap();
-		Site site;
-		try {
-			site = SiteService.getSite(toolManager.getCurrentPlacement()
-					.getContext());
-			Collection groups = site.getGroups();
-			if (groups != null && groups.size() > 0) {
-				groupSelectItems = new SelectItem[groups.size()];
-				Iterator groupIter = groups.iterator();
-				while (groupIter.hasNext()) {
-					Group group = (Group) groupIter.next();
-					String title = group.getTitle();
-					String groupId = group.getId();
-	                String uniqueTitle = title + groupId;
-	                sortedSelectItems.put(uniqueTitle.toUpperCase(), new SelectItem(group.getId(), title));
-				}
-				Set keySet = sortedSelectItems.keySet();
-				groupIter = keySet.iterator();
-				int i = 0;
-				while (groupIter.hasNext()) {
-					groupSelectItems[i++] = (SelectItem) sortedSelectItems.get(groupIter.next());
-				}
-			}
-		} catch (IdUnusedException ex) {
-			// No site available
-		}
-		return groupSelectItems;
-	}
+  public SelectItem[] getGroupsForSite(){
+      SelectItem[] groupSelectItems = new SelectItem[0];
+      // This TreeMap will sort the group names nicely in AlphaNumeric order
+      SortedMap<String, SelectItem> sortedSelectItems = new TreeMap<>(new AlphaNumericComparator());
+      try {
+          Site site = SiteService.getSite(toolManager.getCurrentPlacement().getContext());
+          Collection<Group> groups = site.getGroups();
+          if (groups != null && groups.size() > 0) {
+              for (Group group : groups) {
+                  sortedSelectItems.put(group.getTitle(), new SelectItem(group.getId(), group.getTitle()));
+              }
+
+              groupSelectItems = sortedSelectItems.values().toArray(new SelectItem[0]);
+          }
+      } catch (IdUnusedException ex) {
+          log.warn("No site found while attempting to get groups, {}", ex.toString());
+      }
+      return groupSelectItems;
+  }
 
   public SelectItem[] getGroupsForSiteWithNoGroup() {
     SelectItem[] items = getGroupsForSite();
@@ -1823,12 +1808,8 @@ public void setFeedbackComponentOption(String feedbackComponentOption) {
   //Internal to be able to supress error easier
   public void addExtendedTime() {
       ExtendedTime entry = this.extendedTime;
-      if (StringUtils.isBlank(entry.getUser()) && StringUtils.isBlank(entry.getGroup())) {
-          FacesContext context = FacesContext.getCurrentInstance();
-          String errorString = ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.AssessmentSettingsMessages", "extended_time_user_and_group_set");
-          context.addMessage(null, new FacesMessage(FacesMessage.SEVERITY_WARN, errorString, null));
-      }
-      else {
+      FacesContext context = FacesContext.getCurrentInstance();
+      if (new ExtendedTimeValidator().validateEntry(entry, context, this)) {
           AssessmentAccessControlIfc accessControl = new AssessmentAccessControl();
           accessControl.setStartDate(this.startDate);
           accessControl.setDueDate(this.dueDate);
@@ -1895,5 +1876,18 @@ public void setFeedbackComponentOption(String feedbackComponentOption) {
 
   public void setCategorySelected(String categorySelected) {
     this.categorySelected = categorySelected;
+  }
+
+  public String generatePublishedURL(PublishedAssessmentFacade paf) {
+      FacesContext context = FacesContext.getCurrentInstance();
+      ExternalContext extContext = context.getExternalContext();
+
+      // get the alias to the pub assessment
+      this.alias = paf.getAssessmentMetaDataByLabel(AssessmentMetaDataIfc.ALIAS);
+      String server = ((javax.servlet.http.HttpServletRequest) extContext.getRequest()).getRequestURL().toString();
+      int index = server.indexOf(extContext.getRequestContextPath() + "/"); // "/samigo-app/"
+      server = server.substring(0, index);
+      String url = server + extContext.getRequestContextPath();
+      return url + "/servlet/Login?id=" + this.alias;
   }
 }

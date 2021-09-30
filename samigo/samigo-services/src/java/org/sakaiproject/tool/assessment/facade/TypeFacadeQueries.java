@@ -27,10 +27,10 @@ import java.util.List;
 import java.util.Map;
 
 import lombok.extern.slf4j.Slf4j;
-import org.hibernate.Query;
+import org.hibernate.query.Query;
 import org.osid.shared.Type;
-import org.springframework.orm.hibernate4.HibernateCallback;
-import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
+import org.springframework.orm.hibernate5.HibernateCallback;
+import org.springframework.orm.hibernate5.support.HibernateDaoSupport;
 
 import org.sakaiproject.tool.assessment.data.dao.shared.TypeD;
 import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
@@ -167,8 +167,8 @@ public class TypeFacadeQueries extends HibernateDaoSupport implements TypeFacade
     public List getListByAuthorityDomain(final String authority, final String domain) {
         HibernateCallback<List> hcb = session -> {
             Query q = session.createQuery("from TypeD as t where t.authority = :auth and t.domain = :domain");
-            q.setString("auth", authority);
-            q.setString("domain", domain);
+            q.setParameter("auth", authority);
+            q.setParameter("domain", domain);
             q.setCacheable(true);
             return q.list();
         };

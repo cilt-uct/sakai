@@ -98,6 +98,8 @@ public class podHomeBean {
 
 	private static final String POD_ADD_ISO_HIDDEN_DATE = "podAddISO8601";
 	private static final String POD_REVISE_ISO_HIDDEN_DATE = "podReviseISO8601";
+	
+	private Boolean fromPermissions = false;
 
 	
 	// error handling variables
@@ -505,44 +507,22 @@ public class podHomeBean {
 		return permissionMsg;
 	}
 
-	 /**
-	  * Constructs call to permissions helper and redirects to it to display
-	  * Podcasts folder permissions page.
-	  */ 
-	 public String processPermissions() {
-			ExternalContext context = FacesContext.getCurrentInstance().getExternalContext();
-			ToolSession toolSession = SessionManager.getCurrentToolSession();
-			
-			try {
-				String url = "sakai.permissions.helper.helper/tool?session." +
-								PermissionsHelper.DESCRIPTION + "=" + getPermissionsMessage() +
-								"&session." + PermissionsHelper.TARGET_REF + "=" + 
-								podcastService.getPodcastsFolderRef() + 
-								"&session." + PermissionsHelper.PREFIX + "=" + CONTENT +
-								"&session." + PermissionsHelper.ROLES_REF + "=" +
-								"/site/" + podcastService.getSiteId();
-				
-				// Set permission descriptions
-		          if (toolSession != null) {
-		        	  ResourceLoader pRb = new ResourceLoader("org.sakaiproject.api.podcasts.bundle.permissions");
-		        	  HashMap<String, String> pRbValues = new HashMap<String, String>();
-		        	  for (Iterator<Entry<String, String>> mapIter = pRb.entrySet().iterator();mapIter.hasNext();)
-		        	  {
-		        		  Entry<String, String> entry = mapIter.next();
-		        		  pRbValues.put(entry.getKey(), entry.getValue());
-		        	  }
-
-		        	  toolSession.setAttribute("permissionDescriptions", pRbValues); 
-		          }
-
-		        context.redirect(url);
-		    }
-			catch (IOException e) {
-		            throw new RuntimeException("Failed to redirect to helper", e);
-		    }
-		
+	/**
+	 * Constructs call to permissions helper and redirects to it to display
+	 * Podcasts folder permissions page.
+	 */ 
+	public String processPermissions() {
+		if(fromPermissions) {
+			fromPermissions = false;
 			return null;
 		}
+		fromPermissions = true;
+		return "podcastPermissions";
+	}
+	
+	public String getGroupReference() {
+		return podcastService.getPodcastsFolderRef();
+	}
 
 	/**
 	 * Used to inject the podcast service into this bean.
@@ -868,8 +848,7 @@ public class podHomeBean {
 	 */
 	public void podMainListener(ActionEvent e) {
 		FacesContext context = FacesContext.getCurrentInstance();
-		Map requestParams = context.getExternalContext()
-				.getRequestParameterMap();
+		Map requestParams = context.getExternalContext().getRequestParameterMap();
 		final String resourceId = (String) requestParams.get(RESOURCEID);
 
 		setPodcastSelected(resourceId);
@@ -1142,32 +1121,27 @@ public class podHomeBean {
 	 * @throws AbortProcessingException
 	 * 			Internal processing error attempting to set up BufferedInputStream
 	 */
-	public void processFileUpload(ValueChangeEvent event)
-			throws AbortProcessingException {
+	public void processFileUpload(ValueChangeEvent event) throws AbortProcessingException {
 		UIComponent component = event.getComponent();
-
 		Object newValue = event.getNewValue();
 		Object oldValue = event.getOldValue();
 		PhaseId phaseId = event.getPhaseId();
 		Object source = event.getSource();
-//		log.info("processFileUpload() event: " + event
-//				+ " component: " + component + " newValue: " + newValue
-//				+ " oldValue: " + oldValue + " phaseId: " + phaseId
-//				+ " source: " + source);
 
-		if (newValue instanceof String)
+		if (newValue instanceof String || newValue == null) {
 			return;
-		if (newValue == null)
-			return;
+		}
 
 		FileItem item = (FileItem) event.getNewValue();
 		String fieldName = item.getFieldName();
 		filename = FilenameUtils.getName(item.getName());
 		fileSize = item.getSize();
 		fileContentType = item.getContentType();
-//		log.info("processFileUpload(): item: " + item
-//				+ " fieldname: " + fieldName + " filename: " + filename
-//				+ " length: " + fileSize);
+		if (!fileContentType.startsWith("audio")) {
+			setErrorMessage("wrong_file_type");
+			return;
+		}
+		log.debug("processFileUpload(): item: {} fieldname: {} filename: {} length: {}", item, fieldName, filename, fileSize);
 
 		// Read the file as a stream (may be more memory-efficient)
 		try {
@@ -1800,6 +1774,13 @@ public class podHomeBean {
 	         rb = new ResourceLoader(bundle);
 	    }
 	    return rb.getString(key);
+	}
+
+	/**
+	 * Goes to the main screen
+	 */
+	public String processBackListen() {
+		return "cancel";
 	}
 
 }

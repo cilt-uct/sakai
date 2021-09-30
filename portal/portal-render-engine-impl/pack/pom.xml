@@ -5,7 +5,7 @@
     <parent>
         <artifactId>portal</artifactId>
         <groupId>org.sakaiproject.portal</groupId>
-        <version>21-SNAPSHOT</version>
+        <version>22-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
@@ -52,19 +52,6 @@
     </dependencies>
 
     <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <configuration>
-                    <excludes>
-                        <!-- SAK-14526 Disable tests as they might be testing 
-                            another system -->
-                        <exclude>**/AnonPortalTest.java</exclude>
-                    </excludes>
-                </configuration>
-            </plugin>
-        </plugins>
         <resources />
         <sourceDirectory>src/java</sourceDirectory>
         <testResources>

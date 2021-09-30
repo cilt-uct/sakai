@@ -26,11 +26,11 @@ import java.util.List;
 
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.HibernateException;
-import org.hibernate.Query;
+import org.hibernate.query.Query;
 import org.hibernate.ScrollableResults;
 import org.hibernate.Session;
-import org.springframework.orm.hibernate4.HibernateCallback;
-import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
+import org.springframework.orm.hibernate5.HibernateCallback;
+import org.springframework.orm.hibernate5.support.HibernateDaoSupport;
 
 @Slf4j
 public class PagingUtilQueries
@@ -44,10 +44,10 @@ public class PagingUtilQueries
 
     HibernateCallback callback = new HibernateCallback(){
        public Object doInHibernate(Session session) throws HibernateException{
-         ArrayList page = new ArrayList();
+         List page = new ArrayList<>();
          Query q = session.createQuery(queryString);
          if (value != null) {
-        	 q.setInteger(0, value.intValue());
+        	 q.setParameter(0, value.intValue());
          }
          ScrollableResults assessmentList = q.scroll();
          if (assessmentList.first()){ // check that result set is not empty

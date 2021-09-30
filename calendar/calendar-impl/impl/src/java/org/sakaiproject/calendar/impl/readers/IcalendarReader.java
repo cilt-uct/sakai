@@ -42,7 +42,6 @@ import net.fortuna.ical4j.model.Period;
 import net.fortuna.ical4j.model.PeriodList;
 import net.fortuna.ical4j.model.Property;
 import net.fortuna.ical4j.util.CompatibilityHints;
-import net.fortuna.ical4j.util.MapTimeZoneCache;
 
 /**
  * This class parses an import file from iCalendar.
@@ -50,7 +49,7 @@ import net.fortuna.ical4j.util.MapTimeZoneCache;
 @Slf4j
 public class IcalendarReader extends Reader
 {
-	private ResourceLoader rb = new ResourceLoader("calendar");
+	private static final ResourceLoader rb = new ResourceLoader("calendar");
 	private Map<String, String> defaultHeaderMap = getDefaultColumnMap();
 	
 	private static final String TITLE_PROPERTY_NAME = "Summary";
@@ -64,7 +63,6 @@ public class IcalendarReader extends Reader
 	public IcalendarReader()
 	{
 		super();
-		System.setProperty("net.fortuna.ical4j.timezone.cache.impl", MapTimeZoneCache.class.getName());
 	}
 
 	/* (non-Javadoc)

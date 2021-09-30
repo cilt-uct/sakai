@@ -4,7 +4,7 @@
     <parent>
         <artifactId>master</artifactId>
         <groupId>org.sakaiproject</groupId>
-        <version>21-SNAPSHOT</version>
+        <version>22-SNAPSHOT</version>
         <relativePath>master/pom.xml</relativePath>
     </parent>
 
@@ -51,21 +51,20 @@
                 <module>calendar</module>
                 <module>chat</module>
                 <module>citations</module>
-                <module>cmprovider</module>
                 <module>common</module>
                 <module>commons</module>
                 <module>config</module>
+                <module>conversations</module>
                 <module>cloud-content</module>
                 <module>cloud-storage</module>
                 <module>content</module>
                 <module>content-review</module>
-                <module>courier</module>
+                <module>dashboard</module>
                 <module>dav</module>
                 <module>delegatedaccess</module>
                 <module>deploy</module>
                 <module>edu-services</module>
                 <module>emailtemplateservice</module>
-                <module>endorsed</module>
                 <module>entitybroker</module>
                 <module>external-calendaring-service</module>
                 <module>feedback</module>
@@ -117,9 +116,11 @@
                 <module>usermembership</module>
                 <module>velocity</module>
                 <module>web</module>
+                <module>webapi</module>
                 <module>webcomponents</module>
                 <module>webjars</module>
                 <module>webservices</module>
+                <module>wicket</module>
             </modules>
         </profile>
         <profile>
@@ -145,12 +146,12 @@
                 <module>content</module>
                 <module>content-review</module>
                 <module>courier</module>
+                <module>dashboard</module>
                 <module>dav</module>
                 <module>delegatedaccess</module>
                 <module>deploy</module>
                 <module>edu-services</module>
                 <module>emailtemplateservice</module>
-                <module>endorsed</module>
                 <module>entitybroker</module>
                 <module>evaluation</module>
                 <module>external-calendaring-service</module>
@@ -203,8 +204,10 @@
                 <module>velocity</module>
                 <module>warehouse</module>
                 <module>web</module>
+                <module>webapi</module>
                 <module>webjars</module>
                 <module>webservices</module>
+                <module>wicket</module>
                 <module>yaft</module>
             </modules>
         </profile>

@@ -124,7 +124,7 @@ function doDisablePage(clickedLink) {
 				$(clickedLink).closest(".item_control_box").find(".item_control.hide_link").hide();
 				$(clickedLink).closest(".item_control_box").find(".item_control.show_link").show();
 				$(clickedLink).closest(".sortable_item").find(".item-locked-flag").show();
-				$(clickedLink).closest(".sortable_item").find(".item-hidden-flag").show();
+				$(clickedLink).closest(".sortable_item").find(".item-hidden-flag").hide();
 				$("#call-results").fadeIn('400');
 			}
 			else if (status == "fail") {
@@ -266,3 +266,15 @@ function addTool(draggable, manual) {
 	return false;
 }
 
+function grabbing(selectedItem) {
+	li = $(selectedItem).closest(".sortable_item");
+	$(li).removeClass("grab_cursor");
+	$(li).addClass("grabbing_cursor");
+}
+
+function grab(selectedItem) {
+	li = $(selectedItem).closest(".sortable_item");
+	$(li).removeClass("grabbing_cursor");
+	$(li).addClass("grab_cursor");
+}
+ 

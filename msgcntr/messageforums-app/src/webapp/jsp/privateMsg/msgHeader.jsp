@@ -79,6 +79,17 @@
 			  <h:outputLabel for="search_by_date"><h:outputText value="#{msgs.pvt_date_range}" /></h:outputLabel>
 			</h:panelGroup>
 			
+			<h:panelGroup styleClass="shorttext" id="pvt_selected_label">
+              <f:verbatim><span class="labeled"></f:verbatim>
+              <h:outputText value="#{msgs.pvt_label}"/>
+              <f:verbatim></span></f:verbatim>
+              <h:selectOneListbox size="1" id="selectedSearchLabel" value="#{PrivateMessagesTool.selectedSearchLabel}">
+                <f:selectItem itemValue="pvt_priority_normal" itemLabel="#{msgs.pvt_priority_normal}"/>
+                <f:selectItem itemValue="pvt_priority_low" itemLabel="#{msgs.pvt_priority_low}"/>
+                <f:selectItem itemValue="pvt_priority_high" itemLabel="#{msgs.pvt_priority_high}"/>
+              </h:selectOneListbox>
+            </h:panelGroup>
+
 			<h:panelGroup styleClass="shorttext" id="pvt_beg_date">
 			  <f:verbatim><span class="labeled"></f:verbatim>
 			  <h:outputText value="#{msgs.pvt_beg_date}"/>
@@ -91,7 +102,7 @@
 			  <h:outputText value="#{msgs.pvt_end_date}"/>
 			  <f:verbatim></span></f:verbatim>
 			  <h:inputText value="#{PrivateMessagesTool.searchToDateString}" size="20" id="searchToDate"/>
-			</h:panelGroup>	
+			</h:panelGroup>
 		
 
 		<f:verbatim></div></f:verbatim><h:outputText value=" " />
@@ -117,7 +128,7 @@
  		<h:graphicImage value="/../../library/image/silk/email_open.png" />
  		<h:outputText value=" #{msgs.cdfm_mark_check_as_read}" />
 	</h:commandLink> 	
-	<span class="ToggleBulkDisabled" style="color:grey">
+	<span class="ToggleBulkDisabled">
 		<h:graphicImage value="/../../library/image/silk/email_open.png" />
  		<h:outputText value=" #{msgs.cdfm_mark_check_as_read}" />
 	</span>
@@ -128,7 +139,7 @@
   		<h:graphicImage value="/../../library/image/silk/email.png" />
 		<h:outputText value=" #{msgs.cdfm_mark_check_as_unread}" />		
  	</h:commandLink>
- 	<span class="ToggleBulkDisabled" style="color:grey">
+ 	<span class="ToggleBulkDisabled">
 		<h:graphicImage value="/../../library/image/silk/email.png" />
 		<h:outputText value=" #{msgs.cdfm_mark_check_as_unread}" />	
 	</span>
@@ -146,7 +157,7 @@
  		<h:graphicImage value="/../../library/image/silk/email_delete.png" />
 		<h:outputText value=" #{msgs.cdfm_mark_check_as_delete}" />
   	</h:commandLink>
-  	<span class="ToggleBulkDisabled" style="color:grey">
+  	<span class="ToggleBulkDisabled">
 		<h:graphicImage value="/../../library/image/silk/email_delete.png" />
 		<h:outputText value=" #{msgs.cdfm_mark_check_as_delete}" />
 	</span>
@@ -157,7 +168,7 @@
 		<h:graphicImage value="/images/page_move.png" alt="#{msgs.msg_is_unread}"  />
 		<h:outputText value=" #{msgs.cdfm_mark_check_move_to_folder}" />
 	</h:commandLink>
-	<span class="ToggleBulkDisabled" style="color:grey">
+	<span class="ToggleBulkDisabled">
 		<h:graphicImage value="/images/page_move.png" alt="#{msgs.msg_is_unread}"  />
 		<h:outputText value=" #{msgs.cdfm_mark_check_move_to_folder}" />
 	</span>

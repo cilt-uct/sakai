@@ -23,9 +23,11 @@ package org.sakaiproject.tool.api;
 
 import java.io.File;
 import java.io.InputStream;
+import java.util.List;
 import java.util.Set;
 
 import org.sakaiproject.site.api.Site;
+import org.sakaiproject.site.api.SitePage;
 import org.sakaiproject.site.api.ToolConfiguration;
 import org.w3c.dom.Document;
 
@@ -36,6 +38,12 @@ import org.w3c.dom.Document;
  */
 public interface ToolManager
 {
+	/** Key in the ToolConfiguration Properties for checking what permissions a tool needs in order to be visible */
+	public static final String TOOLCONFIG_REQUIRED_PERMISSIONS = "functions.require";
+
+	/** Tool placement property for visibility */
+	public static final String PORTAL_VISIBLE = "sakai-portal:visible";
+
 	/**
 	 * Add this tool to the registry.
 	 * @param tool The Tool to register.
@@ -104,6 +112,28 @@ public interface ToolManager
 	void setResourceBundle (String toolId, String filename);
 
 	/**
+	 * Parses and returns the required permissions for a tool, as declared in the
+	 * tool xml, under the key "functions.require". This returns a list of all the
+	 * sets of required permissions. Each permission in a set is mandatory, but any
+	 * of the sets can be satisfied. Take a look at {@link #isVisible} for more in
+	 * depth information.
+	 *
+	 * @param config The ToolConfiguration for the tool in question
+	 * @return A list of the required sets of permissions.
+	 */
+	public List<Set<String>> getRequiredPermissions(ToolConfiguration config);
+
+	/**
+	 * Tests whether the first tool in the supplied page is visible to ANY
+	 * non-maintainer role. By non-maintainer, we mean a role without
+	 * SiteService.SECURE_UPDATE_SITE.
+	 *
+	 * @param page The site page in which to test the first tool
+	 * @return true, if any role in the site fulfils the required functions of the first tool. false otherwise.
+	 */
+ 	public boolean isFirstToolVisibleToAnyNonMaintainerRole(SitePage page);
+
+	/**
 	 * Check whether a tool is visible to the current user in this site,
 	 * depending on permissions required to view the tool.
 	 * 
@@ -160,7 +190,11 @@ public interface ToolManager
 	 * If the configuration tag is not set or is null, then all users see the tool.
 	 */
 	public boolean allowTool(Site site, Placement placement);
+
+	/**
+	 * Determine if the tool defined by the given tool ID is stealthed globally.
+	 * @param toolID the ID of the tool in question
+	 * @return true if the tool is stealthed globally; false otherwise
+	 */
+	public boolean isStealthed(String toolID);
 }
-
-
-

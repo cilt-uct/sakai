@@ -22,24 +22,54 @@
 package org.sakaiproject.site.impl;
 
 import java.io.PrintWriter;
-import java.util.*;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Observable;
+import java.util.Observer;
+import java.util.Properties;
+import java.util.Set;
+import java.util.Stack;
+import java.util.Vector;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import lombok.extern.slf4j.Slf4j;
-
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.routines.UrlValidator;
-
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-
-import org.sakaiproject.authz.api.*;
+import org.sakaiproject.authz.api.AuthzGroup;
+import org.sakaiproject.authz.api.AuthzGroupService;
+import org.sakaiproject.authz.api.AuthzPermissionException;
+import org.sakaiproject.authz.api.AuthzRealmLockException;
+import org.sakaiproject.authz.api.FunctionManager;
+import org.sakaiproject.authz.api.GroupNotDefinedException;
+import org.sakaiproject.authz.api.Member;
+import org.sakaiproject.authz.api.Role;
+import org.sakaiproject.authz.api.SecurityAdvisor;
+import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.component.cover.ComponentManager;
-import org.sakaiproject.entity.api.*;
+import org.sakaiproject.entity.api.ContextObserver;
+import org.sakaiproject.entity.api.Entity;
+import org.sakaiproject.entity.api.EntityAccessOverloadException;
+import org.sakaiproject.entity.api.EntityCopyrightException;
+import org.sakaiproject.entity.api.EntityManager;
+import org.sakaiproject.entity.api.EntityNotDefinedException;
+import org.sakaiproject.entity.api.EntityPermissionException;
+import org.sakaiproject.entity.api.EntityProducer;
+import org.sakaiproject.entity.api.HardDeleteAware;
+import org.sakaiproject.entity.api.HttpAccess;
+import org.sakaiproject.entity.api.Reference;
+import org.sakaiproject.entity.api.ResourceProperties;
+import org.sakaiproject.entity.api.ResourcePropertiesEdit;
 import org.sakaiproject.event.api.Event;
 import org.sakaiproject.event.api.EventTrackingService;
 import org.sakaiproject.event.api.Notification;
@@ -53,9 +83,16 @@ import org.sakaiproject.id.api.IdManager;
 import org.sakaiproject.javax.PagingPosition;
 import org.sakaiproject.memory.api.Cache;
 import org.sakaiproject.memory.api.MemoryService;
-import org.sakaiproject.site.api.*;
+import org.sakaiproject.site.api.AllowedJoinableAccount;
+import org.sakaiproject.site.api.Group;
+import org.sakaiproject.site.api.Site;
+import org.sakaiproject.site.api.SiteAdvisor;
+import org.sakaiproject.site.api.SitePage;
+import org.sakaiproject.site.api.SiteRemovalAdvisor;
+import org.sakaiproject.site.api.SiteService;
+import org.sakaiproject.site.api.SiteTitleAdvisor;
+import org.sakaiproject.site.api.ToolConfiguration;
 import org.sakaiproject.thread_local.api.ThreadLocalManager;
-import org.sakaiproject.time.api.Time;
 import org.sakaiproject.time.api.TimeService;
 import org.sakaiproject.tool.api.ActiveToolManager;
 import org.sakaiproject.tool.api.SessionManager;
@@ -63,7 +100,15 @@ import org.sakaiproject.user.api.PreferencesService;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserNotDefinedException;
-import org.sakaiproject.util.*;
+import org.sakaiproject.util.BasicConfigItem;
+import org.sakaiproject.util.Resource;
+import org.sakaiproject.util.ResourceLoader;
+import org.sakaiproject.util.StringUtil;
+import org.sakaiproject.util.Validator;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * <p>
@@ -254,7 +299,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 		String current = sessionManager().getCurrentSessionUserId();
 
 		site.m_lastModifiedUserId = current;
-		site.m_lastModifiedTime = timeService().newTime();
+		site.m_lastModifiedTime = Instant.now();
 	}
 
 	/**
@@ -267,9 +312,9 @@ public abstract class BaseSiteService implements SiteService, Observer
 		site.m_createdUserId = current;
 		site.m_lastModifiedUserId = current;
 
-		Time now = timeService().newTime();
-		site.m_createdTime = now;
-		site.m_lastModifiedTime = (Time) now.clone();
+
+		site.m_createdTime = Instant.now();
+		site.m_lastModifiedTime = Instant.now();
 	}
 
 	/**
@@ -450,7 +495,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 			// Get resource bundle
 			String resourceClass = serverConfigurationService().getString(RESOURCECLASS, DEFAULT_RESOURCECLASS);
 			String resourceBundle = serverConfigurationService().getString(RESOURCEBUNDLE, DEFAULT_RESOURCEBUNDLE);
-			rb = new Resource().getLoader(resourceClass, resourceBundle);
+			rb = Resource.getResourceLoader(resourceClass, resourceBundle);
 			
 			m_relativeAccessPoint = REFERENCE_ROOT;
 
@@ -1174,7 +1219,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 		}
 
 		String currentUser = sessionManager().getCurrentSessionUserId();
-		Time lastModifiedTime = timeService().newTime();
+		Instant lastModifiedTime = Instant.now();
 
 		// complete the edit
 		storage().unpublish(siteIds, currentUser, lastModifiedTime);
@@ -2511,9 +2556,10 @@ public abstract class BaseSiteService implements SiteService, Observer
 			Site site = getSite(ref.getId());
 			rv = rb.getFormattedMessage("entdsc.sit_usr", new Object[]{
 					site.getTitle() + " (" + site.getId() + ")",
-					site.getCreatedTime().toStringLocalFull(),
+					//TODO UserTimeService?
+					site.getCreatedDate(),
 					site.getCreatedBy().getDisplayName() + " (" + site.getCreatedBy().getDisplayId() + ")",
-					StringUtil.limit((site.getDescription() == null ? "" : site.getDescription()), 30)});
+					StringUtils.abbreviate((site.getDescription() == null ? "" : site.getDescription()), 30)});
 		}
 		catch (IdUnusedException e)
 		{
@@ -3044,7 +3090,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 		 * @param modifiedOn
 		 *        Time that the site is unpublished
 		 */
-		public void unpublish(List<String> siteIds, String modifiedBy, Time modifiedOn);
+		public void unpublish(List<String> siteIds, String modifiedBy, Instant modifiedOn);
 
 		/**
 		 * Writes site properties
@@ -3877,5 +3923,22 @@ public abstract class BaseSiteService implements SiteService, Observer
 		} else {
 			return SiteTitleValidationStatus.OK;
 		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public boolean isStealthedToolPresent(Site site, String toolID) {
+		List<SitePage> pages = site.getOrderedPages();
+		for (SitePage page : pages) {
+			List<ToolConfiguration> toolConfigs = page.getTools();
+			for (ToolConfiguration toolConfig : toolConfigs) {
+				if (toolConfig.getToolId().equals(toolID)) {
+					return true;
+				}
+			}
+		}
+
+		return false;
 	}
 }

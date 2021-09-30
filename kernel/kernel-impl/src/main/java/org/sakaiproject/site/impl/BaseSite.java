@@ -21,9 +21,10 @@
 
 package org.sakaiproject.site.impl;
 
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -33,18 +34,10 @@ import java.util.Set;
 import java.util.Stack;
 import java.util.Vector;
 
-import lombok.extern.slf4j.Slf4j;
-
 import org.apache.commons.lang3.StringUtils;
-
-import org.sakaiproject.authz.api.AuthzRealmLockException;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-
 import org.sakaiproject.authz.api.AuthzGroup;
 import org.sakaiproject.authz.api.AuthzGroupService;
+import org.sakaiproject.authz.api.AuthzRealmLockException;
 import org.sakaiproject.authz.api.GroupNotDefinedException;
 import org.sakaiproject.authz.api.Member;
 import org.sakaiproject.authz.api.Role;
@@ -59,7 +52,6 @@ import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SitePage;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.site.api.ToolConfiguration;
-import org.sakaiproject.time.api.Time;
 import org.sakaiproject.time.api.TimeService;
 import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.tool.api.SessionManager;
@@ -71,7 +63,13 @@ import org.sakaiproject.util.BaseResourcePropertiesEdit;
 import org.sakaiproject.util.Validator;
 import org.sakaiproject.util.Web;
 import org.sakaiproject.util.Xml;
+import org.sakaiproject.util.api.FormattedText;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
+import lombok.extern.slf4j.Slf4j;
 /**
  * <p>
  * BaseSite is a base implementation of the Site API Site.
@@ -90,7 +88,7 @@ public class BaseSite implements Site
 	protected boolean m_active = false;
 
 	/** List of groups deleted in this edit pass. */
-	protected Collection m_deletedGroups = new Vector();
+	protected Collection m_deletedGroups = new Vector<>();
 
 	/** The site id. */
 	protected String m_id = null;
@@ -156,10 +154,10 @@ public class BaseSite implements Site
 	protected String m_lastModifiedUserId = null;
 
 	/** The time created. */
-	protected Time m_createdTime = null;
+	protected Instant m_createdTime = null;
 
 	/** The time last modified. */
-	protected Time m_lastModifiedTime = null;
+	protected Instant m_lastModifiedTime = null;
 
 	/** The list of site groups for this site. */
 	protected ResourceVector m_groups = null;
@@ -171,7 +169,7 @@ public class BaseSite implements Site
 	protected AuthzGroup m_azg = null;
 
 	private AuthzGroupService authzGroupService;
-
+	private FormattedText formattedText;
 	/**
 	 * Set to true if we have changed our azg, so it need to be written back on
 	 * save.
@@ -205,7 +203,7 @@ public class BaseSite implements Site
 	 */
 	public BaseSite(BaseSiteService siteService, String id)
 	{
-		setupServices(siteService, sessionManager, userDirectoryService);
+		setupServices(siteService, sessionManager, userDirectoryService, formattedText);
 
 		m_id = id;
 
@@ -248,7 +246,7 @@ public class BaseSite implements Site
 	 */
 	public BaseSite(BaseSiteService siteService, Site other, boolean exact)
 	{
-		setupServices(siteService, sessionManager, userDirectoryService);
+		setupServices(siteService, sessionManager, userDirectoryService, formattedText);
 		BaseSite bOther = (BaseSite) other;
 		set(bOther, exact);
 	}
@@ -261,7 +259,7 @@ public class BaseSite implements Site
 	 */
 	public BaseSite(BaseSiteService siteService, Element el, TimeService timeService)
 	{
-		setupServices(siteService, sessionManager, userDirectoryService);
+		setupServices(siteService, sessionManager, userDirectoryService, formattedText);
 
 		// setup for properties
 		m_properties = new BaseResourcePropertiesEdit();
@@ -320,13 +318,13 @@ public class BaseSite implements Site
 		String time = StringUtils.trimToNull(el.getAttribute("created-time"));
 		if (time != null)
 		{
-			m_createdTime = timeService.newTimeGmt(time);
+			m_createdTime = Instant.ofEpochMilli(timeService.newTimeGmt(time).getTime());
 		}
 
 		time = StringUtils.trimToNull(el.getAttribute("modified-time"));
 		if (time != null)
 		{
-			m_lastModifiedTime = timeService.newTimeGmt(time);
+			m_lastModifiedTime = Instant.ofEpochMilli(timeService.newTimeGmt(time).getTime());
 		}
 
 		String customOrder = StringUtils.trimToNull(el.getAttribute("customPageOrdered"));
@@ -416,7 +414,7 @@ public class BaseSite implements Site
 				{
 					try
 					{
-						m_createdTime = m_properties.getTimeProperty("DAV:creationdate");
+						m_createdTime = m_properties.getInstantProperty("DAV:creationdate");
 					}
 					catch (Exception ignore)
 					{
@@ -427,7 +425,7 @@ public class BaseSite implements Site
 					try
 					{
 						m_lastModifiedTime = m_properties
-								.getTimeProperty("DAV:getlastmodified");
+								.getInstantProperty("DAV:getlastmodified");
 					}
 					catch (Exception ignore)
 					{
@@ -499,8 +497,8 @@ public class BaseSite implements Site
 	public BaseSite(BaseSiteService siteService, String id, String title, String type, String shortDesc,
 			String description, String iconUrl, String infoUrl, String skin,
 			boolean published, boolean joinable, boolean pubView, String joinRole,
-			boolean isSpecial, boolean isUser, String createdBy, Time createdOn,
-			String modifiedBy, Time modifiedOn, boolean customPageOrdered,
+			boolean isSpecial, boolean isUser, String createdBy, Instant createdOn,
+			String modifiedBy, Instant modifiedOn, boolean customPageOrdered,
 			boolean isSoftlyDeleted, Date softlyDeletedDate, SessionManager sessionManager, UserDirectoryService userDirectoryService)
 	{
 		// Since deferred description loading is the edge case, assume the description is real.
@@ -514,11 +512,11 @@ public class BaseSite implements Site
 	public BaseSite(BaseSiteService siteService, String id, String title, String type, String shortDesc,
 			String description, String iconUrl, String infoUrl, String skin,
 			boolean published, boolean joinable, boolean pubView, String joinRole,
-			boolean isSpecial, boolean isUser, String createdBy, Time createdOn,
-			String modifiedBy, Time modifiedOn, boolean customPageOrdered,
+			boolean isSpecial, boolean isUser, String createdBy, Instant createdOn,
+			String modifiedBy, Instant modifiedOn, boolean customPageOrdered,
 			boolean isSoftlyDeleted, Date softlyDeletedDate, boolean descriptionLoaded, SessionManager sessionManager, UserDirectoryService userDirectoryService)
 	{
-		setupServices(siteService, sessionManager, userDirectoryService);
+		setupServices(siteService, sessionManager, userDirectoryService, formattedText);
 
 		// setup for properties
 		m_properties = new BaseResourcePropertiesEdit();
@@ -570,7 +568,7 @@ public class BaseSite implements Site
 	 * @param userDirectoryService the UDS
 	 * @throws java.lang.IllegalStateException if the services would be null
 	 */
-	void setupServices(BaseSiteService siteService, SessionManager sessionManager, UserDirectoryService userDirectoryService) {
+	private void setupServices(BaseSiteService siteService, SessionManager sessionManager, UserDirectoryService userDirectoryService, FormattedText formattedText) {
 		this.siteService = siteService;
 		if (this.siteService == null) {
 			this.siteService = (BaseSiteService) ComponentManager.get(SiteService.class);
@@ -591,6 +589,14 @@ public class BaseSite implements Site
 			this.userDirectoryService = (UserDirectoryService) ComponentManager.get(UserDirectoryService.class);
 			if (this.userDirectoryService == null) {
 				throw new IllegalStateException("Cannot get the UserDirectoryService when constructing BaseSite");
+			}
+		}
+		
+		this.formattedText = formattedText;
+		if (this.formattedText == null) {
+			this.formattedText = ComponentManager.get(FormattedText.class);
+			if (this.formattedText == null) {
+				throw new IllegalStateException("Cannot get the FormattedText when constructing BaseSite");
 			}
 		}
 	}
@@ -667,9 +673,9 @@ public class BaseSite implements Site
 		}
 		m_lastModifiedUserId = other.m_lastModifiedUserId;
 		if (other.m_createdTime != null)
-			m_createdTime = (Time) other.m_createdTime.clone();
+			m_createdTime = other.m_createdTime;
 		if (other.m_lastModifiedTime != null)
-			m_lastModifiedTime = (Time) other.m_lastModifiedTime.clone();
+			m_lastModifiedTime = other.m_lastModifiedTime;
 
 		// We make sure to avoid triggering fetching by passing false to getProperties
 		m_properties = new BaseResourcePropertiesEdit();
@@ -827,29 +833,15 @@ public class BaseSite implements Site
 		}
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
-	public Time getCreatedTime()
-	{
-		return m_createdTime;
-	}
 
 	public Date getCreatedDate() {
-		return new Date(m_createdTime.getTime());
+		return m_createdTime != null ? new Date(m_createdTime.toEpochMilli()) : null;
 	}
 	
-	/**
-	 * {@inheritDoc}
-	 */
-	public Time getModifiedTime()
-	{
-		return m_lastModifiedTime;
+	public Date getModifiedDate() {
+		return m_lastModifiedTime != null ? new Date(m_lastModifiedTime.toEpochMilli()) : null;
 	}
 
-	public Date getModifiedDate() {
-		return new Date(m_lastModifiedTime.getTime());
-	}
 	/**
 	 * @inheritDoc
 	 */

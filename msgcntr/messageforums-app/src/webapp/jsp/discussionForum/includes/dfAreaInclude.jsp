@@ -1,5 +1,6 @@
 <!--jsp/discussionForum/area/dfAreaInclude.jsp-->
-<script type="module" src="/rubrics-service/webcomponents/rubric-association-requirements.js<h:outputText value="#{ForumTool.CDNQuery}" />"></script>
+<script src="/webcomponents/rubrics/sakai-rubrics-utils.js<h:outputText value="#{ForumTool.CDNQuery}" />"></script>
+<script type="module" src="/webcomponents/rubrics/rubric-association-requirements.js<h:outputText value="#{ForumTool.CDNQuery}" />"></script>
 <h:panelGrid columns="1" cellpadding="3" rendered="#{empty ForumTool.forums}">
 	<h:panelGroup>
 		<h:outputText styleClass="instruction noForumsMessage"  value="#{msgs.cdfm_forum_noforums} "  />
@@ -155,7 +156,7 @@ $(document).ready(function() {
 				<h:panelGroup>
 					<h:panelGroup layout="block" id="openLinkBlock" styleClass="toggleParent openLinkBlock #{ForumTool.alwaysShowFullDesc ? 'display-none' : ''}">
 						<a href="#" id="showMessage" class="toggle show">
-							<h:graphicImage url="/images/expand.gif" alt=""/>
+							<h:graphicImage url="/images/collapse.gif" alt=""/>
 							<h:outputText value=" #{msgs.cdfm_read_full_description}" />
 							<h:outputText value=" #{msgs.cdfm_and}" rendered="#{!empty forum.attachList}"/>
 							<h:outputText value=" #{msgs.cdfm_attach}" rendered="#{!empty forum.attachList}"/>
@@ -163,7 +164,7 @@ $(document).ready(function() {
 					</h:panelGroup>
 					<h:panelGroup layout="block" id="hideLinkBlock" styleClass="toggleParent hideLinkBlock #{ForumTool.alwaysShowFullDesc  ? '' : 'display-none'}">
 						<a href="#" id="hideMessage" class="toggle show">
-							<h:graphicImage url="/images/collapse.gif" alt="" />
+							<h:graphicImage url="/images/expand.gif" alt="" />
 							<h:outputText value=" #{msgs.cdfm_hide_full_description}"/>
 							<h:outputText value=" #{msgs.cdfm_and}" rendered="#{!empty forum.attachList}" />
 							<h:outputText value=" #{msgs.cdfm_attach}" rendered="#{!empty forum.attachList}"/>
@@ -313,7 +314,7 @@ $(document).ready(function() {
 							<h:panelGroup>
 								<h:panelGroup layout="block" id="openLinkBlock" styleClass="toggleParent openLinkBlock #{ForumTool.alwaysShowFullDesc ? 'display-none' : ''}">
 									<a href="#" id="showMessage" class="toggle show">
-										<h:graphicImage url="/images/expand.gif" alt=""/>
+										<h:graphicImage url="/images/collapse.gif" alt=""/>
 										<h:outputText value=" #{msgs.cdfm_read_full_description}" />
 										<h:outputText value=" #{msgs.cdfm_and}" rendered="#{!empty topic.attachList}"/>
 										<h:outputText value=" #{msgs.cdfm_attach}" rendered="#{!empty topic.attachList}"/>
@@ -321,7 +322,7 @@ $(document).ready(function() {
 								</h:panelGroup>
 								<h:panelGroup layout="block" id="hideLinkBlock" styleClass="toggleParent hideLinkBlock #{ForumTool.alwaysShowFullDesc ? '' : 'display-none'}">
 									<a href="#" id="hideMessage" class="toggle show">
-										<h:graphicImage url="/images/collapse.gif" alt="" />
+										<h:graphicImage url="/images/expand.gif" alt="" />
 										<h:outputText value=" #{msgs.cdfm_hide_full_description}"/>
 										<h:outputText value=" #{msgs.cdfm_and}" rendered="#{!empty topic.attachList}" />
 										<h:outputText value=" #{msgs.cdfm_attach}" rendered="#{!empty topic.attachList}"/>

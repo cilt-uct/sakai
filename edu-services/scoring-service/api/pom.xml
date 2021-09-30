@@ -5,7 +5,7 @@
     <parent>
         <artifactId>scoring-service</artifactId>
         <groupId>org.sakaiproject.edu-services.scoringservice</groupId>
-        <version>21-SNAPSHOT</version>
+        <version>22-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -19,10 +19,8 @@
     </properties>
     <dependencies>
         <dependency>
-          <groupId>${sakai.spring.groupId}</groupId>
-          <artifactId>${sakai.spring.artifactId}</artifactId>
-          <version>${sakai.spring.version}</version>
-          <scope>provided</scope>
+          <groupId>org.springframework</groupId>
+          <artifactId>spring-core</artifactId>
         </dependency>
     </dependencies>
     <build>

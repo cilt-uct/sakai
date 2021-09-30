@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.sakaiproject.assignment</groupId>
         <artifactId>assignment</artifactId>
-        <version>21-SNAPSHOT</version>
+        <version>22-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -56,5 +56,30 @@
         	<groupId>com.fasterxml.jackson.core</groupId>
         	<artifactId>jackson-annotations</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-tx</artifactId>
+        </dependency>
     </dependencies>
+    <build>
+        <resources>
+            <resource>
+                <directory>${basedir}/src/resources</directory>
+                <includes>
+                    <include>**/*.properties</include>
+                    <include>**/*.metaprops</include>
+                </includes>
+            </resource>
+            <resource>
+                <directory>${basedir}/src/java</directory>
+                <includes>
+                    <include>**/*.properties</include>
+                </includes>
+            </resource>
+        </resources>
+    </build>
 </project>

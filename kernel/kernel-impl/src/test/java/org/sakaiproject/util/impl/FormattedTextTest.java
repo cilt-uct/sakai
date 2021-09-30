@@ -68,7 +68,8 @@ public class FormattedTextTest {
         // instantiate the services we need for our test
         final IdManager idManager = new UuidV4IdComponent();
         final ThreadLocalManager threadLocalManager = new ThreadLocalComponent();
-        serverConfigurationService = new BasicConfigurationService(); // cannot use home or server methods
+        BasicConfigurationService basicConfigurationService = new BasicConfigurationService(); // cannot use home or server methods
+        basicConfigurationService.setThreadLocalManager(threadLocalManager);
         sessionManager = new SessionComponent() {
             @Override
             protected ToolManager toolManager() {
@@ -94,8 +95,9 @@ public class FormattedTextTest {
         };
 
         // add in the config so we can test it
-        serverConfigurationService.registerConfigItem(BasicConfigItem.makeDefaultedConfigItem("content.cleaner.errors.handling", "return", "FormattedTextTest"));
-        serverConfigurationService.registerConfigItem(BasicConfigItem.makeDefaultedConfigItem("content.cleaner.referrer-policy", "noopener", "FormattedTextTest"));
+        basicConfigurationService.registerConfigItem(BasicConfigItem.makeDefaultedConfigItem("content.cleaner.errors.handling", "return", "FormattedTextTest"));
+        basicConfigurationService.registerConfigItem(BasicConfigItem.makeDefaultedConfigItem("content.cleaner.referrer-policy", "noopener", "FormattedTextTest"));
+        serverConfigurationService = basicConfigurationService;
 
         ComponentManager.testingMode = true;
         // instantiate what we are testing
@@ -1160,6 +1162,56 @@ public class FormattedTextTest {
     }
     
     @Test
+    public void testSVGWithEmbeddedJavascript() {
+    	StringBuilder errorMessages = new StringBuilder();
+    	String svg = "<?xml version=\"1.0\" standalone=\"no\"?>\n" + 
+    			"<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n" + 
+    			"\n" + 
+    			"<svg version=\"1.1\" baseProfile=\"full\" xmlns=\"http://www.w3.org/2000/svg\">\n" + 
+    			"   <polygon id=\"triangle\" points=\"0,0 0,50 50,0\" fill=\"#009900\" stroke=\"#004400\"/>\n" + 
+    			"   <script type=\"text/javascript\">\n" + 
+    			"      alert(document.cookie);\n" + 
+    			"   </script>\n" + 
+    			"</svg>";
+    	
+    	String result = formattedText.processFormattedText(svg, errorMessages, Level.HIGH);
+    	Assert.assertFalse( result.contains("<script") );
+    }
+    
+    @Test
+    public void testH5PEmbed() {
+    	// SAK-43740: h5p.com will always have a sub-domain. h5p.org will never have a sub-domain.
+    	StringBuilder errorMessages = new StringBuilder();
+    	String h5pEmbed = "<iframe src=\"https://falcon.h5p.com/content/1290422385430463737/embed\" width=\"1088\" height=\"673\" frameborder=\"0\" allowfullscreen=\"allowfullscreen\" " + 
+    			"allow=\"geolocation *; microphone *; camera *; midi *; encrypted-media *\"></iframe><script src=\"https://falcon.h5p.com/js/h5p-resizer.js\" charset=\"UTF-8\"></script>";
+    	
+    	String result = formattedText.processFormattedText(h5pEmbed, errorMessages, Level.HIGH);
+    	Assert.assertFalse( result.contains("<script") );
+    	Assert.assertTrue( result.contains("falcon.h5p.com") );
+    	
+    	h5pEmbed = "<iframe src=\"https://h5p.com/content/1290422385430463737/embed\" width=\"1088\" height=\"673\" frameborder=\"0\" allowfullscreen=\"allowfullscreen\" " + 
+    			"allow=\"geolocation *; microphone *; camera *; midi *; encrypted-media *\"></iframe><script src=\"https://falcon.h5p.com/js/h5p-resizer.js\" charset=\"UTF-8\"></script>";
+    	
+    	result = formattedText.processFormattedText(h5pEmbed, errorMessages, Level.HIGH);
+    	Assert.assertFalse( result.contains("<script") );
+    	Assert.assertFalse( result.contains("h5p.com") );
+    	
+    	h5pEmbed = "<iframe src=\"https://h5p.org/content/1290422385430463737/embed\" width=\"1088\" height=\"673\" frameborder=\"0\" allowfullscreen=\"allowfullscreen\" " + 
+    			"allow=\"geolocation *; microphone *; camera *; midi *; encrypted-media *\"></iframe><script src=\"https://falcon.h5p.com/js/h5p-resizer.js\" charset=\"UTF-8\"></script>";
+    	
+    	result = formattedText.processFormattedText(h5pEmbed, errorMessages, Level.HIGH);
+    	Assert.assertFalse( result.contains("<script") );
+    	Assert.assertTrue( result.contains("h5p.org") );
+    	
+    	h5pEmbed = "<iframe src=\"https://EVILSITE-h5p.org/content/1290422385430463737/embed\" width=\"1088\" height=\"673\" frameborder=\"0\" allowfullscreen=\"allowfullscreen\" " + 
+    			"allow=\"geolocation *; microphone *; camera *; midi *; encrypted-media *\"></iframe><script src=\"https://falcon.h5p.com/js/h5p-resizer.js\" charset=\"UTF-8\"></script>";
+    	
+    	result = formattedText.processFormattedText(h5pEmbed, errorMessages, Level.HIGH);
+    	Assert.assertFalse( result.contains("<script") );
+    	Assert.assertFalse( result.contains("h5p.org") );
+    }
+    
+    @Test
     public void getHtmlBodyTest() {
     	String result;
         StringBuilder errorMessages = new StringBuilder();
@@ -1174,5 +1226,36 @@ public class FormattedTextTest {
         Assert.assertEquals("", result);
     }
 
+    @Test
+    public void testLocalIframeSrc() {
+        String url = serverConfigurationService.getServerUrl() + "/access/basiclti/site/0f68e843-1f0c-473d-b469-852a49ea0f05/content:62";
+        String contentItemIframe = "<iframe allowfullscreen=\"true\" class=\"lti-iframe\" height=\"402\" mozallowfullscreen=\"true\" src=\""
+                + url + "\" title=\"Test LTI Content Item Iframe\" webkitallowfullscreen=\"true\" width=\"608\"></iframe>";
+        StringBuilder errorMessages = new StringBuilder();
+        String result = formattedText.processFormattedText(contentItemIframe, errorMessages, Level.HIGH);
+        Assert.assertTrue(errorMessages.indexOf("src") == -1);
+        Assert.assertTrue(result.contains("src=\"" + url + "\""));
+    }
+
+    @Test
+    public void testEscapedHtmlBeingStripped() {
+    	String html = "<pre>\n" + 
+    			"1:  &lt;html&gt;\n" + 
+    			"2:    &lt;head&gt;\n" + 
+    			"3:      &lt;title&gt;Example&lt;/title&gt;\n" + 
+    			"4:    &lt;/head&gt;\n" + 
+    			"5:    &lt;body&gt;\n" + 
+    			"6:      &lt;ul id=&#39;myList&#39;&gt;\n" + 
+    			"7:        &lt;li&gt;Item 1&lt;/li&gt;\n" + 
+    			"8:      &lt;/ul&gt;\n" + 
+    			"9:    &lt;/body&gt;\n" + 
+    			"10: &lt;/html&gt;\n" + 
+    			"</pre>";
+    	
+    	String result = formattedText.stripHtmlFromText( html, false, true ).trim();
+    	Assert.assertTrue(result.contains("<html>"));
+    	result = formattedText.stripHtmlFromText( html, false, false ).trim();
+    	Assert.assertFalse(result.contains("<html>"));
+    }
 
 }

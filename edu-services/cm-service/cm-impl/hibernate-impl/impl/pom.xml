@@ -4,7 +4,7 @@
 	<parent>
 		<artifactId>course-management</artifactId>
 		<groupId>org.sakaiproject.edu-services.course-management</groupId>
-		<version>21-SNAPSHOT</version><!-- ProjectVersion -->
+		<version>22-SNAPSHOT</version><!-- ProjectVersion -->
 		<relativePath>../../../pom.xml</relativePath>
 	</parent>
 	<name>coursemanagement-hibernate-impl</name>
@@ -24,6 +24,10 @@
 			<groupId>org.sakaiproject.kernel</groupId>
 			<artifactId>sakai-kernel-api</artifactId>
 			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.sakaiproject.kernel</groupId>
+			<artifactId>sakai-kernel-util</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.sakaiproject.kernel</groupId>
@@ -133,7 +137,7 @@
 			<testResource>
 				<directory>${basedir}/src/test</directory>
 				<includes>
-					<include>log4j.properties</include>
+					<include>log4j2.properties</include>
 					<include>hibernate.test.properties</include>
 					<include>hibernate.dataload.properties</include>
 					<include>spring-test.xml</include>

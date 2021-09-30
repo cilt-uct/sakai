@@ -1,8 +1,8 @@
-<%@ taglib prefix="c" uri="http://java.sun.com/jstl/core" %>
-<%@ taglib prefix="fmt" uri="http://java.sun.com/jstl/fmt" %>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %> 
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%-- Custom tag library just for this tool --%>
 <%@ taglib uri="http://sakaiproject.org/jsf/help" prefix="help" %>
 <%
@@ -24,7 +24,7 @@
 <h:outputText value="#{msgs.searching}" />
 </div>  
 
-<h:form id="helpSearchForm">
+<h:form id="helpSearchForm" style="padding:6px">
       <%--<h:commandButton value="#{msgs.back}" onclick="history.back()" />
       <h:commandButton value="#{msgs.forward}" onclick="history.forward()" />      
       --%>
@@ -35,7 +35,7 @@
 	<%-- The h:panelGroup is so that the label/for/id doesn't generate an error and 
 	     the outputting of the h1 in verbatim is so that the title is put inbetween them. --%>
 	<h:panelGroup>
-		<f:verbatim><h1 style="font-size:1em;padding:0;margin:0"></f:verbatim>
+		<f:verbatim><h1 style="font-size:1em"></f:verbatim>
 			<h:outputText value="#{msgs.search}" />
 		<f:verbatim></h1></f:verbatim>
 		<h:outputLabel value="#{msgs.search}" for="searchField" styleClass="skip"/>

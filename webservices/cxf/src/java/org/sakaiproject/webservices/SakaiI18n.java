@@ -16,6 +16,7 @@
 package org.sakaiproject.webservices;
 
 import org.apache.commons.lang3.StringUtils;
+import org.sakaiproject.i18n.InternationalizedMessages;
 import org.sakaiproject.messagebundle.api.MessageBundleProperty;
 import org.sakaiproject.util.Resource;
 import org.sakaiproject.util.ResourceLoader;
@@ -75,10 +76,10 @@ public class SakaiI18n extends AbstractWebService {
             if (StringUtils.isNotBlank(resourceClass) && StringUtils.isNotBlank(resourceBundle)) {
                 try {
                     // load from spring using SakaiApplicationContext
-                    rb = new Resource().getLoader(resourceClass, resourceBundle);
+                    rb = Resource.getResourceLoader(resourceClass, resourceBundle);
                     if (rb == null) {
                         // load from shared lib
-                        rb = new ResourceLoader(resourceBundle, Class.forName(resourceClass).getClassLoader());
+                        rb = new ResourceLoader(resourceBundle, InternationalizedMessages.class.getClassLoader());
                     }
                 } catch (Exception e) {
                     log.debug("Could not load i18n bundle: [{}|{}|{}], {}", resourceBundle, resourceClass, locale, e.getMessage());

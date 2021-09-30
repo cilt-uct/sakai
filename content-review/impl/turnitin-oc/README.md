@@ -92,9 +92,9 @@ assignment.useContentReview=true
 
 # turnitin.report_gen_speed.setting (Optional)
 # Allows you to customize the list of report generation options when creating an assignment.
-# 0=Immediately
-# 1=Immediately and At Due Date
-# 2=At Due Date
+# 0=Immediately (reports are indexed and generated as soon as they are submitted, this does not re-check for collusion after all submissions are in)
+# 1=Immediately and At Due Date (reports are indexed and generated as soon as they are submitted and reports are regenerated after due date to check for collusion)
+# 2=At Due Date (submissions are indexed immediately to ensure checks for collusion happen when the reports are generated at due date)
 # default: turnitin.report_gen_speed.setting.count=3
 # turnitin.report_gen_speed.setting.1=0
 # turnitin.report_gen_speed.setting.2=1
@@ -113,7 +113,7 @@ assignment.useContentReview=true
 # NONE (Exclude no self matching submissions from Similarity Report)
 # GROUP (Exclude all self matching submissions in current assignment from Similarity Report)
 # GROUP_CONTEXT (Exclude all self matching submissions in current course from Similarity Report)
-# default: GROUP
+# default: GROUP_CONTEXT
 
 # turnitin.oc.may_view_submission_full_source.student
 # Allows you to customize the default student role permission for being able to view the full source for a matching student paper in the report.
@@ -151,6 +151,35 @@ assignment.useContentReview=true
 # default: null
 # example: turnitin.oc.may_view_match_submission_info.instructor=true
 
+#turnitin.oc.roles.[TII_ROLE].mapping=SAKAI_ROLE1,SAKAI_ROLE2...
+# Allows you to customize the default Sakai->Turnitin role mapping for user's default permission set when submitting and viewing reports.
+# Note: if a user is an admin, they will automatically be given the role Administrator. If you want to re-map administrators, clear out the mapping
+# like: turnitin.oc.roles.administrator.mapping="" and add "ADMINISTRATOR" to your desired role like: turnitin.oc.roles.instructor.mapping=ADMINISTRATOR,Faculty,Instructor,Mentor,Staff,maintain,Teaching Assistant.
+# Default:
+# turnitin.oc.roles.instructor.mapping=Faculty,Instructor,Mentor,Staff,maintain,Teaching Assistant
+# turnitin.oc.roles.learner.mapping=Learner,Student,access
+# turnitin.oc.roles.editor.mapping=""
+# turnitin.oc.roles.user.mapping=Alumni,guest,Member,Observer,Other
+# turnitin.oc.roles.applicant.mapping=ProspectiveStudent
+# turnitin.oc.roles.administrator.mapping=Administrator,Admin
+# turnitin.oc.roles.undefined.mapping=""
+
+#turnitin.oc.roles.[TII_ROLE].may_save_report_changes=true/false
+# Allows you to customize the default Turnitin setting for each role controlling whether a report can be saved when modified.
+# If true, any changes to the report, including changes that effect the score, will be saved and persist for all users.
+# Default:
+# turnitin.oc.roles.instructor.may_save_report_changes=true
+# turnitin.oc.roles.learner.may_save_report_changes=false
+# turnitin.oc.roles.editor.may_save_report_changes=false
+# turnitin.oc.roles.user.may_save_report_changes=false
+# turnitin.oc.roles.applicant.may_save_report_changes=false
+# turnitin.oc.roles.administrator.may_save_report_changes=true
+# turnitin.oc.roles.undefined.may_save_report_changes=false
+
+# contentreview.submission.eula.required=true/false
+# If true and if the provider requires a EULA, then the EULA must be accpeted before a user can submit
+# to an assignment. Otherwise, if set to false, a user can submit to an assignment without accepting the EULA.
+# Default: false
 
 # Please make sure the property 'version.sakai' is set correctly
 ```

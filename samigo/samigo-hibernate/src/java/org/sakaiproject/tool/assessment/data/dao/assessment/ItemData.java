@@ -19,7 +19,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -27,6 +26,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -34,7 +34,10 @@ import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.sakaiproject.tool.assessment.data.dao.shared.TypeD;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AnswerIfc;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.ItemAttachmentIfc;
@@ -50,7 +53,7 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 public class ItemData
     implements java.io.Serializable,
     ItemDataIfc, Comparable<ItemDataIfc> {
-  static ResourceBundle rb = ResourceBundle.getBundle("org.sakaiproject.tool.assessment.bundle.Messages");
+  private static final ResourceBundle rb = ResourceBundle.getBundle("org.sakaiproject.tool.assessment.bundle.Messages");
 
   private static final long serialVersionUID = 7526471155622776147L;
   public static final Long ADMIN = Long.valueOf(34);
@@ -84,7 +87,7 @@ public class ItemData
   private Double minScore;
   private String hash;
   private Long originalItemId;
-  @Getter @Setter private Boolean isExtraCredit;
+  @Getter private Boolean isExtraCredit = Boolean.FALSE;
 
   // for EMI question
   private String themeText;
@@ -206,6 +209,10 @@ public ItemData() {}
   public void setItemId(Long itemId) {
     this.itemId = itemId;
     setItemIdString(itemId.toString());
+  }
+
+  public void setIsExtraCredit(Boolean extraCredit) {
+    this.isExtraCredit = BooleanUtils.toBoolean(extraCredit);
   }
 
   public String getItemIdString() {
@@ -380,7 +387,7 @@ public ItemData() {}
 
   public Set<ItemTagIfc> getItemTagSet() { return itemTagSet; }
 
-  public void setItemTagSet(Set<ItemTagIfc> itemTagSet) { this.itemTagSet = itemTagSet; this.tagListToJsonString = convertTagListToJsonString(itemTagSet);}
+  public void setItemTagSet(Set<ItemTagIfc> itemTagSet) { this.itemTagSet = itemTagSet; }
 
   public Set<ItemFeedbackIfc> getItemFeedbackSet() {
     return itemFeedbackSet;
@@ -598,8 +605,12 @@ public ItemData() {}
        if (this.getTypeId().equals(TypeIfc.FILL_IN_BLANK))
        { //e.g. Roses are {}. Violets are {}. replace as
          // Roses are ____. Violets are ____.
-         text = text.replaceAll("\\{","__");
-         text = text.replaceAll("\\}","__");
+         String markers_pair = StringEscapeUtils.unescapeHtml4(this.getItemMetaDataByLabel("MARKERS_PAIR"));
+           if ((StringUtils.isEmpty(markers_pair)) || markers_pair.length() != 2) {
+             markers_pair = "{}";
+           }
+        text = text.replaceAll(Pattern.quote("" + markers_pair.charAt(0)), "__");
+        text = text.replaceAll(Pattern.quote("" + markers_pair.charAt(1)), "__");
        }
        
         if (this.getTypeId().equals(TypeIfc.FILL_IN_NUMERIC))
@@ -1118,10 +1129,6 @@ public ItemData() {}
   }
 
   public String getTagListToJsonString() {
-    return this.tagListToJsonString;
-  }
-
-  public void setTagListToJsonString(String tagListToJsonString) {
-    this.tagListToJsonString = tagListToJsonString;
+    return convertTagListToJsonString(itemTagSet);
   }
 }

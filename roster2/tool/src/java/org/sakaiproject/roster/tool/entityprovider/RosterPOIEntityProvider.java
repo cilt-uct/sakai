@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.collections4.CollectionUtils;
@@ -81,7 +82,6 @@ import lombok.extern.slf4j.Slf4j;
  *
  * @author d.b.robinson@lancaster.ac.uk
  */
-@Setter
 @Slf4j
 public class RosterPOIEntityProvider extends AbstractEntityProvider implements
 		AutoRegisterEntityProvider, ActionsExecutable, RequestAware {
@@ -135,7 +135,11 @@ public class RosterPOIEntityProvider extends AbstractEntityProvider implements
 	public final static String FILENAME_BYGROUP = "ByGroup";
 	public final static String FILENAME_UNGROUPED = "Ungrouped";
 
+	private static final ResourceLoader rl = new ResourceLoader("roster");
+
+	@Resource
 	private SakaiProxy sakaiProxy;
+	@Setter
 	private RequestGetter requestGetter;
 
 	/**
@@ -329,7 +333,6 @@ public class RosterPOIEntityProvider extends AbstractEntityProvider implements
 			}
 		}
 
-		final ResourceLoader rl = new ResourceLoader("roster");
 		final Workbook workBook = new XSSFWorkbook();
 		final Sheet rosterSheet = workBook.createSheet(rl.getString("facet_roster"));
 		addRowsToSheet(rosterSheet, rosterRows);
@@ -587,8 +590,6 @@ public class RosterPOIEntityProvider extends AbstractEntityProvider implements
 	private List<String> createColumnHeader(final String viewType, final String siteId, boolean isGroupsSheetHeader) {
 
 		final String userId = this.developerHelperService.getCurrentUserId();
-
-		final ResourceLoader rl = new ResourceLoader("roster");
 
 		final List<String> header = new ArrayList<>();
 		header.add(rl.getString("facet_name"));

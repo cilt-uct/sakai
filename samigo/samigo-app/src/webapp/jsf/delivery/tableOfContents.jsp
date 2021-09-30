@@ -89,9 +89,10 @@ function saveTime()
 <h:inputHidden id="showTimer" value="#{delivery.showTimer}"/>
 
 <h:panelGroup rendered="#{delivery.actionString=='previewAssessment'}">
- <f:verbatim><div class="previewMessage"></f:verbatim>
-     <h:outputText value="#{deliveryMessages.ass_preview}" />
-     <h:commandButton value="#{deliveryMessages.done}"
+ <f:verbatim><div class="sak-banner-info"></f:verbatim>
+     <h:outputText value="#{deliveryMessages.ass_preview}" escape="false" />
+     <h:commandButton value="#{deliveryMessages.exit_preview}"
+        styleClass="exitPreviewButton"
         action="#{person.cleanResourceIdListInPreview}"
         type="submit"
         onclick="return returnToHostUrl(\"#{delivery.selectURL}\");" />
@@ -159,7 +160,6 @@ function saveTime()
 <h:inputHidden id="outoftime" value="#{delivery.timeOutSubmission}"/>
 
     <h:messages styleClass="sak-banner-error" rendered="#{! empty facesContext.maximumSeverity}" layout="table"/>
-    <p style="margin-bottom:0"><h:outputText value="#{deliveryMessages.seeOrHide}" /> </p>
     <h:dataTable value="#{delivery.tableOfContents.partsContents}" var="part">
       <h:column>
       <h:panelGroup>
@@ -238,13 +238,10 @@ function saveTime()
 
 <!-- DONE BUTTON FOR PREVIEW ASSESSMENT ONLY -->
 <h:panelGroup rendered="#{delivery.actionString=='previewAssessment'}">
- <f:verbatim><div class="previewMessage"></f:verbatim>
-     <h:outputText value="#{deliveryMessages.ass_preview}" />
-     <h:commandButton value="#{deliveryMessages.done}"
-        action="#{person.cleanResourceIdListInPreview}"
-        type="submit"
-        onclick="return returnToHostUrl(\"#{delivery.selectURL}\");" />
- <f:verbatim></div></f:verbatim>
+  <h:commandButton value="#{deliveryMessages.exit_preview}"
+     action="#{person.cleanResourceIdListInPreview}"
+     type="submit"
+     onclick="return returnToHostUrl(\"#{delivery.selectURL}\");" />
 </h:panelGroup>
 
 </h:form>

@@ -3,14 +3,15 @@
 <p>$tlang.getString("content.redirecting")</p>
 <script type="text/javascript"><!--
 setTimeout('window.location="$autoLaunch";', 1500);
+setTimeout(function() { alert('$tlang.getString("error.submit.timeout")'); }, 5000);
 // -->
 </script>
 #else
 <script type="text/javascript" src="/library/js/headscripts.js"></script>
-<script>includeLatestJQuery('lti_content_config.vm');</script>
-<script type="text/javascript" src="/library/js/fontIconPicker/2.0.1-cs/jquery.fonticonpicker.min.js"></script>
-<link rel="stylesheet" type="text/css" href="/library/js/fontIconPicker/2.0.1-cs/css/jquery.fonticonpicker.css" />
-<link rel="stylesheet" type="text/css" href="/library/js/fontIconPicker/2.0.1-cs/themes/grey-theme/jquery.fonticonpicker.grey.min.css" />
+<script>
+	includeLatestJQuery('lti_content_config.vm');
+	includeWebjarLibrary('fontawesome-iconpicker');
+</script>
 	<h3>
 		$tlang.getString("content.put")
 	</h3>
@@ -43,6 +44,8 @@ $tlang.getString("need.tool.info")
 #end
                 <input type="hidden" name="sakai_csrf_token" value="$sakai_csrf_token" />
                 <input type="hidden" name="tool_id" value="$tool_id" />
+                <input type="hidden" name="flow" value="$flow" />
+                <input type="hidden" name="secretonly" value="$secretonly" />
 #if ( $returnUrl ) 
                 <input type="hidden" name="returnUrl" value="$returnUrl" />
 #end
@@ -62,6 +65,13 @@ $tlang.getString("content.admin.note")
 #if ( ! $isAdmin )
 <script>
 $(document).ready( function() {
+#if ( $secretonly == 'true' ) 
+    $("#description-input").hide();
+    $("#title-input").hide();
+    $("#pagetitle-input").hide();
+    $("#custom-input").hide();
+    $("#launch-input").hide();
+#end
         ## Does nothing if we are not in a frame of the right name
         setMainFrameHeight('sakai-basiclti-admin-iframe');
         $(window).resize( function() {

@@ -49,6 +49,7 @@ import org.jfree.chart.axis.CategoryLabelPositions;
 import org.jfree.chart.axis.DateAxis;
 import org.jfree.chart.axis.DateTickMarkPosition;
 import org.jfree.chart.axis.DateTickUnit;
+import org.jfree.chart.axis.DateTickUnitType;
 import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.labels.CategoryItemLabelGenerator;
 import org.jfree.chart.labels.StandardCategoryItemLabelGenerator;
@@ -73,8 +74,8 @@ import org.jfree.data.time.TimeSeries;
 import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.data.time.Week;
 import org.jfree.data.xy.IntervalXYDataset;
-import org.jfree.ui.RectangleInsets;
-import org.jfree.util.SortOrder;
+import org.jfree.chart.ui.RectangleInsets;
+import org.jfree.chart.util.SortOrder;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.db.api.SqlReader;
 import org.sakaiproject.db.api.SqlService;
@@ -149,7 +150,7 @@ public class ServerWideReportManagerImpl implements ServerWideReportManager
 				" sum(ACTIVITY_COUNT) as user_logins" +
 				" from " + getExternalDbNameAsPrefix() + "SST_SERVERSTATS" +
 				" where EVENT_ID='user.login'" +
-				" group by 1";
+				" group by period";
 		
 		String oracle = ("select TO_DATE(TO_CHAR(ACTIVITY_DATE, 'YYYY-MM-\"01\"'), 'YYYY-MM-DD') as period," +
 				" sum(ACTIVITY_COUNT) as user_logins" +
@@ -174,7 +175,9 @@ public class ServerWideReportManagerImpl implements ServerWideReportManager
 		});
 		
 		// remove the last entry, as it might not be a complete period
-		result.remove (result.size () - 1);
+		if (result.size() > 1) {
+			result.remove (result.size () - 1);
+		}
 
 		return result;
 	}
@@ -333,7 +336,9 @@ public class ServerWideReportManagerImpl implements ServerWideReportManager
 		});
 
 		// remove the last entry, as it might not be a complete period
-		result.remove (result.size () - 1);
+		if (result.size() > 1) {
+			result.remove (result.size () - 1);
+		}
 
 		return result;
 	}
@@ -348,7 +353,7 @@ public class ServerWideReportManagerImpl implements ServerWideReportManager
 				" count(distinct user_id) as unique_users" +
 				" from " + getExternalDbNameAsPrefix() + "SST_USERSTATS" +
 				" where LOGIN_DATE > DATE_SUB(CURDATE(), INTERVAL 90 DAY)" +
-				" group by 1";
+				" group by session_date";
 		
 		String oracle = "select trunc(LOGIN_DATE, 'DDD') as session_date, " +
 				" count(distinct user_id) as unique_users" +
@@ -373,7 +378,9 @@ public class ServerWideReportManagerImpl implements ServerWideReportManager
 		});
 
 		// remove the last entry, as it might not be a complete period
-		result.remove (result.size () - 1);
+		if (result.size() > 1) {
+			result.remove (result.size () - 1);
+		}
 
 		return result;
 	}
@@ -397,7 +404,7 @@ public class ServerWideReportManagerImpl implements ServerWideReportManager
 			mysql = mysql + "where ACTIVITY_DATE > DATE_SUB(CURDATE(), INTERVAL 90 DAY) ";
 		}
 		
-		mysql = mysql + "group by 1";
+		mysql = mysql + "group by event_period";
 		
 		
 		String oraclePeriod = "";
@@ -602,7 +609,9 @@ public class ServerWideReportManagerImpl implements ServerWideReportManager
 		});
 
 		// remove the last entry, as it might not be a complete period
-		result.remove (result.size () - 1);
+		if (result.size() > 1) {
+			result.remove (result.size () - 1);
+		}
 
 		return result;
 	}
@@ -735,8 +744,8 @@ public class ServerWideReportManagerImpl implements ServerWideReportManager
 			return null;
 		}
 
-		TimeSeries s1 = new TimeSeries (msgs.getString ("legend_logins"), Month.class);
-		TimeSeries s2 = new TimeSeries (msgs.getString ("legend_unique_logins"), Month.class);
+		TimeSeries s1 = new TimeSeries (msgs.getString ("legend_logins"));
+		TimeSeries s2 = new TimeSeries (msgs.getString ("legend_unique_logins"));
 		for (ServerWideStatsRecord login : totalLogins) {
 			Month month = new Month ((Date) login.get (0));
 			s1.add (month, (Long) login.get (1));
@@ -783,8 +792,8 @@ public class ServerWideReportManagerImpl implements ServerWideReportManager
 			return null;
 		}
 
-		TimeSeries s1 = new TimeSeries (msgs.getString ("legend_logins"),Week.class);
-		TimeSeries s2 = new TimeSeries (msgs.getString ("legend_unique_logins"), Week.class);
+		TimeSeries s1 = new TimeSeries (msgs.getString ("legend_logins"));
+		TimeSeries s2 = new TimeSeries (msgs.getString ("legend_unique_logins"));
 		
 		for (ServerWideStatsRecord login : totalLogins) {
 			Week week = new Week ((Date) login.get (0));
@@ -812,8 +821,8 @@ public class ServerWideReportManagerImpl implements ServerWideReportManager
 			return null;
 		}
 
-		TimeSeries s1 = new TimeSeries (msgs.getString ("legend_logins"),Day.class);
-		TimeSeries s2 = new TimeSeries (msgs.getString ("legend_unique_logins"), Day.class);
+		TimeSeries s1 = new TimeSeries (msgs.getString ("legend_logins"));
+		TimeSeries s2 = new TimeSeries (msgs.getString ("legend_unique_logins"));
 		for (ServerWideStatsRecord login : totalLogins) {
 			Day day = new Day ((Date) login.get (0));
 			s1.add (day, (Long) login.get (1));
@@ -843,8 +852,8 @@ public class ServerWideReportManagerImpl implements ServerWideReportManager
 		List<ServerWideStatsRecord> siteCreatedDeletedList = getSiteCreatedDeletedStats ("monthly");
 		TimeSeriesCollection dataset = new TimeSeriesCollection ();
 		if (siteCreatedDeletedList != null) {
-			TimeSeries s1 = new TimeSeries (msgs.getString ("legend_site_created"), Month.class);
-			TimeSeries s2 = new TimeSeries (msgs.getString ("legend_site_deleted"), Month.class);
+			TimeSeries s1 = new TimeSeries (msgs.getString ("legend_site_created"));
+			TimeSeries s2 = new TimeSeries (msgs.getString ("legend_site_deleted"));
 			
 			for (ServerWideStatsRecord login : siteCreatedDeletedList) {
 				Month month = new Month ((Date) login.get (0));
@@ -858,7 +867,7 @@ public class ServerWideReportManagerImpl implements ServerWideReportManager
 
 		List<ServerWideStatsRecord> newUserList = getNewUserStats ("monthly");
 		if (newUserList != null) {
-			TimeSeries s3 = new TimeSeries (msgs.getString ("legend_new_user"), Month.class);
+			TimeSeries s3 = new TimeSeries (msgs.getString ("legend_new_user"));
 			
 			for (ServerWideStatsRecord login : newUserList) {
 				Month month = new Month ((Date) login.get (0));
@@ -877,8 +886,8 @@ public class ServerWideReportManagerImpl implements ServerWideReportManager
 		List<ServerWideStatsRecord> siteCreatedDeletedList = getSiteCreatedDeletedStats ("weekly");
 		TimeSeriesCollection dataset = new TimeSeriesCollection ();
 		if (siteCreatedDeletedList != null) {
-			TimeSeries s1 = new TimeSeries (msgs.getString ("legend_site_created"), Week.class);
-			TimeSeries s2 = new TimeSeries (msgs.getString ("legend_site_deleted"), Week.class);
+			TimeSeries s1 = new TimeSeries (msgs.getString ("legend_site_created"));
+			TimeSeries s2 = new TimeSeries (msgs.getString ("legend_site_deleted"));
 			
 			for (ServerWideStatsRecord login : siteCreatedDeletedList) {
 				Week week = new Week ((Date) login.get (0));
@@ -892,7 +901,7 @@ public class ServerWideReportManagerImpl implements ServerWideReportManager
 
 		List<ServerWideStatsRecord> newUserList = getNewUserStats ("weekly");
 		if (newUserList != null) {
-			TimeSeries s3 = new TimeSeries (msgs.getString ("legend_new_user"), Week.class);
+			TimeSeries s3 = new TimeSeries (msgs.getString ("legend_new_user"));
 			
 			for (ServerWideStatsRecord login : newUserList) {
 				Week week = new Week ((Date) login.get (0));
@@ -910,8 +919,8 @@ public class ServerWideReportManagerImpl implements ServerWideReportManager
 		List<ServerWideStatsRecord> siteCreatedDeletedList = getSiteCreatedDeletedStats ("daily");
 		TimeSeriesCollection dataset = new TimeSeriesCollection ();
 		if (siteCreatedDeletedList != null) {
-			TimeSeries s1 = new TimeSeries (msgs.getString ("legend_site_created"), Day.class);
-			TimeSeries s2 = new TimeSeries (msgs.getString ("legend_site_deleted"), Day.class);
+			TimeSeries s1 = new TimeSeries (msgs.getString ("legend_site_created"));
+			TimeSeries s2 = new TimeSeries (msgs.getString ("legend_site_deleted"));
 			
 			for (ServerWideStatsRecord login : siteCreatedDeletedList) {
 				Day day = new Day ((Date) login.get (0));
@@ -925,7 +934,7 @@ public class ServerWideReportManagerImpl implements ServerWideReportManager
 
 		List<ServerWideStatsRecord> newUserList = getNewUserStats ("daily");
 		if (newUserList != null) {
-			TimeSeries s3 = new TimeSeries (msgs.getString ("legend_new_user"), Day.class);
+			TimeSeries s3 = new TimeSeries (msgs.getString ("legend_new_user"));
 			
 			for (ServerWideStatsRecord login : newUserList) {
 				Day day = new Day ((Date) login.get (0));
@@ -1051,7 +1060,7 @@ public class ServerWideReportManagerImpl implements ServerWideReportManager
 		renderer1.setSeriesPaint (0, Color.RED);
         
         DateAxis domainAxis = new DateAxis("");
-        domainAxis.setTickUnit (new DateTickUnit (DateTickUnit.MONTH, 1, new SimpleDateFormat ("yyyy-MM")));
+        domainAxis.setTickUnit (new DateTickUnit (DateTickUnitType.MONTH, 1, new SimpleDateFormat ("yyyy-MM")));
         domainAxis.setTickMarkPosition (DateTickMarkPosition.START);
         domainAxis.setVerticalTickLabels (true);
 		domainAxis.setLowerMargin (0.01);
@@ -1156,7 +1165,7 @@ public class ServerWideReportManagerImpl implements ServerWideReportManager
 		renderer1.setSeriesPaint(0, Color.BLUE);
         
         DateAxis domainAxis = new DateAxis("");
-        domainAxis.setTickUnit (new DateTickUnit (DateTickUnit.DAY, 7, new SimpleDateFormat ("yyyy-MM-dd")));
+        domainAxis.setTickUnit (new DateTickUnit (DateTickUnitType.DAY, 7, new SimpleDateFormat ("yyyy-MM-dd")));
         domainAxis.setTickMarkPosition (DateTickMarkPosition.START);
         domainAxis.setVerticalTickLabels (true);
 		domainAxis.setLowerMargin (0.01);
@@ -1243,7 +1252,7 @@ public class ServerWideReportManagerImpl implements ServerWideReportManager
 		
         
         DateAxis domainAxis = new DateAxis("");
-        domainAxis.setTickUnit (new DateTickUnit (DateTickUnit.DAY, 7, new SimpleDateFormat ("yyyy-MM-dd")));
+        domainAxis.setTickUnit (new DateTickUnit (DateTickUnitType.DAY, 7, new SimpleDateFormat ("yyyy-MM-dd")));
         domainAxis.setTickMarkPosition (DateTickMarkPosition.START);
         domainAxis.setVerticalTickLabels (true);
 		domainAxis.setLowerMargin (0.01);
@@ -1522,9 +1531,9 @@ public class ServerWideReportManagerImpl implements ServerWideReportManager
         CategoryItemLabelGenerator generator 
             = new StandardCategoryItemLabelGenerator("{1}", 
                     NumberFormat.getInstance(new ResourceLoader().getLocale()));
-        renderer.setBaseItemLabelGenerator(generator);
-        renderer.setBaseItemLabelFont(new Font("SansSerif", Font.PLAIN, 9));
-        renderer.setBaseItemLabelsVisible(true);
+        renderer.setDefaultItemLabelGenerator(generator);
+        renderer.setDefaultItemLabelFont(new Font("SansSerif", Font.PLAIN, 9));
+        renderer.setDefaultItemLabelsVisible(true);
         renderer.setItemMargin (0);
         renderer.setSeriesPaint (0, Color.BLUE);
         

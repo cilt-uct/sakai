@@ -18,24 +18,30 @@ import java.util.Locale;
 import java.util.List;
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
-
+import org.springframework.web.servlet.LocaleResolver;
+import org.springframework.web.servlet.support.RequestContextUtils;
 import org.sakaiproject.datemanager.api.DateManagerConstants;
 import org.sakaiproject.datemanager.api.DateManagerService;
 import org.sakaiproject.datemanager.api.model.DateManagerError;
 import org.sakaiproject.datemanager.api.model.DateManagerValidation;
+import org.sakaiproject.tool.api.SessionManager;
+import org.sakaiproject.user.api.PreferencesService;
 
 /**
  * MainController
@@ -47,16 +53,27 @@ import org.sakaiproject.datemanager.api.model.DateManagerValidation;
 @Controller
 public class MainController {
 
-	@Inject private DateManagerService dateManagerService;
+    @Inject private DateManagerService dateManagerService;
+	
+    @Autowired
+    private SessionManager sessionManager;
+    
+    @Autowired
+    private PreferencesService preferencesService;
 
-	@RequestMapping(value = {"/", "/index"}, method = RequestMethod.GET)
-	public String showIndex(@RequestParam(required=false) String code, Model model) {
-		Locale locale = dateManagerService.getUserLocale();
-		String siteId = dateManagerService.getCurrentSiteId();
+    @GetMapping(value = {"/", "/index"})
+    public String showIndex(@RequestParam(required=false) String code, Model model, HttpServletRequest request, HttpServletResponse response) {
 
-		model.addAttribute("userCountry", locale.getCountry());
-		model.addAttribute("userLanguage", locale.getLanguage());
-		model.addAttribute("userLocale", locale.toString());
+        String userId = sessionManager.getCurrentSessionUserId();
+        final Locale loc = StringUtils.isNotBlank(userId) ? preferencesService.getLocale(userId) : Locale.getDefault();
+        LocaleResolver localeResolver = RequestContextUtils.getLocaleResolver(request);
+        localeResolver.setLocale(request, response, loc);
+
+        String siteId = dateManagerService.getCurrentSiteId();
+
+		model.addAttribute("userCountry", loc.getCountry());
+		model.addAttribute("userLanguage", loc.getLanguage());
+		model.addAttribute("userLocale", loc.toString());
 
 		if (dateManagerService.currentSiteContainsTool(DateManagerConstants.COMMON_ID_ASSIGNMENTS)) {
 			JSONArray assignmentsJson = dateManagerService.getAssignmentsForContext(siteId);
@@ -161,33 +178,15 @@ public class MainController {
 					announcementValidate.getErrors().isEmpty() &&
 					lessonsValidate.getErrors().isEmpty()) {
 
-				if (assignmentValidate.getErrors().isEmpty()) {
-					dateManagerService.updateAssignments(assignmentValidate);
-				}
-				if (assessmentValidate.getErrors().isEmpty()) {
-					dateManagerService.updateAssessments(assessmentValidate);
-				}
-				if (gradebookValidate.getErrors().isEmpty()) {
-					dateManagerService.updateGradebookItems(gradebookValidate);
-				}
-				if (signupValidate.getErrors().isEmpty()) {
-					dateManagerService.updateSignupMeetings(signupValidate);
-				}
-				if (resourcesValidate.getErrors().isEmpty()) {
-					dateManagerService.updateResources(resourcesValidate);
-				}
-				if (calendarValidate.getErrors().isEmpty()) {
-					dateManagerService.updateCalendarEvents(calendarValidate);
-				}
-				if (forumValidate.getErrors().isEmpty()) {
-					dateManagerService.updateForums(forumValidate);
-				}
-				if (announcementValidate.getErrors().isEmpty()) {
-					dateManagerService.updateAnnouncements(announcementValidate);
-				}
-				if (lessonsValidate.getErrors().isEmpty()) {
-					dateManagerService.updateLessons(lessonsValidate);
-				}
+				dateManagerService.updateAssignments(assignmentValidate);
+				dateManagerService.updateAssessments(assessmentValidate);
+				dateManagerService.updateGradebookItems(gradebookValidate);
+				dateManagerService.updateSignupMeetings(signupValidate);
+				dateManagerService.updateResources(resourcesValidate);
+				dateManagerService.updateCalendarEvents(calendarValidate);
+				dateManagerService.updateForums(forumValidate);
+				dateManagerService.updateAnnouncements(announcementValidate);
+				dateManagerService.updateLessons(lessonsValidate);
 				jsonResponse = "{\"status\": \"OK\"}";
 			} else {
 				JSONArray errorReport = new JSONArray();
@@ -216,8 +215,8 @@ public class MainController {
 			}
 
 		} catch (Exception e) {
-			log.error("Error updating dates");
-			jsonResponse = String.format("{\"status\": \"ERROR\", \"error\": \"%s\"}", dateManagerService.getMessage("error.uncaught"));
+			log.error("Error updating dates", e);
+			jsonResponse = String.format("{\"status\": \"ERROR\", \"error\": \"%s\"}", dateManagerService.getMessage("error.uncaught") + ": " + e.getMessage());
 		}
 		return jsonResponse;
 	}

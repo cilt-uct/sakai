@@ -9,7 +9,7 @@
     <parent>
         <artifactId>entitybroker</artifactId>
         <groupId>org.sakaiproject</groupId>
-        <version>21-SNAPSHOT</version><!--entitybroker.version-->
+        <version>22-SNAPSHOT</version><!--entitybroker.version-->
     </parent>
     <dependencies>
         <!-- internal dependencies -->
@@ -85,7 +85,7 @@
              <testResource>
                  <directory>${basedir}/src/test</directory>
                  <includes>
-                    <include>log4j.properties</include>
+                    <include>log4j2.properties</include>
                  </includes>
              </testResource>
 	</testResources>

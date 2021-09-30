@@ -35,7 +35,8 @@ import org.sakaiproject.profile2.model.ProfilePrivacy;
 import org.sakaiproject.profile2.tool.components.ProfileImage;
 import org.sakaiproject.profile2.tool.models.FriendAction;
 import org.sakaiproject.profile2.util.ProfileConstants;
-import org.sakaiproject.util.FormattedText;
+import org.sakaiproject.util.api.FormattedText;
+
 
 public class AddFriend extends Panel {
 
@@ -53,6 +54,9 @@ public class AddFriend extends Panel {
 	@SpringBean(name="org.sakaiproject.profile2.logic.ProfileConnectionsLogic")
 	private ProfileConnectionsLogic connectionsLogic;
 	
+	@SpringBean(name="org.sakaiproject.util.api.FormattedText")
+	private FormattedText formattedText;
+	
 	/*
 	 * userX is the current user
 	 * userY is the user to add
@@ -62,7 +66,7 @@ public class AddFriend extends Panel {
         super(id);
 
         //get friendName
-        final String friendName = FormattedText.processFormattedText(sakaiProxy.getUserDisplayName(userY), new StringBuffer());
+        final String friendName = formattedText.processFormattedText(sakaiProxy.getUserDisplayName(userY), new StringBuffer());
         
         //window setup
 		window.setTitle(new StringResourceModel("title.friend.add", null, new Object[]{ friendName } )); 
@@ -101,7 +105,7 @@ public class AddFriend extends Panel {
 				if(connectionsLogic.isUserXFriendOfUserY(userX, userY)) {
 					text.setDefaultModel(new StringResourceModel("error.friend.already.confirmed", null, new Object[]{ friendName } ));
 					this.setEnabled(false);
-					this.add(new AttributeModifier("class", true, new Model("disabled")));
+					this.add(new AttributeModifier("class", new Model("disabled")));
 					target.add(text);
 					target.add(this);
 					return;
@@ -111,7 +115,7 @@ public class AddFriend extends Panel {
 				if(connectionsLogic.isFriendRequestPending(userX, userY)) {
 					text.setDefaultModel(new StringResourceModel("error.friend.already.pending", null, new Object[]{ friendName } ));
 					this.setEnabled(false);
-					this.add(new AttributeModifier("class", true, new Model("disabled")));
+					this.add(new AttributeModifier("class", new Model("disabled")));
 					target.add(text);
 					target.add(this);
 					return;
@@ -121,7 +125,7 @@ public class AddFriend extends Panel {
 				if(connectionsLogic.isFriendRequestPending(userY, userX)) {
 					text.setDefaultModel(new StringResourceModel("error.friend.already.pending", null, new Object[]{ friendName } ));
 					this.setEnabled(false);
-					this.add(new AttributeModifier("class", true, new Model("disabled")));
+					this.add(new AttributeModifier("class", new Model("disabled")));
 					target.add(text);
 					target.add(this);
 					return;
@@ -134,7 +138,7 @@ public class AddFriend extends Panel {
 				} else {
 					text.setDefaultModel(new StringResourceModel("error.friend.add.failed", null, new Object[]{ friendName } ));
 					this.setEnabled(false);
-					this.add(new AttributeModifier("class", true, new Model("disabled")));
+					this.add(new AttributeModifier("class", new Model("disabled")));
 					target.add(text);
 					target.add(this);
 					return;
@@ -143,7 +147,7 @@ public class AddFriend extends Panel {
             }
 		};
 		//submitButton.add(new FocusOnLoadBehaviour());
-		submitButton.add(new AttributeModifier("title", true, new StringResourceModel("accessibility.connection.add", null, new Object[]{ friendName } )));
+		submitButton.add(new AttributeModifier("title", new StringResourceModel("accessibility.connection.add", null, new Object[]{ friendName } )));
 		form.add(submitButton);
 		
         

@@ -196,7 +196,7 @@ public class RemoveAssessmentListener implements ActionListener
                     if (calendarDueDateEventId != null) {
                         calendarService.removeCalendarEvent(AgentFacade.getCurrentSiteId(), calendarDueDateEventId);
                     }
-                    EventTrackingService.post(EventTrackingService.newEvent(SamigoConstants.EVENT_PUBLISHED_ASSESSMENT_REMOVE, "siteId=" + AgentFacade.getCurrentSiteId() + ", publisedAssessmentId=" + assessmentId, true));
+                    EventTrackingService.post(EventTrackingService.newEvent(SamigoConstants.EVENT_PUBLISHED_ASSESSMENT_REMOVE, "siteId=" + AgentFacade.getCurrentSiteId() + ", publishedAssessmentId=" + assessmentId, true));
                     Iterator<PublishedSectionData> sectionDataIterator = publishedAssessment.getSectionSet().iterator();
                     while (sectionDataIterator.hasNext()) {
                         PublishedSectionData sectionData = sectionDataIterator.next();
@@ -270,12 +270,6 @@ public class RemoveAssessmentListener implements ActionListener
             return false;
         }
 
-        //Alert user to remove submissions associated with the assessment before delete the assessment
-        int submissions = publishedAssessmentService.getTotalSubmissionForEachAssessment(publishedAssessment.getPublishedAssessmentId().toString());
-        if (submissions > 0) {
-            author.setOutcome("removeError");
-            return false;
-        }
         return true;
     }
 

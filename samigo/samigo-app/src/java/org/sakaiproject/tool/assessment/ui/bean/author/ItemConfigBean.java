@@ -51,9 +51,7 @@ public class ItemConfigBean implements Serializable {
 
 	private static final long serialVersionUID = 5017545754149103817L;
 
-private static final String msgResource =
-    "org.sakaiproject.tool.assessment.bundle.AuthorMessages";
-
+  private static final ResourceLoader res = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AuthorMessages");
   @ManagedProperty(value="true")
   private boolean showFileUpload;
   @ManagedProperty(value="true")
@@ -440,12 +438,8 @@ private static final String msgResource =
     if (isSelectFromQuestionPool()) {
       list.add(new SelectItem("10", getResourceDisplayName("import_from_q")));
     }
-
-    List<SelectItem> ret = new ArrayList<SelectItem>();
-    ret.add(new SelectItem("", getResourceDisplayName("select_qtype")));
-    ret.addAll(list);
     
-    return ret;
+    return list;
   }
 
   /**
@@ -496,7 +490,6 @@ private static final String msgResource =
    */
   private String getResourceDisplayName(String resName)
   {
-	  ResourceLoader res = new ResourceLoader(msgResource);
     return res.getString(resName);
   }
 }

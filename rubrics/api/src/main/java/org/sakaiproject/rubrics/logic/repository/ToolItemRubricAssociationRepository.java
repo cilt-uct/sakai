@@ -23,11 +23,15 @@
 package org.sakaiproject.rubrics.logic.repository;
 
 import java.util.List;
+import java.util.Optional;
+
+import javax.persistence.QueryHint;
 
 import org.sakaiproject.rubrics.logic.model.ToolItemRubricAssociation;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.rest.core.annotation.RepositoryRestResource;
 import org.springframework.data.rest.core.annotation.RestResource;
@@ -38,7 +42,7 @@ public interface ToolItemRubricAssociationRepository extends MetadataRepository<
 
     @Override
     @PreAuthorize("canRead(#id, 'ToolItemRubricAssociation')")
-    ToolItemRubricAssociation findOne(Long id);
+    Optional<ToolItemRubricAssociation> findById(Long id);
 
     @Override
     @Query("select resource from ToolItemRubricAssociation resource where " + QUERY_CONTEXT_CONSTRAINT)
@@ -46,17 +50,33 @@ public interface ToolItemRubricAssociationRepository extends MetadataRepository<
 
     @Override
     @PreAuthorize("canWrite(#id, 'ToolItemRubricAssociation')")
-    void delete(Long id);
+    void deleteById(Long id);
 
-    @RestResource(path = "by-tool-item-ids", rel = "by-tool-item-ids")
-    @Query("select resource from ToolItemRubricAssociation resource where resource.toolId = :toolId and resource.itemId = :itemId and " + QUERY_CONTEXT_CONSTRAINT)
+    @RestResource(path = "by-tool-and-assignment", rel = "by-tool-and-assignment")
+    @Query("select resource from ToolItemRubricAssociation resource where " +
+                "resource.toolId = :toolId and " +
+                "resource.itemId = :itemId and " +
+                "active = 1 and " + QUERY_CONTEXT_CONSTRAINT)
+    @QueryHints(@QueryHint(name="org.hibernate.cacheable", value = "true"))
     List<ToolItemRubricAssociation> findByToolIdAndItemId(@Param("toolId") String toolId, @Param("itemId") String itemId);
 
-    @RestResource(path = "by-rubric-id", rel = "by-rubric-id")
-    @Query("select resource from ToolItemRubricAssociation resource where resource.rubricId = :rubricId ") //and " + QUERY_CONTEXT_CONSTRAINT)
+    @RestResource(path = "by-assignment-and-rubric", rel = "by-assignment-and-rubric")
+    @Query("select resource from ToolItemRubricAssociation resource where " +
+                "resource.itemId = :itemId and " +
+                "resource.rubricId = :rubricId and " + QUERY_CONTEXT_CONSTRAINT)
+    @QueryHints(@QueryHint(name="org.hibernate.cacheable", value = "true"))
+    List<ToolItemRubricAssociation> findByToolIdAndItemId(@Param("itemId") String itemId, @Param("rubricId") Long rubricId);
+
+    @RestResource(path = "by-rubric", rel = "by-rubric")
+    @Query("select resource from ToolItemRubricAssociation resource where " +
+                "resource.rubricId = :rubricId")
+    @QueryHints(@QueryHint(name="org.hibernate.cacheable", value = "true"))
     List<ToolItemRubricAssociation> findByRubricId(@Param("rubricId") Long rubricId);
 	
     @RestResource(path = "by-item-id-prefix", rel = "by-item-id-prefix")
-    @Query("select resource from ToolItemRubricAssociation resource where resource.toolId = :toolId and resource.itemId like CONCAT(:itemId, '%') and " + QUERY_CONTEXT_CONSTRAINT)
+    @Query("select resource from ToolItemRubricAssociation resource where " +
+                "resource.toolId = :toolId and " +
+                "resource.itemId like CONCAT(:itemId, '%') and " + QUERY_CONTEXT_CONSTRAINT)
+    @QueryHints(@QueryHint(name="org.hibernate.cacheable", value = "true"))
     List<ToolItemRubricAssociation> findByItemIdPrefix(@Param("toolId") String toolId, @Param("itemId") String itemId);
 }

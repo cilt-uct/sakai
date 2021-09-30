@@ -178,7 +178,7 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
    }
 
    
-	public boolean templateExists(String key, Locale locale) {
+	public boolean templateExists(String key, Locale locale, Long templateId) {
 		List<EmailTemplate> et;
 		Search search = new Search("key", key);
 		if (locale == null) {
@@ -186,7 +186,10 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
 		} else {
 			search.addRestriction( new Restriction("locale", locale.toString()));
 		}
-        et = dao.findBySearch(EmailTemplate.class, search);
+		if (templateId != null) {
+			search.addRestriction(new Restriction("id", templateId, Restriction.NOT_EQUALS));
+		}
+		et = dao.findBySearch(EmailTemplate.class, search);
 		return et != null && et.size() > 0;
 	}
    
@@ -221,7 +224,7 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
    public RenderedTemplate getRenderedTemplateForUser(String key, String userReference, Map<String, String> replacementValues) {
       log.debug("getRenderedTemplateForUser(" + key + ", " +userReference);
 	  String userId = developerHelperService.getUserIdFromRef(userReference);
-      Locale loc = getUserLocale(userId);
+      Locale loc = preferencesService.getLocale(userId);
       return getRenderedTemplate(key,loc,replacementValues);
    }
 
@@ -274,18 +277,6 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
 	   log.info("updated template: " + template.getId());
 	}
 
-   protected Locale getUserLocale(String userId) {
-	   Locale loc =  preferencesService.getLocale(userId);
-	   
-	   //the user has no preference set - get the system default
-	   if (loc == null ) {
-		 loc = Locale.getDefault();
-	   }
-
-	   return loc;
-   }
-
-
    protected String processText(String text, Map<String, String> values, String templateName) {
       return TextTemplateLogicUtils.processTextTemplate(text, values, templateName);
    }
@@ -336,7 +327,7 @@ public Map<EmailTemplateLocaleUsers, RenderedTemplate> getRenderedTemplates(
 	for (int i = 0; i < userReferences.size(); i++) {
 		String userReference = userReferences.get(i);
 		String userId = developerHelperService.getUserIdFromRef(userReference);
-        Locale loc = getUserLocale(userId);
+        Locale loc = preferencesService.getLocale(userId);
         //have we found this locale?
         if (! foundLocales.contains(loc)) {
         	//create a new EmailTemplateLocalUser

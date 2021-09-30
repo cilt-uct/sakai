@@ -37,19 +37,16 @@ $.widget( 'ui.dialog', $.ui.dialog, {
 } );
 
 function setupAccordion(iframId, isInstructor, msgs, openDataId){
-	var activeVar = false;
 	if($( "#accordion .group" ).children("h3").size() <= 1){
-		//since there is only 1 option, might was well keep it open instead of collapsed
-		activeVar = 0;
 		//only one to expand, might as well hide the expand all link:
 		$("#expandLink").closest("li").hide();
 	}
 	$( "#accordion > span > div" ).accordion({ 
 		header: "> div > h3",
-		active: activeVar,
+		active: false,
 		autoHeight: false,
 		collapsible: true,
-		heightStyle: "content",
+		heightStyle: "content"
 	});
 	if(isInstructor){
 		$( "#accordion span" ).sortable({
@@ -114,12 +111,14 @@ function setupAccordion(iframId, isInstructor, msgs, openDataId){
 				});
 			}, 500);
 		});
+	} else {
+		$( "#accordion span" ).sortable('disabled');
 	}
 	Array.prototype.move = function(from,to){
 		this.splice(to,0,this.splice(from,1)[0]);
 		return this;
 	};
-	if(activeVar === false && openDataId && openDataId !== ''){
+	if (openDataId && openDataId !== ''){
 		//instructor is working on this data item, keep it open and focused on when refreshing
 		$( "#accordion div[syllabusItem=" + openDataId + "].group .ui-accordion-header").click().focus();
 		
@@ -204,7 +203,11 @@ function postAjax(id, params, msgs){
 			d().reject();
 		},
 		success: function success(data){
-			showMessage(msgs.saved, true);
+			var successText = msgs.saved;
+			if (params.delete !== null && params.delete) {
+				successText = msgs.deleted;
+			}
+			showMessage(successText, true);
 			d().resolve();
 		}
 	});
@@ -314,7 +317,7 @@ function showConfirmDeleteAttachment(deleteButton, msgs, event){
 }
 
 function showConfirmDelete(deleteButton, msgs, event){
-	var title = $(deleteButton).parent().find(".editItemTitle").html();
+	var title = $(deleteButton).parent().parent().find(".syllabusItemTitle").html();
 	$('<div></div>').appendTo('body')
 		.html('<div><div class="messageError">' + msgs.noUndoWarning + '</div><h6>' + msgs.confirmDelete + " '" + title + "'?</h6></div>")
 		.dialog({
@@ -359,9 +362,6 @@ function doAddItemButtonClick( msgs, published )
 	}
 	else
 	{
-		// Fetch the content from the new wysiwyg
-		$("#newContentTextAreaWysiwyg").val($('#newContentDiv').find('iframe').contents().find('body').html()).change();
-
 		// ID doesn't exist since we're adding a new one
 		var id = "0";
 		params = 
@@ -370,7 +370,7 @@ function doAddItemButtonClick( msgs, published )
 			"title": title,
 			"siteId": $("#siteId").val(),
 			"published": published,
-			"content": $("#newContentTextAreaWysiwyg").val()
+			"content": CKEDITOR.instances.newContentTextAreaWysiwyg.getData()
 		};
 
 		postAjax( id, params, msgs );

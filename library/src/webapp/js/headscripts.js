@@ -19,11 +19,8 @@
  *
  **********************************************************************************/
  
-var courierRunning = false;
-
 var focus_path;
 
-var ignoreCourier = false;
 var doubleDeep = false;
 
 function inIframe () {
@@ -170,31 +167,6 @@ function buildQueryString(theFormName)
 	return qs;
 }
 
-// use if peer w/ courier, both frames in "top" parent
-function updCourier(dd, ic)
-{
-	if (ic) return;
-
-	if (dd)
-	{
-		parent.updCourier(false, false);
-		return;
-	}
-
-	if ((!courierRunning) && (window.courier) && (window.courier.location.toString().length > 1))
-	{
-		courierRunning = true;
-		window.courier.location.replace(window.courier.location);
-	}
-
-        // If we are using the httpCourier for event delivery, speed it up
-	try {
-		if ( httpCourier ) {
-		        setTimeout('httpCourier()', 200);
-		}
-	} catch (error) {}
-}
-
 function formSubmitOnEnter(field, event)
 {
 	var keycode;
@@ -283,7 +255,7 @@ function setMainFrameHeightWithMax(id, maxHeight)
 		clearTimeout(MainFrameHeightTimeOut);
 		MainFrameHeightTimeOut = false;
 	}
-	MainFrameHeightTimeOut = setTimeout("setMainFrameHeightNow('"+id+"',"+maxHeight+")", 1000);
+	MainFrameHeightTimeOut = setTimeout( function() { setMainFrameHeightNow(id, maxHeight); }, 1000);
 }
 
 function setMainFrameHeight(id)
@@ -513,26 +485,6 @@ function setFocus(elements)
 	}
 }
 
-// return the url with auto=courier appended, sensitive to ? already in there or not
-function addAuto(loc)
-{
-	var str = loc.toString();
-
-	// not if already there
-	if (str.indexOf("auto=courier") !== -1) return str;
-	
-	if (str.indexOf("?") !== -1)
-	{
-		// has a ?
-		return str + '&auto=courier';
-	}
-	else
-	{
-		// has no ?
-		return str + '?auto=courier';
-	}
-}
-
 function showNotif(item, button,formName)
 {
 	if (button !=="noBlock")
@@ -758,80 +710,147 @@ function includeLatestJQuery(where) {
 }
 
 function includeWebjarLibrary(library) {
-	var webjars = "/library/webjars/";
-	var ver = "";
-	var libraryVersion = "";
-	if ( typeof portal !== 'undefined' ) {
-		if (portal.pageScriptPath) psp = portal.pageScriptPath;
-		if (portal.pageWebjarsPath) webjars = portal.pageWebjarsPath;
-		if (portal.portalCDNQuery) ver = portal.portalCDNQuery;
+	let webjars = (window.portal && window.portal.pageWebjarsPath) ? window.portal.pageWebjarsPath : '/library/webjars/';
+	let ver = (window.portal && window.portal.portalCDNQuery) ? window.portal.portalCDNQuery : '';
+	let libraryVersion = '';
+	const jsReferences = [];
+	const cssReferences = [];
+
+	switch(library) {
+		case 'bootstrap':
+			libraryVersion = "3.3.7";
+			jsReferences.push('/js/bootstrap.min.js');
+			cssReferences.push('/css/bootstrap.min.css');
+			break;
+		case 'bootstrap-multiselect':
+			libraryVersion = "0.9.15";
+			jsReferences.push('/js/bootstrap-multiselect.js');
+			cssReferences.push('/css/bootstrap-multiselect.css');
+			break;
+		case 'jquery.tablesorter':
+			libraryVersion = "2.27.7";
+			jsReferences.push('/dist/js/jquery.tablesorter.combined.min.js');
+			jsReferences.push('/dist/js/extras/jquery.tablesorter.pager.min.js');
+			jsReferences.push('/dist/js/extras/jquery.metadata.min.js');
+			cssReferences.push('/dist/css/theme.jui.min.css');
+			cssReferences.push('/dist/css/jquery.tablesorter.pager.min.css');
+			break;
+		case 'featherlight':
+			libraryVersion = "1.7.14";
+			jsReferences.push('/release/featherlight.min.js');
+			cssReferences.push('/release/featherlight.min.css');
+			break;
+		case 'momentjs':
+			libraryVersion = "2.29.1";
+			jsReferences.push('/min/moment-with-locales.min.js');
+			break;
+		case 'dropzone':
+			libraryVersion = "5.9.2";
+			jsReferences.push('/dist/min/dropzone.min.js');
+			cssReferences.push('/dist/min/dropzone.min.css');
+			break;
+		case 'select2':
+			libraryVersion = "4.0.13";
+			jsReferences.push('/js/select2.full.min.js');
+			cssReferences.push('/css/select2.min.css');
+			break;
+		case 'datatables':
+			libraryVersion = "1.10.25";
+			jsReferences.push('/js/jquery.dataTables.min.js');
+			jsReferences.push('/js/dataTables.bootstrap.min.js');
+			cssReferences.push('/css/dataTables.bootstrap.min.css');
+			break;
+		case 'datatables-rowgroup':
+			libraryVersion = "1.1.3";
+			// This webjar has a different convention without version and library name.
+			document.write(`<script src="${webjars}/datatables.net-rowgroup/js/dataTables.rowGroup.min.js${ver}"></script>`);
+			break;
+		case 'ckeditor4':
+			libraryVersion = "4.16.1";
+			jsReferences.push('/ckeditor.js');
+			break;
+		case 'awesomplete':
+			libraryVersion = "1.1.5";
+			jsReferences.push('/awesomplete.min.js');
+			cssReferences.push('/awesomplete.css');
+			break;
+		case 'mathjs':
+			libraryVersion = "9.4.4";
+			jsReferences.push('/lib/browser/math.js');
+			break;
+		case 'handlebars':
+			libraryVersion = "4.0.6";
+			jsReferences.push('/handlebars.runtime.min.js');
+			break;
+		case 'qtip2':
+			libraryVersion = "3.0.3-1";
+			jsReferences.push('/jquery.qtip.min.js');
+			cssReferences.push('/jquery.qtip.min.css');
+			break;
+		case 'jstree':
+			libraryVersion = "3.3.11";
+			jsReferences.push('/jstree.min.js');
+			cssReferences.push('/themes/default/style.min.css');
+			break;
+		case 'multiselect-two-sides':
+			libraryVersion = "2.5.5";
+			jsReferences.push('/dist/js/multiselect.min.js');
+			break;
+		case 'fontawesome-iconpicker':
+			libraryVersion = "1.4.1";
+			jsReferences.push('/dist/js/fontawesome-iconpicker.min.js');
+			cssReferences.push('/dist/css/fontawesome-iconpicker.min.css');
+			break;
+		case 'flatpickr':
+			libraryVersion = "4.6.9";
+			jsReferences.push('/dist/flatpickr.min.js');
+			jsReferences.push('/dist/plugins/confirmDate/confirmDate.js');
+			cssReferences.push('/dist/flatpickr.min.css');
+			cssReferences.push('/dist/plugins/confirmDate/confirmDate.css');
+			if (window.portal) {
+				let lang = window.portal.locale.split("-")[0];
+				if (lang !== "en") {
+					jsReferences.push(`/dist/l10n/${lang}.js'`);
+				}
+			}
+			break;
+		case 'fullcalendar':
+			libraryVersion = "5.9.0";
+			jsReferences.push('/main.min.js');
+			jsReferences.push('/locales-all.min.js');
+			cssReferences.push('/main.min.css');
+			break;
+		case 'recordrtc':
+			libraryVersion = "5.6.2";
+			jsReferences.push('/RecordRTC.js');
+			break;
+		case 'webrtc-adapter':
+			libraryVersion = "8.0.0";
+			jsReferences.push('/out/adapter.js');
+			break;
+		case 'video.js':
+			libraryVersion = "7.14.0";
+			jsReferences.push('/dist/video.min.js');
+			cssReferences.push('/dist/video-js.css');
+			break;
+		case 'wavesurfer.js':
+			libraryVersion = "5.1.0";
+			jsReferences.push('/dist/wavesurfer.min.js');
+			break;
+		default:
+			if (library.endsWith(".js")) {
+				document.write('\x3Cscript src="' + webjars + library + ver + '">' + '\x3C/script>');
+			} else if (library.endsWith(".css")) {
+				document.write('\x3Clink rel="stylesheet" type="text/css" href="' + webjars + library + ver + '" />');
+			}
 	}
 
-	if (library == 'bootstrap') {
-		libraryVersion = "3.3.7";
-		document.write('\x3Cscript src="' + webjars + 'bootstrap/' + libraryVersion + '/js/bootstrap.min.js' + ver + '">' + '\x3C/script>');
-		document.write('\x3Clink rel="stylesheet" href="' + webjars + 'bootstrap/' + libraryVersion + '/css/bootstrap.min.css' + ver + '"/>');
-	} else if (library == 'bootstrap-multiselect') {
-    libraryVersion = "0.9.15";
-    document.write('\x3Cscript src="' + webjars + 'bootstrap-multiselect/' + libraryVersion + '/js/bootstrap-multiselect.js' + ver + '">' + '\x3C/script>');
-    document.write('\x3Clink rel="stylesheet" href="' + webjars + 'bootstrap-multiselect/' + libraryVersion + '/css/bootstrap-multiselect.css' + ver + '"/>');
-  } else if (library == 'jquery.tablesorter') {
-		libraryVersion = "2.27.7";
-    document.write('\x3Cscript src="' + webjars + 'jquery.tablesorter/' + libraryVersion + '/dist/js/jquery.tablesorter.combined.min.js' + ver + '">' + '\x3C/script>');
-    document.write('\x3Cscript src="' + webjars + 'jquery.tablesorter/' + libraryVersion + '/dist/js/extras/jquery.tablesorter.pager.min.js' + ver + '">' + '\x3C/script>');
-    document.write('\x3Cscript src="' + webjars + 'jquery.tablesorter/' + libraryVersion + '/dist/js/extras/jquery.metadata.min.js' + ver + '">' + '\x3C/script>');
-    document.write('\x3Clink rel="stylesheet" href="' + webjars + 'jquery.tablesorter/' + libraryVersion + '/dist/css/theme.jui.min.css' + ver + '"/>');
-    document.write('\x3Clink rel="stylesheet" href="' + webjars + 'jquery.tablesorter/' + libraryVersion + '/dist/css/jquery.tablesorter.pager.min.css' + ver + '"/>');
-	} else if (library == 'featherlight') {
-		libraryVersion = "1.7.13";
-		document.write('\x3Cscript src="' + webjars + 'featherlight/src/featherlight.js' + ver + '">' + '\x3C/script>');
-		document.write('\x3Clink rel="stylesheet" href="' + webjars + 'featherlight/src/featherlight.css' + ver + '"/>');
-	} else if (library == 'momentjs') {
-		libraryVersion = "2.24.0";
-		document.write('\x3Cscript src="' + webjars + 'momentjs/' + libraryVersion + '/min/moment-with-locales.min.js' + ver + '">' + '\x3C/script>');
-	} else if (library == 'dropzone') {
-		libraryVersion = "5.5.0";
-		document.write('\x3Cscript src="' + webjars + 'dropzone/'+libraryVersion + '/min/dropzone.min.js' + ver + '">' + '\x3C/script>');
-		document.write('\x3Clink rel="stylesheet" href="' + webjars + 'dropzone/'+libraryVersion + '/min/dropzone.min.css' + ver + '"/>');
-	} else if (library == 'select2') {
-		libraryVersion = "4.0.12";
-		document.write('\x3Cscript src="' + webjars + 'select2/' + libraryVersion + '/js/select2.full.min.js' + ver + '">' + '\x3C/script>');
-		document.write('\x3Clink rel="stylesheet" href="' + webjars + 'select2/' + libraryVersion + '/css/select2.min.css' + ver + '"/>');
-	} else if (library == 'datatables') {
-		libraryVersion = "1.10.20";
-		document.write('\x3Cscript src="' + webjars + 'datatables/' + libraryVersion + '/js/jquery.dataTables.min.js' + ver + '">' + '\x3C/script>');
-	} else if (library == 'ckeditor') {
-		libraryVersion = "4.13.1";
-		document.write('\x3Cscript src="' + webjars + 'ckeditor/' + libraryVersion + '/full/ckeditor.js' + ver + '">' + '\x3C/script>');
-	} else if (library == 'awesomplete') {
-		libraryVersion = "1.1.5";
-		document.write('\x3Cscript src="' + webjars + 'awesomplete/' + libraryVersion + '/awesomplete.min.js' + ver + '">' + '\x3C/script>');
-		document.write('\x3Clink rel="stylesheet" href="' + webjars + 'awesomplete/' + libraryVersion + '/awesomplete.css' + ver + '"/>');
-	} else if (library == 'mathjs') {
-		libraryVersion = "6.5.0";
-		document.write('\x3Cscript src="' + webjars + 'mathjs/' + libraryVersion + '/dist/math.min.js' + ver + '">' + '\x3C/script>');
-	} else if (library == 'handlebars') {
-		libraryVersion = "4.0.6";
-		document.write('\x3Cscript src="' + webjars + 'handlebars/' + libraryVersion + '/handlebars.runtime.min.js' + ver + '">' + '\x3C/script>');
-	} else if (library == 'qtip2') {
-		libraryVersion = "3.0.3";
-		document.write('\x3Cscript src="' + webjars + 'qtip2/' + libraryVersion + '/jquery.qtip.min.js' + ver + '">' + '\x3C/script>');
-		document.write('\x3Clink rel="stylesheet" href="' + webjars + 'qtip2/' + libraryVersion + '/jquery.qtip.min.css' + ver + '"/>');
-	} else if (library == 'jstree') {
-		libraryVersion = "3.3.8";
-		document.write('\x3Cscript src="' + webjars + 'jstree/' + libraryVersion + '/jstree.min.js' + ver + '">' + '\x3C/script>');
-		document.write('\x3Clink rel="stylesheet" href="' + webjars + 'jstree/' + libraryVersion + '/themes/default/style.min.css' + ver + '"/>');
-	} else if (library == 'multiselect-two-sides') {
-		libraryVersion = "2.5.5";
-		document.write('\x3Cscript src="' + webjars + 'multiselect-two-sides/' + libraryVersion + '/dist/js/multiselect.min.js' + ver + '">' + '\x3C/script>');
-	} else {
-		if (library.endsWith(".js")) {
-			document.write('\x3Cscript src="' + webjars + library + ver + '">' + '\x3C/script>');
-		} else if (library.endsWith(".css")) {
-			document.write('\x3Clink rel="stylesheet" type="text/css" href="' + webjars + library + ver + '" />');
-		}
-	}
-	window.console && console.log('Adding webjar library '+library+', version '+libraryVersion);
+	window.console && console.log(`Adding webjar library ${library}, version ${libraryVersion}`);
+
+	// Add all the library references to the DOM.
+	jsReferences.forEach( (jsReference) => document.write(`<script src="${webjars}/${library}/${libraryVersion}${jsReference}${ver}"></script>`));
+	cssReferences.forEach( (cssReference) => document.write(`<link rel="stylesheet" href="${webjars}/${library}/${libraryVersion}${cssReference}${ver}"></link>`));
+
 }
 
 // Return the breakpoint between small and medium sized displays - for morpheus currently the same
@@ -839,28 +858,24 @@ function portalSmallBreakPoint() { return 800; }
 function portalMediumBreakPoint() { return 800; } 
 
 // A function to add an icon picker to a text input field
-var fontawesome_icons = false;
 function fontawesome_icon_picker(selector) {
-	if ( fontawesome_icons ) { // Already loaded
-		$(selector).fontIconPicker({
-			source: fontawesome_icons,
-			extraClass: 'fa',
-			placeHolder: '',
-			emptyIconValue: 'none'
-		});
-	} else {
-		$.getJSON( '/library/js/fontIconPicker/2.0.1-cs/icons.json', function( data ) {
-			fontawesome_icons = data;
-			$(selector).fontIconPicker({
-				source: fontawesome_icons,
-				extraClass: 'fa',
-				placeHolder: '',
-				emptyIconValue: 'none'
-			});
-		}).error(function() { 
-			window.console && console.log("Could not load icons for icon picker."); 
-		});
-	}
+	// Set the input to read only
+	$(selector).prop('readonly', true);
+	// Add the class to make this a form control
+	$(selector).addClass('form-control icp icp-auto');
+	// Add an input group to the parent to enable the preview icon
+	$(selector).parent().addClass("input-group");
+	// Add the preview icon
+	$(selector).before('<span class="input-group-addon"></span>');
+	// Enable the iconpicker
+	$(selector).iconpicker({
+		'hideOnSelect' : true, 
+		'collision': true
+	});
+	$(selector).parent().on('iconpickerShown', function(event) {
+		// Focus on the popover window since this attachs to the input-group
+		event.iconpickerInstance.popover.find('input').focus()
+	});
 }
 
 // Return the correct width for a modal dialog.
@@ -899,3 +914,39 @@ function maxZIndex(elems)
 
     return maxIndex;
 }
+
+// Adapted from
+// https://dev.to/mornir/-how-to-easily-copy-text-to-clipboard-a1a
+// Added avoiding the scrolling effect by appending the new input
+// tag as a child of a nearby element (the parent element)
+// Usage:
+// <a href="#" onclick="copyToClipboardNoScroll(this, 'texttocopy');return false;">Copy</a>
+// <a href="#" onclick="copyToClipboardNoScroll(this, $('#pass').text());return false;">Copy</a>
+// <a href="#" onclick="copyToClipboardNoScroll(this, $('#myInput').val());return false;">Copy</a>
+function copyToClipboardNoScroll(parent_element, textToCopy) {
+  // 1) Add the text to the DOM (usually achieved with a hidden input field)
+  const input = document.createElement('input');
+
+  // 1.5) Move off to the left but inline with the current item to avoid scroll effects
+  input.style.position = 'absolute';
+  input.style.left = '-1000px';
+  parent_element.appendChild(input);
+  input.value = textToCopy.trim();
+
+  // 2) Select the text
+  input.focus();
+  input.select();
+
+  // 3) Copy text to clipboard
+  const isSuccessful = document.execCommand('copy');
+
+  // 4) Catch errors
+  if (!isSuccessful) {
+    console.error('Failed to copy text.');
+  }
+
+  // Remove the new input tag
+  input.remove();
+}
+
+

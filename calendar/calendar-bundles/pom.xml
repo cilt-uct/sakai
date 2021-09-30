@@ -5,13 +5,17 @@
     <parent>
         <groupId>org.sakaiproject.calendar</groupId>
         <artifactId>calendar</artifactId>
-        <version>21-SNAPSHOT</version>
+        <version>22-SNAPSHOT</version>
     </parent>
 
     <name>sakai-calendar-bundles</name>
     <groupId>org.sakaiproject.calendar</groupId>
     <artifactId>sakai-calendar-bundles</artifactId>
     <packaging>jar</packaging>
+
+    <properties>
+        <deploy.target>shared</deploy.target>
+    </properties>
 
     <build>
         <resources>

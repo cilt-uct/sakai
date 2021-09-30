@@ -10,9 +10,13 @@
     <parent>
         <artifactId>entitybroker</artifactId>
         <groupId>org.sakaiproject</groupId>
-        <version>21-SNAPSHOT</version><!--entitybroker.version-->
+        <version>22-SNAPSHOT</version><!--entitybroker.version-->
     </parent>
     <dependencies>
+        <dependency>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
+        </dependency>
         <!-- internal dependencies -->
         <dependency>
             <groupId>org.sakaiproject.entitybroker</groupId>
@@ -29,6 +33,10 @@
         <dependency>
             <groupId>org.azeckoski</groupId>
             <artifactId>reflectutils</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.sakaiproject.edu-services.course-management</groupId>
+            <artifactId>coursemanagement-api</artifactId>
         </dependency>
         <!-- external dependencies -->
         <dependency>
@@ -51,6 +59,10 @@
             <groupId>com.fasterxml.jackson.jaxrs</groupId>
             <artifactId>jackson-jaxrs-json-provider</artifactId>
             <version>2.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
@@ -89,7 +101,7 @@
             <testResource>
                 <directory>${basedir}/src/test</directory>
                 <includes>
-                   <include>log4j.properties</include>
+                   <include>log4j2.properties</include>
                 </includes>
             </testResource>
       </testResources>

@@ -30,10 +30,12 @@ import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.calendar.api.CalendarService;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.content.api.ContentHostingService;
+import org.sakaiproject.db.api.SqlService;
 import org.sakaiproject.entity.api.EntityManager;
 import org.sakaiproject.event.api.EventTrackingService;
 import org.sakaiproject.event.api.UsageSessionService;
 import org.sakaiproject.event.api.ActivityService;
+import org.sakaiproject.log.api.LogConfigurationManager;
 import org.sakaiproject.messagebundle.api.MessageBundleService;
 import org.sakaiproject.service.gradebook.shared.GradebookExternalAssessmentService;
 import org.sakaiproject.service.gradebook.shared.GradebookService;
@@ -45,6 +47,7 @@ import org.sakaiproject.tool.api.SessionManager;
 import org.sakaiproject.tool.api.ToolManager;
 import org.sakaiproject.user.api.AuthenticationManager;
 import org.sakaiproject.user.api.UserDirectoryService;
+import org.sakaiproject.util.api.FormattedText;
 import org.sakaiproject.user.api.PreferencesService;
 import org.sakaiproject.shortenedurl.api.ShortenedUrlService;
 import org.sakaiproject.tool.assessment.samlite.api.SamLiteService;
@@ -62,13 +65,13 @@ import javax.servlet.http.HttpServletRequest;
 @WebService
 public class AbstractWebService {
     protected SessionManager sessionManager;
-
     protected AssignmentService assignmentService;
     protected AuthenticationManager authenticationManager;
     protected AuthzGroupService authzGroupService;
     protected CalendarService calendarService;
     protected EventTrackingService eventTrackingService;
     protected GradebookService gradebookService;
+    protected LogConfigurationManager logConfigurationManager;
     protected SecurityService securityService;
     protected ServerConfigurationService serverConfigurationService;
     protected SiteService siteService;
@@ -94,6 +97,8 @@ public class AbstractWebService {
     protected ActivityService activityService;
     protected QuestionPoolServiceAPI questionPoolServiceImpl;
     protected LessonBuilderAccessAPI lessonBuilderAccessAPI;
+    protected FormattedText formattedText;
+    protected SqlService sqlService;
 
     /**
      * Get the Session related to the given sessionid
@@ -149,6 +154,11 @@ public class AbstractWebService {
         this.gradebookService = gradebookService;
     }
     
+    @WebMethod(exclude = true)
+    public void setLogConfigurationManager(LogConfigurationManager logConfigurationManager) {
+        this.logConfigurationManager = logConfigurationManager;
+    }
+
     @WebMethod(exclude = true)
     public void setSecurityService(SecurityService securityService) {
         this.securityService = securityService;
@@ -282,6 +292,16 @@ public class AbstractWebService {
     @WebMethod(exclude = true)
     public void setLessonBuilderAccessAPI(LessonBuilderAccessAPI lessonBuilderAccessAPI) {
         this.lessonBuilderAccessAPI = lessonBuilderAccessAPI;
+    }
+    
+    @WebMethod(exclude = true)
+    public void setFormattedText(FormattedText formattedText) {
+        this.formattedText = formattedText;
+    }
+
+    @WebMethod(exclude = true)
+    public void setSqlService(SqlService sqlService) {
+        this.sqlService = sqlService;
     }
 
 }

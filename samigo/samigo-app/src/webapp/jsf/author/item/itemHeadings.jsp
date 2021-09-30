@@ -19,6 +19,10 @@ jQuery(document).ready(function() {
 	if ( itemType == 2 || itemType == 12 ) {
 		$('#itemFormHeading\\:changeQType2').find('option[value=1]').attr('selected', true);
 	}
+	var itemAuthorTarget = "${itemauthor.target}";
+	if(itemAuthorTarget == 'questionpool') {
+		$('#itemFormHeading\\:changeQType2').find('option:last').remove();
+	}
 });
 
 //Display the EMI question example
@@ -44,6 +48,15 @@ function displayEMIHelp(){
 <%-- --%>
 
 <ul class="navIntraTool actionToolbar" role="menu">
+    <h:panelGroup rendered="#{authorization.createAssessment or authorization.editAnyAssessment or authorization.editOwnAssessment or authorization.gradeAnyAssessment or authorization.gradeOwnAssessment}">
+        <li role="menuitem">
+            <span>
+                <h:commandLink title="#{generalMessages.t_assessment}" action="author" immediate="true">
+                    <h:outputText value="#{generalMessages.assessment}" />
+                </h:commandLink>
+            </span>
+        </li>
+    </h:panelGroup>
     <h:panelGroup rendered="#{authorization.createAssessment}">
         <li role="menuitem">
             <span>
@@ -51,15 +64,6 @@ function displayEMIHelp(){
                     <f:param name="action" value="create_assessment_title" />
                     <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.author.AuthorAssessmentListener" />
                     <h:outputText value="#{generalMessages.add}" />
-                </h:commandLink>
-            </span>
-        </li>
-    </h:panelGroup>
-    <h:panelGroup rendered="#{authorization.createAssessment or authorization.editAnyAssessment or authorization.editOwnAssessment or authorization.gradeAnyAssessment or authorization.gradeOwnAssessment}">
-        <li role="menuitem">
-            <span>
-                <h:commandLink title="#{generalMessages.t_assessment}" action="author" immediate="true">
-                    <h:outputText value="#{generalMessages.assessment}" />
                 </h:commandLink>
             </span>
         </li>
@@ -103,37 +107,43 @@ function displayEMIHelp(){
 
 <!-- breadcrumb-->
 <ol class="breadcrumb">
-  <li>
-    <h:commandLink title="#{authorMessages.t_assessment}" rendered="#{itemauthor.target == 'assessment'}" action="author" immediate="true">
-      <h:outputText value="#{authorMessages.global_nav_assessmt}" />
-    </h:commandLink>
-  </li>
-  <li>
-    <h:commandLink title="#{authorMessages.t_question}" action="editAssessment" immediate="true" rendered="#{itemauthor.target == 'assessment'}">
-      <h:outputText value="#{authorMessages.qs}#{authorMessages.column} #{assessmentBean.title}" escape="false"/>
-    </h:commandLink>
-  </li>
-  <li>
-    <h:outputText value="#{authorMessages.q} #{itemauthor.itemNo}" rendered="#{itemauthor.target == 'assessment'}"/>
-  </li>
+  <h:panelGroup rendered="#{itemauthor.target == 'assessment'}" >
+    <li>
+      <h:commandLink title="#{authorMessages.t_assessment}" action="author" immediate="true">
+        <h:outputText value="#{authorMessages.global_nav_assessmt}" />
+      </h:commandLink>
+    </li>
+    <li>
+      <h:commandLink title="#{authorMessages.t_question}" action="editAssessment" immediate="true" >
+        <h:outputText value="#{authorMessages.qs}#{authorMessages.column} #{assessmentBean.title}" escape="false"/>
+      </h:commandLink>
+    </li>
+    <li>
+      <h:outputText value="#{authorMessages.q} #{itemauthor.itemNo}" />
+    </li>
+  </h:panelGroup>
+  <h:panelGroup rendered="#{itemauthor.target == 'questionpool'}">
+    <li>
+      <h:outputText value="#{authorMessages.global_nav_pools}" />
+    </li>
+    <samigo:dataLine value="#{questionpool.currentPool.parentPoolsArray}" var="parent" separator="" first="0" rows="100" >
+      <h:column>
+        <li>
+          <h:commandLink action="#{questionpool.editPool}" immediate="true">
+            <h:outputText value="#{parent.displayName}" escape="false"/>
+            <f:param name="qpid" value="#{parent.questionPoolId}"/>
+          </h:commandLink>
+        </li>
+      </h:column>
+    </samigo:dataLine>
+    <li>
+      <h:commandLink action="#{questionpool.editPool}" immediate="true">
+        <h:outputText value="#{questionpool.currentPool.displayName}"/>
+        <f:param name="qpid" value="#{questionpool.currentPool.id}"/>
+      </h:commandLink>
+    </li>
+  </h:panelGroup>
 </ol>
-
-<h:outputText rendered="#{itemauthor.target == 'questionpool'}" value="#{authorMessages.global_nav_pools}> "/>
-
-<samigo:dataLine rendered="#{itemauthor.target == 'questionpool'}" value="#{questionpool.currentPool.parentPoolsArray}" var="parent"
-   separator=" > " first="0" rows="100" >
-  <h:column>
-    <h:commandLink action="#{questionpool.editPool}"  immediate="true">
-      <h:outputText value="#{parent.displayName}" />
-      <f:param name="qpid" value="#{parent.questionPoolId}"/>
-    </h:commandLink>
-  </h:column>
-</samigo:dataLine>
-<h:outputText rendered="#{questionpool.currentPool.showParentPools && itemauthor.target == 'questionpool'}" value=" #{authorMessages.greater} " />
-<h:commandLink rendered="#{itemauthor.target == 'questionpool'}" action="#{questionpool.editPool}"  immediate="true">
-  <h:outputText value="#{questionpool.currentPool.displayName}"/>
-  <f:param name="qpid" value="#{questionpool.currentPool.id}"/>
-</h:commandLink>
 
 <div class="page-header">
   <h1>
@@ -177,27 +187,11 @@ function displayEMIHelp(){
 
 <!-- CHANGE TYPE -->
 <div class="form-group row">
-    <h:outputLabel styleClass="col-md-2" value="#{authorMessages.change_q_type} &#160;" escape="false" rendered="#{itemauthor.target == 'assessment' && author.isEditPendingAssessmentFlow || (itemauthor.target == 'questionpool' && itemauthor.itemType == '')}"/>
+    <h:outputLabel for="changeQType2" styleClass="col-md-2" value="#{authorMessages.change_q_type} &#160;" escape="false" rendered="#{itemauthor.target == 'assessment' && author.isEditPendingAssessmentFlow || (itemauthor.target == 'questionpool' && itemauthor.itemType == '')}"/>
   <div class="col-md-10">
-<%-- todo:
-listener set selectFromQuestionPool, eliminating the rendered attribute
---%>
 
-<%-- from question pool context, do not show question pool as option --%>
-<h:selectOneMenu rendered="#{(itemauthor.target == 'assessment' && questionpool.importToAuthoring == 'true') || (itemauthor.target == 'questionpool' && itemauthor.itemType == '')}" onchange="changeTypeLink(this);"
-  value="#{itemauthor.currentItem.itemType}" required="true" id="changeQType1">
-  <f:valueChangeListener
-           type="org.sakaiproject.tool.assessment.ui.listener.author.StartCreateItemListener" />
-
-  <f:selectItems value="#{itemConfig.itemTypeSelectList}" />
-</h:selectOneMenu>
-
-<%-- not from qpool , show the last option: copy from question pool --%>
-<h:selectOneMenu onchange="changeTypeLink(this);" rendered="#{author.isEditPendingAssessmentFlow && itemauthor.target == 'assessment' && questionpool.importToAuthoring == 'false'}"
-  value="#{itemauthor.currentItem.itemType}" required="true" id="changeQType2">
-  <f:valueChangeListener
-           type="org.sakaiproject.tool.assessment.ui.listener.author.StartCreateItemListener" />
-
+<h:selectOneMenu onchange="changeTypeLink(this);" value="#{itemauthor.currentItem.itemType}" required="true" id="changeQType2">
+  <f:valueChangeListener type="org.sakaiproject.tool.assessment.ui.listener.author.StartCreateItemListener" />
   <f:selectItems value="#{itemConfig.itemTypeSelectList}" />
 </h:selectOneMenu>
 
@@ -211,8 +205,7 @@ listener set selectFromQuestionPool, eliminating the rendered attribute
     <h:outputText  value=" (#{authorMessages.example_emi_question})"/>
 </h:outputLink>
 
-<h:message rendered="#{questionpool.importToAuthoring == 'true' && itemauthor.target == 'assessment'}" for="changeQType1" infoClass="sak-banner-info" warnClass="sak-banner-warn" errorClass="sak-banner-error" fatalClass="sak-banner-error"/>
-<h:message rendered="#{questionpool.importToAuthoring == 'false' && itemauthor.target == 'assessment'}" for="changeQType2" infoClass="sak-banner-info" warnClass="sak-banner-warn" errorClass="sak-banner-error" fatalClass="sak-banner-error"/>
+<h:message for="changeQType2" infoClass="sak-banner-info" warnClass="sak-banner-warn" errorClass="sak-banner-error" fatalClass="sak-banner-error"/>
 </div>
 </div>
 </h:form>

@@ -49,7 +49,6 @@ import org.sakaiproject.alias.api.AliasService;
 import org.sakaiproject.alias.api.Alias;
 import org.sakaiproject.announcement.tool.MenuBuilder.ActiveTab;
 import org.sakaiproject.announcement.tool.AnnouncementActionState;
-import org.sakaiproject.authz.api.PermissionsHelper;
 import org.sakaiproject.authz.api.SecurityAdvisor;
 import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.cheftool.Context;
@@ -223,8 +222,6 @@ public class AnnouncementAction extends PagedResourceActionII
    
    private static final String SYNOPTIC_ANNOUNCEMENT_TOOL = "sakai.synoptic.announcement";
  
-   private static final String UPDATE_PERMISSIONS = "site.upd";
-
    public static final String SAK_PROP_ANNC_REORDER = "sakai.announcement.reorder";
    public static final boolean SAK_PROP_ANNC_REORDER_DEFAULT = true;
 	
@@ -500,24 +497,6 @@ public class AnnouncementAction extends PagedResourceActionII
 				// No site available.
 			}
 			return allGroupString;
-		}
-	}
-
-	/**
-	 * Enable or disable the observer
-	 * 
-	 * @param enable
-	 *        if true, the observer is enabled, if false, it is disabled
-	 */
-	protected void enableObserver(SessionState sstate, boolean enable)
-	{
-		if (enable)
-		{
-			enableObservers(sstate);
-		}
-		else
-		{
-			disableObservers(sstate);
 		}
 	}
 
@@ -865,6 +844,11 @@ public class AnnouncementAction extends PagedResourceActionII
 				activeTab = ActiveTab.DELETE;
 				break;
 		}
+		
+		// So, when reload after save/cancel permission actions, default page will be shown
+		if(MODE_PERMISSIONS.equals(statusName)) {
+			state.setStatus(LIST_STATUS);
+		}
 
 		// "View" announcement menu bar has already been built by this point (buildShowMetadataContext)
 		if( !ActiveTab.VIEW.equals(activeTab)) {
@@ -932,10 +916,6 @@ public class AnnouncementAction extends PagedResourceActionII
 		{
 			context.put("view", sstate.getAttribute(STATE_SELECTED_VIEW));
 		}
-
-		// inform the observing courier that we just updated the page...
-		// if there are pending requests to do so they can be cleared
-		justDelivered(sstate);
 
 		return template;
 
@@ -1059,6 +1039,11 @@ public class AnnouncementAction extends PagedResourceActionII
 		{
 			template = buildReorderContext(portlet, context, rundata, state, sstate);
 		}
+		else if (statusName.equals(MODE_PERMISSIONS))
+		{
+			template = build_permissions_context(portlet, context, rundata, sstate);
+		}
+		
 		return template;
 
 	} // getTemplate
@@ -1126,11 +1111,6 @@ public class AnnouncementAction extends PagedResourceActionII
 	{
 		return SiteService.allowUpdateSite(ToolManager.getCurrentPlacement().getContext()) && !isOnWorkspaceTab();
 	}
-
-	/*
-	 * what i've done to make this tool automaticlly updated includes some corresponding imports in buildMail, tell observer just the page is just refreshed in the do() functions related to show the list, enable the obeserver in other do() functions
-	 * related to not show the list, disable the obeserver in the do(), define the session sstate object, and protlet. add initState add updateObservationOfChannel() add state attribute STATE_CHANNEL_REF
-	 */
 
 	/**
 	 * Returns true if it is okay to show the merge button in the menu.
@@ -1523,7 +1503,7 @@ public class AnnouncementAction extends PagedResourceActionII
 		}
 
 		boolean b = m_securityService.unlock(AnnouncementService.SECURE_ANNC_READ_DRAFT, msg.getReference())
-							 || m_securityService.unlock(UPDATE_PERMISSIONS, "/site/"+ siteId);
+							 || m_securityService.unlock(SiteService.SECURE_UPDATE_SITE, "/site/"+ siteId);
 		if (roleswap==null)
 		{
 			b = b || msg.getHeader().getFrom().getId().equals(SessionManager.getCurrentSessionUserId()) ; 
@@ -2312,9 +2292,6 @@ public class AnnouncementAction extends PagedResourceActionII
 		state.setIsNewAnnouncement(false);
 		state.setStatus(VIEW_STATUS);
 
-		// disable auto-updates while in view mode
-		disableObservers(sstate);
-
 	} // doShowMetadata
 
 	/**
@@ -2380,9 +2357,6 @@ public class AnnouncementAction extends PagedResourceActionII
 
 		sstate.setAttribute(AnnouncementAction.SSTATE_PUBLICVIEW_VALUE, null);
 		sstate.setAttribute(AnnouncementAction.SSTATE_NOTI_VALUE, null);
-
-		// disable auto-updates while in view mode
-		disableObservers(sstate);
 
 	} // doNewannouncement
 
@@ -2624,9 +2598,6 @@ public class AnnouncementAction extends PagedResourceActionII
 		{
 			state.setIsListVM(false);
 			state.setStatus("stayAtRevise");
-
-			// disable auto-updates while in view mode
-			disableObservers(sstate);
 		}
 		else
 		{
@@ -2841,9 +2812,6 @@ public class AnnouncementAction extends PagedResourceActionII
 
 					state.setIsListVM(false);
 					state.setStatus("stayAtRevise");
-
-					// disable auto-updates while in view mode
-					disableObservers(sstate);
 					return;
 				}
 				catch (Exception ignore)
@@ -2873,23 +2841,21 @@ public class AnnouncementAction extends PagedResourceActionII
 				if (!state.getIsNewAnnouncement())
 				{
 					state.setEdit(null);
-				} // if-else
-				
-				// for event tracking
-				if (titleChanged)
-				{
-					// title changed
-					eventTrackingService.post(eventTrackingService.newEvent(AnnouncementService.EVENT_ANNC_UPDATE_TITLE, msg.getReference(), true));
-				}
-				if (accessChanged)
-				{
-					// access changed
-					eventTrackingService.post(eventTrackingService.newEvent(AnnouncementService.EVENT_ANNC_UPDATE_ACCESS, msg.getReference(), true));
-				}
-				if (availabilityChanged)
-				{
-					// availablity changed
-					eventTrackingService.post(eventTrackingService.newEvent(AnnouncementService.EVENT_ANNC_UPDATE_AVAILABILITY, msg.getReference(), true));
+					if (titleChanged)
+					{
+						// title changed
+						eventTrackingService.post(eventTrackingService.newEvent(AnnouncementService.EVENT_ANNC_UPDATE_TITLE, msg.getReference(), true));
+					}
+					if (accessChanged)
+					{
+						// access changed
+						eventTrackingService.post(eventTrackingService.newEvent(AnnouncementService.EVENT_ANNC_UPDATE_ACCESS, msg.getReference(), true));
+					}
+					if (availabilityChanged)
+					{
+						// availablity changed
+						eventTrackingService.post(eventTrackingService.newEvent(AnnouncementService.EVENT_ANNC_UPDATE_AVAILABILITY, msg.getReference(), true));
+					}
 				}
 			}
 			catch (IdUnusedException e)
@@ -2914,9 +2880,6 @@ public class AnnouncementAction extends PagedResourceActionII
 			//state.setCurrentSortAsc(Boolean.TRUE.booleanValue());
 			sstate.setAttribute(STATE_CURRENT_SORTED_BY, getCurrentOrder());
 			sstate.setAttribute(STATE_CURRENT_SORT_ASC, state.getCurrentSortAsc());
-
-			// make sure auto-updates are enabled
-			enableObservers(sstate);
 		}
 	} // postOrSaveDraft
 	
@@ -2962,9 +2925,6 @@ public class AnnouncementAction extends PagedResourceActionII
 
 		state.setStatus("backToReviseAnnouncement");
 
-		// disable auto-updates while in view mode
-		disableObservers(sstate);
-
 	} // doPreviewrevise
 
 	/**
@@ -2999,9 +2959,6 @@ public class AnnouncementAction extends PagedResourceActionII
 					//AnnouncementMessageEdit edit = channel.editAnnouncementMessage(message.getId());
 					//channel.removeMessage(edit); 
 					channel.removeAnnouncementMessage(message.getId());
-
-					// make sure auto-updates are enabled
-					enableObservers(sstate);
 				}
 				else
 				{
@@ -3079,17 +3036,11 @@ public class AnnouncementAction extends PagedResourceActionII
 				state.setDeleteMessages(v);
 				state.setIsListVM(false);
 				state.setStatus(DELETE_ANNOUNCEMENT_STATUS);
-
-				// disable auto-updates while in view mode
-				disableObservers(sstate);
 			}
 			else
 			{
 				state.setIsListVM(true);
 				state.setStatus("noSelectedForDeletion");
-
-				// make sure auto-updates are enabled
-				enableObservers(sstate);
 			}
 
 		}
@@ -3131,9 +3082,6 @@ public class AnnouncementAction extends PagedResourceActionII
 				state.setStatus(DELETE_ANNOUNCEMENT_STATUS);
 			}
 		}
-
-		// disable auto-updates while in confirm mode
-		disableObservers(sstate);
 
 	} // doDeleteannouncement	
 
@@ -3216,9 +3164,6 @@ public class AnnouncementAction extends PagedResourceActionII
 			// ReferenceVector attachmentList = (message.getHeader()).getAttachments();
 			List attachmentList = (edit.getHeader()).getAttachments();
 			state.setAttachments(attachmentList);
-
-			// disable auto-updates while in confirm mode
-			disableObservers(sstate);
 		}
 		catch (IdUnusedException e)
 		{
@@ -3269,9 +3214,6 @@ public class AnnouncementAction extends PagedResourceActionII
 					state.setIsListVM(true);
 					state.setStatus("moreThanOneSelectedForRevise");
 
-					// make sure auto-updates are enabled
-					enableObservers(sstate);
-
 				}
 				else if (messageReferences.length == 1)
 				{
@@ -3320,9 +3262,6 @@ public class AnnouncementAction extends PagedResourceActionII
 						addAlert(sstate, rb.getString("java.alert.thisis"));
 						state.setIsListVM(false);
 						state.setStatus(VIEW_STATUS);
-
-						// make sure auto-updates are enabled
-						disableObservers(sstate);
 					}
 				}
 			}
@@ -3330,9 +3269,6 @@ public class AnnouncementAction extends PagedResourceActionII
 			{
 				state.setIsListVM(true);
 				state.setStatus(NOT_SELECTED_FOR_REVISE_STATUS);
-
-				// make sure auto-updates are enabled
-				enableObservers(sstate);
 			}
 		}
 		// if the user is viewing a certain announcement already
@@ -3380,9 +3316,6 @@ public class AnnouncementAction extends PagedResourceActionII
 				addAlert(sstate, rb.getString("java.alert.thisis"));
 				state.setIsListVM(false);
 				state.setStatus(VIEW_STATUS);
-
-				// disable auto-updates while in view mode
-				disableObservers(sstate);
 			}
 		}
 
@@ -3410,9 +3343,6 @@ public class AnnouncementAction extends PagedResourceActionII
 		{
 			state.setStatus("revisePreviw");
 		} // if-else
-
-		// disable auto-updates while in view mode
-		disableObservers(sstate);
 
 	} // doRevisepreview
 
@@ -3472,9 +3402,6 @@ public class AnnouncementAction extends PagedResourceActionII
 		// we are done with customization... back to the main (list) mode
 		sstate.removeAttribute(STATE_MODE);
 
-		// re-enable auto-updates when going back to list mode
-		enableObservers(sstate);
-		
 		try
 		{
 			if (state.getEdit() != null)
@@ -3496,9 +3423,6 @@ public class AnnouncementAction extends PagedResourceActionII
 			if (log.isDebugEnabled()) log.debug("{}doCancel()", this, e);
 		}
 
-		// make sure auto-updates are enabled
-		enableObservers(sstate);
-
 	} // doCancel
 
 	/**
@@ -3518,9 +3442,6 @@ public class AnnouncementAction extends PagedResourceActionII
 		state.setSelectedAttachments(null);
 		state.setDeleteMessages(null);
 		state.setStatus(CANCEL_STATUS);
-
-		// make sure auto-updates are enabled
-		enableObservers(sstate);
 
 	} // doLinkcancel
 
@@ -3632,10 +3553,6 @@ public class AnnouncementAction extends PagedResourceActionII
 	} // doSortbyfor
 
 	// ********* ending for sorting *********
-	/*
-	 * what i've done to make this tool automaticlly updated includes some corresponding imports in buildMail, tell observer just the page is just refreshed in the do() functions related to show the list, enable the obeserver in other do() functions
-	 * related to not show the list, disable the obeserver in the do(), define the session sstate object, and protlet. add initState add updateObservationOfChannel() add state attribute STATE_CHANNEL_REF
-	 */
 
 	/**
 	 * Populate the state object, if needed.
@@ -3692,7 +3609,6 @@ public class AnnouncementAction extends PagedResourceActionII
 			state.setAttribute(STATE_SELECTED_VIEW, VIEW_MODE_ALL);
 		}
 
-		// setup the observer to notify our main panel
 		if (state.getAttribute(STATE_INITED) == null)
 		{
 			state.setAttribute(STATE_INITED, STATE_INITED);
@@ -3785,77 +3701,18 @@ public class AnnouncementAction extends PagedResourceActionII
 	} // initState
 
 	/**
-	 * Setup our observer to be watching for change events for our channel.
-	 */
-	private void updateObservationOfChannel(MergedList mergedAnnouncementList, RunData runData, SessionState state,
-			AnnouncementActionState annState)
-	{
-		// String peid = ((JetspeedRunData) runData).getJs_peid();
-		//		
-		// ObservingCourier observer =
-		// (ObservingCourier) state.getAttribute(STATE_OBSERVER);
-		//
-		// addMergedAnnouncementsToObserver(mergedAnnouncementList, annState, observer);
-		//
-		// // the delivery location for this tool
-		// String deliveryId = clientWindowId(state, peid);
-		// observer.setDeliveryId(deliveryId);
-
-	} // updateObservationOfChannel
-
-	/**
 	 * Fire up the permissions editor
 	 */
-	public void doPermissions(RunData data, Context context)
+	public void doPermissions(RunData runData, Context context)
 	{
-		// get into helper mode with this helper tool
-		startHelper(data.getRequest(), "sakai.permissions.helper");
+		AnnouncementActionState state = (AnnouncementActionState) getState(context, runData, AnnouncementActionState.class);
+		String peid = ((JetspeedRunData) runData).getJs_peid();
+		SessionState sstate = ((JetspeedRunData) runData).getPortletSessionState(peid);
 
-		// setup the parameters for the helper
-		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
-		AnnouncementActionState stateObj = (AnnouncementActionState) getState(context, data, AnnouncementActionState.class);
+		state.setStatus(MODE_PERMISSIONS);
 
-		String channelRefStr = stateObj.getChannelId();
-		Reference channelRef = EntityManager.newReference(channelRefStr);
-		
-		/* 
-		   SAK-19526
-		   Setting the site reference for the permission target ref only makes sense for a site
-		   not for a channel reference like '/announcement/channel/!site/motd' 
-		*/
-		if (SiteService.siteExists(channelRef.getContext())) {
-			String siteRef = SiteService.siteReference(channelRef.getContext());
-	
-			// setup for editing the permissions of the site for this tool, using the roles of this site, too
-			state.setAttribute(PermissionsHelper.TARGET_REF, siteRef);
-			// ... with this description
-			state.setAttribute(PermissionsHelper.DESCRIPTION, rb.getString("java.set")
-				+ SiteService.getSiteDisplay(channelRef.getContext()));
-		} else {
-			// setup for editing the permissions of the site for this tool, using the roles of this site, too
-			state.setAttribute(PermissionsHelper.TARGET_REF, channelRefStr);
-			// ... with this description
-			state.setAttribute(PermissionsHelper.DESCRIPTION, rb.getString("java.set") + channelRefStr);
-		}
-		// ... showing only locks that are prpefixed with this
-		state.setAttribute(PermissionsHelper.PREFIX, "annc.");
-
-		// load the permissions.properties file
-		ResourceLoader pRb = new ResourceLoader("permissions");
-		HashMap<String, String> pRbValues = new HashMap<String, String>();
-		for (Iterator iterator = pRb.entrySet().iterator(); iterator.hasNext();)
-		{
-			Map.Entry<String, String> entry= (Map.Entry<String, String>)iterator.next();
-			pRbValues.put(entry.getKey(), entry.getValue());
-		//String key = (String) iKeys.next();
-		//pRbValues.put(key, (String) pRb.get(key));
-
-		}
-		state.setAttribute("permissionDescriptions", pRbValues);
-		String groupAware = ToolManager.getCurrentTool().getRegisteredConfig().getProperty("groupAware");
-		state.setAttribute("groupAware", groupAware != null?Boolean.valueOf(groupAware):Boolean.FALSE);
-		state.removeAttribute("menu"); //Menu not required in the permission view
-		
+		sstate.setAttribute(STATE_TOOL_KEY, "annc");
+		sstate.setAttribute(STATE_BUNDLE_KEY, "announcement");
 	}
 
 	/**
@@ -3872,9 +3729,6 @@ public class AnnouncementAction extends PagedResourceActionII
 		// if we didn't end up in options mode, bail out
 		if (!MODE_OPTIONS.equals(sstate.getAttribute(STATE_MODE))) return;
 
-		// Disable the observer
-		enableObserver(sstate, false);
-
 		state.setStatus(MERGE_STATUS);
 	} // doMerge
 	
@@ -3886,14 +3740,6 @@ public class AnnouncementAction extends PagedResourceActionII
 		AnnouncementActionState state = (AnnouncementActionState) getState(context, runData, AnnouncementActionState.class);
 		String peid = ((JetspeedRunData) runData).getJs_peid();
 		SessionState sstate = ((JetspeedRunData) runData).getPortletSessionState(peid);
-
-		//doOptions(runData, context);
-
-		// if we didn't end up in options mode, bail out
-		//if (!MODE_OPTIONS.equals(sstate.getAttribute(STATE_MODE))) return;
-
-		// Disable the observer
-		//enableObserver(sstate, false);
 
 		state.setStatus(REORDER_STATUS);
 	} // doMerge
@@ -3974,11 +3820,6 @@ public class AnnouncementAction extends PagedResourceActionII
 
 		// commit the change
 		saveOptions();
-
-		updateObservationOfChannel(mergedChannelList, runData, sstate, state);
-
-		// Turn the observer back on.
-		enableObserver(sstate, true);
 
 		state.setStatus(null);
 
@@ -4164,11 +4005,6 @@ public class AnnouncementAction extends PagedResourceActionII
 
 		// commit the change
 		saveOptions();
-
-		// Turn the observer back on.
-		enableObserver(sstate, true);
-
-		//state.setStatus(null);
 
 		sstate.removeAttribute(STATE_MODE);
 		

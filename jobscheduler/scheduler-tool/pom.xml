@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.sakaiproject.scheduler</groupId>
         <artifactId>scheduler</artifactId>
-        <version>21-SNAPSHOT</version>
+        <version>22-SNAPSHOT</version>
     </parent>
 
     <name>Sakai Job Scheduler Tool (scheduler-tool)</name>
@@ -42,25 +42,17 @@
             <groupId>org.quartz-scheduler</groupId>
             <artifactId>quartz</artifactId>
         </dependency>
-        <!--
-            updated so that the jstl library is packed into the tool for
-            now
-        -->
         <dependency>
-            <groupId>javax.servlet</groupId>
-            <artifactId>jstl</artifactId>
+            <groupId>org.sakaiproject.jsf2</groupId>
+            <artifactId>jsf2-tool</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.sakaiproject.jsf</groupId>
-            <artifactId>jsf-tool</artifactId>
+            <groupId>org.sakaiproject.jsf2</groupId>
+            <artifactId>jsf2-app</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.sakaiproject.jsf</groupId>
-            <artifactId>jsf-app</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.sakaiproject.jsf</groupId>
-            <artifactId>jsf-widgets-sun-depend</artifactId>
+            <groupId>org.sakaiproject.jsf2</groupId>
+            <artifactId>jsf2-widgets-sun-depend</artifactId>
             <type>pom</type>
         </dependency>
         <dependency>
@@ -83,6 +75,20 @@
         <dependency>
             <groupId>xml-apis</groupId>
             <artifactId>xml-apis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.weld.servlet</groupId>
+            <artifactId>weld-servlet-shaded</artifactId>
+            <version>${sakai.weld.shaded.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.servlet.jsp.jstl</groupId>
+            <artifactId>jakarta.servlet.jsp.jstl-api</artifactId>
+            <version>${sakai.jakarta.jstl-api.version}</version>
         </dependency>
     </dependencies>
 

@@ -14,20 +14,21 @@
 package org.sakaiproject.datemanager;
 
 import java.nio.charset.StandardCharsets;
-
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.LocaleResolver;
 import org.springframework.web.servlet.ViewResolver;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
-import org.thymeleaf.TemplateEngine;
-import org.thymeleaf.spring4.SpringTemplateEngine;
-import org.thymeleaf.spring4.templateresolver.SpringResourceTemplateResolver;
-import org.thymeleaf.spring4.view.ThymeleafViewResolver;
+import org.springframework.web.servlet.i18n.SessionLocaleResolver;
+import org.thymeleaf.spring5.ISpringTemplateEngine;
+import org.thymeleaf.spring5.SpringTemplateEngine;
+import org.thymeleaf.spring5.templateresolver.SpringResourceTemplateResolver;
+import org.thymeleaf.spring5.view.ThymeleafViewResolver;
 import org.thymeleaf.templatemode.TemplateMode;
 import org.thymeleaf.templateresolver.ITemplateResolver;
 
@@ -60,7 +61,7 @@ public class ThymeleafConfig extends WebMvcConfigurerAdapter implements Applicat
 		return viewResolver;
 	}
 
-	private TemplateEngine templateEngine() {
+	private ISpringTemplateEngine templateEngine() {
 		SpringTemplateEngine templateEngine = new SpringTemplateEngine();
 		templateEngine.setEnableSpringELCompiler(true);
 		templateEngine.setMessageSource(messageSource());
@@ -76,4 +77,10 @@ public class ThymeleafConfig extends WebMvcConfigurerAdapter implements Applicat
 		templateResolver.setTemplateMode(TemplateMode.HTML);
 		return templateResolver;
 	}
+
+    @Bean
+    public LocaleResolver localeResolver() {
+        return new SessionLocaleResolver();
+    }
+
 }

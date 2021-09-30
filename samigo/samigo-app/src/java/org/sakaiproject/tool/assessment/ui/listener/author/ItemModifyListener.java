@@ -28,7 +28,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
+import java.util.regex.Pattern;
 import javax.faces.application.FacesMessage;
 import javax.faces.context.FacesContext;
 import javax.faces.event.AbortProcessingException;
@@ -36,6 +36,9 @@ import javax.faces.event.ActionEvent;
 import javax.faces.event.ActionListener;
 
 import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.lang3.math.NumberUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.rubrics.logic.RubricsConstants;
@@ -74,7 +77,7 @@ import org.sakaiproject.tool.assessment.ui.bean.authz.AuthorizationBean;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.util.api.FormattedText;
-
+import org.sakaiproject.util.ResourceLoader;
 
 /**
  * <p>Title: Samigo</p>
@@ -87,6 +90,7 @@ public class ItemModifyListener implements ActionListener
   //private String scalename;  // used for multiple choice Survey
 
   private RubricsService rubricsService = ComponentManager.get(RubricsService.class);
+  private static final ResourceLoader RB_AUTHOR_MESSAGES = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AuthorMessages");  
 
   /**
    * Standard process action method.
@@ -179,7 +183,7 @@ public class ItemModifyListener implements ActionListener
               UserDirectoryService userDirectoryService = ComponentManager.get(UserDirectoryService.class);
               String currentUserId = userDirectoryService.getCurrentUser().getId();
               QuestionPoolService qpdelegate = new QuestionPoolService();
-              List<Long> poolIds = qpdelegate.getPoolIdsByItem(itemId);
+              List<Long> poolIds = qpdelegate.getPoolIdsByItem(NumberUtils.toLong(itemId, -1L));
               boolean authorized = false;
               poolloop:
               for (Long poolId : poolIds) {
@@ -212,7 +216,7 @@ public class ItemModifyListener implements ActionListener
         itemauthorbean.setItemNo(String.valueOf(itemfacade.getSequence().intValue() ));
       }
 
-      bean.setExtraCredit(itemfacade.getIsExtraCredit()==null?false:itemfacade.getIsExtraCredit());
+      bean.setExtraCredit(itemfacade.getIsExtraCredit());
 
       Double score = itemfacade.getScore();
       if (score == null)
@@ -234,10 +238,13 @@ public class ItemModifyListener implements ActionListener
       bean.setItemDiscount(discount);
 
       // partical credit flag
-      String partialCreditFlag= "FALSE";
+      String partialCreditFlag = "Default";
       Boolean hasPartialCredit = itemfacade.getPartialCreditFlag();
       if (hasPartialCredit != null) {
-    	  partialCreditFlag = hasPartialCredit.toString();
+        partialCreditFlag = hasPartialCredit.toString();
+        if(!itemfacade.getPartialCreditFlag() && itemfacade.getDiscount() == 0) {
+          partialCreditFlag = "Default";
+        }
       } 
       bean.setPartialCreditFlag(partialCreditFlag);
            
@@ -468,9 +475,10 @@ public class ItemModifyListener implements ActionListener
 
 			  }
 			  for (int i=0; i<answerArray.length; i++) {
-		    		  // due to http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=6325587  
-		    	 	  // we need to call Matcher.quoteReplacement()
-			    	  replaced = orig.replaceFirst("\\{\\}", java.util.regex.Matcher.quoteReplacement("{"+answerArray[i]+"}"));
+				  // due to http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=6325587  
+				  // we need to call Matcher.quoteReplacement()
+				  replaced = orig.replaceFirst(Pattern.quote("" + bean.getMarkersPair().charAt(0)) + Pattern.quote("" + bean.getMarkersPair().charAt(1)),
+						  java.util.regex.Matcher.quoteReplacement(bean.getMarkersPair().charAt(0) + answerArray[i] + bean.getMarkersPair().charAt(1)));
 				  orig = replaced;
 			  }
 
@@ -733,54 +741,75 @@ public class ItemModifyListener implements ActionListener
   }
 
   private void populateItemTextForCalculatedQuestion(ItemAuthorBean itemauthorbean, ItemFacade itemfacade, ItemBean bean) {
-      CalculatedQuestionBean calcQuestionBean = new CalculatedQuestionBean();
-      String instructions = itemfacade.getInstruction();
-      GradingService gs = new GradingService();
-      List<String> variables = gs.extractVariables(instructions);
-      List<ItemTextIfc> list = itemfacade.getItemTextArray();
-      for (ItemTextIfc itemBean : list) {
-          if (variables.contains(itemBean.getText())) {
-              CalculatedQuestionVariableBean variable = new CalculatedQuestionVariableBean();
-              List<AnswerIfc> answers = itemBean.getAnswerArray();
-              for (AnswerIfc answer : answers) {
-                  if (answer.getIsCorrect()) {
-                      String text = answer.getText();
-                      String min = text.substring(0, text.indexOf("|"));
-                      String max = text.substring(text.indexOf("|") + 1, text.indexOf(","));
-                      String decimalPlaces = text.substring(text.indexOf(",") + 1);              
-                      variable.setName(itemBean.getText());
-                      variable.setSequence(itemBean.getSequence());
-                      variable.setMin(min);
-                      variable.setMax(max);
-                      variable.setDecimalPlaces(decimalPlaces);
-                      calcQuestionBean.addVariable(variable);
-                      break;
-                  }
+
+    CalculatedQuestionBean calcQuestionBean = new CalculatedQuestionBean();
+    String instructions = itemfacade.getInstruction();
+    GradingService gs = new GradingService();
+    List<String> variables = gs.extractVariables(instructions);
+    List<ItemTextIfc> list = itemfacade.getItemTextArray();
+    for (ItemTextIfc itemBean : list) {
+      if (variables.contains(itemBean.getText())) {
+        CalculatedQuestionVariableBean variable = new CalculatedQuestionVariableBean();
+        List<AnswerIfc> answers = itemBean.getAnswerArray();
+        for (AnswerIfc answer : answers) {
+          if (answer.getIsCorrect()) {
+            String text = answer.getText();
+            variable.setName(itemBean.getText());
+            variable.setSequence(itemBean.getSequence());
+            String[] partsText = text.split("\\|");
+            if (partsText != null && partsText.length == 2) {
+              String min = partsText[0];
+              variable.setMin(min);
+              String[] partsMaxDp = partsText[1].split(",");
+              if (partsMaxDp != null && partsMaxDp.length == 2) {
+                String max = partsMaxDp[0];
+                variable.setMax(max);
+                String decimalPlaces = partsMaxDp[1];
+                variable.setDecimalPlaces(decimalPlaces);
+              } else {
+                log.error("Calculated question answer text {} is not formatted correctly.", text);
               }
-          } else {
-              CalculatedQuestionFormulaBean formula = new CalculatedQuestionFormulaBean();
-              List<AnswerIfc> answers = itemBean.getAnswerArray();
-              for (AnswerIfc answer : answers) {
-                  if (answer.getIsCorrect()) {
-                      String text = answer.getText();
-                      String formulaStr = text.substring(0, text.indexOf("|"));
-                      String tolerance = text.substring(text.indexOf("|") + 1, text.indexOf(","));
-                      String decimalPlaces = text.substring(text.indexOf(",") + 1);
-                      formula.setName(itemBean.getText());
-                      formula.setSequence(itemBean.getSequence());
-                      formula.setText(formulaStr);
-                      formula.setTolerance(tolerance);
-                      formula.setDecimalPlaces(decimalPlaces);
-                      calcQuestionBean.addFormula(formula);
-                      break;
-                  }
-              }
+            } else {
+              log.error("Calculated question answer text {} is not formatted correctly.", text);
+            }
+            calcQuestionBean.addVariable(variable);
+            break;
           }
+        }
+      } else {
+        CalculatedQuestionFormulaBean formula = new CalculatedQuestionFormulaBean();
+        List<AnswerIfc> answers = itemBean.getAnswerArray();
+        for (AnswerIfc answer : answers) {
+          if (answer.getIsCorrect()) {
+            String text = answer.getText();
+            formula.setName(itemBean.getText());
+            formula.setSequence(itemBean.getSequence());
+            String[] partsText = text.split("\\|");
+            if (partsText != null && partsText.length == 2) {
+              String formulaStr = partsText[0];
+              formula.setText(formulaStr);
+              String[] partsTolDp = partsText[1].split(",");
+              if (partsTolDp != null && partsTolDp.length == 2) {
+                String tolerance = partsTolDp[0];
+                formula.setTolerance(tolerance);
+                String decimalPlaces = partsTolDp[1];
+                formula.setDecimalPlaces(decimalPlaces);
+              } else {
+                log.error("Calculated question answer text {} is not formatted correctly.", text);
+              }
+            } else {
+              log.error("Calculated question answer text {} is not formatted correctly.", text);
+            }
+            calcQuestionBean.addFormula(formula);
+            break;
+          }
+        }
       }
-      // extract the calculation formulas and populate the calcQuestionBean (we are ignoring the error returns for now)
-      CalculatedQuestionExtractListener.createCalculationsFromInstructions(calcQuestionBean, instructions, gs);
-      CalculatedQuestionExtractListener.validateCalculations(calcQuestionBean, gs);
-      bean.setCalculatedQuestion(calcQuestionBean);
+    }
+    // extract the calculation formulas and populate the calcQuestionBean (we are ignoring the error returns for now)
+    CalculatedQuestionExtractListener.createCalculationsFromInstructions(calcQuestionBean, instructions, gs);
+    CalculatedQuestionExtractListener.validateCalculations(calcQuestionBean, gs);
+    bean.setCalculatedQuestion(calcQuestionBean);
   }
   
   private void populateItemTextForImageMapQuestion(ItemAuthorBean itemauthorbean, ItemFacade itemfacade, ItemBean bean)  {
@@ -834,12 +863,6 @@ public class ItemModifyListener implements ActionListener
 	         }
 	       }
 	       
-	       // if match was not found, must be a distractor
-	       /*if (choicebean.getMatch() == null || "".equals(choicebean.getMatch())) {
-	    	   choicebean.setMatch(MatchItemBean.CONTROLLING_SEQUENCE_DISTRACTOR);
-	    	   choicebean.setIsCorrect(Boolean.TRUE);
-	    	   choicebean.setControllingSequence(MatchItemBean.CONTROLLING_SEQUENCE_DISTRACTOR);
-	       }*/
 	       imageMapItemBeanList.add(choicebean);
 	     }
 
@@ -898,8 +921,8 @@ public class ItemModifyListener implements ActionListener
        }
        
        // if match was not found, must be a distractor
-       if (choicebean.getMatch() == null || "".equals(choicebean.getMatch())) {
-    	   choicebean.setMatch(MatchItemBean.CONTROLLING_SEQUENCE_DISTRACTOR);
+       if (StringUtils.isBlank(choicebean.getMatch())) {
+    	   choicebean.setMatch("*" + RB_AUTHOR_MESSAGES.getString("none_above") + "*");
     	   choicebean.setIsCorrect(Boolean.TRUE);
     	   choicebean.setControllingSequence(MatchItemBean.CONTROLLING_SEQUENCE_DISTRACTOR);
        }
@@ -970,6 +993,11 @@ public class ItemModifyListener implements ActionListener
        if (meta.getLabel().equals(ItemMetaDataIfc.CASE_SENSITIVE_FOR_FIB)){
     	   bean.setCaseSensitiveForFib(Boolean.valueOf(meta.getEntry()).booleanValue());
        }
+
+      // If metadata doesn't exist, by default it is "{}".
+      if (meta.getLabel().equals(ItemMetaDataIfc.MARKERS_PAIR)) {
+        bean.setMarkersPair(meta.getEntry());
+      }
 
        // get settings for mutually exclusive for fib. 
        // If metadata doesn't exist, by default it is false. 

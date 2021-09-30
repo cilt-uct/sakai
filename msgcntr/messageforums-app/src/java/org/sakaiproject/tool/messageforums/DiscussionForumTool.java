@@ -39,16 +39,15 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Optional;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.StringTokenizer;
 import java.util.TimeZone;
 import java.util.TreeSet;
 
+import javax.faces.bean.ManagedProperty;
 import javax.faces.application.FacesMessage;
 import javax.faces.bean.ManagedBean;
-import javax.faces.bean.ManagedProperty;
 import javax.faces.bean.SessionScoped;
 import javax.faces.component.UIData;
 import javax.faces.component.UIInput;
@@ -57,6 +56,7 @@ import javax.faces.context.FacesContext;
 import javax.faces.event.ActionEvent;
 import javax.faces.event.ValueChangeEvent;
 import javax.faces.model.SelectItem;
+import javax.persistence.OptimisticLockException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
@@ -67,6 +67,7 @@ import org.sakaiproject.api.app.messageforums.Area;
 import org.sakaiproject.api.app.messageforums.AreaManager;
 import org.sakaiproject.api.app.messageforums.Attachment;
 import org.sakaiproject.api.app.messageforums.BaseForum;
+import org.sakaiproject.api.app.messageforums.BulkPermission;
 import org.sakaiproject.api.app.messageforums.DBMembershipItem;
 import org.sakaiproject.api.app.messageforums.DiscussionForum;
 import org.sakaiproject.api.app.messageforums.DiscussionForumService;
@@ -86,7 +87,6 @@ import org.sakaiproject.api.app.messageforums.RankImage;
 import org.sakaiproject.api.app.messageforums.RankManager;
 import org.sakaiproject.api.app.messageforums.SynopticMsgcntrManager;
 import org.sakaiproject.api.app.messageforums.Topic;
-import org.sakaiproject.api.app.messageforums.UserPreferencesManager;
 import org.sakaiproject.api.app.messageforums.cover.ForumScheduleNotificationCover;
 import org.sakaiproject.api.app.messageforums.cover.SynopticMsgcntrManagerCover;
 import org.sakaiproject.api.app.messageforums.ui.DiscussionForumManager;
@@ -97,7 +97,8 @@ import org.sakaiproject.authz.api.GroupNotDefinedException;
 import org.sakaiproject.authz.api.Member;
 import org.sakaiproject.authz.api.Role;
 import org.sakaiproject.authz.api.SecurityService;
-import org.sakaiproject.component.app.messageforums.MembershipItem;
+import org.sakaiproject.api.app.messageforums.MembershipItem;
+import org.sakaiproject.component.app.messageforums.dao.hibernate.DBMembershipItemImpl;
 import org.sakaiproject.component.app.messageforums.dao.hibernate.util.comparator.ForumBySortIndexAscAndCreatedDateDesc;
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.component.cover.ServerConfigurationService;
@@ -124,6 +125,7 @@ import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.thread_local.api.ThreadLocalManager;
+import org.sakaiproject.time.api.UserTimeService;
 import org.sakaiproject.tool.api.SessionManager;
 import org.sakaiproject.tool.api.ToolManager;
 import org.sakaiproject.tool.api.ToolSession;
@@ -140,8 +142,10 @@ import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.util.ResourceLoader;
 import org.sakaiproject.util.api.FormattedText;
-import org.springframework.orm.hibernate4.HibernateOptimisticLockingFailureException;
-import org.sakaiproject.rubrics.logic.model.ToolItemRubricAssociation;
+import org.sakaiproject.util.comparator.GroupTitleComparator;
+import org.sakaiproject.util.comparator.RoleIdComparator;
+
+import org.springframework.orm.hibernate5.HibernateOptimisticLockingFailureException;
 import org.sakaiproject.rubrics.logic.RubricsConstants;
 import org.sakaiproject.rubrics.logic.RubricsService;
 
@@ -155,6 +159,7 @@ import net.sf.json.JSONSerializer;
 import net.sf.json.JsonConfig;
 import org.sakaiproject.api.app.messageforums.events.ForumsMessageEventParams;
 import org.sakaiproject.api.app.messageforums.events.ForumsTopicEventParams;
+import static org.sakaiproject.component.app.messageforums.dao.hibernate.MessageImpl.DATE_COMPARATOR;
 
 /**
  * @author <a href="mailto:rshastri@iupui.edu">Rashmi Shastri</a>
@@ -215,7 +220,7 @@ public class DiscussionForumTool {
   private UIData forumTable;
   private List totalGroupsUsersList;
   private List selectedGroupsUsersList;
-  private Map courseMemberMap;
+  private Map<String, MembershipItem> courseMemberMap;
   private List<PermissionBean> permissions;
   private List levels;
   @ManagedProperty(value="#{Components[\"org.sakaiproject.api.app.messageforums.AreaManager\"]}")
@@ -237,6 +242,7 @@ public class DiscussionForumTool {
   private static final String FORUMS_TOOL_ID = "sakai.forums";
 
   private static final String MESSAGECENTER_BUNDLE = "org.sakaiproject.api.app.messagecenter.bundle.Messages";
+  private static final ResourceLoader rb = new ResourceLoader(MESSAGECENTER_BUNDLE);
 
   private static final String INSUFFICIENT_PRIVILEGES_TO_EDIT_TEMPLATE_SETTINGS = "cdfm_insufficient_privileges";
   private static final String INSUFFICIENT_PRIVILEGES_TO_EDIT_TEMPLATE_ORGANIZE = "cdfm_insufficient_privileges";
@@ -249,6 +255,7 @@ public class DiscussionForumTool {
   private static final String FORUM_LOCKED = "cdfm_forum_locked";
   private static final String TOPIC_LOCKED = "cdfm_topic_locked";
   private static final String ERROR_POSTING_THREAD = "cdfm_error_posting_thread";
+  private static final String ERROR_POSTING_THREAD_STALE = "cdfm_error_posting_thread_stale";
   private static final String USER_NOT_ALLOWED_CREATE_FORUM="cdfm_user_not_allowed_create_forum";
   private static final String INSUFFICIENT_PRIVILEGES_TO_DELETE_FORUM="cdfm_insufficient_privileges_delete_forum";
   private static final String INSUFFICIENT_PRIVILEGES_TO_DUPLICATE = "cdfm_insufficient_privileges_duplicate";
@@ -379,10 +386,6 @@ public class DiscussionForumTool {
   private boolean gradeByPercent;
   private boolean gradeByLetter;
 
-  private static final String RUBRIC_STATE_DETAILS = "rbcs-state-details";
-  private static final String RUBRIC_TOKEN = "rbcs-token";
-  private String rbcsStateDetails = "";
-
   /**
    * Dependency Injected
    */
@@ -400,8 +403,6 @@ public class DiscussionForumTool {
   private EmailNotificationManager emailNotificationManager;
   @ManagedProperty(value="#{Components[\"org.sakaiproject.api.app.messageforums.SynopticMsgcntrManager\"]}")
   private SynopticMsgcntrManager synopticMsgcntrManager;
-  @ManagedProperty(value="#{Components[\"org.sakaiproject.api.app.messageforums.UserPreferencesManager\"]}")
-  private UserPreferencesManager userPreferencesManager;
   @ManagedProperty(value="#{Components[\"org.sakaiproject.content.api.ContentHostingService\"]}")
   private ContentHostingService contentHostingService;
   @ManagedProperty(value="#{Components[\"org.sakaiproject.authz.api.AuthzGroupService\"]}")
@@ -422,6 +423,8 @@ public class DiscussionForumTool {
   private ThreadLocalManager threadLocalManager;
   @ManagedProperty(value="#{Components[\"org.sakaiproject.rubrics.logic.RubricsService\"]}")
   private RubricsService rubricsService;
+  @ManagedProperty(value = "#{Components[\"org.sakaiproject.time.api.UserTimeService\"]}")
+  private UserTimeService userTimeService;
 
   private Boolean instructor = null;
   private Boolean sectionTA = null;
@@ -631,12 +634,13 @@ public class DiscussionForumTool {
           for (DiscussionTopic currTopic : (Set<DiscussionTopic>)forum.getTopicsSet()) {
             if ((currTopic.getDraft().equals(Boolean.FALSE) && currTopic.getAvailability()) || hasOverridingPermissions) {
               // this is the start of the big topic if
-              DiscussionTopicBean decoTopic = new DiscussionTopicBean(currTopic, (DiscussionForum)currTopic.getOpenForum(), uiPermissionsManager, forumManager);
+              DiscussionTopicBean decoTopic = new DiscussionTopicBean(currTopic, (DiscussionForum)currTopic.getOpenForum(), forumManager, rubricsService, userTimeService);
+              loadTopicDataInTopicBean(currTopic, decoTopic);
               if (readFullDescription) decoTopic.setReadFullDesciption(true);
 
               // set the message count for moderated topics, otherwise it will be set later
-              if (uiPermissionsManager.isRead(decoTopic.getTopic(), (DiscussionForum)currTopic.getOpenForum(), userId)) {
-                if (currTopic.getModerated() && !uiPermissionsManager.isModeratePostings(currTopic, (DiscussionForum)currTopic.getOpenForum())) {
+              if (decoTopic.getIsRead()) {
+                if (currTopic.getModerated() && !decoTopic.getIsModeratePostings()) {
                   decoTopic.setTotalNoMessages(forumManager.getTotalViewableMessagesWhenMod(currTopic));
                   decoTopic.setUnreadNoMessages(forumManager.getNumUnreadViewableMessagesWhenMod(currTopic));
                 } else {
@@ -704,7 +708,8 @@ public class DiscussionForumTool {
         forum.setSortIndex(Integer.valueOf(sortIndex));
         sortIndex++;
 
-        DiscussionForumBean decoForum = new DiscussionForumBean(forum, uiPermissionsManager, forumManager);
+        DiscussionForumBean decoForum = new DiscussionForumBean(forum, forumManager, userTimeService);
+        loadForumDataInForumBean(forum, decoForum);
         if (readFullDescription) decoForum.setReadFullDesciption(true);
 
         if (forum.getTopics() != null) {
@@ -713,13 +718,17 @@ public class DiscussionForumTool {
             if (decoTopic != null) decoForum.addTopic(decoTopic);
           }
 
+          String forumDefaultAssignName = forum.getDefaultAssignName();
+
           //iterate over all topics in the decoratedForum to add the unread message
           //counts to update the sypnoptic tool
           for (DiscussionTopicBean dTopicBean : decoForum.getTopics()) {
             //if user can read this forum topic, count the messages as well
-            if (uiPermissionsManager.isRead(dTopicBean.getTopic(), decoForum.getForum(), userId)) {
+            if (dTopicBean.getIsRead()) {
                 unreadMessagesCount += dTopicBean.getUnreadNoMessages();
             }
+
+            setTopicGradeAssign(dTopicBean, forumDefaultAssignName);
           }
         }
 
@@ -737,6 +746,17 @@ public class DiscussionForumTool {
     //update synoptic info for forums only:
     setForumSynopticInfoHelper(userId, getSiteId(), unreadMessagesCount, SynopticMsgcntrManager.NUM_OF_ATTEMPTS);
     return forums;
+  }
+
+  public void setTopicGradeAssign(DiscussionTopicBean bean, String defaultGradeAssign) {
+
+    if (StringUtils.isNotEmpty(bean.getTopic().getDefaultAssignName())) {
+      bean.setGradeAssign(bean.getTopic().getDefaultAssignName());
+    } else {
+      if (StringUtils.isNotEmpty(defaultGradeAssign)) {
+        bean.setGradeAssign(defaultGradeAssign);
+      }
+    }
   }
   
   public void setForumSynopticInfoHelper(String userId, String siteId,
@@ -795,7 +815,7 @@ public class DiscussionForumTool {
     
     setEditMode(true);
     setPermissionMode(PERMISSION_MODE_TEMPLATE);
-    template = new DiscussionAreaBean(areaManager.getDiscusionArea());
+    template = new DiscussionAreaBean(areaManager.getDiscusionArea(), userTimeService);
 
     if(!isInstructor())
     {
@@ -893,7 +913,7 @@ public class DiscussionForumTool {
     }
     
     setObjectPermissions(template.getArea());
-    areaManager.saveArea(template.getArea());    
+    areaManager.saveArea(template.getArea());
     return gotoMain();
   }
 
@@ -1009,7 +1029,8 @@ public class DiscussionForumTool {
 
 	  String forumId = getExternalParameterByKey(FORUM_ID);
 	  DiscussionForum forum = forumManager.getForumById(Long.valueOf(forumId));
-	  selectedForum = new DiscussionForumBean(forum, uiPermissionsManager, forumManager);
+	  selectedForum = new DiscussionForumBean(forum, forumManager, userTimeService);
+	  loadForumDataInForumBean(forum, selectedForum);
 
 	  selectedForum.setMarkForDeletion(true);
 	  return FORUM_SETTING;
@@ -1061,9 +1082,6 @@ public class DiscussionForumTool {
     beforeChangeHM = SynopticMsgcntrManagerCover.getUserToNewMessagesForForumMap(getSiteId(), forumId, null);
 
     forumManager.deleteForum(selectedForum.getForum());
-
-    // remove rubric association if there is one
-    //rubricsService.deleteRubricAssociation(RubricsConstants.RBCS_TOOL_FORUMS, RubricsConstants.RBCS_FORUM_ENTITY_PREFIX + forumId);
 
     if(beforeChangeHM != null){
         updateSynopticMessagesForForumComparingOldMessagesCount(getSiteId(), forumId, null, beforeChangeHM, SynopticMsgcntrManager.NUM_OF_ATTEMPTS);
@@ -1127,7 +1145,8 @@ public class DiscussionForumTool {
       }
       
       selectedForum = null;
-      selectedForum = new DiscussionForumBean(forum, uiPermissionsManager, forumManager);
+      selectedForum = new DiscussionForumBean(forum, forumManager, userTimeService);
+      loadForumDataInForumBean(forum, selectedForum);
       if("true".equalsIgnoreCase(ServerConfigurationService.getString("mc.defaultLongDescription")))
       {
       	selectedForum.setReadFullDesciption(true);
@@ -1183,7 +1202,8 @@ public class DiscussionForumTool {
       }
     }
     
-    selectedForum = new DiscussionForumBean(forum, uiPermissionsManager, forumManager);
+    selectedForum = new DiscussionForumBean(forum, forumManager, userTimeService);
+    loadForumDataInForumBean(forum, selectedForum);
     if("true".equalsIgnoreCase(ServerConfigurationService.getString("mc.defaultLongDescription")))
     {
     	selectedForum.setReadFullDesciption(true);
@@ -1434,9 +1454,6 @@ public class DiscussionForumTool {
       updateSynopticMessagesForForumComparingOldMessagesCount(getSiteId(), forum.getId(), null, beforeChangeHM, SynopticMsgcntrManager.NUM_OF_ATTEMPTS);
     }
 
-    //RUBRICS, Save the binding between the forum and the rubric
-    //rubricsService.saveRubricAssociation(RubricsConstants.RBCS_TOOL_FORUMS, RubricsConstants.RBCS_FORUM_ENTITY_PREFIX + forum.getId(), getRubricConfigurationParameters());
-
     selectedForum.getForum().setId(forum.getId());
     return forum;
   }
@@ -1557,7 +1574,7 @@ public class DiscussionForumTool {
   public DiscussionAreaBean getTemplate()
   {	
 	  if(template == null){
-		  template = new DiscussionAreaBean(forumManager.getDiscussionForumArea());
+		  template = new DiscussionAreaBean(forumManager.getDiscussionForumArea(), userTimeService);
 	  }
 	  return template;
   }
@@ -1627,8 +1644,8 @@ public class DiscussionForumTool {
     }
   
     setSelectedForumForCurrentTopic(topic);
-    selectedTopic = new DiscussionTopicBean(topic, selectedForum.getForum(),
-        uiPermissionsManager, forumManager);
+    selectedTopic = new DiscussionTopicBean(topic, selectedForum.getForum(), forumManager, rubricsService, userTimeService);
+    loadTopicDataInTopicBean(topic, selectedTopic);
     if("true".equalsIgnoreCase(ServerConfigurationService.getString("mc.defaultLongDescription")))
     {
     	selectedTopic.setReadFullDesciption(true);
@@ -1802,9 +1819,6 @@ public class DiscussionForumTool {
     	}
     }
 
-    //RUBRICS, Save the binding between the topic and the rubric
-    //rubricsService.saveRubricAssociation(RubricsConstants.RBCS_TOOL_FORUMS, RubricsConstants.RBCS_TOPIC_ENTITY_PREFIX + selectedTopic.getTopic().getId(), getRubricConfigurationParameters());
-
     return processReturnToOriginatingPage();
     //reset();
     //return MAIN;
@@ -1910,7 +1924,7 @@ public class DiscussionForumTool {
     	}
     	
         topic.setBaseForum(selectedForum.getForum());
-        if(selectedForum.getForum().getRestrictPermissionsForGroups()){
+        if(selectedForum.getForum().getRestrictPermissionsForGroups() && ServerConfigurationService.getBoolean("msgcntr.restricted.group.perms", false)){
             topic.setRestrictPermissionsForGroups(true);
         }
         if(topic.getCreatedBy()==null&&this.forumManager.getAnonRole()==true){
@@ -1923,23 +1937,12 @@ public class DiscussionForumTool {
         saveTopicAttach(topic);
         setObjectPermissions(topic);
 
-        forumManager.saveTopic(topic, draft);
+        topic = forumManager.saveTopic(topic, draft);
 
-	//anytime a forum settings change, we should update synoptic info for forums
-        //since permissions could have changed.
-        if(!isNew){
-        	if(beforeChangeHM != null){
-        		if(permissionsUpdated){
-        			//need to reset permissions cache to get the correct counts:
-        			threadLocalManager.set("message_center_permission_set", false);
-        		}
-        		updateSynopticMessagesForForumComparingOldMessagesCount(getSiteId(), topic.getBaseForum().getId(), topic.getId(), beforeChangeHM, SynopticMsgcntrManager.NUM_OF_ATTEMPTS);
-        	}
-        }        
-        //forumManager
-        //    .saveTopicControlPermissions(topic, topicControlPermissions);
-        //forumManager
-        //    .saveTopicMessagePermissions(topic, topicMessagePermissions);
+    	//anytime a forum settings change, we should update synoptic info for forums
+        if (!isNew && beforeChangeHM != null) {
+            updateSynopticMessagesForForumComparingOldMessagesCount(getSiteId(), topic.getBaseForum().getId(), topic.getId(), beforeChangeHM, SynopticMsgcntrManager.NUM_OF_ATTEMPTS);
+        }
       }
     }
     return gotoMain();
@@ -1972,8 +1975,8 @@ public class DiscussionForumTool {
 			  setErrorMessage(getResourceBundleString(INSUFFICIENT_PRIVILEGES_NEW_TOPIC));
 			  return gotoMain();
 		  }
-		  selectedTopic = new DiscussionTopicBean(topic, selectedForum.getForum(),uiPermissionsManager, forumManager);
-		
+		  selectedTopic = new DiscussionTopicBean(topic, selectedForum.getForum(), forumManager, rubricsService, userTimeService);
+		  loadTopicDataInTopicBean(topic, selectedTopic);
 		  selectedTopic.setMarkForDeletion(true);
 		    return TOPIC_SETTING;
 	  }
@@ -2026,9 +2029,6 @@ public class DiscussionForumTool {
 
     forumManager.deleteTopic(selectedTopic.getTopic());
 
-    // remove rubric association if there is one
-    //rubricsService.deleteRubricAssociation(RubricsConstants.RBCS_TOOL_FORUMS, RubricsConstants.RBCS_TOPIC_ENTITY_PREFIX + topicId);
-
     if(beforeChangeHM != null){
         updateSynopticMessagesForForumComparingOldMessagesCount(getSiteId(), forumId, topicId, beforeChangeHM, SynopticMsgcntrManager.NUM_OF_ATTEMPTS);
     }
@@ -2070,8 +2070,8 @@ public class DiscussionForumTool {
       setErrorMessage(getResourceBundleString(INSUFFICIENT_PRIVILEGES_NEW_TOPIC));
       return gotoMain();
     }
-    selectedTopic = new DiscussionTopicBean(topic, selectedForum.getForum(),
-        uiPermissionsManager, forumManager);
+    selectedTopic = new DiscussionTopicBean(topic, selectedForum.getForum(), forumManager, rubricsService, userTimeService);
+    loadTopicDataInTopicBean(topic, selectedTopic);
     if("true".equalsIgnoreCase(ServerConfigurationService.getString("mc.defaultLongDescription")))
     {
     	selectedTopic.setReadFullDesciption(true);
@@ -2508,8 +2508,8 @@ public class DiscussionForumTool {
 	    DiscussionTopic topic=forumManager.getTopicById(Long.valueOf(topicId));
 	    selectedMessage = selectedThreadHead;
 	    setSelectedForumForCurrentTopic(topic);
-	    selectedTopic = new DiscussionTopicBean(topic, selectedForum.getForum(),
-	        uiPermissionsManager, forumManager);
+	    selectedTopic = new DiscussionTopicBean(topic, selectedForum.getForum(), forumManager, rubricsService, userTimeService);
+	    loadTopicDataInTopicBean(topic, selectedTopic);
 	    if(topic == null || selectedTopic == null)
 	    {
 	    	log.debug("topic or selectedTopic is null in processActionDisplayThread.");
@@ -2526,7 +2526,8 @@ public class DiscussionForumTool {
 	    {
 	      DiscussionForum forum = forumManager
 	          .getForumById(Long.valueOf(currentForumId));
-	      selectedForum = new DiscussionForumBean(forum, uiPermissionsManager, forumManager);
+	      selectedForum = new DiscussionForumBean(forum, forumManager, userTimeService);
+	      loadForumDataInForumBean(forum, selectedForum);
 	      setForumBeanAssign();
 	      selectedTopic.getTopic().setBaseForum(forum);
 	    }
@@ -2585,8 +2586,8 @@ public class DiscussionForumTool {
     selectedMessage = new DiscussionMessageBean(message, messageManager);
     DiscussionTopic topic=forumManager.getTopicById(Long.valueOf(topicId));
     setSelectedForumForCurrentTopic(topic);
-    selectedTopic = new DiscussionTopicBean(topic, selectedForum.getForum(),
-        uiPermissionsManager, forumManager);
+    selectedTopic = new DiscussionTopicBean(topic, selectedForum.getForum(), forumManager, rubricsService, userTimeService);
+    loadTopicDataInTopicBean(topic, selectedTopic);
     if(topic == null || selectedTopic == null)
     {
     	log.debug("topic or selectedTopic is null in processActionDisplayMessage.");
@@ -2603,7 +2604,8 @@ public class DiscussionForumTool {
     {
       DiscussionForum forum = forumManager
           .getForumById(Long.valueOf(currentForumId));
-      selectedForum = new DiscussionForumBean(forum, uiPermissionsManager, forumManager);
+      selectedForum = new DiscussionForumBean(forum, forumManager, userTimeService);
+      loadForumDataInForumBean(forum, selectedForum);
       setForumBeanAssign();
       selectedTopic.getTopic().setBaseForum(forum);
     }
@@ -2780,8 +2782,8 @@ public class DiscussionForumTool {
 		  log.debug("getDecoratedForum(DiscussionForum" + forum + ")");
 	  }
 	  forum = forumManager.getForumByIdWithTopicsAttachmentsAndMessages(forum.getId());
-	  DiscussionForumBean decoForum = new DiscussionForumBean(forum,
-			  uiPermissionsManager, forumManager);
+	  DiscussionForumBean decoForum = new DiscussionForumBean(forum, forumManager, userTimeService);
+	  loadForumDataInForumBean(forum, decoForum);
 	  if("true".equalsIgnoreCase(ServerConfigurationService.getString("mc.defaultLongDescription")))
 	  {
 		  decoForum.setReadFullDesciption(true);
@@ -2815,6 +2817,8 @@ public class DiscussionForumTool {
 
 	  Map msgIdReadStatusMap = forumManager.getReadStatusForMessagesWithId(msgIds, getUserId());
 
+	  String forumDefaultAssignName = forum.getDefaultAssignName();
+
 	  Iterator iter = temp_topics.iterator();
 	  while (iter.hasNext())
 	  {
@@ -2828,18 +2832,18 @@ public class DiscussionForumTool {
 				  ||forumManager.isTopicOwner(topic))
 		  { 
 
-			  DiscussionTopicBean decoTopic = new DiscussionTopicBean(topic, forum,
-					  uiPermissionsManager, forumManager);
+			  DiscussionTopicBean decoTopic = new DiscussionTopicBean(topic, forum, forumManager, rubricsService, userTimeService);
+			  loadTopicDataInTopicBean(topic, decoTopic);
 			  if("true".equalsIgnoreCase(ServerConfigurationService.getString("mc.defaultLongDescription")))
 			  {
 				  decoTopic.setReadFullDesciption(true);
 			  }
 
 			  List topicMsgs = topic.getMessages();
-			  if (topicMsgs == null || topicMsgs.size() == 0 || !uiPermissionsManager.isRead(topic, forum)) {
+			  if (topicMsgs == null || topicMsgs.size() == 0 || !decoTopic.getIsRead()) {
 				  decoTopic.setTotalNoMessages(0);
 				  decoTopic.setUnreadNoMessages(0);
-			  } else if (!topic.getModerated().booleanValue() || uiPermissionsManager.isModeratePostings(topic, forum)) {
+			  } else if (!topic.getModerated() || decoTopic.getIsModeratePostings()) {
 				  int totalMsgs = 0;
 				  int totalUnread = 0;
 				  for (Iterator msgIter = topicMsgs.iterator(); msgIter.hasNext();) {
@@ -2861,6 +2865,8 @@ public class DiscussionForumTool {
 				  decoTopic.setUnreadNoMessages(forumManager.getNumUnreadViewableMessagesWhenMod(topic));
 			  }
 
+			  setTopicGradeAssign(decoTopic, forumDefaultAssignName);
+
 			  decoForum.addTopic(decoTopic);
 		  }
 
@@ -2874,8 +2880,8 @@ public class DiscussionForumTool {
     {
       log.debug("getDecoratedForum(DiscussionForum" + forum + ")");
     }
-    DiscussionForumBean decoForum = new DiscussionForumBean(forum,
-        uiPermissionsManager, forumManager);
+    DiscussionForumBean decoForum = new DiscussionForumBean(forum, forumManager, userTimeService);
+    loadForumDataInForumBean(forum, decoForum);
     if("true".equalsIgnoreCase(ServerConfigurationService.getString("mc.defaultLongDescription")))
     {
     	decoForum.setReadFullDesciption(true);
@@ -2895,8 +2901,8 @@ public class DiscussionForumTool {
               ||securityService.isSuperUser()
               ||forumManager.isTopicOwner(topic)))
       { 
-          DiscussionTopicBean decoTopic = new DiscussionTopicBean(topic, forum,
-              uiPermissionsManager, forumManager);
+          DiscussionTopicBean decoTopic = new DiscussionTopicBean(topic, forum, forumManager, rubricsService, userTimeService);
+          loadTopicDataInTopicBean(topic, decoTopic);
           if("true".equalsIgnoreCase(ServerConfigurationService.getString("mc.defaultLongDescription")))
           {
           	decoTopic.setReadFullDesciption(true);
@@ -2906,7 +2912,7 @@ public class DiscussionForumTool {
           if (topicMsgs == null || topicMsgs.size() == 0) {
         	  decoTopic.setTotalNoMessages(0);
         	  decoTopic.setUnreadNoMessages(0);
-          } else if (!topic.getModerated().booleanValue() || uiPermissionsManager.isModeratePostings(topic, forum)) {
+          } else if (!topic.getModerated() || decoTopic.getIsModeratePostings()) {
         	  int totalMsgs = 0;
         	  int totalUnread = 0;
         	  for (Iterator msgIter = topicMsgs.iterator(); msgIter.hasNext();) {
@@ -3067,7 +3073,8 @@ public class DiscussionForumTool {
     }
     DiscussionTopicBean decoTopic = null;
     if(topic != null){
-    	decoTopic = new DiscussionTopicBean(topic, selectedForum.getForum(), uiPermissionsManager, forumManager);
+    	decoTopic = new DiscussionTopicBean(topic, selectedForum.getForum(), forumManager, rubricsService, userTimeService);
+    	loadTopicDataInTopicBean(topic, decoTopic);
     	if("true".equalsIgnoreCase(ServerConfigurationService.getString("mc.defaultLongDescription")))
     	{
     		decoTopic.setReadFullDesciption(true);
@@ -3087,15 +3094,14 @@ public class DiscussionForumTool {
     		decoTopic.setPreviousTopicId(forumManager.getPreviousTopic(topic).getId());
     	}
     	List temp_messages = null;
-    	if(uiPermissionsManager.isRead(topic, selectedForum.getForum())){
-    		temp_messages = forumManager.getTopicByIdWithMessagesAndAttachments(topic.getId())
-    		.getMessages();
+    	if (decoTopic.getIsRead()) {
+    		temp_messages = forumManager.getTopicByIdWithMessagesAndAttachments(topic.getId()).getMessages();
     	}
 
 		  // Now get messages moved from this topic
 
 		  List moved_messages = null;
-		  if(uiPermissionsManager.isRead(topic, selectedForum.getForum())){
+          if (decoTopic.getIsRead()) {
 			  moved_messages = messageManager.findMovedMessagesByTopicId(topic.getId());
 		  
 			  if (log.isDebugEnabled())
@@ -3142,7 +3148,7 @@ public class DiscussionForumTool {
     	}
 
     	// set # read/unread msgs on topic level
-    	if (!topic.getModerated().booleanValue() || uiPermissionsManager.isModeratePostings(topic, selectedForum.getForum())) {
+    	if (!topic.getModerated() || decoTopic.getIsModeratePostings()) {
     		int totalMsgs = 0;
     		int totalUnread = 0;
     		for (Iterator msgIter = msgIdList.iterator(); msgIter.hasNext();) {
@@ -3164,10 +3170,12 @@ public class DiscussionForumTool {
     		decoTopic.setUnreadNoMessages(forumManager.getNumUnreadViewableMessagesWhenMod(topic));
     	}
 
+        setTopicGradeAssign(decoTopic, selectedForum.getForum().getDefaultAssignName());
+
     	Iterator iter = temp_messages.iterator();
 
     	final boolean isRead = decoTopic.getIsRead();
-    	final boolean isNewResponse = decoTopic.getIsNewResponse();
+    	loadTopicDataInTopicBean(topic, decoTopic);
 
     	boolean decoTopicGetIsDeleteAny = decoTopic.getIsDeleteAny();
     	boolean decoTopicGetIsDeleteOwn = decoTopic.getIsDeleteOwn();
@@ -3187,7 +3195,7 @@ public class DiscussionForumTool {
     				String userId = message.getAuthorId();
     				decoMsg.setAnonId(userIdAnonIdMap.get(userId));
     			}
-    			if(isRead || (isNewResponse && decoMsg.getIsOwn()))
+    			if(isRead || (decoTopic.getIsNewResponse() && decoMsg.getIsOwn()))
     			{
     				Boolean readStatus = (Boolean) messageReadStatusMap.get(message.getId());
     				if (readStatus != null) {
@@ -3314,7 +3322,7 @@ public class DiscussionForumTool {
 		//  return false (not anonymous)
 
 		// Condenses to
-		return topic.getPostAnonymous() && (!topic.getRevealIDsToRoles() || !uiPermissionsManager.isIdentifyAnonAuthors(topic));
+		return topic.getPostAnonymous() && (!topic.getRevealIDsToRoles() || !uiPermissionsManager.isIdentifyAnonAuthors((DiscussionTopic) topic));
 	}
 
 	/**
@@ -3420,7 +3428,6 @@ public class DiscussionForumTool {
     prepareRemoveAttach.clear();
     assignments.clear();
     refreshPendingMsgs = true;
-    rbcsStateDetails = "";
   }
 
   /**
@@ -3454,7 +3461,8 @@ public class DiscussionForumTool {
     	setErrorMessage(getResourceBundleString(PARENT_TOPIC_NOT_FOUND));
       return null;
     }
-    selectedForum = new DiscussionForumBean(forum, uiPermissionsManager, forumManager);
+    selectedForum = new DiscussionForumBean(forum, forumManager, userTimeService);
+    loadForumDataInForumBean(forum, selectedForum);
     if("true".equalsIgnoreCase(ServerConfigurationService.getString("mc.defaultLongDescription")))
     {
     	selectedForum.setReadFullDesciption(true);
@@ -3468,7 +3476,8 @@ public class DiscussionForumTool {
       setErrorMessage(getResourceBundleString(FAILED_CREATE_TOPIC));
       return null;
     }
-    selectedTopic = new DiscussionTopicBean(topic, forum, uiPermissionsManager, forumManager);
+    selectedTopic = new DiscussionTopicBean(topic, forum, forumManager, rubricsService, userTimeService);
+    // TODO ERN loadTopicDataInTopicBean(topic, selectedTopic);
     if("true".equalsIgnoreCase(ServerConfigurationService.getString("mc.defaultLongDescription")))
     {
     	selectedTopic.setReadFullDesciption(true);
@@ -3480,7 +3489,8 @@ public class DiscussionForumTool {
 
     setNewTopicBeanAssign();
     
-    DiscussionTopicBean thisDTB = new DiscussionTopicBean(topic, forum, uiPermissionsManager, forumManager);
+    DiscussionTopicBean thisDTB = new DiscussionTopicBean(topic, forum, forumManager, rubricsService, userTimeService);
+    // TODO ERN loadTopicDataInTopicBean(topic, thisDTB);
     if("true".equalsIgnoreCase(ServerConfigurationService.getString("mc.defaultLongDescription")))
     {
     	thisDTB.setReadFullDesciption(true);
@@ -3634,6 +3644,7 @@ public class DiscussionForumTool {
     	this.composeTitle = null;
 
     	this.attachments.clear();
+    	this.selectedThread.clear();
 
     	// refresh page with unread status     
     	selectedTopic = getDecoratedTopic(selectedTopic.getTopic());
@@ -3641,7 +3652,7 @@ public class DiscussionForumTool {
     }catch(Exception e){
     	log.error("DiscussionForumTool: processDfMsgPost", e);
     	setErrorMessage(getResourceBundleString(ERROR_POSTING_THREAD));
-    	gotoMain();
+    	return gotoMain();
     }
 
     return ALL_MESSAGES;
@@ -3842,7 +3853,8 @@ public class DiscussionForumTool {
 		  DiscussionForum forum = forumManager.createForum();
 	      forum.setModerated(areaManager.getDiscusionArea().getModerated()); // default to template setting
 	      forum.setPostFirst(areaManager.getDiscusionArea().getPostFirst()); // default to template setting
-	      selectedForum = new DiscussionForumBean(forum, uiPermissionsManager, forumManager);
+	      selectedForum = new DiscussionForumBean(forum, forumManager, userTimeService);
+	      loadForumDataInForumBean(forum, selectedForum);
 	      if("true".equalsIgnoreCase(ServerConfigurationService.getString("mc.defaultLongDescription")))
 	      {
 	      	selectedForum.setReadFullDesciption(true);
@@ -4131,7 +4143,8 @@ public class DiscussionForumTool {
 
 	  if(selectedForum == null || (forumId != null && !selectedForum.getForum().getId().toString().equals(forumId))){
 		  DiscussionForum forum = forumManager.getForumById(Long.parseLong(forumId));
-		  selectedForum = new DiscussionForumBean(forum, uiPermissionsManager, forumManager);
+		  selectedForum = new DiscussionForumBean(forum, forumManager, userTimeService);
+		  loadForumDataInForumBean(forum, selectedForum);
 	  }
 
 	  if(topicId == null || "".equals(topicId)){
@@ -4430,7 +4443,7 @@ public class DiscussionForumTool {
   	}catch(Exception e){
   		log.error("DiscussionForumTool: processDfReplyMsgPost", e);
   		setErrorMessage(getResourceBundleString(ERROR_POSTING_THREAD));
-  		gotoMain();
+  		return gotoMain();
   	}
     return processActionGetDisplayThread();
   }
@@ -4636,12 +4649,16 @@ public class DiscussionForumTool {
 
 		getSelectedTopic();
 		getThreadFromMessage();
-	}catch(Exception e){
-    	log.error("DiscussionForumTool: processDfMsgRevisedPost", e);
-    	setErrorMessage(getResourceBundleString(ERROR_POSTING_THREAD));
-    	gotoMain();
+	} catch(Exception e) {
+      log.error("Error while editing a message", e);
+      if (e instanceof OptimisticLockException) {
+        // javax.persistence.OptimisticLockException: Row was updated or deleted by another transaction (or unsaved-value mapping was incorrect)
+        setErrorMessage(getResourceBundleString(ERROR_POSTING_THREAD_STALE));
+      } else {
+        setErrorMessage(getResourceBundleString(ERROR_POSTING_THREAD));
+      }
+      return gotoMain();
     }
-
     return MESSAGE_VIEW;
   }
 
@@ -4805,35 +4822,30 @@ public class DiscussionForumTool {
    * Also sets number of pending msgs
    * @return
    */
-  public boolean isDisplayPendingMsgQueue()
-  {
-	  if (displayPendingMsgQueue == null){
-		  List membershipList = uiPermissionsManager.getCurrentUserMemberships();
-		  int numModTopicWithPerm = forumManager.getNumModTopicsWithModPermissionByPermissionLevel(membershipList);
-		  
-		  if (numModTopicWithPerm < 1)
-		  {
-			  numModTopicWithPerm = forumManager.getNumModTopicsWithModPermissionByPermissionLevelName(membershipList);
-			  
-			  if (numModTopicWithPerm < 1)
-			  {
-				  displayPendingMsgQueue = false;
-			  }
-			  else
-			  {
-				  displayPendingMsgQueue = true;
-			  }
-		  }
-		  else
-		  {		  
-			  displayPendingMsgQueue = true;
-		  }
-	  }
-	  
-	  if (refreshPendingMsgs && displayPendingMsgQueue.booleanValue()) {
-		  refreshPendingMessages();
-	  }
-	  return displayPendingMsgQueue.booleanValue();
+  public boolean isDisplayPendingMsgQueue() {
+    if (displayPendingMsgQueue == null) {
+      List<Topic> moderatedTopics = forumManager.getModeratedTopicsInSite();
+
+      // Avoid the expensive queries below if there are no moderated topics
+      if (moderatedTopics != null && !moderatedTopics.isEmpty()) {
+        List<String> membershipList = uiPermissionsManager.getCurrentUserMemberships();
+        int numModTopicWithPerm = forumManager.getNumModTopicsWithModPermissionByPermissionLevel(membershipList, moderatedTopics);
+
+        if (numModTopicWithPerm < 1) {
+          numModTopicWithPerm = forumManager.getNumModTopicsWithModPermissionByPermissionLevelName(membershipList, moderatedTopics);
+        }
+
+        displayPendingMsgQueue = numModTopicWithPerm > 0;
+      }
+      else {
+        displayPendingMsgQueue = false;
+      }
+    }
+
+    if (refreshPendingMsgs && displayPendingMsgQueue.booleanValue()) {
+      refreshPendingMessages();
+    }
+    return displayPendingMsgQueue.booleanValue();
   }
   
   /**
@@ -5804,7 +5816,6 @@ public class DiscussionForumTool {
   
   public String processDfGradeSubmit() 
   {
-	keepStateDetails(null);
 	GradebookService gradebookService = getGradebookService();
 	if (gradebookService == null) {
 //		Maybe print an error message if it's possible to get into this state
@@ -5901,26 +5912,18 @@ public class DiscussionForumTool {
     } 
         
     String eventRef = "";
-    String evaluatedItemId = "";
     String evaluatedItemTitle = "";
     if(selectedMessage != null){
         eventRef = getEventReference(selectedMessage.getMessage());
-        evaluatedItemId = studentUid+"."+selectedMessage.getMessage().getUuid();
         evaluatedItemTitle = selectedMessage.getMessage().getTitle();
     }else if(selectedTopic != null){
         eventRef = getEventReference(selectedTopic.getTopic());
-        evaluatedItemId = studentUid+"."+selectedTopic.getTopic().getUuid();
         evaluatedItemTitle = selectedTopic.getTopic().getTitle();
     }else if(selectedForum != null){
         eventRef = getEventReference(selectedForum.getForum());
-        evaluatedItemId = studentUid+"."+selectedForum.getForum().getUuid();
         evaluatedItemTitle = selectedForum.getForum().getTitle();
     }
 
-    evaluatedItemId = getRubricAssociationId() + "." + studentUid;
-    if(rubricsService.hasAssociatedRubric(RubricsConstants.RBCS_TOOL_GRADEBOOKNG, getRubricAssociationId())){
-        rubricsService.saveRubricEvaluation(RubricsConstants.RBCS_TOOL_GRADEBOOKNG, getRubricAssociationId(), evaluatedItemId, studentUid, getUserId(), getRubricConfigurationParameters());
-    }
     LRS_Statement statement = forumManager.getStatementForGrade(studentUid, evaluatedItemTitle, gradeAsDouble).orElse(null);
     Event event = eventTrackingService.newEvent(DiscussionForumService.EVENT_FORUMS_GRADE, eventRef, null, true, NotificationService.NOTI_OPTIONAL, statement);
     eventTrackingService.post(event);
@@ -6404,7 +6407,7 @@ public class DiscussionForumTool {
               selectedRole = role.getId();
               i=1;
             }
-            DBMembershipItem item = forumManager.getAreaDBMember(membershipItems, role.getId(), DBMembershipItem.TYPE_ROLE);
+            DBMembershipItem item = forumManager.getAreaDBMember(membershipItems, role.getId(), MembershipItem.TYPE_ROLE);
             String level = item.getPermissionLevelName();
             siteMembers.add(new SelectItem(role.getId(), role.getId() + " (" + getResourceBundleString("perm_level_" + level.replaceAll(" ", "_").toLowerCase()) + ")"));
             permissions.add(new PermissionBean(item, permissionLevelManager));
@@ -6423,7 +6426,7 @@ public class DiscussionForumTool {
     	  for (Iterator groupIterator = groups.iterator(); groupIterator.hasNext();)
     	  {
     		  Group currentGroup = (Group) groupIterator.next();  
-    		  DBMembershipItem item = forumManager.getAreaDBMember(membershipItems,currentGroup.getTitle(), DBMembershipItem.TYPE_GROUP);
+    		  DBMembershipItem item = forumManager.getAreaDBMember(membershipItems,currentGroup.getTitle(), MembershipItem.TYPE_GROUP);
     		  String level = item.getPermissionLevelName();
     		  siteMembers.add(new SelectItem(currentGroup.getTitle(), currentGroup.getTitle() + " (" + getResourceBundleString("perm_level_" + level.replaceAll(" ", "_").toLowerCase()) + ")"));
     		  permissions.add(new PermissionBean(item, permissionLevelManager));
@@ -6453,13 +6456,8 @@ public class DiscussionForumTool {
    */
   private List sortRoles(Set roles) {
 	  final List rolesList = new ArrayList();
-	  
 	  rolesList.addAll(roles);
-	  
-	  final AuthzGroupComparator authzGroupComparator = new AuthzGroupComparator("id", true);
-	  
-	  Collections.sort(rolesList, authzGroupComparator);
-	  
+	  Collections.sort(rolesList, new RoleIdComparator());
 	  return rolesList;
   }
   /**
@@ -6474,17 +6472,10 @@ public class DiscussionForumTool {
    */
   private Collection sortGroups(Collection groups) {
 	  List sortGroupsList = new ArrayList();
-
 	  sortGroupsList.addAll(groups);
-	  
-	  final GroupComparator groupComparator = new GroupComparator("title", true);
-	  
-	  Collections.sort(sortGroupsList, groupComparator);
-	  
+	  Collections.sort(sortGroupsList, new GroupTitleComparator());
 	  groups.clear();
-	  
 	  groups.addAll(sortGroupsList);
-	  
 	  return groups;
   }
   /**
@@ -6519,7 +6510,8 @@ public class DiscussionForumTool {
         return;
       }
     }
-    selectedForum = new DiscussionForumBean(forum, uiPermissionsManager, forumManager);
+    selectedForum = new DiscussionForumBean(forum, forumManager, userTimeService);
+    loadForumDataInForumBean(forum, selectedForum);
     if (selectedForum == null) {
     	selectedForum = oldSelectedForum;
     }
@@ -6537,8 +6529,9 @@ public class DiscussionForumTool {
   private void setErrorMessage(String errorMsg)
   {
     log.debug("setErrorMessage(String " + errorMsg + ")");
-    FacesContext.getCurrentInstance().addMessage(null,
-        new FacesMessage(FacesMessage.SEVERITY_ERROR, getResourceBundleString(ALERT) + errorMsg, null));
+    FacesContext facesContext = FacesContext.getCurrentInstance();
+    facesContext.addMessage(null, new FacesMessage(FacesMessage.SEVERITY_ERROR, getResourceBundleString(ALERT) + errorMsg, null));
+    facesContext.getExternalContext().getFlash().setKeepMessages(true);
   }
   
   private void setSuccessMessage(String successMsg)
@@ -6561,7 +6554,7 @@ public class DiscussionForumTool {
   	PermissionLevel contributorLevel = permissionLevelManager.getDefaultContributorPermissionLevel();
   	  	
   	StringBuilder sBuffer = new StringBuilder();  	
-  	sBuffer.append("<script type=\"text/javascript\">\n");   	  	
+  	sBuffer.append("<script>\n");
   	sBuffer.append("var ownerLevelArray = " + ownerLevel + ";\n");
   	sBuffer.append("var authorLevelArray = " + authorLevel + ";\n");
   	sBuffer.append("var noneditingAuthorLevelArray = " + noneditingAuthorLevel + ";\n");
@@ -6620,38 +6613,25 @@ public class DiscussionForumTool {
   }
   
   public void setObjectPermissions(Object target){
-  	Set membershipItemSet = null;
-  	Set oldMembershipItemSet = null;
-    
-  	DiscussionForum forum = null;
-  	Area area = null;
-  	//Topic topic = null;
-  	DiscussionTopic topic = null;
-  	
-    /** get membership item set */    
-    if (target instanceof DiscussionForum){
-    	forum = ((DiscussionForum) target);
-    	//membershipItemSet = forum.getMembershipItemSet();
-    	//membershipItemSet = uiPermissionsManager.getForumItemsSet(forum);
-    	oldMembershipItemSet = uiPermissionsManager.getForumItemsSet(forum);
-    }
-    else if (target instanceof Area){
-    	area = ((Area) target);
-    	//membershipItemSet = area.getMembershipItemSet();
-    	//membershipItemSet = uiPermissionsManager.getAreaItemsSet();
-    	oldMembershipItemSet = uiPermissionsManager.getAreaItemsSet(area);
-    }
-    else if (target instanceof Topic){
-    	//topic = ((Topic) target);
-    	//membershipItemSet = topic.getMembershipItemSet();
-    	topic = ((DiscussionTopic) target);
-    	//membershipItemSet = uiPermissionsManager.getTopicItemsSet(topic);
-    	oldMembershipItemSet = uiPermissionsManager.getTopicItemsSet(topic);
-    }
+    if (permissions != null) {
+      Area area = null;
+      DiscussionForum forum = null;
+      DiscussionTopic topic = null;
 
-    membershipItemSet = new HashSet();
+      Set<DBMembershipItem> oldMembershipItemSet = null;
+      Set<DBMembershipItem> membershipItemSet = new HashSet<>();
 
-    if(permissions!=null ){
+      if (target instanceof DiscussionForum){
+          forum = ((DiscussionForum) target);
+          oldMembershipItemSet = uiPermissionsManager.getForumItemsSet(forum);
+      } else if (target instanceof Area){
+          area = ((Area) target);
+          oldMembershipItemSet = uiPermissionsManager.getAreaItemsSet(area);
+      } else if (target instanceof Topic){
+          topic = ((DiscussionTopic) target);
+          oldMembershipItemSet = uiPermissionsManager.getTopicItemsSet(topic);
+      }
+
       for (PermissionBean permBean : permissions) {
         //for group awareness
         //DBMembershipItem membershipItem = permissionLevelManager.createDBMembershipItem(permBean.getItem().getName(), permBean.getSelectedLevel(), DBMembershipItem.TYPE_ROLE);
@@ -6663,37 +6643,23 @@ public class DiscussionForumTool {
 
         membershipItemSet.add(membershipItem);
       }
-      
-      if( ((area != null && area.getId() != null) || 
-      		(forum != null && forum.getId() != null) || 
-      		(topic != null && topic.getId() != null)) 
-      		&& oldMembershipItemSet != null)
-      	permissionLevelManager.deleteMembershipItems(oldMembershipItemSet);
-      
-      if (target instanceof DiscussionForum){
-      	forum.setMembershipItemSet(membershipItemSet);
-      	
-      //	if (ThreadLocalManager.get("message_center_permission_set") == null || !((Boolean)ThreadLocalManager.get("message_center_permission_set")).booleanValue())
-		//{
-			//this.uiPermissionsManager.initMembershipForSite();
-	//	}
 
-		//Set forumItemsInThread = (Set) ThreadLocalManager.get("message_center_membership_forum");
-     //ThreadLocalManager.set("message_center_membership_forum",membershipItemSet);
-		//Set thisForumItemSet = new HashSet();
-		//Iterator iter = forumItemsInThread.iterator();
-		//thisForumItemSet.add((DBMembershipItem)thisItem);
-		
-      	//forumManager.saveForum(forum);
+      if (forum != null) {
+        final DiscussionForum f = forum;
+        area = f.getArea();
+        forum.setMembershipItemSet(membershipItemSet);
+        membershipItemSet.forEach(i -> ((DBMembershipItemImpl) i).setForum(f));
+      } else if (area != null) {
+        final Area a = area;
+        area.setMembershipItemSet(membershipItemSet);
+        membershipItemSet.forEach(i -> ((DBMembershipItemImpl) i).setArea(a));
+      } else if (topic != null) {
+        final Topic t = topic;
+        area = t.getBaseForum().getArea();
+        topic.setMembershipItemSet(membershipItemSet);
+        membershipItemSet.forEach(i -> ((DBMembershipItemImpl) i).setTopic(t));
       }
-      else if (area != null){
-      	area.setMembershipItemSet(membershipItemSet);
-      	//areaManager.saveArea(area);
-      }
-      else if (topic != null){
-      	topic.setMembershipItemSet(membershipItemSet);
-      	//forumManager.saveTopic((DiscussionTopic) topic);
-      }
+      permissionLevelManager.deleteMembershipItems(oldMembershipItemSet);
     }
     siteMembers = null;
   }
@@ -6857,12 +6823,10 @@ public class DiscussionForumTool {
 		 */
 	    public static String getResourceBundleString(String key) 
 	    {
-	        final ResourceLoader rb = new ResourceLoader(MESSAGECENTER_BUNDLE);
 	        return rb.getString(key);
 	    }
 
 	    public static String getResourceBundleString(String key, Object[] args) {
-	    	final ResourceLoader rb = new ResourceLoader(MESSAGECENTER_BUNDLE);
 	    	return rb.getFormattedMessage(key, args);
 	    }
 
@@ -6926,7 +6890,7 @@ public class DiscussionForumTool {
 	}
 	
  	public TimeZone getUserTimeZone() {
- 		return userPreferencesManager.getTimeZone();
+ 		return userTimeService.getLocalTimeZone();
  	}
 
 	public boolean isDisableLongDesc()
@@ -7107,12 +7071,9 @@ public class DiscussionForumTool {
 	}
 	
    private String gotoMain() {
-	    if (isForumsTool()) {
-	    	return FORUMS_MAIN;
-	    }
-	    else {
-	    	return MAIN;
-	    }
+     // ern believes the faces-redirect=true is crucial to carry over the error message to new page
+     // return (isForumsTool() ? FORUMS_MAIN : MAIN) + "?faces-redirect=true";
+     return (isForumsTool() ? FORUMS_MAIN : MAIN);
    }
    
 	/**
@@ -7292,6 +7253,9 @@ public class DiscussionForumTool {
 		 setSelectedForumForCurrentTopic(topic);		
 		 selectedTopic = getDecoratedTopic(topic);
 		 selectedForum = getDecoratedForum(forum);
+		 if (!isInstructor()) {
+			 Collections.sort(selectedTopic.getMessages(), DATE_COMPARATOR);
+		 }
 
 		 if (uiPermissionsManager.isRead((DiscussionTopic)topic, forum)) {
 			 List messageList = messageManager.findMessagesByTopicId(topic.getId());
@@ -7389,13 +7353,14 @@ public class DiscussionForumTool {
 		while (iter.hasNext()){
 			DiscussionMessageBean decoMessage = (DiscussionMessageBean) iter.next();
 			String threadauthor = decoMessage.getMessage().getCreatedBy();
-			EmailNotification authorNotificationLevel = emailNotificationManager.getEmailNotification(threadauthor);
-			// only add level 1 users , since we've already got level2 users. 
-			if (EmailNotification.EMAIL_REPLY_TO_MY_MESSAGE.equalsIgnoreCase(authorNotificationLevel.getNotificationLevel())){
-				if (log.isDebugEnabled()){
-					log.debug("The author: " + threadauthor + " wants to be notified");
+			// don't include the reply author
+			if (!threadauthor.equals(reply.getCreatedBy())) {
+				EmailNotification authorNotificationLevel = emailNotificationManager.getEmailNotification(threadauthor);
+				// only add level 1 users , since we've already got level2 users.
+				if (EmailNotification.EMAIL_REPLY_TO_MY_MESSAGE.equalsIgnoreCase(authorNotificationLevel.getNotificationLevel())){
+					log.debug("The author: {} wants to be notified", threadauthor);
+					userlist.add(threadauthor);
 				}
-				userlist.add(threadauthor);
 			}
 		}
 
@@ -7588,7 +7553,8 @@ public class DiscussionForumTool {
 
 	  String forumId = getExternalParameterByKey(FORUM_ID);
 	  DiscussionForum forum = forumManager.getForumById(Long.valueOf(forumId));
-	  selectedForum = new DiscussionForumBean(forum, uiPermissionsManager, forumManager);
+	  selectedForum = new DiscussionForumBean(forum, forumManager, userTimeService);
+	  loadForumDataInForumBean(forum, selectedForum);
       selectedForum.getForum().setTitle(getResourceBundleString(DUPLICATE_COPY_TITLE, new Object[] {selectedForum.getForum().getTitle()}));
 	  selectedForum.setMarkForDuplication(true);
 	  return FORUM_SETTING;
@@ -7676,8 +7642,8 @@ public class DiscussionForumTool {
 			  setErrorMessage(getResourceBundleString(INSUFFICIENT_PRIVILEGES_NEW_TOPIC));
 			  return gotoMain();
 		  }
-		  selectedTopic = new DiscussionTopicBean(topic, selectedForum.getForum(),uiPermissionsManager, forumManager);
-          StringBuilder alertMsg = new StringBuilder();
+		  selectedTopic = new DiscussionTopicBean(topic, selectedForum.getForum(), forumManager, rubricsService, userTimeService);
+		  loadTopicDataInTopicBean(topic, selectedTopic);
           selectedTopic.getTopic().setTitle(getResourceBundleString(DUPLICATE_COPY_TITLE, new Object[] {selectedTopic.getTopic().getTitle()}));
 		  selectedTopic.setMarkForDuplication(true);
 		  return TOPIC_SETTING;
@@ -7751,23 +7717,16 @@ public class DiscussionForumTool {
 	newTopic.setAutoMarkThreadsRead(fromTopic.getAutoMarkThreadsRead());
 
 	// Get/set the topic's permissions
-
-	Set topicMembershipItemSet = uiPermissionsManager.getTopicItemsSet(fromTopic);
-
-	if (topicMembershipItemSet != null && !topicMembershipItemSet.isEmpty() ) { //&& allowedPermNames != null && !allowedPermNames.isEmpty()
-		log.debug("About to assign topicMembershipItemSet's iterator");
-		Iterator membershipIter = topicMembershipItemSet.iterator();
-		while (membershipIter.hasNext()) {
-			log.debug("About to get a member of membershipIter");
-			DBMembershipItem oldItem = (DBMembershipItem)membershipIter.next();
-				log.debug("About to getMembershipItemCopy()");
-				DBMembershipItem newItem = getMembershipItemCopy(oldItem);
-				if (newItem != null) {
-					newItem = permissionLevelManager.saveDBMembershipItem(newItem);
-					newTopic.addMembershipItem(newItem);
-				}
-		}
+	Set<DBMembershipItem> fromTopicMembershipItems = uiPermissionsManager.getTopicItemsSet(fromTopic);
+	if (fromTopicMembershipItems != null) {
+      for (DBMembershipItem fromTopicMembershipItem : fromTopicMembershipItems) {
+        DBMembershipItem membershipItemCopy = getMembershipItemCopy(fromTopicMembershipItem);
+        DBMembershipItem savedMembershipItem = permissionLevelManager.saveDBMembershipItem(membershipItemCopy);
+        newTopic.addMembershipItem(savedMembershipItem);
+        ((DBMembershipItemImpl) savedMembershipItem).setTopic(newTopic);
+      }
 	}
+
 	// Add the attachments
 	List fromTopicAttach = forumManager.getTopicByIdWithAttachments(originalTopicId).getAttachments();
 	if (fromTopicAttach != null && !fromTopicAttach.isEmpty()) {
@@ -7799,20 +7758,9 @@ public class DiscussionForumTool {
 	LRS_Statement statement = forumManager.getStatementForUserPosted(newTopic.getTitle(), SAKAI_VERB.interacted).orElse(null);
 	ForumsTopicEventParams params = new ForumsTopicEventParams(ForumsTopicEventParams.TopicEvent.ADD, statement);
 
-	forumManager.saveTopic(newTopic, fromTopic.getDraft(), params);
-	selectedTopic = new DiscussionTopicBean(newTopic, forum, uiPermissionsManager, forumManager);
-
-	//copy rubrics
-	/*
-	try {
-		Optional<ToolItemRubricAssociation> rubricAssociation = rubricsService.getRubricAssociation(RubricsConstants.RBCS_TOOL_FORUMS, RubricsConstants.RBCS_TOPIC_ENTITY_PREFIX + fromTopic.getId());
-		if (rubricAssociation.isPresent()) {
-			rubricsService.saveRubricAssociation(RubricsConstants.RBCS_TOOL_FORUMS, RubricsConstants.RBCS_TOPIC_ENTITY_PREFIX + newTopic.getId(), rubricAssociation.get().getFormattedAssociation());
-		}
-	} catch(Exception e){
-		log.error("Error while trying to duplicate Rubrics: {} ", e.getMessage());
-	}
-	*/
+	newTopic = forumManager.saveTopic(newTopic, fromTopic.getDraft(), params);
+	selectedTopic = new DiscussionTopicBean(newTopic, forum, forumManager, rubricsService, userTimeService);
+	loadTopicDataInTopicBean(newTopic, selectedTopic);
 
     if("true".equalsIgnoreCase(ServerConfigurationService.getString("mc.defaultLongDescription")))
     {
@@ -7821,7 +7769,8 @@ public class DiscussionForumTool {
 
     setNewTopicBeanAssign();
 
-    DiscussionTopicBean thisDTB = new DiscussionTopicBean(newTopic, forum, uiPermissionsManager, forumManager);
+    DiscussionTopicBean thisDTB = new DiscussionTopicBean(newTopic, forum, forumManager, rubricsService, userTimeService);
+    loadTopicDataInTopicBean(newTopic, thisDTB);
     if("true".equalsIgnoreCase(ServerConfigurationService.getString("mc.defaultLongDescription")))
     {
     	thisDTB.setReadFullDesciption(true);
@@ -7867,7 +7816,8 @@ public class DiscussionForumTool {
 		forum.setAutoMarkThreadsRead(oldForum.getAutoMarkThreadsRead()); // default to template setting
         String oldTitle =  selectedForum.getForum().getTitle();
 		selectedForum = null;
-		selectedForum = new DiscussionForumBean(forum, uiPermissionsManager, forumManager);
+		selectedForum = new DiscussionForumBean(forum, forumManager, userTimeService);
+		loadForumDataInForumBean(forum, selectedForum);
 		if("true".equalsIgnoreCase(ServerConfigurationService.getString("mc.defaultLongDescription")))
 		{
 			selectedForum.setReadFullDesciption(true);
@@ -7878,9 +7828,19 @@ public class DiscussionForumTool {
 		String oldExtendedDescription = oldForum.getExtendedDescription();
 		if (oldExtendedDescription == null) oldExtendedDescription = "";
 		forum.setExtendedDescription(oldExtendedDescription);
-        forum.setTitle(oldTitle);
+		forum.setTitle(oldTitle);
 
-		List fromForumAttach = oldForum.getAttachments();
+      Set<DBMembershipItem> fromForumMembershipItems = uiPermissionsManager.getForumItemsSet(oldForum);
+      if (fromForumMembershipItems != null) {
+        for (DBMembershipItem fromForumMembershipItem : fromForumMembershipItems) {
+          DBMembershipItem membershipItemCopy = getMembershipItemCopy(fromForumMembershipItem);
+          DBMembershipItem savedMembershipItem = permissionLevelManager.saveDBMembershipItem(membershipItemCopy);
+          forum.addMembershipItem(savedMembershipItem);
+          ((DBMembershipItemImpl) savedMembershipItem).setForum(forum);
+        }
+      }
+
+      List fromForumAttach = oldForum.getAttachments();
 		if (fromForumAttach != null && !fromForumAttach.isEmpty()) {
 			for (int topicAttach=0; topicAttach < fromForumAttach.size(); topicAttach++) {
 				Attachment thisAttach = (Attachment)fromForumAttach.get(topicAttach);
@@ -7905,18 +7865,6 @@ public class DiscussionForumTool {
 
 		forum = saveForumSettings(oldForum.getDraft());
 
-		//copy rubrics
-		/*
-		try {
-			Optional<ToolItemRubricAssociation> rubricAssociation = rubricsService.getRubricAssociation(RubricsConstants.RBCS_TOOL_FORUMS, RubricsConstants.RBCS_FORUM_ENTITY_PREFIX + oldForum.getId());
-			if (rubricAssociation.isPresent()) {
-				rubricsService.saveRubricAssociation(RubricsConstants.RBCS_TOOL_FORUMS, RubricsConstants.RBCS_FORUM_ENTITY_PREFIX + forum.getId(), rubricAssociation.get().getFormattedAssociation());
-			}
-		} catch(Exception e){
-			log.error("Error while trying to duplicate Rubrics: {} ", e.getMessage());
-		}
-		*/
-
 		forum = forumManager.getForumById(forum.getId());
 		List attachList = forum.getAttachments();
 		if (attachList != null)
@@ -7927,7 +7875,8 @@ public class DiscussionForumTool {
 		  }
 		}
 
-		selectedForum = new DiscussionForumBean(forum, uiPermissionsManager, forumManager);
+		selectedForum = new DiscussionForumBean(forum, forumManager, userTimeService);
+		loadForumDataInForumBean(forum, selectedForum);
 		if("true".equalsIgnoreCase(ServerConfigurationService.getString("mc.defaultLongDescription")))
 		{
 			selectedForum.setReadFullDesciption(true);
@@ -7943,7 +7892,8 @@ public class DiscussionForumTool {
 			Long oldTopicId = oldTopic.getId();
 			duplicateTopic(oldTopicId, forum, true);
 		}
-		selectedForum = new DiscussionForumBean(forum, uiPermissionsManager, forumManager);
+		selectedForum = new DiscussionForumBean(forum, forumManager, userTimeService);
+		loadForumDataInForumBean(forum, selectedForum);
 		return selectedForum;
 	}
 	
@@ -8019,7 +7969,7 @@ public class DiscussionForumTool {
     private boolean saveForumsForGroups(boolean draft) {
         log.debug("saveForumsForGroups()");
         if (siteGroups == null || siteGroups.isEmpty()) {
-            setErrorMessage(getResourceBundleString(NO_GROUP_SELECTED, new Object[]{getResourceBundleString("cdfm_discussion_forums")}));
+            setErrorMessage(getResourceBundleString(NO_GROUP_SELECTED, new Object[]{getResourceBundleString("cdfm_discussions")}));
             return false;
         }
 
@@ -8044,11 +7994,14 @@ public class DiscussionForumTool {
             if (currentGroup.getCreateForumForGroup()==true) {
                 groupSelected = true;
                 DiscussionForum forum = forumManager.createForum();
-                forum.setRestrictPermissionsForGroups(forumTemplate.getForum().getRestrictPermissionsForGroups());
+                if (ServerConfigurationService.getBoolean("msgcntr.restricted.group.perms", false)) {
+                    forum.setRestrictPermissionsForGroups(forumTemplate.getForum().getRestrictPermissionsForGroups());
+                }
                 forum.setModerated(forumTemplate.getForum().getModerated());
                 forum.setAutoMarkThreadsRead(forumTemplate.getForum().getAutoMarkThreadsRead());
                 forum.setPostFirst(forumTemplate.getForum().getPostFirst());
-                selectedForum = new DiscussionForumBean(forum, uiPermissionsManager, forumManager);
+                selectedForum = new DiscussionForumBean(forum, forumManager, userTimeService);
+                loadForumDataInForumBean(forum, selectedForum);
                 setNewForumBeanAssign();
                 DiscussionForum thisForum = selectedForum.getForum();
                 thisForum.setTitle(forumTemplate.getForum().getTitle() + " - " + currentGroup.getGroup().getTitle());
@@ -8087,7 +8040,7 @@ public class DiscussionForumTool {
         }
 
         if (!groupSelected) {
-            setErrorMessage(getResourceBundleString(NO_GROUP_SELECTED, new Object[]{getResourceBundleString("cdfm_discussion_forums")}));
+            setErrorMessage(getResourceBundleString(NO_GROUP_SELECTED, new Object[]{getResourceBundleString("cdfm_discussions")}));
             Collections.reverse(siteGroups);
             return false;
         }
@@ -8131,7 +8084,9 @@ public class DiscussionForumTool {
                 selectedTopic = createTopic(topicTempate.getTopic().getBaseForum().getId());
                 selectedTopic.setGradeAssign(topicTempate.getGradeAssign());
                 DiscussionTopic thisTopic = selectedTopic.getTopic();
-                thisTopic.setRestrictPermissionsForGroups(topicTempate.getTopic().getRestrictPermissionsForGroups());
+                if (ServerConfigurationService.getBoolean("msgcntr.restricted.group.perms", false)) {
+                   thisTopic.setRestrictPermissionsForGroups(topicTempate.getTopic().getRestrictPermissionsForGroups());
+                }
                 thisTopic.setTitle(topicTempate.getTopic().getTitle() + " - " + currentGroup.getGroup().getTitle());
                 thisTopic.setShortDescription(topicTempate.getTopic().getShortDescription());
                 thisTopic.setExtendedDescription(topicTempate.getTopic().getExtendedDescription());
@@ -8492,11 +8447,11 @@ public class DiscussionForumTool {
 
 		for (Iterator iterator = members.iterator(); iterator.hasNext();) {
 			MembershipItem item = (MembershipItem) iterator.next();
-			if (MembershipItem.TYPE_ROLE.equals(item.getType())) {
+			if (MembershipItem.TYPE_ROLE == item.getType()) {
 				parseRoles(item, rolesMap);
-			} else if (MembershipItem.TYPE_GROUP.equals(item.getType())) {
+			} else if (MembershipItem.TYPE_GROUP == item.getType()) {
 				parseGroups(item, groupsMap);
-			} else if (MembershipItem.TYPE_USER.equals(item.getType())) {
+			} else if (MembershipItem.TYPE_USER == item.getType()) {
 				continue;
 			} else {
                 if (log.isDebugEnabled()) {
@@ -8508,7 +8463,7 @@ public class DiscussionForumTool {
 		// to users map and their ids to the groups and/or roles the belong to
 		for (Iterator iterator = members.iterator(); iterator.hasNext();) {
 			MembershipItem item = (MembershipItem) iterator.next();
-			if (MembershipItem.TYPE_USER.equals(item.getType())) {
+			if (MembershipItem.TYPE_USER == item.getType()) {
 				parseUsers(item, groupsMap, rolesMap, usersMap);
                 if (log.isDebugEnabled()) {
                     log.debug("parseUsers....TYPE_USER  itemtype =  " + item.getType());
@@ -9079,7 +9034,7 @@ public class DiscussionForumTool {
     		try{
     			String topicIdStr = getExternalParameterByKey(CURRENT_TOPIC_ID);
     			long topicId = Long.parseLong(topicIdStr);
-    			if(tmpSelectedTopic == null || tmpSelectedTopic.getTopic() == null 
+    			if(tmpSelectedTopic == null || tmpSelectedTopic.getTopic() == null || tmpSelectedTopic.getTopic().getBaseForum() == null
     					|| (!tmpSelectedTopic.getTopic().getId().equals(topicId))){
     				//selected message doesn't match the current message input,
     				//verify user has access to parameter message and use that one
@@ -9197,34 +9152,64 @@ public class DiscussionForumTool {
 		return rubricsService.generateJsonWebToken(RubricsConstants.RBCS_TOOL_FORUMS);
 	}
 
-	public void keepStateDetails(ActionEvent e) {//this is currently only used for rubrics, but could be used to avoid repeating code on each submit action
-		List rbcsDetails = getRequestParamArrayValueLike("rbcs-state-details");
-		if(rbcsDetails != null){
-			Iterator iter = rbcsDetails.iterator();
-			if (iter.hasNext()) {
-				rbcsStateDetails = (String)iter.next();
-				log.debug("rbcsStateDetails " + rbcsStateDetails); 
-			}
-		}
-	}
-
 	public boolean hasAssociatedRubric(){
 		return (allowedToGradeItem && (getRubricAssociationId() != null));
 	}
 
-	public String getRubricAssociationId(){
+    public String getRubricAssociationId() {
+        String gradeAssign = selectedTopic != null ? selectedTopic.getGradeAssign()
+                : selectedForum != null ? selectedForum.getGradeAssign()
+                : null;
 
-		String gradeAssign = selectedTopic.getGradeAssign();
-
-		if ((selectedTopic != null || selectedForum != null) && rubricsService.hasAssociatedRubric(RubricsConstants.RBCS_TOOL_GRADEBOOKNG, gradeAssign)) {
-			return gradeAssign;
-		} else {
-			return null;
-		}
-	}
+        if (gradeAssign != null && rubricsService.hasAssociatedRubric(RubricsConstants.RBCS_TOOL_GRADEBOOKNG, gradeAssign)) {
+            return gradeAssign;
+        }
+        return null;
+    }
 
 	public String getCDNQuery() {
 		return PortalUtils.getCDNQuery();
 	}
-}
 
+	private void loadForumDataInForumBean(DiscussionForum forum, DiscussionForumBean bean) {
+      BulkPermission permissions = uiPermissionsManager.getBulkPermissions(forum);
+      bean.setChangeSettings(permissions.isChangeSettings());
+      bean.setNewTopic(permissions.isNewTopic());
+
+      // load attachments
+      List<DecoratedAttachment> decoAttachList = new ArrayList<>();
+      List<Attachment> attachList = forum.getAttachments();
+      if (attachList != null) {
+        attachList.stream().map(DecoratedAttachment::new).forEach(decoAttachList::add);
+      }
+      bean.setDecoAttachList(decoAttachList);
+    }
+
+	private void loadTopicDataInTopicBean(DiscussionTopic topic, DiscussionTopicBean bean) {
+      final DiscussionForum forum = (DiscussionForum) topic.getBaseForum();
+
+      BulkPermission permissions = uiPermissionsManager.getBulkPermissions(topic, forum);
+      bean.setChangeSettings(permissions.isChangeSettings());
+      bean.setIsDeleteAny(permissions.isDeleteAny());
+      bean.setIsDeleteOwn(permissions.isDeleteOwn());
+      bean.setIsMarkAsRead(permissions.isMarkAsRead());
+      bean.setIsMovePostings(permissions.isMovePostings());
+      bean.setIsModeratePostings(permissions.isModeratePostings());
+      bean.setIsModeratedAndHasPerm(topic.getModerated() && permissions.isModeratePostings());
+      bean.setIsNewResponse(permissions.isNewResponse());
+      bean.setIsNewResponseToResponse(permissions.isNewResponseToResponse());
+      bean.setPostToGradebook(permissions.isPostToGradebook());
+      bean.setIsRead(permissions.isRead());
+      bean.setIsReviseAny(permissions.isReviseAny());
+      bean.setIsReviseOwn(permissions.isReviseOwn());
+
+      // load attachments
+      List<DecoratedAttachment> decoAttachList = new ArrayList<>();
+      List<Attachment> attachList = forumManager.getTopicAttachments(topic.getId());
+      if (attachList != null) {
+        attachList.stream().map(DecoratedAttachment::new).forEach(decoAttachList::add);
+      }
+      bean.setAttachList(decoAttachList);
+    }
+
+}

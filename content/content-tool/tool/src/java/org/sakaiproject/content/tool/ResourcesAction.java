@@ -154,6 +154,8 @@ import org.sakaiproject.util.Resource;
 import org.sakaiproject.util.ResourceLoader;
 import org.sakaiproject.util.Validator;
 import org.sakaiproject.util.api.FormattedText;
+import org.sakaiproject.util.comparator.GroupTitleComparator;
+import org.sakaiproject.util.comparator.ResourceTypeLabelComparator;
 import org.w3c.dom.Element;
 
 import lombok.extern.slf4j.Slf4j;
@@ -206,7 +208,8 @@ public class ResourcesAction
 	private static final org.sakaiproject.content.copyright.api.CopyrightManager copyrightManager = (org.sakaiproject.content.copyright.api.CopyrightManager)
 			ComponentManager.get("org.sakaiproject.content.copyright.api.CopyrightManager");
 
-	
+	private static final ResourceLoader rl = new ResourceLoader("permissions");
+
 	/**
 	 * Action
 	 *
@@ -456,7 +459,7 @@ public class ResourcesAction
 	private static final String RESOURCEBUNDLE = "resource.bundle.shared";
 	private final String resourceClass = ServerConfigurationService.getString(RESOURCECLASS, DEFAULT_RESOURCECLASS);
 	private final String resourceBundle = ServerConfigurationService.getString(RESOURCEBUNDLE, DEFAULT_RESOURCEBUNDLE);
-	private final ResourceLoader srb = new Resource().getLoader(resourceClass, resourceBundle);
+	private final ResourceLoader srb = Resource.getResourceLoader(resourceClass, resourceBundle);
 	
 	static final ResourceConditionsHelper conditionsHelper = new ResourceConditionsHelper();
 
@@ -883,13 +886,13 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 		CONTENT_NEW_FOR_PARENT_ACTIONS.add(ActionType.DUPLICATE);
 		
 		CONTENT_READ_ACTIONS.add(ActionType.VIEW_CONTENT);
-		CONTENT_READ_ACTIONS.add(ActionType.COPY);
 		CONTENT_READ_ACTIONS.add(ActionType.PRINT_FILE);
 		
 		CONTENT_PROPERTIES_ACTIONS.add(ActionType.VIEW_METADATA);
 		
 		CONTENT_MODIFY_ACTIONS.add(ActionType.REVISE_METADATA);
 		CONTENT_MODIFY_ACTIONS.add(ActionType.REVISE_CONTENT);
+		CONTENT_MODIFY_ACTIONS.add(ActionType.COPY);
 		CONTENT_MODIFY_ACTIONS.add(ActionType.REPLACE_CONTENT);
 		CONTENT_MODIFY_ACTIONS.add(ActionType.REVISE_ORDER);
 		CONTENT_MODIFY_ACTIONS.add(ActionType.COMPRESS_ZIP_FOLDER);
@@ -944,23 +947,6 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 	}
 
 	/**
-	 * Add additional resource pattern to the observer
-	 *@param pattern The pattern value to be added
-	 *@param state The state object
-	 */
-	private static void addObservingPattern(String pattern, SessionState state)
-	{
-		log.debug("ResourcesAction.addObservingPattern()");
-//		// get the observer and add the pattern
-//		ContentObservingCourier o = (ContentObservingCourier) state.getAttribute(STATE_OBSERVER);
-//		o.addResourcePattern(ContentHostingService.getReference(pattern));
-//
-//		// add it back to state
-//		state.setAttribute(STATE_OBSERVER, o);
-
-	}	// addObservingPattern
-
-	/**
 	* Build the context to show the list of resource properties
 	*/
 	public String buildMoreContext (	VelocityPortlet portlet,
@@ -969,7 +955,6 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 									SessionState state)
 	{
 		log.debug("ResourcesAction.buildMoreContext()");
-		context.put("tlang",rb);
 		
 		// find the ContentTypeImage service
 		context.put ("contentTypeImageService", state.getAttribute (STATE_CONTENT_TYPE_IMAGE_SERVICE));
@@ -978,7 +963,7 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 		context.put ("id", entityId);
 		String collectionId = (String) state.getAttribute(STATE_MORE_COLLECTION_ID);
 		context.put ("collectionId", collectionId);
-		String homeCollectionId = (String) (String) state.getAttribute (STATE_HOME_COLLECTION_ID);
+		String homeCollectionId = (String) state.getAttribute (STATE_HOME_COLLECTION_ID);
 		context.put("homeCollectionId", homeCollectionId);
 		//List cPath = getCollectionPath(state);
 		//context.put ("collectionPath", cPath);
@@ -3514,23 +3499,6 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 
 	
 	/**
-	 * Remove a resource pattern from the observer
-	 *@param pattern The pattern value to be removed
-	 *@param state The state object
-	 */
-	private static void removeObservingPattern(String pattern, SessionState state)
-	{
-		log.debug("ResourcesAction.removeObservingPattern()");
-//		// get the observer and remove the pattern
-//		ContentObservingCourier o = (ContentObservingCourier) state.getAttribute(STATE_OBSERVER);
-//		o.removeResourcePattern(ContentHostingService.getReference(pattern));
-//
-//		// add it back to state
-//		state.setAttribute(STATE_OBSERVER, o);
-
-	}	// removeObservingPattern
-
-	/**
 	 *
 	 * Whether a resource item can be replaced
 	 * @param p The ResourceProperties object for the resource item
@@ -3721,7 +3689,6 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 	public String buildColumnsContext(VelocityPortlet portlet, Context context, RunData data, SessionState state) 
 	{
 		log.debug("{}.buildColumnsContext()", this);
-		context.put("tlang",trb);
 		
 		// need to check permissions
 		
@@ -3866,7 +3833,6 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 	public String buildCreateWizardContext(VelocityPortlet portlet, Context context, RunData data, SessionState state) 
 	{
 		log.debug("{}.buildCreateWizardContext()", this);
-		context.put("tlang",trb);
 		context.put("metaLang", metaLang);
 		context.put("site_id", toolManager.getCurrentPlacement().getContext());
 
@@ -3983,7 +3949,6 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 											SessionState state)
 	{
 		log.debug("{}.buildDeleteConfirmContext()", this);
-		context.put("tlang",rb);
 		// find the ContentTypeImage service
 		context.put ("contentTypeImageService", state.getAttribute (STATE_CONTENT_TYPE_IMAGE_SERVICE));
 		context.put ("collectionId", state.getAttribute (STATE_COLLECTION_ID) );
@@ -4037,7 +4002,6 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 	public String buildDeleteFinishContext(VelocityPortlet portlet, Context context, RunData data, SessionState state)
 	{
 		log.debug("{}.buildDeleteFinishContext()", this);
-		context.put("tlang",trb);
 		context.put ("collectionId", state.getAttribute (STATE_COLLECTION_ID) );
 
 		//%%%% FIXME
@@ -4086,15 +4050,10 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 										SessionState state)
 	{
 		log.debug("{}.buildListContext()", this);
-		context.put("clang",rb);
-		context.put("tlang",trb);
-		context.put("slang",srb);
-		
 		// Issue SAK-19442
 		// ... pass the resource loader object
-		ResourceLoader pRb = new ResourceLoader("permissions");
 		HashMap<String, String> pRbValues = new HashMap<>();
-		for(Iterator<Entry<String, String>> mapIter = pRb.entrySet().iterator(); mapIter.hasNext();)
+		for(Iterator<Entry<String, String>> mapIter = rl.entrySet().iterator(); mapIter.hasNext();)
 		{
 			Entry<String, String> entry = mapIter.next();
 			pRbValues.put(entry.getKey(), entry.getValue());
@@ -4134,21 +4093,8 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 			registry = (ResourceTypeRegistry) ComponentManager.get("org.sakaiproject.content.api.ResourceTypeRegistry");
 			state.setAttribute(STATE_RESOURCES_TYPE_REGISTRY, registry);
 		}
-		
-		String currentSiteId = toolManager.getCurrentPlacement().getContext();
-		boolean inMyWorkspace = siteService.isUserSite(currentSiteId);
-		//are we in the admin site of !admin or ~admin
-		boolean isSpecialSite = false;
-		if ("!admin".equals(currentSiteId) || "~admin".equals(currentSiteId)) {
-			isSpecialSite = true;
-			// SAK-30085
-			context.put("showJumpToResourceForm", true);
-		}
-		
-		
-		context.put("inMyWorkspace", Boolean.toString(inMyWorkspace));
 
-		boolean atHome = false;
+		String currentSiteId = toolManager.getCurrentPlacement().getContext();
 
 		// %%STATE_MODE_RESOURCES%%
 
@@ -4168,12 +4114,7 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 					site_groups.addAll(site.getGroups());
 					if(site_groups.size() > 0)
 					{
-						Collections.sort(site_groups, new Comparator<Group>()
-						{
-							public int compare(Group g0, Group g1) {
-								return g0.getTitle().compareToIgnoreCase(g1.getTitle());						
-							}
-						});
+						Collections.sort(site_groups, new GroupTitleComparator());
 						context.put("dropboxGroupFilter_groups", site_groups);
 						context.put("showDropboxGroupFilter", showDropboxGroupFilter.toString());
 						String dropboxGroupFilter_groupId = (String) state.getAttribute("dropboxGroupFilter_groupId");
@@ -4234,11 +4175,12 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 		context.put ("collectionId", collectionId);
 		String navRoot = (String) state.getAttribute(STATE_NAVIGATION_ROOT);
 		String homeCollectionId = (String) state.getAttribute(STATE_HOME_COLLECTION_ID);
+		boolean atHome = collectionId.equals(homeCollectionId);
+		context.put("atHome", atHome);
 
 		String siteTitle = (String) state.getAttribute (STATE_SITE_TITLE);
 		if (collectionId.equals(homeCollectionId))
 		{
-			atHome = true;
 			context.put ("collectionDisplayName", state.getAttribute (STATE_HOME_COLLECTION_DISPLAY_NAME));
 		}
 		else
@@ -4252,50 +4194,10 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 			catch (TypeException e) {}
 			catch (PermissionException e) {}
 		}
-		boolean allowUpdateSite = siteService.allowUpdateSite(toolManager.getCurrentPlacement().getContext());
-		if(atHome && siteService.allowUpdateSite(toolManager.getCurrentPlacement().getContext()))
-		{
-			if(dropboxMode)
-			{
-				context.put("showDropboxOptions", Boolean.TRUE.toString());
-				context.put("showDropboxMultipleFoldersUpload", Boolean.TRUE.toString());
-			}
-			else
-			{
-				
-				if(!inMyWorkspace && !isSpecialSite)
-				{
-					context.put("showPermissions", Boolean.TRUE.toString());
-					//buildListMenu(portlet, context, data, state);
-				}
-				
-				String home = (String) state.getAttribute(STATE_HOME_COLLECTION_ID);
-				Reference ref = entityManager.newReference(contentHostingService.getReference(home));
-				String siteId = ref.getContext();
-				Map<String,Boolean> statusMap = registry.getMapOfResourceTypesForContext(siteId);
-				if(statusMap != null && ! statusMap.isEmpty() && !isSpecialSite)
-				{
-					context.put("showOptions", Boolean.TRUE.toString());
-				}
-			}
-		}
-		
-		if (! isSpecialSite) {
-			context.put("showQuota", dropboxMode || allowUpdateSite);
-		} else {
-			context.put("showQuota", false);
-		}
-		
-		context.put("atHome", Boolean.toString(atHome));
 
 		if(contentHostingService.isAvailabilityEnabled())
 		{
 			context.put("availability_is_enabled", Boolean.TRUE);
-		}
-
-		boolean showWebdavLink = ServerConfigurationService.getBoolean("resources.show_webdav.link", Boolean.TRUE);
-		if (showWebdavLink) {
-			context.put("showWebdavLink", Boolean.TRUE);
 		}
 
 		Comparator userSelectedSort = (Comparator) state.getAttribute(STATE_LIST_VIEW_SORT);
@@ -4444,16 +4346,6 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 				String[] args = {site.getTitle()};
 				item.setName(trb.getFormattedMessage("title.resources", (Object[])args));
 			}
-			
-			
-//			if(atHome && dropboxMode)
-//			{
-//				item.setName(siteTitle + " " + rb.getString("gen.drop"));
-//			}
-//			else if(atHome)
-//			{
-//				item.setName(siteTitle + " " + rb.getString("gen.reso"));
-//			}
 
 			context.put("site", items);
 
@@ -4622,21 +4514,12 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 		context.put("expandallflag", state.getAttribute(STATE_EXPAND_ALL_FLAG));
 		state.removeAttribute(STATE_NEED_TO_EXPAND_ALL);
 		
-		// inform the observing courier that we just updated the page...
-		// if there are pending requests to do so they can be cleared
-		justDelivered(state);
-
 		// pick the "show" template based on the standard template name
 		// String template = (String) getContext(data).get("template");
 		
 		context.put("labeler", new ResourceTypeLabeler());
 		
 		contentPrintResultIntoContext(data, context, state);
-		
-		// whether the user can revise any resources in this site
-		// used for showing the restore deleted files interface
-		context.put("canDeleteResource", canDeleteResource());
-		
 		// output the current session user id
 		context.put("userId", sessionManager.getCurrentSessionUserId());
 		
@@ -4781,8 +4664,39 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 											SessionState state)
 	{
 		log.debug("{}.buildMainPanelContext()", this);
-		// find the ContentTypeImage service
-		
+
+		/********** Start of top menu attributes ********************************/
+		String siteId = toolManager.getCurrentPlacement().getContext();
+		String homeCollectionId = (String) state.getAttribute(STATE_HOME_COLLECTION_ID);
+		String collectionId = (String) state.getAttribute (STATE_COLLECTION_ID);
+		boolean atHome = StringUtils.isNotBlank(collectionId) && collectionId.equals(homeCollectionId);
+		boolean allowUpdateSite = siteService.allowUpdateSite(toolManager.getCurrentPlacement().getContext());
+		ResourceTypeRegistry registry = (ResourceTypeRegistry) state.getAttribute(STATE_RESOURCES_TYPE_REGISTRY);
+		if(registry == null) {
+			registry = (ResourceTypeRegistry) ComponentManager.get("org.sakaiproject.content.api.ResourceTypeRegistry");
+			state.setAttribute(STATE_RESOURCES_TYPE_REGISTRY, registry);
+		}
+		Map<String,Boolean> statusMap = registry.getMapOfResourceTypesForContext(siteId);
+		boolean dropboxMode = RESOURCES_MODE_DROPBOX.equalsIgnoreCase((String) state.getAttribute(STATE_MODE_RESOURCES));
+		boolean inMyWorkspace = siteService.isUserSite(siteId);
+		boolean isSpecialSite = StringUtils.equalsAny(siteId, "!admin", "~admin");
+
+		context.put("canDeleteResource", canDeleteResource());
+		context.put("tlang", trb);
+		context.put("clang", rb);
+		context.put("slang", srb);
+		context.put("siteId", siteId);
+		context.put("atHome", atHome);
+		context.put("inMyWorkspace", inMyWorkspace);
+		context.put("dropboxMode", dropboxMode);
+		context.put("showDropboxOptions", atHome && allowUpdateSite && dropboxMode);
+		context.put("showQuota", !isSpecialSite && (dropboxMode || allowUpdateSite));
+		context.put("showPermissions", !inMyWorkspace && !isSpecialSite && !dropboxMode && allowUpdateSite);
+		context.put("showOptions", statusMap != null && !statusMap.isEmpty() && !isSpecialSite && allowUpdateSite && !dropboxMode);
+		context.put("showJumpToResourceForm", isSpecialSite);
+		context.put("showWebdavLink", ServerConfigurationService.getBoolean("resources.show_webdav.link", Boolean.TRUE));
+		/********** End of top menu attributes ********************************/
+
 		context.put ("contentTypeImageService", state.getAttribute (STATE_CONTENT_TYPE_IMAGE_SERVICE));
 		
 		context.put("copyright_alert_url", COPYRIGHT_ALERT_URL);
@@ -4928,10 +4842,7 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 	public String buildMakeSitePageContext(VelocityPortlet portlet, Context context,
 			RunData data, SessionState state) {	
 		log.debug("{}.buildMakeSitePage()", this);
-		
-		context.put("tlang", trb);
 		context.put("page", state.getAttribute(STATE_PAGE_TITLE));
-		
 		return TEMPLATE_MAKE_SITE_PAGE;
 	}
 	
@@ -5018,12 +4929,10 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 											SessionState state)
 	{
 		log.debug("{}.buildOptionsPanelContext()", this);
-		context.put("tlang",trb);
 		String home = (String) state.getAttribute(STATE_HOME_COLLECTION_ID);
 		Reference ref = entityManager.newReference(contentHostingService.getReference(home));
 		String siteId = ref.getContext();
 
-		context.put("siteId", siteId);
 		context.put("form-submit", BUTTON + "doUpdateOptions");
 		context.put("form-cancel", BUTTON + "doCancelOptions");
 		Object[] args = { siteService.getSiteDisplay(siteId) };
@@ -5040,14 +4949,7 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 		context.put("statusMap", statusMap);
 		
 		List types = new ArrayList(registry.getTypes());
-		Collections.sort(types, new Comparator(){
-
-			public int compare(Object arg0, Object arg1) {
-				ResourceType type0 = (ResourceType) arg0;
-				
-				ResourceType type1 = (ResourceType) arg1;
-				return type0.getLabel().compareToIgnoreCase(type1.getLabel());
-			}});
+		Collections.sort(types, new ResourceTypeLabelComparator());
 		
 		context.put("types", types);
 
@@ -5063,12 +4965,10 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 											RunData data,
 											SessionState state)
 	{
-		context.put("tlang",trb);
 		String home = (String) state.getAttribute(STATE_HOME_COLLECTION_ID);
 		Reference ref = entityManager.newReference(contentHostingService.getReference(home));
 		String siteId = ref.getContext();
 
-		context.put("siteId", siteId);
 		context.put("form-submit", BUTTON + "doUpdateDropboxOptions");
 		context.put("form-cancel", BUTTON + "doCancelDropboxOptions");
 		Object[] args = { siteService.getSiteDisplay(siteId) };
@@ -5172,8 +5072,6 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 	 */
 	public String buildRestoreContext(VelocityPortlet portlet, Context context, RunData data, SessionState state) 
 	{
-		context.put("tlang",rb);
-		
 		String rootFolderId = (String) state.getAttribute(STATE_HOME_COLLECTION_ID);
 
 		context.put("rootFolderId", rootFolderId);
@@ -5196,6 +5094,11 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 		// this is a list of folder ids; sequence matters here
 		List<String> folderIds = new ArrayList<>();
 
+		if (RESOURCES_MODE_DROPBOX.equalsIgnoreCase((String) state.getAttribute(STATE_MODE_RESOURCES))) {
+			// SAK-44760 regenerate dropbox folders before restoring
+			contentHostingService.createDropboxCollection();
+		}
+			
 		// this map holds folder id as the hash key, and folder attributes (e.g. depth, folder name, et al.) as the hashed value
 		Map<String, ResourcesBrowseItem> folderMap = new ConcurrentHashMap<>();
 		
@@ -5371,8 +5274,6 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 	public String buildReorderContext(VelocityPortlet portlet, Context context, RunData data, SessionState state) 
 	{
 		log.debug("{}.buildReorderContext()", this);
-		context.put("tlang",rb);
-		
 		String folderId = (String) state.getAttribute(STATE_REORDER_FOLDER);
 		context.put("folderId", folderId);
 		
@@ -5404,10 +5305,6 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 
 		String homeCollectionId = (String) state.getAttribute(STATE_HOME_COLLECTION_ID);
 
-		boolean atHome = false;
-
-		context.put("atHome", Boolean.toString(atHome));
-
 		List cPath = getCollectionPath(state);
 		context.put ("collectionPath", cPath);
 
@@ -5421,7 +5318,6 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 		String rootTitle = (String) state.getAttribute (STATE_SITE_TITLE);
 		if (folderId.equals(homeCollectionId))
 		{
-			atHome = true;
 			String siteTitle = (String) state.getAttribute (STATE_SITE_TITLE);
 			rootTitle = siteTitle + " " + rb.getString("gen.reso");
 		}
@@ -5460,7 +5356,6 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 	public String buildReviseMetadataContext(VelocityPortlet portlet, Context context, RunData data, SessionState state)
 	{
 		log.debug("{}.buildReviseMetadataContext()", this);
-		context.put("tlang", trb);
 		context.put("metaLang", metaLang);
 
 		context.put("DETAILS_FORM_NAME", "detailsForm");
@@ -5596,19 +5491,14 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 										SessionState state)
 	{
 		log.debug("{}.buildWebdavContext()", this);
-		context.put("tlang",rb);
 		// find the ContentTypeImage service
 		context.put ("contentTypeImageService", state.getAttribute (STATE_CONTENT_TYPE_IMAGE_SERVICE));
 
-		boolean inMyWorkspace = siteService.isUserSite(toolManager.getCurrentPlacement().getContext());
-		context.put("inMyWorkspace", Boolean.toString(inMyWorkspace));
 		String homeCollectionId = (String) state.getAttribute (STATE_HOME_COLLECTION_ID);
 
-		boolean dropboxMode = RESOURCES_MODE_DROPBOX.equalsIgnoreCase((String) state.getAttribute(STATE_MODE_RESOURCES));
-		context.put("dropboxMode", Boolean.toString(dropboxMode));
 		boolean maintainer = false;
-		if(dropboxMode)
-		{
+		String modeResources = (String) state.getAttribute(STATE_MODE_RESOURCES);
+		if(RESOURCES_MODE_DROPBOX.equalsIgnoreCase(modeResources)) {
 			String[] parts = homeCollectionId.split(Entity.SEPARATOR);
 			if(parts.length >= 4)
 			{
@@ -5684,6 +5574,8 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 		}
 		
 		String siteId = toolManager.getCurrentPlacement().getContext();
+		boolean inMyWorkspace = siteService.isUserSite(toolManager.getCurrentPlacement().getContext());
+		boolean dropboxMode = RESOURCES_MODE_DROPBOX.equalsIgnoreCase((String) state.getAttribute(STATE_MODE_RESOURCES));
 		boolean changed = false;
 
 		if (!inMyWorkspace && !dropboxMode && m_siteAlias)
@@ -5738,7 +5630,6 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 										SessionState state)
 	{
 		log.debug("{}.buildQuotaContext()", this);
-		context.put("tlang",rb);
 		// find the ContentTypeImage service
 		
 		boolean dropboxMode = RESOURCES_MODE_DROPBOX.equalsIgnoreCase((String) state.getAttribute(STATE_MODE_RESOURCES));
@@ -6077,9 +5968,6 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 										 collapseAction.finalizeAction(reference);
 										 
 										 folderSortMap.remove(id);
-
-										 // add this folder id into the set to be event-observed
-										 addObservingPattern(id, state);
 									 }
 								 }
 							 }
@@ -6095,9 +5983,6 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 		 }
 		expandedItems.clear();
 		expandedItems.addAll(newSet);
-
-		// remove this folder id into the set to be event-observed
-		removeObservingPattern(collectionId, state);
 
 	}	// doCollapse_collection
 
@@ -6869,9 +6754,6 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 							expandAction.finalizeAction(reference);
 							
 							expandedItems.add(id);
-
-							// add this folder id into the set to be event-observed
-							addObservingPattern(id, state);
 						}
 					}
 				}
@@ -7315,9 +7197,6 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 		if (state.getAttribute(STATE_MESSAGE) == null)
 		{
 			String oldCollectionId = (String) state.getAttribute(STATE_COLLECTION_ID);
-			// update this folder id in the set to be event-observed
-			removeObservingPattern(oldCollectionId, state);
-			addObservingPattern(collectionId, state);
 
 			state.setAttribute(STATE_COLLECTION_ID, collectionId);
 			
@@ -7335,7 +7214,6 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 					if(id.startsWith(collectionId))
 					{
 						sortMap.remove(id);
-						removeObservingPattern(id, state);
 					}
 				}
 			}
@@ -8477,11 +8355,11 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 			if ((home == null) || (home.length() == 0))
 			{
 				home = contentHostingService.getSiteCollection(toolManager.getCurrentPlacement().getContext());
-
-				// TODO: what's the 'name' of the context? -ggolden
-				// we'll need this to create the home collection if needed
-				state.setAttribute (STATE_HOME_COLLECTION_DISPLAY_NAME, toolManager.getCurrentPlacement().getContext()
-						/*siteService.getSiteDisplay(toolManager.getCurrentPlacement().getContext()) */);
+				try {
+					state.setAttribute(STATE_HOME_COLLECTION_DISPLAY_NAME, ((Site) siteService.getSite(toolManager.getCurrentPlacement().getContext())).getTitle());
+				} catch (IdUnusedException e) {
+					log.warn("Error while trying to set {} attribute for site {}", STATE_HOME_COLLECTION_DISPLAY_NAME, toolManager.getCurrentPlacement().getContext());
+				}
 			}
 		}
 		state.setAttribute (STATE_HOME_COLLECTION_ID, home);
@@ -9150,19 +9028,6 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 		return other_sites;
 	}
 
-	/**
-	* Setup our observer to be watching for change events for the collection
- 	*/
- 	private void updateObservation(SessionState state, String peid)
- 	{
-		log.debug("{}.updateObservation()", this);
-// 		ContentObservingCourier observer = (ContentObservingCourier) state.getAttribute(STATE_OBSERVER);
-//
-// 		// the delivery location for this tool
-// 		String deliveryId = clientWindowId(state, peid);
-// 		observer.setDeliveryId(deliveryId);
-	}
-
 	public static List<ContentResource> createUrls(SessionState state, ResourceToolActionPipe pipe)
     {
 		log.debug("ResourcesAction.createUrls()");
@@ -9426,8 +9291,6 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 	 * @return
 	 */
 	public String buildDropboxMultipleFoldersUploadPanelContext(VelocityPortlet portlet, Context context, RunData data, SessionState state) {
-	    context.put("tlang", trb);
-	    context.put("clang", rb);
 	    String home = (String) state.getAttribute(STATE_HOME_COLLECTION_ID);
 	    List<List<String>> usersDropboxList = new ArrayList();
 	    try {
@@ -9491,6 +9354,7 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 	    } catch (Exception ex) {
 	        log.error("Exception while getting users collections", ex);
 	    }
+		copyrightChoicesIntoContext(state, context);
 	    context.put("usersDropboxList", usersDropboxList);
 	    return TEMPLATE_DROPBOX_MULTIPLE_FOLDERS_UPLOAD;
 	} // buildDropboxMultipleFoldersUploadPanelContext
@@ -9527,6 +9391,9 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 	    String displayName = params.getString("MultipleFolderDisplayName");
 	    String[] multipleDropboxSelected = params.getStrings("usersDropbox-selection");
 	    Set usersCollectionIds = new TreeSet();
+		String copyright = "";
+		String newCopyright = "";
+		boolean copyrightAlert = false;
 
 	    if (fileitem == null) {
 	        String max_file_size_mb = (String) state.getAttribute(STATE_FILE_UPLOAD_MAX_SIZE);
@@ -9552,6 +9419,20 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 	        return;
 
 	    } else if (fileitem.getFileName().length() > 0) {
+
+			// Check copyright
+			copyright = StringUtils.trimToNull(params.getString("copyright"));
+			if (copyright !=  null) {
+				newCopyright = StringUtils.trimToNull(params.getString("newcopyright"));
+				copyrightAlert = params.getBoolean("copyrightAlert");
+				boolean requireChoice = ServerConfigurationService.getBoolean(SAK_PROP_COPYRIGHT_REQ_CHOICE, SAK_PROP_COPYRIGHT_REQ_CHOICE_DEFAULT);
+				if (requireChoice && rb.getString(MSG_KEY_COPYRIGHT_REQ_CHOICE).equals(copyrightManager.getCopyrightString(copyright))) {
+					addAlert(state, rb.getString(ResourcesAction.MSG_KEY_COPYRIGHT_REQ_CHOICE_ERROR));
+					state.setAttribute(STATE_MODE, MODE_DROPBOX_MULTIPLE_FOLDERS_UPLOAD);
+					return;
+				}
+			}
+
 	        String filename = FilenameUtils.getName(fileitem.getFileName());
 	        if (displayName == null) {
 	            displayName = filename;
@@ -9638,6 +9519,17 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 						ResourcePropertiesEdit resourceProperties = cr.getPropertiesEdit();
 						resourceProperties.addProperty(ResourceProperties.PROP_IS_COLLECTION, Boolean.FALSE.toString());
 						resourceProperties.addProperty(ResourceProperties.PROP_DISPLAY_NAME, displayName);
+
+						// Add copyright settings
+						if (StringUtils.isNotBlank(copyright)) {
+							resourceProperties.addProperty(ResourceProperties.PROP_COPYRIGHT_CHOICE, copyright);
+						}
+						if (StringUtils.isNotBlank(newCopyright)) {
+							resourceProperties.addProperty(ResourceProperties.PROP_COPYRIGHT, newCopyright);
+						}
+						if (copyrightAlert) {
+							resourceProperties.addProperty(ResourceProperties.PROP_COPYRIGHT_ALERT, Boolean.TRUE.toString());
+						}
 
 						// now to commit the changes
 						boolean notification = params.getBoolean("notify_dropbox");
@@ -9953,7 +9845,6 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 	 */
 	public String buildShowFinishContext(VelocityPortlet portlet, Context context, RunData data, SessionState state)
 	{
-	    context.put("tlang",trb);
 	    context.put ("collectionId", state.getAttribute (STATE_COLLECTION_ID) );
 
 
@@ -9984,7 +9875,6 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 	 */
 	public String buildHideFinishContext(VelocityPortlet portlet, Context context, RunData data, SessionState state)
 	{
-	    context.put("tlang",trb);
 	    context.put ("collectionId", state.getAttribute (STATE_COLLECTION_ID) );
 
 	    List hideItems = (List) state.getAttribute(STATE_HIDE_SET);
@@ -10458,7 +10348,6 @@ protected static final String PARAM_PAGESIZE = "collections_per_page";
 	 */
 	public String buildZipDownloadFinishContext(VelocityPortlet portlet, Context context, RunData data, SessionState state)
 	{
-		context.put("tlang",trb);
 		context.put ("collectionId", state.getAttribute (STATE_COLLECTION_ID) );
 
 		List zipDownloadItems = (List) state.getAttribute(STATE_ZIPDOWNLOAD_SET);

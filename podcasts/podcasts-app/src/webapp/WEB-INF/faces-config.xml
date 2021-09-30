@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
-<!DOCTYPE faces-config PUBLIC
-  "-//Sun Microsystems, Inc.//DTD JavaServer Faces Config 1.0//EN"
-  "http://java.sun.com/dtd/web-facesconfig_1_0.dtd">
-
-<faces-config>
+<faces-config xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+			  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+			  xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee
+        	        http://xmlns.jcp.org/xml/ns/javaee/web-facesconfig_2_3.xsd"
+			  version="2.3">
 
 <!-- add to allow internalization of the content messages -->
   <application>
@@ -44,20 +44,6 @@
   	  <managed-bean-class>org.sakaiproject.tool.podcasts.PodcastComparator</managed-bean-class>
   	  <managed-bean-scope>session</managed-bean-scope>
   	</managed-bean>
-
-  <managed-bean>
-    <description>Bean to hold current/changed permissions</description>
-    <managed-bean-name>podPerms</managed-bean-name>
-    <managed-bean-class>org.sakaiproject.tool.podcasts.podPermBean</managed-bean-class>
-    <managed-bean-scope>session</managed-bean-scope>
-
-     <!--	 Needed to access the services of PodcastService -->
-     <managed-property>
-		<description>podcastService</description>
-		<property-name>podcastService</property-name>
-		<value>#{Components["org.sakaiproject.api.app.podcasts.PodcastService"]}</value>
-	 </managed-property>
-   </managed-bean>
 
   <managed-bean>
     <description>Bean to hold display option (Public / Site)</description>
@@ -107,6 +93,10 @@
 	    <navigation-case>  <!-- GOTO podOptions -->
 	        <from-outcome>podcastOptions</from-outcome>
 	        <to-view-id>/podcasts/podOptions.jsp</to-view-id>
+	    </navigation-case>
+	    <navigation-case>  <!-- GOTO podListen -->
+	      <from-outcome>podcastListen</from-outcome>
+	      <to-view-id>/podcasts/podListen.jsp</to-view-id>
 	    </navigation-case>
 	    <navigation-case>  <!-- GOTO podRevise -->
 	      <from-outcome>podcastRevise</from-outcome>

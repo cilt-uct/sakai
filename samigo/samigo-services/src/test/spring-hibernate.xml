@@ -23,7 +23,7 @@
           class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
         <property name="proxyTargetClass" value="true"/>
         <property name="transactionManager">
-            <bean class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+            <bean class="org.springframework.orm.hibernate5.HibernateTransactionManager">
                 <property name="sessionFactory" ref="sessionFactory"/>
             </bean>
         </property>
@@ -43,7 +43,7 @@
           class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
         <property name="proxyTargetClass" value="true"/>
         <property name="transactionManager">
-            <bean class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+            <bean class="org.springframework.orm.hibernate5.HibernateTransactionManager">
                 <property name="sessionFactory" ref="sessionFactory"/>
             </bean>
         </property>
@@ -60,13 +60,13 @@
     </bean>
 
     <bean id="sessionFactory"
-          class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+          class="org.springframework.orm.hibernate5.LocalSessionFactoryBean">
         <property name="dataSource" ref="dataSource"/>
         <property name="hibernateProperties">
             <props>
                 <prop key="hibernate.dialect">${hibernate.dialect}</prop>
                 <prop key="hibernate.show_sql">${hibernate.show_sql}</prop>
-                <prop key="hibernate.cache.use_second_level_cache">false</prop>
+                <prop key="hibernate.cache.use_second_level_cache">${hibernate.cache.use_second_level_cache}</prop>
                 <prop key="hibernate.query.substitutions">true 1, false 0</prop>
                 <prop key="hibernate.hbm2ddl.auto">${hibernate.hbm2ddl.auto}</prop>
             </props>

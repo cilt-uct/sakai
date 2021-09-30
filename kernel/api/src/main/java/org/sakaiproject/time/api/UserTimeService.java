@@ -1,7 +1,23 @@
+/**
+ * Copyright (c) 2003-2020 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.time.api;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.format.FormatStyle;
 import java.util.Date;
 import java.util.Locale;
 import java.util.TimeZone;
@@ -63,13 +79,27 @@ public interface UserTimeService {
     public String dayOfWeekFormat(Date date, Locale locale, int format);
 
     /**
-     * Gets the date/time formatter with the given formatting style in the user's locale and preferred timezone.
+     * Gets the date/time formatter with the given formatting style in the supplied locale and
+     * preferred timezone.
+     *
      * @param date
      * @param locale
      * @param format use java.text.DateFormat.SHORT, MEDIUM, LONG, or FULL
      * @return
      */
     public String  dateTimeFormat(Date date, Locale locale, int format);
+
+    /**
+     * Gets the date/time formatter with the given formatting style in the current user's locale
+     * and preferred timezone. If you pass null for dateStyle or timeStyle, you'll get MEDIUM
+     * and SHORT respectively
+     *
+     * @param date
+     * @param dateStyle use FormatSyle.SHORT, MEDIUM, LONG, or FULL
+     * @param timeStyle use FormatStyle.SHORT, MEDIUM, LONG, or FULL
+     * @return
+     */
+    public String dateTimeFormat(Instant date, FormatStyle dateStyle, FormatStyle timeStyle);
     
     /**
      * Formats a point in time, in the given time zone, for display to the user in a concise way that still presents all relevant information

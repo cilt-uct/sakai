@@ -38,6 +38,9 @@ import org.sakaiproject.user.api.User;
  */
 public interface EmailService
 {
+	public static final String MAIL_SENDFROMSAKAI_MAXSIZE = "mail.sendfromsakai.maxsize";
+	public static final int DEFAULT_MAXSIZE = 25000000;
+
 	/**
 	 * Creates and sends a generic text MIME message to the address contained in to.
 	 * 
@@ -129,7 +132,6 @@ public interface EmailService
 	/**
 	 * Sends a single message to a set of users.
 	 * 
-	 * @deprecated
 	 * @param message
 	 *            {@link EmailMessage} that contains the parameters to create a message to the
 	 *            specified recipients.
@@ -140,6 +142,7 @@ public interface EmailService
 	 * @throws NoRecipientsException
 	 * @return {@link java.util.List} of recipients that were found to be invalid per to
 	 *         {@link javax.mail.internet.InternetAddress}.
+	 * @deprecated use {@link #send(EmailMessage, true)}
 	 */
 	List<EmailAddress> send(EmailMessage message) throws AddressValidationException,
 			NoRecipientsException;
@@ -163,5 +166,5 @@ public interface EmailService
 	 */
 
 	List<EmailAddress> send(EmailMessage message, boolean messagingException) throws AddressValidationException,
-			NoRecipientsException, MessagingException;
+			AttachmentSizeException, NoRecipientsException, MessagingException;
 }

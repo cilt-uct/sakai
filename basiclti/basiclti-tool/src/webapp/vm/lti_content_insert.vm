@@ -1,9 +1,9 @@
 <div class="portletBody">
 <script type="text/javascript" src="/library/js/headscripts.js"></script>
-<script>includeLatestJQuery('lti_content_insert.vm');</script>
-<script type="text/javascript" src="/library/js/fontIconPicker/2.0.1-cs/jquery.fonticonpicker.min.js"></script>
-<link rel="stylesheet" type="text/css" href="/library/js/fontIconPicker/2.0.1-cs/css/jquery.fonticonpicker.css" />
-<link rel="stylesheet" type="text/css" href="/library/js/fontIconPicker/2.0.1-cs/themes/grey-theme/jquery.fonticonpicker.grey.min.css" />
+<script>
+	includeLatestJQuery('lti_content_insert.vm');
+	includeWebjarLibrary("fontawesome-iconpicker");
+</script>
 	<h3>
 #if ( $oldContentId )
 		$tlang.getString("update.tool.link")
@@ -13,6 +13,7 @@
 	</h3>
 	#if ($messageSuccess)<div class="sak-banner-success">$tlang.getString("gen.success") $formattedText.escapeHtml($messageSuccess)</div>#end
 	#if ($alertMessage)<div class="sak-banner-error">$tlang.getString("gen.alert") $formattedText.escapeHtml($alertMessage)</div>#end
+<!-- Flow: $flow -->
 	<form action="#toolForm("")" method="post" name="customizeForm" >
 ## Let admins still see stealthed tools in the list
 #if ( !$isAdmin && $tool_id && $tool_visible == 1 )
@@ -44,7 +45,9 @@
 #end
 #if ( $formInput )
 		$formInput
+<div id="input-add-site-link">
 <input #if($placement) disabled="disabled" checked="checked" #end type="checkbox" name="add_site_link"/> $tlang.getString("bl_addlink")
+</div>
 #else
 #if ( $oldContentId )
 $tlang.getString("add.tool.select")

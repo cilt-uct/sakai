@@ -37,6 +37,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import lombok.extern.slf4j.Slf4j;
 
+
 /**
  * <p>
  * DBLTIService extends the BaseLTIService.
@@ -452,6 +453,47 @@ public class DBLTIService extends BaseLTIService implements LTIService {
         search = foorm.searchCheck(search, "lti_content", fields);
         return countThingsDao("lti_content", LTIService.CONTENT_MODEL, joinClause, search, null, siteId, isAdminRole);
     }
+
+	/**
+	 * Transfer all of the content links associated with one tool to another tool
+	 *
+	 * @param currentTool
+	 *		The tool that we are transferring the links from
+	 * @param newTool
+	 *		The tool that we are transferring the links to
+	 * @param siteId
+	 *		The siteId in use if we are not isAdminRole
+	 * @param isAdminRole
+	 *		This is true if we are doing this as an administrator (i.e. we can bypass
+	 *		rules about SITE_ID being null in the inserted object.
+	 * @return Returns String (failure) or Long (count of items changed) on success
+	 */
+	protected Object transferToolContentLinksDao(Long currentTool, Long newTool, String siteId, boolean isAdminRole)
+	{
+		if (siteId == null && !isAdminRole ) {
+			throw new IllegalArgumentException("siteId must be non-null for non-admins");
+		}
+
+		String sql = "UPDATE lti_content SET tool_id = ? WHERE tool_id = ?";
+
+		Object[] fields = null;
+		if ( isAdminRole ) {
+			fields = new Object[2];
+			fields[0] = newTool;
+			fields[1] = currentTool;
+		} else {
+			sql += " AND SITE_ID = ?";
+			fields = new Object[3];
+			fields[0] = newTool;
+			fields[1] = currentTool;
+			fields[2] = siteId;
+		}
+
+        int count = m_sql.dbWriteCount(sql, fields, null, null, false);
+
+        log.debug("Count={} Update={}", count, sql);
+        return new Long(count);
+	}
 
 	/**
 	 * @param table

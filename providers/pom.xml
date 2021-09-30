@@ -4,7 +4,7 @@
     <parent>
       <groupId>org.sakaiproject</groupId>
       <artifactId>master</artifactId>
-      <version>21-SNAPSHOT</version>
+      <version>22-SNAPSHOT</version>
       <relativePath>../master/pom.xml</relativePath>
     </parent>
   <name>Sakai Providers Project</name>
@@ -17,7 +17,6 @@
     <module>component</module>
     <module>federating</module>
     <module>imsent</module>
-    <module>jldap-mock</module>
     <module>userdetail</module>
     <module>kerberos</module>
     <module>openldap</module>

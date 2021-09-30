@@ -52,6 +52,7 @@ import org.sakaiproject.tool.assessment.data.dao.assessment.AssessmentAccessCont
 import org.sakaiproject.tool.assessment.data.dao.assessment.EvaluationModel;
 import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedAnswer;
 import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedItemData;
+import org.sakaiproject.tool.assessment.data.dao.grading.ItemGradingAttachment;
 import org.sakaiproject.tool.assessment.data.dao.grading.ItemGradingData;
 import org.sakaiproject.tool.assessment.data.dao.grading.MediaData;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AnswerIfc;
@@ -101,11 +102,11 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 		ValueChangeListener {
 
 	// private static EvaluationListenerUtil util;
-	private static BeanSort bs;
+	private BeanSort bs;
 
-	private static final String MSG_BUNDLE = "org.sakaiproject.tool.assessment.bundle.EvaluationMessages";
-	private static final String noAnswer = ContextUtil.getLocalizedString(MSG_BUNDLE, "no_answer");
-	private static final String noneOfTheAbove = ContextUtil.getLocalizedString(MSG_BUNDLE, "none_above");
+	private static final ResourceLoader evaluationMessages = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.EvaluationMessages");
+	private static final String noAnswer = evaluationMessages.getString("no_answer");
+	private static final String noneOfTheAbove = evaluationMessages.getString("none_above");
 
 	private RubricsService rubricsService = (RubricsService) SpringBeanLocator.getInstance().getBean("org.sakaiproject.rubrics.logic.RubricsService");
 
@@ -123,7 +124,7 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 				.lookupBean("questionScores");
 
 		// Reset the search field
-		String defaultSearchString = ContextUtil.getLocalizedString(MSG_BUNDLE, "search_default_student_search_string");
+		String defaultSearchString = evaluationMessages.getString("search_default_student_search_string");
 		bean.setSearchString(defaultSearchString);
 
 		// we probably want to change the poster to be consistent
@@ -323,7 +324,6 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 			Map map = getItemScores(Long.valueOf(publishedId), Long
 					.valueOf(itemId), which, isValueChange);
 			log.debug("questionScores(): map .size = " + map.size());
-			ResourceLoader rb = null;
 			List allscores = new ArrayList();
 			Iterator keyiter = map.keySet().iterator();
 			while (keyiter.hasNext()) {
@@ -593,8 +593,7 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 					});
 				}
 				Iterator iter2 = answerList.iterator();
-				List itemGradingAttachmentList = new ArrayList();
-				Map<Long, Set<String>> fibmap = new HashMap<Long, Set<String>>();
+				List<ItemGradingAttachment> itemGradingAttachmentList = new ArrayList<>();
 				int i = 1;
 				Map<Integer, String> answersMap = new HashMap<Integer, String>();
 				while (iter2.hasNext()) {
@@ -602,7 +601,7 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 					results.setItemGrading(gdata);
 					delegate.extractCalcQAnswersArray(answersMap, item, 
 								gdata.getAssessmentGradingId(), gdata.getAgentId());
-					itemGradingAttachmentList.addAll(gdata.getItemGradingAttachmentList());
+					itemGradingAttachmentList.addAll(gdata.getItemGradingAttachmentSet());
 					agentResultsByItemGradingIdMap.put(gdata.getItemGradingId(), results);
 										
 					ItemTextIfc gdataPubItemText = (ItemTextIfc) publishedItemTextHash
@@ -651,14 +650,11 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 					}
 
 					if ("4".equals(bean.getTypeId())) {
-						if (rb == null) { 	 
-			        		rb = new ResourceLoader(MSG_BUNDLE);
-			        	}
 						if ("true".equals(answerText)) {
-							answerText = rb.getString("true_msg");
+							answerText = evaluationMessages.getString("true_msg");
 						}
 						else if ("false".equals(answerText)) {
-							answerText = rb.getString("false_msg");
+							answerText = evaluationMessages.getString("false_msg");
 						}
 					}
 					
@@ -722,7 +718,7 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 					else {
 						if (gdata.getRationale() != null
 								&& !gdata.getRationale().trim().equals(""))
-							rationale = "\nRationale: " + gdata.getRationale();
+							rationale = "\n" + evaluationMessages.getString("rationale") + ": " + gdata.getRationale();
 					}
 					// Huong's temp commandout
 					// answerText = answerText.replaceAll("<.*?>", "");
@@ -764,8 +760,8 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 					 */
 
 					//SAM-755-"checkmark" indicates right, add "X" to indicate wrong
-					String correct = ContextUtil.getLocalizedString(MSG_BUNDLE, "alt_correct");
-					String incorrect = ContextUtil.getLocalizedString(MSG_BUNDLE, "alt_incorrect");
+					String correct = evaluationMessages.getString("alt_correct");
+					String incorrect = evaluationMessages.getString("alt_incorrect");
 					String checkmarkGif = String.format("<span title=\"%s\" class=\"icon-sakai--check feedBackCheck\"></span>", correct);
 					String crossmarkGif = String.format("<span title=\"%s\" class=\"icon-sakai--delete feedBackCross\"></span>", incorrect);
 					if (gdataAnswer != null) {
@@ -774,7 +770,7 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 							if (gdata.getIsCorrect() == null) {
 								boolean result = false;
 								if (bean.getTypeId().equals("8")) {
-									result = delegate.getFIBResult(gdata, fibmap, item, publishedAnswerHash);
+									result = delegate.getFIBResult(gdata, new HashMap<Long, Set<String>>(), item, publishedAnswerHash);
 								}
 								else {
 									result = delegate.getFINResult(gdata, item, publishedAnswerHash);

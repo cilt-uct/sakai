@@ -41,7 +41,8 @@ $Id$
     <script src="/samigo-app/js/jquery.dynamiclist.student.preview.js"></script>
     <script src="/samigo-app/js/selection.student.preview.js"></script>
     <script src="/samigo-app/js/selection.author.preview.js"></script>
-    <script type="module" src="/rubrics-service/webcomponents/rubric-association-requirements.js<h:outputText value="#{studentScores.CDNQuery}" />"></script>
+    <script src="/webcomponents/rubrics/sakai-rubrics-utils.js<h:outputText value="#{studentScores.CDNQuery}" />"></script>
+    <script type="module" src="/webcomponents/rubrics/rubric-association-requirements.js<h:outputText value="#{studentScores.CDNQuery}" />"></script>
 
     <link rel="stylesheet" type="text/css" href="/samigo-app/css/imageQuestion.student.css">
     <link rel="stylesheet" type="text/css" href="/samigo-app/css/imageQuestion.author.css">
@@ -102,6 +103,14 @@ function toPoint(id)
   var x=document.getElementById(id).value
   document.getElementById(id).value=x.replace(',','.')
 }
+
+  $(document).ready(function(){
+    // The current class is assigned using Javascript because we don't use facelets and the include directive does not support parameters.
+    var currentLink = $('#editStudentResults\\:totalScoresMenuLink');
+    currentLink.addClass('current');
+    // Remove the link of the current option
+    currentLink.html(currentLink.find('a').text());
+  });
 </script>
 
 <div class="portletBody container-fluid">
@@ -116,42 +125,15 @@ function toPoint(id)
   <!-- HEADINGS -->
   <%@ include file="/jsf/evaluation/evaluationHeadings.jsp" %>
 
-  <div class="page-header">
+  <h:panelGroup layout="block" styleClass="page-header">
     <h1>
       <h:outputText value="#{studentScores.studentName}" rendered="#{totalScores.anonymous eq 'false'}"/>
-      <h:outputText value="#{evaluationMessages.submission_id}#{deliveryMessages.column} #{studentScores.assessmentGradingId}" rendered="#{totalScores.anonymous eq 'true'}"/>
+      <small><h:outputText value="#{evaluationMessages.submission_id}#{deliveryMessages.column} #{studentScores.assessmentGradingId}" rendered="#{totalScores.anonymous eq 'true'}"/></small>
     </h1>
-  </div>
+  </h:panelGroup>
 
-  <h:outputText value="<ul class='navIntraTool actionToolbar' role='menu'>" escape="false"/>
-   <h:outputText value="<li role='menuitem'><span>" escape="false"/>
-    <h:commandLink title="#{evaluationMessages.t_submissionStatus}" action="submissionStatus" immediate="true">
-      <h:outputText value="#{evaluationMessages.sub_status}" />
-      <f:param name="allSubmissions" value="true"/>
-      <f:actionListener
-        type="org.sakaiproject.tool.assessment.ui.listener.evaluation.SubmissionStatusListener" />
-    </h:commandLink>
-    <h:outputText value="</span><li role='menuitem'><span>" escape="false"/>
-    <h:commandLink title="#{evaluationMessages.t_totalScores}" action="totalScores" immediate="true">
-      <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.evaluation.ResetTotalScoreListener" />
-      <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.evaluation.TotalScoreListener" />
-      <h:outputText value="#{commonMessages.total_scores}" />
-    </h:commandLink>
-    <h:outputText value="</span><li role='menuitem'><span>" escape="false" rendered="#{totalScores.firstItem ne ''}" />
-    <h:commandLink title="#{evaluationMessages.t_questionScores}" action="questionScores" immediate="true"
-      rendered="#{totalScores.firstItem ne ''}" >
-      <h:outputText value="#{evaluationMessages.q_view}" />
-      <f:actionListener
-        type="org.sakaiproject.tool.assessment.ui.listener.evaluation.QuestionScoreListener" />
-    </h:commandLink>
-    <h:outputText value="</span><li role='menuitem'><span>" escape="false" rendered="#{totalScores.firstItem ne ''}" /> 
-    <h:commandLink title="#{evaluationMessages.t_histogram}" action="histogramScores" immediate="true"
-      rendered="#{totalScores.firstItem ne ''}" >
-      <h:outputText value="#{evaluationMessages.stat_view}" />
-      <f:actionListener
-        type="org.sakaiproject.tool.assessment.ui.listener.evaluation.HistogramListener" />
-    </h:commandLink>
-   <h:outputText value="</span></li></ul>" escape="false"/>
+  <!-- EVALUATION SUBMENU -->
+  <%@ include file="/jsf/evaluation/evaluationSubmenu.jsp" %>
 
   <h:messages styleClass="sak-banner-error" rendered="#{! empty facesContext.maximumSeverity}" layout="table"/>
 
@@ -184,7 +166,7 @@ function toPoint(id)
                   <h:outputText escape="false" value=" #{deliveryMessages.pt} "/>
                 </span>
                 <h:outputLink value="##{part.number}#{deliveryMessages.underscore}#{question.number}"> 
-                  <h:outputText escape="false" value="#{question.number}#{deliveryMessages.dot} #{question.strippedText}"/>
+                  <h:outputText escape="false" value="#{question.sequence}#{deliveryMessages.dot} #{question.strippedText}"/>
                 </h:outputLink>
                 <h:outputText styleClass="extraCreditLabel" rendered="#{question.itemData.isExtraCredit==true}" value=" #{deliveryMessages.extra_credit_preview}" />
         </t:dataList>
@@ -212,17 +194,18 @@ function toPoint(id)
       <t:dataList value="#{part.itemContents}" var="question" itemStyleClass="page-header question-box" styleClass="question-wrapper" layout="unorderedList">
         <h:outputText value="<a name=\"#{part.number}_#{question.number}\"></a>" escape="false" />
         <h:panelGroup layout="block" styleClass="input-group col-sm-6">
-            <span class="input-group-addon">
-              <h:outputText value="#{deliveryMessages.q} #{question.number} #{deliveryMessages.of} " />
-              <h:outputText value="#{part.questions}#{deliveryMessages.column}  " />
-            </span>
-            <h:inputText styleClass="form-control adjustedScore#{question.itemData.itemId}" id="adjustedScore" value="#{question.pointsForEdit}" onchange="toPoint(this.id);" >
+            <p class="input-group-addon">
+              <h:outputText value="#{deliveryMessages.q} #{question.sequence} #{deliveryMessages.of} " />
+              <h:outputText value="#{part.numbering}#{deliveryMessages.column}  " />
+            </p>
+            <h:inputText styleClass="form-control adjustedScore#{studentScores.assessmentGradingId}.#{question.itemData.itemId}" id="adjustedScore" value="#{question.pointsForEdit}" onchange="toPoint(this.id);"
+                         validatorMessage="#{evaluationMessages.number_format_error_adjusted_score}">
               <f:validateDoubleRange/>
             </h:inputText>
-            <span class="input-group-addon">
+            <p class="input-group-addon">
             <h:outputText value=" #{deliveryMessages.splash} #{question.roundedMaxPointsToDisplay} " />
             <h:outputText value="#{deliveryMessages.pt}"/>
-            </span>
+            </p>
             <h:message for="adjustedScore" style="color:red"/>
             <h:outputText styleClass="extraCreditLabel" rendered="#{question.itemData.isExtraCredit == true}" value=" #{deliveryMessages.extra_credit_preview}" />
         </h:panelGroup>
@@ -337,11 +320,7 @@ function toPoint(id)
               tool-id="sakai.samigo"
               entity-id='<h:outputText value="pub.#{totalScores.publishedId}.#{question.itemData.itemId}"/>'
               evaluated-item-id='<h:outputText value="#{studentScores.assessmentGradingId}.#{question.itemData.itemId}" />'
-              item-id='<h:outputText value="#{question.itemData.itemId}"/>'
-
-              <h:panelGroup rendered="#{question.rubricStateDetails != ''}">
-                state-details='<h:outputText value="#{question.rubricStateDetails}"/>'
-              </h:panelGroup>>
+              evaluated-item-owner-id='<h:outputText value="#{studentScores.studentId}"/>'
             </sakai-rubric-grading>
           </div>
           </div>
@@ -370,7 +349,7 @@ function toPoint(id)
 </h:panelGroup>
 
 <p class="act">
-   <h:commandButton styleClass="active" value="#{evaluationMessages.save_cont}" action="totalScores" type="submit">
+   <h:commandButton id="save" styleClass="active" value="#{evaluationMessages.save_cont}" action="totalScores" type="submit">
       <f:actionListener
          type="org.sakaiproject.tool.assessment.ui.listener.evaluation.StudentScoreUpdateListener" />
       <f:actionListener

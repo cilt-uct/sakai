@@ -64,7 +64,7 @@ public interface SakaiProxy {
 	public final static Boolean DEFAULT_VIEW_CONNECTIONS = true;
 	public final static Boolean DEFAULT_VIEW_USER_DISPLAY_ID = true;
 	public final static Boolean DEFAULT_VIEW_USER_PROPERTIES = true;
-	public final static Boolean DEFAULT_VIEW_USER_NAME_PRONUNCIATION = false;
+	public final static Boolean DEFAULT_VIEW_USER_NAME_PRONUNCIATION = true;
 	public final static Integer DEFAULT_ROSTER_STATE = 0;
 	
 	/**
@@ -197,7 +197,7 @@ public interface SakaiProxy {
 		
 	public List<RosterMember> getMembership(String currentUserId, String siteId, String groupId, String roleId, String enrollmentSetId, String enrollmentStatus);
 
-	public RosterMember getMember(String siteId, String userId, String enrollmentSetId);
+	public RosterMember getMember(String siteId, String userId, String groupId, String enrollmentSetId);
 
 	public List<User> getSiteUsers(String siteId);
 	
@@ -277,6 +277,11 @@ public interface SakaiProxy {
     public Map<String, SitePresenceTotal> getPresenceTotalsForSite(String siteId);
 
     public boolean getShowVisits();
+
+    /**
+     * @return the value of the <code>roster.display.pronouns</code> Sakai property.
+     */
+    public Boolean getViewPronouns();
 
     /**
      * Returns the value of the <code>roster.display.user.name.pronunciation</code> Sakai property.

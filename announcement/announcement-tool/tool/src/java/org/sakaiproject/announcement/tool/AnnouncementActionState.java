@@ -343,8 +343,22 @@ public class AnnouncementActionState extends ControllerState implements SessionB
 					setShowAllColumns(true);
 					setShowAnnouncementBody(true);
 
-					setNumberOfCharsPerAnnouncement(numberOfCharsPerAnnouncement);
-					setEnforceNumberOfCharsPerAnnouncement(false);
+					String varNameNumberChars = parameters.getString("changeChars");
+					if (varNameNumberChars.equals(rb.getString("custom.shofir")))
+					{
+						setNumberOfCharsPerAnnouncement(50);
+						setEnforceNumberOfCharsPerAnnouncement(true);
+					}
+					else if (varNameNumberChars.equals(rb.getString("custom.shofirtwo")))
+					{
+						setNumberOfCharsPerAnnouncement(100);
+						setEnforceNumberOfCharsPerAnnouncement(true);
+					}
+					else if (varNameNumberChars.equals(rb.getString("custom.shoall")))
+					{
+						setNumberOfCharsPerAnnouncement(numberOfCharsPerAnnouncement);
+						setEnforceNumberOfCharsPerAnnouncement(false);
+					}
 				}
 				else if (VarNameDisplaySelection.equals("list"))
 				{
@@ -354,12 +368,12 @@ public class AnnouncementActionState extends ControllerState implements SessionB
 					String varNameNumberChars = parameters.getString("changeChars");
 					if (varNameNumberChars.equals(rb.getString("custom.shofir")))
 					{
-						setNumberOfCharsPerAnnouncement(53);
+						setNumberOfCharsPerAnnouncement(50);
 						setEnforceNumberOfCharsPerAnnouncement(true);
 					}
 					else if (varNameNumberChars.equals(rb.getString("custom.shofirtwo")))
 					{
-						setNumberOfCharsPerAnnouncement(103);
+						setNumberOfCharsPerAnnouncement(100);
 						setEnforceNumberOfCharsPerAnnouncement(true);
 					}
 					else if (varNameNumberChars.equals(rb.getString("custom.shoall")))
@@ -377,12 +391,12 @@ public class AnnouncementActionState extends ControllerState implements SessionB
 				String varNameNumberChars = parameters.getString("changeChars");
 				if (varNameNumberChars.equals(rb.getString("custom.shofir")))
 				{
-					setNumberOfCharsPerAnnouncement(53);
+					setNumberOfCharsPerAnnouncement(50);
 					setEnforceNumberOfCharsPerAnnouncement(true);
 				}
 				else if (varNameNumberChars.equals(rb.getString("custom.shofirtwo")))
 				{
-					setNumberOfCharsPerAnnouncement(103);
+					setNumberOfCharsPerAnnouncement(100);
 					setEnforceNumberOfCharsPerAnnouncement(true);
 				}
 				else if (varNameNumberChars.equals(rb.getString("custom.shoall")))
@@ -404,8 +418,6 @@ public class AnnouncementActionState extends ControllerState implements SessionB
 			setNumberOfAnnouncements(parameters.getInt(varNameNumberOfAnnouncements, DEFAULT_DISPLAY_NUMBER_OPTION));
 			setEnforceNumberOfAnnouncementsLimit(StringUtils.trimToNull(parameters.get(varNameNumberOfAnnouncements)) != null);
 
-			// setNumberOfCharsPerAnnouncement(parameters.getInt(varNameNumberCharsPerAnnouncement, numberOfCharsPerAnnouncement));
-			// setEnforceNumberOfCharsPerAnnouncement(StringUtils.trimToNull(parameters.get(varNameNumberCharsPerAnnouncement)) != null);
 		}
 
 		/**
@@ -1122,8 +1134,7 @@ public class AnnouncementActionState extends ControllerState implements SessionB
 	 *********************************************************************************************************************************************************************************************************************************************************/
 
 	/**
-	 * This method is called whenever the observed object is changed. An application calls an <tt>Observable</tt> object's <code>notifyObservers</code> method to have all the object's observers notified of the change. default implementation is to
-	 * cause the courier service to deliver to the interface controlled by my controller. Extensions can override.
+	 * This method is called whenever the observed object is changed. An application calls an <tt>Observable</tt> object's <code>notifyObservers</code> method to have all the object's observers notified of the change.
 	 * 
 	 * @param o
 	 *        the observable object.
@@ -1132,9 +1143,6 @@ public class AnnouncementActionState extends ControllerState implements SessionB
 	 */
 	public void update(Observable o, Object arg)
 	{
-		// // deliver to the control panel of the portlet
-		// CourierService.deliver(getSetId(), getId()/* %%%, ChatListAction.CONTROL_PANEL */);
-
 	}
 
 	/**

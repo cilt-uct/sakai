@@ -5,7 +5,7 @@
     <parent>
         <artifactId>basiclti</artifactId>
         <groupId>org.sakaiproject.basiclti</groupId>
-        <version>21-SNAPSHOT</version>
+        <version>22-SNAPSHOT</version>
     </parent>
     
     <name>Basic LTI Admin Tool (basiclti-tool)</name>
@@ -53,6 +53,10 @@
         <dependency>
             <groupId>org.sakaiproject.portal</groupId>
             <artifactId>sakai-portal-util</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.sakaiproject.edu-services.gradebook</groupId>
+            <artifactId>gradebook-service-api</artifactId>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>

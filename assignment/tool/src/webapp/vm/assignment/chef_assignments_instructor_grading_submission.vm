@@ -1,9 +1,9 @@
 <!-- start: chef_assignments_instructor_grading_submission.vm  -->
-#module("/rubrics-service/webcomponents/rubric-association-requirements.js")
+#rubricsRequirements
 #set( $H = '-' )
 #javascript("/library/js/lang-datepicker/lang-datepicker.js")
 
-<script type="text/javascript">
+<script>
     focus_path = ['$fField'];
     $(document).ready(function () {
         //click anywhere to close the peer assessment information box
@@ -32,7 +32,7 @@
     #navBarOnClick( $allowAddAssignment $withGrade $allowGradeSubmission $allowAddAssignment $allowRecoverAssignment $allowAllGroups $assignmentscheck $allowUpdateSite $enableViewOption $view "gradeForm" "")
     ## confirmation
     #if ($!gradingDone)
-        <div class="success">
+        <div class="sak-banner-success">
             $!tlang.getString("saved_grading")
         </div>
     #end
@@ -207,45 +207,35 @@
             #end
 
             ## Submission Log
-## TODO Submission Log
-##            #if ($!submission && $!submission.getSubmissionLog().size() > 0)
-##                <tr>
-##                    <th>$tlang.getString('gen.history')</th>
-##                    <td>
-##                        #foreach ($entry in $submission.getSubmissionLog())
-##                            $formattedText.escapeHtml($entry)<br/>
-##                        #end
-##                    </td>
-##                </tr>
-##            #end
+            #if ($!submissionLog && !$!submissionLog.isEmpty())
+                <tr>
+                    <th>$tlang.getString('gen.history')</th>
+                    <td>
+                        #foreach ($message in $submissionLog)
+                            $message<br/>
+                        #end
+                    </td>
+                </tr>
+            #end
         </table>
 
         ## show or hide assignment instruction and attachment
-        #if ($assignment_expand_flag)
+        <div id="assignamentInstructionPanel">
             <p class="discTria">
-                <a href="javascript:void(0)" onclick="ASN.submitForm( 'gradeForm', 'hide_instruction', null, null ); return false;">
-                    <img src="#imageLink("sakai/collapse.gif")" alt="$tlang.getString("gradingsub.opecliass")" border="0" width="13" height="13" align="top"/>
+                <a href="javascript:void(0)" onclick="ASN.toggleAssignamentInstructionPanel();">
+                    <img id="expandAssignamentInstruction" src="#imageLink("sakai/expand.gif")" alt="$tlang.getString("gen.clocli")" border="0" width="13" height="13" align="top"/>
+                    <img id="collapseAssignamentInstruction" style="display: none;" src="#imageLink("sakai/collapse.gif")" alt="$tlang.getString("gradingsub.opecliass")" border="0" width="13" height="13" align="top"/>
+                    $tlang.getString("gen.assinf")
                 </a>
-                $tlang.getString("gen.assinf")
             </p>
-        #else
-            <p class="discTria">
-                <a href="javascript:void(0)" onclick="ASN.submitForm( 'gradeForm', 'show_instruction', null, null ); return false;">
-                    <img src="#imageLink("sakai/expand.gif")" alt="$tlang.getString("gen.clocli")" border="0" width="13" height="13" align="top"/>
-                </a>
-                $tlang.getString("gen.assinf")
-            </p>
-        #end
-        #if ($assignment_expand_flag)
-            #if (!$assignment.Instructions.isEmpty())
-                <div class="textPanel">$formattedText.escapeHtmlFormattedText($assignment.Instructions)</div>
-            #end
-
-            ## Assignment Attachments
-            #attachmentFragment($assignment.Attachments $assignmentAttachmentReferences $!decoratedUrlMap false)
-        #end
-        ## show the assignment content
-
+            <div id="assignamentInstructionPanelContent" style="display: none;">
+                <p>$formattedText.escapeHtmlFormattedText($assignment.Instructions)</p>
+                ## Assignment Attachments
+                #attachmentFragment($assignment.Attachments $assignmentAttachmentReferences $!decoratedUrlMap false)
+                ##end
+                ## show the assignment content
+            </div>
+        </div>
         #supplementItems($!allowViewModelAnswer $!allowReadAssignmentNoteItem $!allowViewAllPurposeItem $!assignmentModelAnswerItem $!assignmentNoteItem $!assignmentAllPurposeItem)
 
         #if ($!hasAssociatedRubric)
@@ -262,18 +252,11 @@
         #set($hasInline = !$value_feedback_text.isEmpty())
         #set($size = 0)
         #if ($!submission.Submitted || !$alertGradeDraft)
-            #set ($props = false)
-            #set ($size = $submission.Attachments.size())
-            #foreach ($attachmentReference in $submission.Attachments)
-                #set ($reference = $submissionAttachmentReferences.get($attachmentReference))
-                #if ($reference)
-                    #set ($props = $reference.Properties)
-                #end
-            #end
+            #set ($size = $submissionAttachmentReferences.size())
         #end
         #if ($submissionType == 4 && !$hasInline && $size == 0)
             ## if this is non-electronic submission
-            <p class="text-warning">$tlang.getString("nonelec_instruction2")</p>
+            <p class="sak-banner-warn-inline">$tlang.getString("nonelec_instruction2")</p>
         #else
             #if($submissionType == 1 || $submissionType == 3)
                 #if (($submission.Submitted || !$alertGradeDraft) && $!value_feedback_text && !$!value_feedback_text.isEmpty())
@@ -286,9 +269,12 @@
                     </div>
                 #else
                     ## This message only shows when the submission type allows submitted text and the submission doesn't contain submitted text
-                    <p class="text-warning">$tlang.getString("gradingsub.nosubmittedtext")</p>
+                    <p class="sak-banner-warn-inline">$tlang.getString("gradingsub.nosubmittedtext")</p>
                 #end
             #end
+
+            #parse ("/vm/assignment/assignments_display_video_submission.vm")
+
             ## for returned submission, show the instructor comment as well
             #if ($!prevFeedbackText)
                 <h4 id="toggleInline" class="toggleAnchor specialLink">
@@ -313,8 +299,8 @@
                 </h3>
             #end
             #if ($size == 0 && $attachAllowed)
-            ## only display in submission types taht are supposed to have attachments
-                <p class="text-warning">
+            ## only display in submission types that are supposed to have attachments
+                <p class="sak-banner-warn-inline">
                     #if ($submissionType == 5)
 					    $tlang.getString("gen.noattsubmitted.single")
 					#else
@@ -347,14 +333,15 @@
         </div>
         <div role="tabpanel" class="tab-pane" id="rubric">
             <sakai-rubric-grading
-                ## grade-field-id="grade"
                 token="$!rbcs-token"
                 tool-id="sakai.assignment"
                 entity-id="$assignment.Id"
                 evaluated-item-id="$submission.Id"
-
-                #if($!rbcs-state-details && "$!rbcs-state-details" != "")
-                state-details='$rbcs-state-details'
+                #if ($groupRef)
+                evaluated-item-owner-id="$groupRef"
+                group
+                #else
+                evaluated-item-owner-id="$submitterId"
                 #end
             ></sakai-rubric-grading>
         </div>
@@ -390,11 +377,10 @@
                         </p>
                     #elseif ($gradeType == 3)
                         <p class="shorttext">
-                            <label for="grade">$tlang.getString("gen.gra2")
-                                #if($assignment.getAllowPeerAssessment())
-                                    <img id="infoImg" title="$tlang.getString('peerassessment.peerGradeInfo')" src="/library/image/silk/information.png" onclick="$('#peerReviewInfo').show();"/>
-                                #end
-                            </label>
+                            <label for="grade">$tlang.getString("gen.gra2")</label>
+                            #if($assignment.getAllowPeerAssessment())
+                                <a id="infoImg" href="javascript:;"  class="fa fa-info-circle" data-toggle="popover" data-placement="auto" data-content="$tlang.getString('peerassessment.peerGradeInfo')"></a>
+                            #end
                             <input type="text" name="$name_grade" size="5" maxlength="11" value="$!value_grade" id="grade" onkeypress="return ASN.handleEnterKeyPress(event);"/>
                             <span class="text-info">($tlang.getString("grade.max") $!service.getMaxPointGradeDisplay($!assignment.ScaleFactor, $!assignment.MaxGradePoint))</span>
 
@@ -597,7 +583,7 @@
             #end
         #end
         #if ($size == 0)
-            <p class="text-warning">
+            <p class="sak-banner-warn-inline">
                 #if ($submissionType == 5)
                     $tlang.getString("gen.noatt.single")
                 #else
@@ -706,7 +692,7 @@
                 <span id="allowResubmitTime">
                     <label for="allowResubmitDate">$tlang.getString("gen.acesubunt")</label>
                     <input type="text" id="allowResubmitDate" name="allowResubmitDate" class="datepicker" value=""/>
-                    <script type="text/javascript">
+                    <script>
                         localDatePicker({
                             input: '#allowResubmitDate',
                             useTime: 1,
@@ -726,10 +712,10 @@
         #end
         <div class="navPanel">
             <div class="act">
-                    <input type="button" accesskey="d" class="active" name="save" value="$tlang.getString('gen.savdragra')"
+                    <input type="button" id="save" accesskey="d" class="active" name="save" value="$tlang.getString('gen.savdragra')"
                            onclick="SPNR.disableControlsAndSpin( this, null ); ASN.submitForm( 'gradeForm', 'savegrade', '$formattedText.escapeUrl( $submissionReference )', null ); return false;"
                            title="$tlang.getString("gen.savdratit")"/>
-					<input type="button" accesskey="s" name="return" value="$tlang.getString('gen.retustud')"
+					<input type="button" id="save-and-return" accesskey="s" name="return" value="$tlang.getString('gen.retustud')"
                            onclick="SPNR.disableControlsAndSpin( this, null ); ASN.submitForm( 'gradeForm', 'returngrade', '$formattedText.escapeUrl( $submissionReference )', null ); return false;"
                            title="$tlang.getString("gen.retustudtit")"/>
 					<input type="button" accesskey="v" name="preview" value="$tlang.getString('gen.pre')"

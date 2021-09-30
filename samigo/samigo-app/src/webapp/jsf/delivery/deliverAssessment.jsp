@@ -3,7 +3,6 @@
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
 <%@ taglib uri="http://www.sakaiproject.org/samigo" prefix="samigo" %>
 <%@ taglib uri="http://java.sun.com/upload" prefix="corejsf" %>
-<%@ taglib uri='http://java.sun.com/jsp/jstl/core' prefix="c" %>
 <!DOCTYPE html
      PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -34,13 +33,14 @@
     <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
       <head><%= request.getAttribute("html.head") %>
       <title> <h:outputText value="#{delivery.assessmentTitle}"/> </title>
-      <%@ include file="/jsf/delivery/deliveryjQuery.jsp" %>
+          <script>var portal = portal || { siteId: '<h:outputText value="#{delivery.siteId}" />' };</script>
+          <%@ include file="/jsf/delivery/deliveryjQuery.jsp" %>
       <script src="/sakai-editor/editor-bootstrap.js"></script>
       <script src="/sakai-editor/editor.js"></script>
       <script src="/sakai-editor/editor-launch.js"></script>
       <script src="/samigo-app/js/saveForm.js"></script>
-      <script src="/samigo-app/js/finInputValidator.js"></script>
-      <script type="module" src="/rubrics-service/webcomponents/rubric-association-requirements.js<h:outputText value="#{questionScores.CDNQuery}" />"></script>
+      <script src="/webcomponents/rubrics/sakai-rubrics-utils.js<h:outputText value="#{studentScores.CDNQuery}" />"></script>
+      <script type="module" src="/webcomponents/rubrics/rubric-association-requirements.js<h:outputText value="#{questionScores.CDNQuery}" />"></script>
 
     <h:panelGroup rendered="#{delivery.actionString == 'reviewAssessment'}">
       <script>
@@ -249,29 +249,22 @@ document.links[newindex].onclick();
 <h:inputHidden id="formatByAssessment" value="#{delivery.settings.formatByAssessment}"/>
 <h:inputHidden id="lastSubmittedDate1" value="#{delivery.assessmentGrading.submittedDate.time}" 
    rendered ="#{delivery.assessmentGrading.submittedDate!=null}"/>
+<h:inputHidden id="lastSubmittedDateStr" value="#{delivery.submittedDateString}"
+   rendered ="#{delivery.assessmentGrading.submittedDate!=null}"/>
 <h:inputHidden id="lastSubmittedDate2" value="0"
    rendered ="#{delivery.assessmentGrading.submittedDate==null}"/>
 <h:inputHidden id="hasTimeLimit" value="#{delivery.hasTimeLimit}"/>   
 <h:inputHidden id="showTimeWarning" value="#{delivery.showTimeWarning}"/>
 <h:inputHidden id="showTimer" value="#{delivery.showTimer}"/>
-<c:if test="${not empty delivery.dueDate}">
-	<h:inputHidden id="dueDate" value="#{delivery.dueDate.time}"/>
-</c:if>
-<c:if test="${not empty delivery.retractDate}">
-	<h:inputHidden id="retractDate" value="#{delivery.retractDate.time}"/>
-</c:if>
-<c:if test="${not empty delivery.minutesLeft}">
-	<h:inputHidden id="minutesLeft" value="#{delivery.minutesLeft}"/>
-</c:if>
-<c:if test="${not empty delivery.secondsLeft}">
-	<h:inputHidden id="secondsLeft" value="#{delivery.secondsLeft}"/>
-</c:if>
+<h:inputHidden id="dueDate" value="#{delivery.dueDate.time}" rendered="#{delivery.dueDate != null}" />
+<h:inputHidden id="retractDate" value="#{delivery.retractDate.time}" rendered="#{delivery.retractDate != null}" />
 
 <!-- DONE BUTTON FOR PREVIEW -->
 <h:panelGroup rendered="#{delivery.actionString=='previewAssessment'}">
-  <div class="previewMessage">
-     <h:outputText value="#{deliveryMessages.ass_preview}" />
-     <h:commandButton id="done" value="#{deliveryMessages.done}"
+  <div class="sak-banner-info">
+     <h:outputText value="#{deliveryMessages.ass_preview}" escape="false" />
+     <h:commandButton value="#{deliveryMessages.exit_preview}"
+        styleClass="exitPreviewButton"
         action="#{person.cleanResourceIdListInPreview}"
         type="submit"
         onclick="return returnToHostUrl(\"#{delivery.selectURL}\");" />
@@ -307,14 +300,14 @@ document.links[newindex].onclick();
     <h:column>
     <h4 class="part-header">
         <h:outputText value="#{deliveryMessages.p} #{part.number} #{deliveryMessages.of} #{part.numParts}" />
-        <small class="part-text">
-            <h:outputText value=" #{deliveryMessages.dash} #{part.nonDefaultText}" escape="false"/>
-        </small>
+        <h:outputText value=" #{deliveryMessages.dash} #{part.nonDefaultText}" escape="false" rendered="#{! empty part.nonDefaultText}"/>
         <span class="badge"><h:outputText value="#{part.pointsDisplayString} #{deliveryMessages.splash} #{part.roundedMaxPoints} #{deliveryMessages.pt}" rendered="#{delivery.actionString=='reviewAssessment'}"/></span>
     </h4>
     <h4 class="tier1">
         <small class="part-text">
-            <h:outputText value="#{part.description}" escape="false"/>
+            <h:outputText value="#{part.description}" escape="false">
+              <f:converter converterId="org.sakaiproject.tool.assessment.jsf.convert.SecureContentWrapper" />
+            </h:outputText>
         </small>
     </h4>
 
@@ -327,13 +320,13 @@ document.links[newindex].onclick();
    <h:dataTable width="100%" value="#{part.itemContents}" var="question">
      <h:column>
 		<h:panelGroup layout="block" styleClass="input-group col-sm-6">
-			<span class="input-group-addon">
+			<p class="input-group-addon">
 				<h:outputText value="<a name='p#{part.number}q#{question.number}'></a>" escape="false" />
 				<h:outputText value="#{deliveryMessages.q} #{question.sequence} #{deliveryMessages.of} #{part.numbering}"/>
-			</span>
+			</p>
 			<%-- REVIEW ASSESSMENT --%>
 			<h:inputText styleClass="form-control adjustedScore" value="#{question.pointsDisplayString}" disabled="true" rendered="#{delivery.actionString=='reviewAssessment'}"/>
-			<span class="input-group-addon">
+			<p class="input-group-addon">
 				<%-- REVIEW ASSESSMENT --%>
 				<h:outputText value="#{question.roundedMaxPointsToDisplay} #{deliveryMessages.pt}" rendered="#{delivery.actionString=='reviewAssessment'}"/>
 				<%-- DELIVER ASSESSMENT --%>
@@ -344,7 +337,7 @@ document.links[newindex].onclick();
 				<h:outputText value="#{deliveryMessages.discount} #{question.itemData.discount} "  rendered="#{question.itemData.discount!='0.0' && delivery.settings.displayScoreDuringAssessments != '2' && question.itemData.scoreDisplayFlag}"  >
 					<f:convertNumber maxFractionDigits="2" groupingUsed="false"/>
 				</h:outputText>
-			</span>
+			</p>
 			<h:outputText styleClass="extraCreditLabel" rendered="#{question.itemData.isExtraCredit == true}" value="#{deliveryMessages.extra_credit_preview}" />
 		</h:panelGroup>
 
@@ -357,7 +350,7 @@ document.links[newindex].onclick();
          </sakai-rubric-student>
        </h:panelGroup>
 
-       <h:panelGroup rendered="#{delivery.actionString == 'takeAssessment'}">
+       <h:panelGroup rendered="#{delivery.actionString == 'takeAssessment' || delivery.actionString == 'takeAssessmentViaUrl' || delivery.actionString == 'previewAssessment'}">
            <sakai-rubric-student-preview-button
                 token="<h:outputText value="#{delivery.rbcsToken}" />"
                 tool-id="sakai.samigo"
@@ -439,13 +432,34 @@ document.links[newindex].onclick();
              <h:outputText value="#{deliveryMessages.time_expired2} " />
            </div>
            <div role="alert" class="sak-banner-error" style="display: none" id="autosave-timeleft-warning">
-             <h:outputFormat value="#{deliveryMessages.time_left}"><f:param value="#{delivery.minutesLeft}"/><f:param value="#{delivery.secondsLeft}"/></h:outputFormat>
+             <h:panelGroup rendered="#{(delivery.deadlineString != null && delivery.deadlineString ne '')}">
+               <h:outputFormat value="#{deliveryMessages.time_left}" escape="false">
+                 <f:param value="#{delivery.deadlineString}"/>
+               </h:outputFormat>
+             </h:panelGroup>
            </div>
            <div role="alert" class="sak-banner-error" style="display: none" id="autosave-failed-warning">
-             <p><h:outputText value="#{deliveryMessages.autosaveFailed}" escape="false" /></p>
-             <p><h:outputText value="#{deliveryMessages.autosaveFailedDetail}" escape="false" /></p>
+             <h5><h:outputText value="#{deliveryMessages.autosaveFailed_heading}" escape="false" /></h5>
+             <p>
+               <h:outputText value="#{deliveryMessages.autosaveFailed_reason}" escape="false" /><br />
+               <h:outputText value="#{deliveryMessages.autosaveFailedDetail}" escape="false" />
+             </p>
            </div>
-          
+           <div role="alert" class="sak-banner-error" style="display: none" id="multiple-tabs-warning">
+             <h5><h:outputText value="#{deliveryMessages.multipleTabsWarning_heading}" escape="false" /></h5>
+             <p>
+               <h:outputText value="#{deliveryMessages.multipleTabsWarning_1}" escape="false" /><br />
+               <h:outputText value="#{deliveryMessages.multipleTabsWarning_2}" escape="false" /><br />
+               <h:outputText value="#{deliveryMessages.multipleTabsWarning_3}" escape="false" />
+             </p>
+             <h5><h:outputText value="#{deliveryMessages.multipleTabsWarningFix_heading}" escape="false" /></h5>
+             <ol>
+               <li><h:outputText value="#{deliveryMessages.multipleTabsWarningFix_1}" escape="false" /></li>
+               <li><h:outputText value="#{deliveryMessages.multipleTabsWarningFix_2}" escape="false" /></li>
+               <li><h:outputText value="#{deliveryMessages.multipleTabsWarningFix_3}" escape="false" /></li>
+               <li><h:outputText value="#{deliveryMessages.multipleTabsWarningFix_4}" escape="false" /></li>
+             </ol>
+           </div>
          </div>
         </h:column>
       </h:dataTable>
@@ -458,6 +472,10 @@ document.links[newindex].onclick();
 </h:panelGroup>
 
   <f:verbatim><br/></f:verbatim>
+  <div role="alert" aria-live="polite" aria-atomic="true">
+    <span id="autosave-msg"><h:outputText value="#{deliveryMessages.autosaving}"/></span>
+    <span id="autosave-lasttime-msg"><h:outputText value="#{deliveryMessages.autosaveTime}"/> <span id="autosave-lasttime"></span></span>
+  </div>
 
 <!-- 1. special case: linear + no question to answer -->
 <h:panelGrid columns="2" border="0" rendered="#{delivery.pageContents.isNoParts && delivery.navigation eq '1'}">
@@ -481,7 +499,7 @@ document.links[newindex].onclick();
 <h:panelGrid columns="6" border="0" rendered="#{!(delivery.pageContents.isNoParts && delivery.navigation eq '1')}">
   <%-- PREVIOUS --%>
   <h:panelGrid columns="1" border="0">
-	<h:commandButton id="previous" type="submit" value="#{deliveryMessages.previous}"
+	<h:commandButton id="previous" type="submit" value="#{deliveryMessages.previous}" styleClass="active"
     action="#{delivery.previous}"
     disabled="#{!delivery.previous}" 
 	rendered="#{(delivery.actionString=='previewAssessment'
@@ -492,7 +510,7 @@ document.links[newindex].onclick();
 
   <%-- NEXT --%>
   <h:panelGrid columns="1" border="0" columnClasses="act">
-    <h:commandButton id="next1" type="submit" value="#{commonMessages.action_next}"
+    <h:commandButton id="next1" type="submit" value="#{commonMessages.action_next}" styleClass="active"
     action="#{delivery.nextPage}" disabled="#{!delivery.doContinue}"
 	rendered="#{(delivery.actionString=='previewAssessment'
                  || delivery.actionString=='takeAssessment'
@@ -515,7 +533,7 @@ document.links[newindex].onclick();
 
   <%-- SAVE --%>
   <h:panelGrid columns="1" border="0" >
-  <h:commandButton id="save" type="submit" value="#{commonMessages.action_save}"
+  <h:commandButton id="save" type="submit" value="#{commonMessages.action_save}" styleClass="active"
     action="#{delivery.saveWork}" rendered="#{delivery.actionString=='previewAssessment'
                  || delivery.actionString=='takeAssessment'
                  || delivery.actionString=='takeAssessmentViaUrl'}" />
@@ -523,7 +541,7 @@ document.links[newindex].onclick();
 
   <h:panelGrid columns="1"  border="0">
   <%-- EXIT --%>
-  <h:commandButton type="submit" value="#{deliveryMessages.button_exit}"
+  <h:commandButton type="submit" value="#{deliveryMessages.button_exit}" styleClass="active"
     action="#{delivery.saveAndExit}" id="saveAndExit"
     rendered="#{(delivery.actionString=='previewAssessment'  
                  || delivery.actionString=='takeAssessment'
@@ -594,14 +612,12 @@ document.links[newindex].onclick();
 
 <!-- DONE BUTTON IN PREVIEW -->
 <h:panelGroup rendered="#{delivery.actionString=='previewAssessment'}">
- <f:verbatim><div class="previewMessage"></f:verbatim>
-     <h:outputText value="#{deliveryMessages.ass_preview}" />
-     <h:commandButton value="#{deliveryMessages.done}"
-        action="#{person.cleanResourceIdListInPreview}"
-        type="submit"
-        onclick="return returnToHostUrl(\"#{delivery.selectURL}\");" />
- <f:verbatim></div></f:verbatim>
+  <h:commandButton value="#{deliveryMessages.exit_preview}"
+     action="#{person.cleanResourceIdListInPreview}"
+     type="submit"
+     onclick="return returnToHostUrl(\"#{delivery.selectURL}\");" />
 </h:panelGroup>
+
 </h:form>
 <!-- end content -->
 </div>

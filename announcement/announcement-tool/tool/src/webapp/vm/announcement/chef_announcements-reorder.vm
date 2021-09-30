@@ -102,16 +102,16 @@
 			</div>
 				<ul id="reorder-list" class="styled-reorder-list">
 
-				#set($count = 0)
+				#set($count = 1)
 				#foreach ($ann_item in $showMessagesList)
 					#set($ann_item_props=$ann_item.getProperties())
-					<li #rowTRconstruct($ann_item_props $displayOptions $ann_item.Header.draft true) id="listitem.orderable$count" tabindex="0">
-						<span style="display:none" class="grabHandle">
-							<input type="text" size="3" value="$count" id="index$count" style="z-index:5"/>
-							<input type="hidden" size="3" id="holder$count"  value="$count"/>
-						</span>	
+					<li class="row reorder-element grab_cursor" id="listitem.orderable$count" tabindex="0" onmouseup="grab(this)" onmousedown="grabbing(this);">
 						<span class="title col-md-4 col-sm-4 col-xs-12">
-							$formattedText.escapeHtml($validator.limit($ann_item.Header.subject, 45))
+							<span style="display:none" class="grabHandle">
+								<input type="text" size="3" value="$count" id="index$count" style="z-index:5"/>
+								<input type="hidden" size="3" id="holder$count"  value="$count"/>
+							</span>	
+							<span>$formattedText.escapeHtml($validator.limit($ann_item.Header.subject, 45))</span>
 						</span>
 						<span class="author col-md-2 col-sm-2 col-xs-12">
 							$formattedText.escapeHtml($ann_item.Header.From.DisplayName)
@@ -119,14 +119,22 @@
 						<span  class="date col-md-2 col-sm-2 col-xs-12"> 
 							$ann_item.Header.Date.toStringLocalFull()
 						</span>
-						#set ($ref = $entityManager.newReference($ann_item.Reference))
-						#set ($origChannelRef = $service.channelReference($ref.Context,$ref.Container))
+						<span  class="date col-md-2 col-sm-2 col-xs-12"> 
+							#if (!$ann_item_props.isEmpty() && $ann_item_props.getProperty("retractDate"))
+								$ann_item_props.getTimeProperty("retractDate").toStringLocalFull()
+							#end
+						</span>
+						<span  class="date col-md-2 col-sm-2 col-xs-12"> 
+							#if (!$ann_item_props.isEmpty() && $ann_item_props.getProperty("modDate"))
+								$ann_item_props.getTimeProperty("modDate").toStringLocalFull()
+							#end
+						</span>
 						##For Re-ordering of Announcement Messages
 							<span style="display:none"> 
-								<input type="checkbox" id="check-$rowCount" name="selectedMembers2" checked="checked" value="$ann_item.Reference"/>
+								<input type="checkbox" id="check-$count" name="selectedMembers2" checked="checked" value="$ann_item.Reference"/>
 							</span>
 					</li>
-								#set($count = $count + 1)
+					#set($count = $count + 1)
 				#end
 		</ul>
 	<p class="act">
@@ -149,3 +157,19 @@
 		</div>
 #end	##end of for each loop
 </div>
+
+<script>
+
+	function grabbing(selectedItem) {
+		li = $(selectedItem);
+		$(li).removeClass("grab_cursor");
+		$(li).addClass("grabbing_cursor");
+	}
+
+	function grab(selectedItem) {
+		li = $(selectedItem);
+		$(li).removeClass("grabbing_cursor");
+		$(li).addClass("grab_cursor");
+	}
+
+</script>

@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.sakaiproject.polls</groupId>
         <artifactId>polls</artifactId>
-        <version>21-SNAPSHOT</version>
+        <version>22-SNAPSHOT</version>
     </parent>
 
     <name>Sakai Polls API Module (polls-api)</name>
@@ -35,4 +35,24 @@
           <artifactId>commons-lang3</artifactId>
         </dependency>
     </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>${basedir}/src/bundle</directory>
+                <includes>
+                    <include>**/*.properties</include>
+                </includes>
+                <filtering>false</filtering>
+            </resource>
+            <resource>
+                <directory>${basedir}/src/java</directory>
+                <includes>
+                    <include>**/*.xml</include>
+                    <include>**/*.xslt</include>
+                </includes>
+                <filtering>false</filtering>
+            </resource>
+        </resources>
+    </build>
 </project>

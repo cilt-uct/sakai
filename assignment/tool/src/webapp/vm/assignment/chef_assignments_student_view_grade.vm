@@ -1,5 +1,5 @@
 <!-- start: chef_assignments_student_view_grade.vm  -->
-#module("/rubrics-service/webcomponents/rubric-association-requirements.js")
+#rubricsRequirements
 <script>
     $(document).ready(function () {
         $("#accordion").accordion({
@@ -40,13 +40,10 @@
         #if ($!assignment.IsGroup)
             <span> - $tlang.getString("gen.groupassignment") </span>
         #end
-        #if ($submission.Returned)
-            <span class="highlight"> - $tlang.getString("gen.returned")</span>
-        #elseif (!$submission.Submitted)
-            <span class="highlight"> - $!service.getSubmissionStatus($!submission.Id) </span>
-        #elseif (!$!nonElectronicType && $!submission.UserSubmission)
-            <span class="highlight"> - $tlang.getString("gen.subm4")</span>
+        #if ($submission)
+            #set($submissionId = $submission.Id)
         #end
+        <span class="highlight"> - $!service.getSubmissionStatus($!submissionId)</span>
     </h3>
     #if (!$!nonElectronicType)
         #progressBar($!service.getProgressBarStatus($!submission))
@@ -117,10 +114,14 @@
                     <th>
                         $tlang.getString("gen.gra")
                     </th>
-                    <td class="highlight">
+                    <td class="highlight text-default">
                         <strong>
                             #if ($!assignment.TypeOfGrade.ordinal() != 1)
-                                $!grade
+                                #if ($!grade == $tlang.getString("pass"))
+                                    <span class="text-success">$!grade</span>
+                                #elseif ($!grade == $tlang.getString("fail"))
+                                    <span class="text-danger">$!grade</span>
+                                #end
                             #else
                                 $tlang.getString("gen.nograd")
                             #end
@@ -175,17 +176,18 @@
             </tr>
         #end
 
-##        TODO Submission Log
-##        #if ($!submission && $!submission.getSubmissionLog().size() > 0)
-##            <tr>
-##                <th>$tlang.getString("gen.history")</th>
-##                <td>
-##                    #foreach ($entry in $submission.getSubmissionLog())
-##                        $formattedText.escapeHtml($entry)<br>
-##                    #end
-##                </td>
-##            </tr>
-##        #end
+        ## Submission Log
+        #if ($!submissionLog && !$!submissionLog.isEmpty())
+            <tr>
+                <th>$tlang.getString('gen.history')</th>
+                <td>
+                    #foreach ($message in $submissionLog)
+                        $message<br/>
+                    #end
+                </td>
+            </tr>
+        #end
+
     </table>
 ##    TODO Content Review Service
 ##    #if($assignment.getContent().AllowReviewService && $assignment.getContent().AllowStudentViewReport)
@@ -235,10 +237,12 @@
             #end
         #end
 
+        #parse ("/vm/assignment/assignments_display_video_submission.vm")
+
         ## Submission Attachments
         #set ($attachments = $submission.Attachments)
         #if ($attachments)
-            #set ($size = $attachments.size())
+            #set ($size = $submissionAttachmentReferences.size())
             #if ($size < 1)
                 $tlang.getString("gen.noattsubmitted")
             #else
@@ -252,6 +256,7 @@
                 <div class="textPanel borderPanel">
                     <ul class="attachList indnt1">
                         #foreach ($attachmentReference in $attachments)
+                            #set ($reference = false)
                             #set ($reference = $submissionAttachmentReferences.get($attachmentReference))
                             #if ($reference)
                                 #set ($props = false)

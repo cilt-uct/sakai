@@ -29,7 +29,9 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.faces.application.FacesMessage;
 import javax.faces.context.FacesContext;
@@ -54,6 +56,7 @@ import org.sakaiproject.tool.assessment.data.dao.grading.AssessmentGradingData;
 import org.sakaiproject.tool.assessment.data.dao.grading.ItemGradingAttachment;
 import org.sakaiproject.tool.assessment.data.dao.grading.ItemGradingData;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AttachmentIfc;
+import org.sakaiproject.tool.assessment.data.ifc.assessment.EvaluationModelIfc;
 import org.sakaiproject.tool.assessment.facade.AgentFacade;
 import org.sakaiproject.tool.assessment.services.GradebookServiceException;
 import org.sakaiproject.tool.assessment.services.GradingService;
@@ -129,8 +132,24 @@ import org.sakaiproject.tool.cover.SessionManager;
    */
   public boolean saveQuestionScores(QuestionScoresBean bean, TotalScoresBean tbean)
   {
+    boolean hasNumberFormatException = false;
+    List<String> badAdjList = new ArrayList<>();
+    boolean isAnonymousGrading = false;
+    String numberFormatError = "";
+
     try
     {
+      if (bean.getPublishedAssessment() != null
+        && bean.getPublishedAssessment().getEvaluationModel() != null
+        && bean.getPublishedAssessment().getEvaluationModel().getAnonymousGrading() != null
+        && bean.getPublishedAssessment().getEvaluationModel().getAnonymousGrading().equals(EvaluationModelIfc.ANONYMOUS_GRADING)) {
+        numberFormatError = (String) ContextUtil.getLocalizedString(SamigoConstants.EVAL_BUNDLE, "number_format_error_submission_id");
+        isAnonymousGrading = true;
+      }
+      else {
+        numberFormatError = (String) ContextUtil.getLocalizedString(SamigoConstants.EVAL_BUNDLE, "number_format_error_user_id");
+      }
+
       ParameterUtil paramUtil = new ParameterUtil();
       GradingService delegate = new GradingService();
       //String publishedId = ContextUtil.lookupParam("publishedId");
@@ -163,17 +182,30 @@ import org.sakaiproject.tool.cover.SessionManager;
         while (iter2.hasNext()){
           Object obj = iter2.next();
           ItemGradingData data = (ItemGradingData) obj;
+          double newAutoScore = 0;
 
           // check if there is differnce in score, if so, update. Otherwise, do nothing
-          double newAutoScore = 0;
-          if ((bean.getTypeId().equals("8") || bean.getTypeId().equals("11")) && fibFinNumCorrect != 0) {
-        	  if (Boolean.TRUE.equals(data.getIsCorrect())) {
-        		  newAutoScore = (Double.valueOf(ar.getTotalAutoScore())).doubleValue() / (double) fibFinNumCorrect;
-        	  }
+          try {
+            if ((bean.getTypeId().equals("8") || bean.getTypeId().equals("11")) && fibFinNumCorrect != 0) {
+        	    if (Boolean.TRUE.equals(data.getIsCorrect())) {
+        		    newAutoScore = (Double.valueOf(ar.getTotalAutoScore())).doubleValue() / (double) fibFinNumCorrect;
+        	    }
+            }
+            else {
+        	    newAutoScore = (Double.valueOf(ar.getTotalAutoScore())).doubleValue() / (double) datas.size();
+            }
           }
-          else {
-        	  newAutoScore = (Double.valueOf(ar.getTotalAutoScore())).doubleValue() / (double) datas.size();
+          catch (NumberFormatException e) {
+            hasNumberFormatException = true;
+            if (isAnonymousGrading) {
+              badAdjList.add(ar.getAssessmentGradingId().toString());
+            }
+            else {
+              badAdjList.add(ar.getAgentEid());
+            }
+            continue;
           }
+
           String newComments = TextFormat.convertPlaintextToFormattedTextNoHighUnicode(ar.getComments());
           ar.setComments(newComments);
           if (newComments!=null) {
@@ -235,13 +267,6 @@ import org.sakaiproject.tool.cover.SessionManager;
         	  hasUpdateAttachment = true;
         	  updateAttachment(data, ar, bean);
           }
-		  
-          // Persist the rubric evaluation
-          String entityId = RubricsConstants.RBCS_PUBLISHED_ASSESSMENT_ENTITY_PREFIX + bean.getPublishedId() + "." + bean.getItemId();
-          if(rubricsService.hasAssociatedRubric(RubricsConstants.RBCS_TOOL_SAMIGO, entityId)){
-            String evaluatedItemId = ar.getAssessmentGradingId() + "." + bean.getItemId();
-            rubricsService.saveRubricEvaluation(RubricsConstants.RBCS_TOOL_SAMIGO, entityId, evaluatedItemId, ar.getIdString(), SessionManager.getCurrentSessionUserId(), paramUtil.getRubricConfigurationParameters(entityId, evaluatedItemId));
-          }
         }
       }
 
@@ -256,15 +281,22 @@ import org.sakaiproject.tool.cover.SessionManager;
       log.error(e.getMessage(), e);
       return false;
     }
+
+    if (hasNumberFormatException) {
+      FacesContext context = FacesContext.getCurrentInstance();
+      context.addMessage(null, new FacesMessage(numberFormatError + " " + badAdjList.stream().collect(Collectors.joining(", ")) + "."));
+    }
     return true;
   }
 
   private void updateAttachment(ItemGradingData itemGradingData, AgentResults agentResults, QuestionScoresBean bean){
-	  List oldList = itemGradingData.getItemGradingAttachmentList();
+
+	  Set<ItemGradingAttachment> oldList = itemGradingData.getItemGradingAttachmentSet();
 	  List newList = agentResults.getItemGradingAttachmentList();
 	  if ((oldList == null || oldList.size() == 0 ) && (newList == null || newList.size() == 0)) return;
-	  List attachmentList = new ArrayList();
-	  HashMap map = getAttachmentIdHash(oldList);
+	  final Map<Long, ItemGradingAttachment> map
+		  = oldList.stream().collect(Collectors.toMap(a -> a.getAttachmentId(), a -> a));
+	  List<ItemGradingAttachment> attachmentList = new ArrayList<>();
 	  for (int i=0; i<newList.size(); i++){
 		  ItemGradingAttachment itemGradingAttachment = (ItemGradingAttachment) newList.get(i);
 		  if (map.get(itemGradingAttachment.getAttachmentId()) != null){
@@ -297,14 +329,5 @@ import org.sakaiproject.tool.cover.SessionManager;
 				  "siteId=" + AgentFacade.getCurrentSiteId() + ", Removing attachmentId = " + attachmentId, true));
 	  }
 	  bean.setAnyItemGradingAttachmentListModified(true);
-  }
-
-  private HashMap getAttachmentIdHash(List list){
-    HashMap map = new HashMap();
-    for (int i=0; i<list.size(); i++){
-    	ItemGradingAttachment a = (ItemGradingAttachment)list.get(i);
-      map.put(a.getAttachmentId(), a);
-    }
-    return map;
   }
 }

@@ -23,20 +23,21 @@ package org.sakaiproject.site.impl;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import lombok.extern.slf4j.Slf4j;
-
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.db.api.SqlReader;
 import org.sakaiproject.db.api.SqlReaderFinishedException;
 import org.sakaiproject.db.api.SqlService;
@@ -46,10 +47,10 @@ import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SitePage;
 import org.sakaiproject.site.api.ToolConfiguration;
-import org.sakaiproject.time.api.Time;
 import org.sakaiproject.util.BaseDbFlatStorage;
 import org.sakaiproject.util.BaseResourcePropertiesEdit;
-import org.sakaiproject.util.StringUtil;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * <p>
@@ -210,7 +211,7 @@ public abstract class DbSiteService extends BaseSiteService
 		protected SqlReader lightSiteReader = new SiteSqlReader(false);
 
 		/** SqlReader for reading just the Site IDs, used for tuning getSites performance. */
-		protected SqlReader siteIdReader = new SiteIdSqlReader();
+		protected SqlReader<String> siteIdReader = new SiteIdSqlReader();
 
 		/**
 		 * The sizes of parameters to use for IN clauses padded with NULLs; up to Oracle maximum.
@@ -409,9 +410,9 @@ public abstract class DbSiteService extends BaseSiteService
 		 * @inheritDoc
 		 */
 		@Override
-		public void unpublish(final List<String> siteIds, final String modifiedBy, final Time modifiedOn)
+		public void unpublish(final List<String> siteIds, final String modifiedBy, final Instant modifiedOn)
 		{
-			final List<String> casedSiteIds = new ArrayList(siteIds.size());
+			final List<String> casedSiteIds = new ArrayList<>(siteIds.size());
 			StringBuilder tag = new StringBuilder("unpublish:");
 			String delim = "";
 			for (String siteId : siteIds)
@@ -430,7 +431,7 @@ public abstract class DbSiteService extends BaseSiteService
 			}, tag.toString());
 		}
 
-		protected void unpublishTx(List<String> siteIds, String modifiedBy, Time modifiedOn)
+		protected void unpublishTx(List<String> siteIds, String modifiedBy, Instant modifiedOn)
 		{
 			// If we're operating on thousands of siteIds, a statement will be used that has an 'in' clause with 1000 occurrences of ", ?".
 			// maxBatchSizeStatement will cache it so we don't have to generate it more than once
@@ -1097,8 +1098,8 @@ public abstract class DbSiteService extends BaseSiteService
 
 			String join = getSitesJoin( type, sort );
 			String order = getSitesOrder( sort );
-			Object[] values = getSitesFields( type, ofType, criteria, propertyCriteria, propertyRestrictions, userId, excludedSites );
-			String where = getSitesWhere(type, ofType, criteria, propertyCriteria, propertyRestrictions, sort, excludedSites);
+			Object[] values = getSitesFields( type, ofType, criteria, propertyCriteria, propertyRestrictions, userId, null);
+			String where = getSitesWhere(type, ofType, criteria, propertyCriteria, propertyRestrictions, sort, null);
 
 			String sql;
 			if (page != null)
@@ -1115,9 +1116,13 @@ public abstract class DbSiteService extends BaseSiteService
 
 			log.debug("getSiteIds SQL: {}, values: {}", sql, java.util.Arrays.toString(values));
 
-			@SuppressWarnings("unchecked")
-			List<String> siteIds = (List<String>) sqlService().dbRead(sql, values, siteIdReader);
-			return siteIds;
+			List<String> results = sqlService().dbRead(sql, values, siteIdReader);
+			Set<String> siteIds = new LinkedHashSet<>();
+			if (results != null) siteIds.addAll(results);
+			Set<String> excludedSiteIds = new LinkedHashSet<>();
+			if (excludedSites != null) excludedSiteIds.addAll(excludedSites);
+			siteIds.removeAll(excludedSiteIds);
+			return new ArrayList<>(siteIds);
 		}
 
 		/**
@@ -2554,7 +2559,7 @@ public abstract class DbSiteService extends BaseSiteService
 				// if no current user, since we are working up a new user record, use the user id as creator...
 				if (current == null) current = "";
 
-				Time now = timeService().newTime();
+				Instant now = Instant.now();
 
 				rv[1] = "";
 				rv[2] = "";
@@ -2580,23 +2585,23 @@ public abstract class DbSiteService extends BaseSiteService
 
 			else
 			{
-				rv[1] = StringUtil.trimToZero(((BaseSite) edit).m_title);
-				rv[2] = StringUtil.trimToZero(((BaseSite) edit).m_type);
-				rv[3] = StringUtil.trimToZero(((BaseSite) edit).m_shortDescription);
-				rv[4] = StringUtil.trimToZero(((BaseSite) edit).m_description);
-				rv[5] = StringUtil.trimToZero(((BaseSite) edit).m_icon);
-				rv[6] = StringUtil.trimToZero(((BaseSite) edit).m_info);
-				rv[7] = StringUtil.trimToZero(((BaseSite) edit).m_skin);
+				rv[1] = StringUtils.trimToEmpty(((BaseSite) edit).m_title);
+				rv[2] = StringUtils.trimToEmpty(((BaseSite) edit).m_type);
+				rv[3] = StringUtils.trimToEmpty(((BaseSite) edit).m_shortDescription);
+				rv[4] = StringUtils.trimToEmpty(((BaseSite) edit).m_description);
+				rv[5] = StringUtils.trimToEmpty(((BaseSite) edit).m_icon);
+				rv[6] = StringUtils.trimToEmpty(((BaseSite) edit).m_info);
+				rv[7] = StringUtils.trimToEmpty(((BaseSite) edit).m_skin);
 				rv[8] = Integer.valueOf((((BaseSite) edit).m_published) ? 1 : 0);
 				rv[9] = ((((BaseSite) edit).m_joinable) ? "1" : "0");
 				rv[10] = ((((BaseSite) edit).m_pubView) ? "1" : "0");
-				rv[11] = StringUtil.trimToZero(((BaseSite) edit).m_joinerRole);
+				rv[11] = StringUtils.trimToEmpty(((BaseSite) edit).m_joinerRole);
 				rv[12] = isSpecialSite(id) ? "1" : "0";
 				rv[13] = isUserSite(id) ? "1" : "0";
-				rv[14] = StringUtil.trimToZero(((BaseSite) edit).m_createdUserId);
-				rv[15] = StringUtil.trimToZero(((BaseSite) edit).m_lastModifiedUserId);
-				rv[16] = edit.getCreatedTime();
-				rv[17] = edit.getModifiedTime();
+				rv[14] = StringUtils.trimToEmpty(((BaseSite) edit).m_createdUserId);
+				rv[15] = StringUtils.trimToEmpty(((BaseSite) edit).m_lastModifiedUserId);
+				rv[16] = edit.getCreatedDate();
+				rv[17] = edit.getModifiedDate();
 				rv[18] = edit.isCustomPageOrdered() ? "1" : "0";
 				rv[19] = edit.isSoftlyDeleted() ? "1" : "0";
 				rv[20] = edit.getSoftlyDeletedDate();
@@ -2691,16 +2696,16 @@ public abstract class DbSiteService extends BaseSiteService
 				String createdBy = result.getString(15);
 				String modifiedBy = result.getString(16);
 				java.sql.Timestamp ts = result.getTimestamp(17, sqlService().getCal());
-				Time createdOn = null;
+				Instant createdOn = null;
 				if (ts != null)
 				{
-					createdOn = timeService().newTime(ts.getTime());
+					createdOn = ts.toInstant();
 				}
 				ts = result.getTimestamp(18, sqlService().getCal());
-				Time modifiedOn = null;
+				Instant modifiedOn = null;
 				if (ts != null)
 				{
-					modifiedOn = timeService().newTime(ts.getTime());
+					modifiedOn = ts.toInstant();
 				}
 				boolean customPageOrdered = "1".equals(result.getString(19)) ? true : false;
 				boolean isSoftlyDeleted = "1".equals(result.getString(20)) ? true : false;

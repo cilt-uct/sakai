@@ -15,23 +15,25 @@
  */
 package org.sakaiproject.sitestats.impl;
 
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
-import lombok.extern.slf4j.Slf4j;
+import java.io.IOException;
+import java.util.Properties;
+
+import javax.annotation.PreDestroy;
+import javax.annotation.Resource;
+
 import org.hibernate.SessionFactory;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.springframework.orm.hibernate.AdditionalHibernateMappings;
 import org.sakaiproject.springframework.orm.hibernate.impl.AdditionalHibernateMappingsImpl;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.orm.hibernate4.HibernateTransactionManager;
-import org.springframework.orm.hibernate4.LocalSessionFactoryBuilder;
+import org.springframework.orm.hibernate5.HibernateTransactionManager;
+import org.springframework.orm.hibernate5.LocalSessionFactoryBuilder;
 import org.springframework.transaction.PlatformTransactionManager;
 
-import javax.annotation.PreDestroy;
-import javax.annotation.Resource;
-import java.io.IOException;
-import java.util.Properties;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class SiteStatsPersistenceConfig {
@@ -132,10 +134,16 @@ public class SiteStatsPersistenceConfig {
 
         p.setProperty("hibernate.hbm2ddl.auto", autoDdl);
         p.setProperty("hibernate.show_sql", serverConfigurationService.getString("sitestats.externalDb.hibernate.show_sql", "false"));
-        p.setProperty("hibernate.query.substitutions", "true 1, false 0, yes 'Y', no 'N'");
-        p.setProperty("hibernate.jdbc.use_streams_for_binary", "true");
-        p.setProperty("hibernate.cache.use_query_cache", "true");
-        p.setProperty("hibernate.cache.region.factory_class", "org.hibernate.cache.SingletonEhCacheRegionFactory");
+        p.setProperty("hibernate.query.substitutions", serverConfigurationService.getString("sitestats.externalDb.hibernate.query.substitutions", "true 1, false 0, yes 'Y', no 'N'"));
+        p.setProperty("hibernate.jdbc.use_streams_for_binary", serverConfigurationService.getString("sitestats.externalDb.hibernate.jdbc.use_streams_for_binary", "true"));
+        // TODO with the removal of ehcache as hibernate cache provider
+        //  if we want to do caching in the external db will likely need to setup
+        //  an ignite cache for the external for now we will be disabling caching
+        //  Ignite region factory org.apache.ignite.cache.hibernate.HibernateRegionFactory
+        //  Ehcache region factory org.hibernate.cache.SingletonEhCacheRegionFactory
+        p.setProperty("hibernate.cache.region.factory_class", serverConfigurationService.getString("sitestats.externalDb.hibernate.cache.region.factory_class", ""));
+        p.setProperty("hibernate.cache.use_query_cache", serverConfigurationService.getString("sitestats.externalDb.hibernate.cache.use_query_cache", "false"));
+        p.setProperty("hibernate.cache.use_second_level_cache", serverConfigurationService.getString("sitestats.externalDb.hibernate.cache.use_second_level_cache", "false"));
         return p;
     }
 

@@ -4,7 +4,7 @@
   <parent>
     <artifactId>citations-base</artifactId>
     <groupId>org.sakaiproject</groupId>
-    <version>21-SNAPSHOT</version>
+    <version>22-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
   <name>sakai-citations-impl</name>
@@ -70,25 +70,25 @@
     <dependency>
       <groupId>org.jmock</groupId>
      <artifactId>jmock-junit3</artifactId>
-      <version>2.5.1</version>
+      <version>2.12.0</version>
      <scope>test</scope>
     </dependency>
     <dependency>
         <groupId>org.jmock</groupId>
         <artifactId>jmock</artifactId>
-        <version>2.5.1</version>
+        <version>2.12.0</version>
         <scope>test</scope>
     </dependency>
     <dependency>
         <groupId>org.jmock</groupId>
         <artifactId>jmock-legacy</artifactId>
-        <version>2.5.1</version>
+        <version>2.12.0</version>
         <scope>test</scope>
     </dependency>
     <dependency>
         <groupId>org.jmock</groupId>
         <artifactId>jmock-junit4</artifactId>
-        <version>2.5.1</version>
+        <version>2.12.0</version>
         <scope>test</scope>
         <!-- This is so that we only get one copy of junit. -->
         <exclusions>
@@ -114,9 +114,9 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-	  <groupId>com.thoughtworks.xstream</groupId>
-	  <artifactId>xstream</artifactId>
-	  <version>1.4.11.1</version>
+      <groupId>com.thoughtworks.xstream</groupId>
+      <artifactId>xstream</artifactId>
+      <version>1.4.18</version>
     </dependency>
     <dependency>
       <groupId>backport-util-concurrent</groupId>
@@ -145,7 +145,7 @@
         <directory>${basedir}/src/test</directory>
         <includes>
           <include>**/*.xml</include>
-          <include>**/log4j.properties</include>
+          <include>**/log4j2.properties</include>
         </includes>
       </testResource>
     </testResources>

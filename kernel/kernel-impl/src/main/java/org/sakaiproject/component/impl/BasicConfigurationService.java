@@ -32,12 +32,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import lombok.extern.slf4j.Slf4j;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
-
+import org.apache.commons.lang3.math.NumberUtils;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
@@ -628,13 +630,17 @@ public class BasicConfigurationService implements ServerConfigurationService, Ap
     /**
      * {@inheritDoc}
      */
+    public long getLong(String name, long dflt)
+    {
+        return NumberUtils.toLong(getString(name), dflt);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     public int getInt(String name, int dflt)
     {
-        String value = getString(name);
-
-        if (StringUtils.isEmpty(value)) return dflt;
-
-        return Integer.parseInt(value);
+        return NumberUtils.toInt(getString(name), dflt);
     }
 
     /**
@@ -873,6 +879,9 @@ public class BasicConfigurationService implements ServerConfigurationService, Ap
         }
     }
 
+    public Set<String> getCommaSeparatedListAsSet(String key) {
+        return Stream.of(getString(key, "").split(",")).map(t -> t.trim()).collect(Collectors.toSet());
+    }
 
     public void setSakaiProperties(SakaiProperties sakaiProperties) {
         this.sakaiProperties = sakaiProperties;
@@ -1093,9 +1102,15 @@ public class BasicConfigurationService implements ServerConfigurationService, Ap
             }
         } else {
             if (defaultValue instanceof Number) {
-                int num = ((Number) defaultValue).intValue();
-                int intValue = this.getInt(name, num);
-                returnValue = (T) Integer.valueOf(intValue);
+                if (defaultValue instanceof Long) {
+                    long longValue = this.getLong(name, (Long) defaultValue);
+                    returnValue = (T) Long.valueOf(longValue);
+                }
+                else {
+                    int num = ((Number) defaultValue).intValue();
+                    int intValue = this.getInt(name, num);
+                    returnValue = (T) Integer.valueOf(intValue);
+                }
             } else if (defaultValue instanceof Boolean) {
                 boolean bool = (Boolean) defaultValue;
                 boolean boolValue = this.getBoolean(name, bool);

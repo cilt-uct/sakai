@@ -35,7 +35,7 @@ import org.sakaiproject.profile2.model.ProfilePrivacy;
 import org.sakaiproject.profile2.tool.components.ProfileImage;
 import org.sakaiproject.profile2.tool.models.FriendAction;
 import org.sakaiproject.profile2.util.ProfileConstants;
-import org.sakaiproject.util.FormattedText;
+import org.sakaiproject.util.api.FormattedText;
 
 public class ConfirmFriend extends Panel {
 
@@ -53,6 +53,9 @@ public class ConfirmFriend extends Panel {
 	@SpringBean(name="org.sakaiproject.profile2.logic.ProfileConnectionsLogic")
 	private ProfileConnectionsLogic connectionsLogic;
 	
+	@SpringBean(name="org.sakaiproject.util.api.FormattedText")
+	private FormattedText formattedText;
+	
 	/*
 	 * userX is the current user
 	 * userY is the user who's friend request we are accepting
@@ -62,7 +65,7 @@ public class ConfirmFriend extends Panel {
         super(id);
 
         //get friendName
-        final String friendName = FormattedText.processFormattedText(sakaiProxy.getUserDisplayName(userY), new StringBuffer());
+        final String friendName = formattedText.processFormattedText(sakaiProxy.getUserDisplayName(userY), new StringBuffer());
                 
         //window setup
 		window.setTitle(new StringResourceModel("title.friend.confirm", null, new Object[]{ friendName } )); 
@@ -103,7 +106,7 @@ public class ConfirmFriend extends Panel {
 				if(!friendRequestFromThisPerson) {
 					text.setDefaultModel(new StringResourceModel("error.friend.not.pending.confirm", null, new Object[]{ friendName } ));
 					this.setEnabled(false);
-					this.add(new AttributeModifier("class", true, new Model("disabled")));
+					this.add(new AttributeModifier("class", new Model("disabled")));
 					target.add(text);
 					target.add(this);
 					return;
@@ -116,7 +119,7 @@ public class ConfirmFriend extends Panel {
 				} else {
 					text.setDefaultModel(new StringResourceModel("error.friend.confirm.failed", null, new Object[]{ friendName } ));
 					this.setEnabled(false);
-					this.add(new AttributeModifier("class", true, new Model("disabled")));
+					this.add(new AttributeModifier("class", new Model("disabled")));
 					target.add(text);
 					target.add(this);
 					return;
@@ -125,7 +128,7 @@ public class ConfirmFriend extends Panel {
             }
 		};
 		//submitButton.add(new FocusOnLoadBehaviour());
-		submitButton.add(new AttributeModifier("title", true, new StringResourceModel("accessibility.connection.confirm", null, new Object[]{ friendName } )));
+		submitButton.add(new AttributeModifier("title", new StringResourceModel("accessibility.connection.confirm", null, new Object[]{ friendName } )));
 		form.add(submitButton);
 		
         

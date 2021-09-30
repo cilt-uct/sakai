@@ -13,10 +13,14 @@
 	<parent>
 		<groupId>org.sakaiproject.contentreview</groupId>
 		<artifactId>content-review-impl</artifactId>
-		<version>21-SNAPSHOT</version>
+		<version>22-SNAPSHOT</version>
 	</parent>
 
 	<dependencies>
+		<dependency>
+			<groupId>org.sakaiproject.assignment</groupId>
+			<artifactId>sakai-assignment-api</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-lang3</artifactId>

@@ -8,7 +8,7 @@
 
 <f:view>
 <sakai:view toolCssHref="/messageforums-tool/css/msgcntr.css">
-	<h:form id="msgForum" rendered="#{ForumTool.instructor}">
+	<h:form id="msgForum" rendered="#{ForumTool.instructor  || mfStatisticsBean.isAuthor}">
 		<!--discussionForum/statistics/printFriendlyFullTextForOne.jsp-->		
 				<ul class="navIntraTool actionToolBar">
 				<li class="firstToolBarItem">
@@ -29,7 +29,7 @@
 			</div>
 					 
 			 <f:verbatim><div class="breadCrumb indnt2"><h3></f:verbatim>
-			 	<h:outputText value="#{msgs.cdfm_discussion_forums}"/>
+			 	<h:outputText value="#{msgs.cdfm_discussions}"/>
 			      <h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " />
 			      	<h:outputText value="#{msgs.stat_list}"/>   
 			      <h:outputText value="" /><h:outputText value=" / " /><h:outputText value=" " />

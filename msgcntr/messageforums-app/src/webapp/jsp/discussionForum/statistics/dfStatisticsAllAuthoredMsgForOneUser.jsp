@@ -41,7 +41,7 @@
 
 <f:view>
   <sakai:view toolCssHref="/messageforums-tool/css/msgcntr.css">
-  	<h:form id="dfStatisticsForm" rendered="#{ForumTool.instructor}">
+  	<h:form id="dfStatisticsForm">
   	<!-- discussionForum/statistics/dfStatisticsAllAuthoredMsgForOneUser.jsp-->
   		<script>
 			var iframeId = '<%= org.sakaiproject.util.Web.escapeJavascript(thisId)%>';
@@ -128,9 +128,13 @@
 						var msgBody = $(this).html();
 						msgBody = msgBody.replace(/\n/g,',').replace(/\s/g,' ').replace(/  ,/g,',');
 						var wordCountId = $(this).attr('id').substring(11, $(this).attr('id').length);
-		  				fckeditor_word_count_fromMessage(msgBody,'wordCountSpan' + wordCountId);
+		  				msgcntr_word_count(msgBody);
 					});
 					resize();
+                    var menuLink = $('#forumsStatisticsMenuLink');
+                    var menuLinkSpan = menuLink.closest('span');
+                    menuLinkSpan.addClass('current');
+                    menuLinkSpan.html(menuLink.text());
 				});
 
 				function dialogLinkClick(link){
@@ -139,11 +143,7 @@
 				}
 			</script>
 
-  			<sakai:tool_bar>
-  				<h:outputLink id="print" value="javascript:printFriendly('#{ForumTool.printFriendlyAllAuthoredMsg}');" title="#{msgs.cdfm_print}">
-					<h:graphicImage url="/../../library/image/silk/printer.png" alt="#{msgs.print_friendly}" title="#{msgs.print_friendly}" />
-				</h:outputLink>		
-  			</sakai:tool_bar>
+           <%@ include file="/jsp/discussionForum/menu/forumsMenu.jsp" %>
 
   			<% if(isDialogBox){ %>
 				<h:panelGroup layout="block" styleClass="itemNav">
@@ -152,10 +152,10 @@
 					</h:panelGroup>
 				</h:panelGroup>
 			<% }else {%>
-          	 <h:panelGroup layout="block" styleClass="breadCrumb"><h3>
+          	 <h:panelGroup layout="block" styleClass="breadCrumb" rendered="#{ForumTool.instructor}"><h3>
 			      <h:commandLink action="#{ForumTool.processActionHome}" value="#{msgs.cdfm_message_forums}" title=" #{msgs.cdfm_message_forums}"
 			      		rendered="#{ForumTool.messagesandForums}" />
-			      <h:commandLink action="#{ForumTool.processActionHome}" value="#{msgs.cdfm_discussion_forums}" title=" #{msgs.cdfm_discussion_forums}"
+			      <h:commandLink action="#{ForumTool.processActionHome}" value="#{msgs.cdfm_discussions}" title=" #{msgs.cdfm_discussions}"
 			      		rendered="#{ForumTool.forumsTool}" />
 			      <h:outputText value=" / "/>
 			      <h:commandLink action="#{ForumTool.processActionStatistics}" value="#{msgs.stat_list}" title="#{msgs.stat_list}" rendered="#{empty mfStatisticsBean.selectedAllTopicsTopicId && empty mfStatisticsBean.selectedAllTopicsForumId}"/>
@@ -183,6 +183,13 @@
 			      <h:outputText value=" / "/>
 			      <h:outputText value="#{msgs.stat_authored}" />
 			  </h3></h:panelGroup>
+
+			<h:panelGroup id="forumsAction">
+				<h:outputLink styleClass="button" id="print" value="javascript:printFriendly('#{ForumTool.printFriendlyAllAuthoredMsg}');" title="#{msgs.cdfm_print}">
+					<h:graphicImage url="/../../library/image/silk/printer.png" alt="#{msgs.print_friendly}" title="#{msgs.print_friendly}" />
+				</h:outputLink>
+			</h:panelGroup>
+
 			 <%}%>
 			  <f:verbatim>
 			  	<div class="success" id="gradesSavedDiv" class="success" style="display:none">
@@ -235,7 +242,7 @@
 						<% if(!isDialogBox){ %>
 						<h:panelGroup style="display:block;float:right;width:25%;text-align:right">
 							<h:outputLink value="/tool/#{ForumTool.currentToolId}/discussionForum/message/dfMsgGrade" target="dialogFrame"
-								onclick="dialogLinkClick(this);">
+								onclick="dialogLinkClick(this);" rendered="#{ForumTool.instructor}">
 								<f:param value="#{stat.forumId}" name="forumId"/>
 								<f:param value="#{stat.topicId}" name="topicId"/>
 								<f:param value="#{stat.msgId}" name="messageId"/>
@@ -246,7 +253,7 @@
 								<h:graphicImage value="/../../library/image/silk/award_star_gold_1.png" alt="#{msgs.cdfm_button_bar_grade}" />
 								<h:outputText value=" #{msgs.cdfm_button_bar_grade}" />
 							</h:outputLink>
-							<h:outputText value=" #{msgs.cdfm_toolbar_separator} " />
+							<h:outputText value=" #{msgs.cdfm_toolbar_separator} " rendered="#{ForumTool.instructor}" />
 							<h:commandLink action="#{ForumTool.processActionDisplayInThread}" title=" #{msgs.stat_display_in_thread}" >
 								<f:param value="#{stat.forumId}" name="forumId"/>
 		  				  		<f:param value="#{stat.topicId}" name="topicId"/>

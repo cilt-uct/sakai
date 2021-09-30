@@ -21,9 +21,11 @@
 
 package org.sakaiproject.content.impl;
 
+import static org.sakaiproject.content.util.IdUtil.isolateContainingId;
+import static org.sakaiproject.content.util.IdUtil.isolateName;
+
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -66,16 +68,11 @@ import java.util.regex.Pattern;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import lombok.extern.slf4j.Slf4j;
-
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.ArrayUtils;
-import fr.opensagres.odfdom.converter.xhtml.XHTMLConverter;
-
+import org.apache.commons.lang3.StringUtils;
 import org.apache.tika.detect.DefaultDetector;
 import org.apache.tika.detect.Detector;
 import org.apache.tika.io.TikaInputStream;
@@ -83,22 +80,7 @@ import org.apache.tika.metadata.Metadata;
 import org.apache.tika.mime.MimeTypes;
 import org.apache.tika.parser.txt.CharsetDetector;
 import org.apache.tika.parser.txt.CharsetMatch;
-
 import org.odftoolkit.odfdom.doc.OdfTextDocument;
-
-import org.zwobble.mammoth.DocumentConverter;
-import org.zwobble.mammoth.Result;
-
-import org.sakaiproject.authz.api.AuthzRealmLockException;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-
-import org.xml.sax.Attributes;
-import org.xml.sax.ContentHandler;
-import org.xml.sax.SAXException;
-
 import org.sakaiproject.alias.api.AliasService;
 import org.sakaiproject.antivirus.api.VirusFoundException;
 import org.sakaiproject.antivirus.api.VirusScanIncompleteException;
@@ -106,6 +88,7 @@ import org.sakaiproject.antivirus.api.VirusScanner;
 import org.sakaiproject.authz.api.AuthzGroup;
 import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.authz.api.AuthzPermissionException;
+import org.sakaiproject.authz.api.AuthzRealmLockException;
 import org.sakaiproject.authz.api.FunctionManager;
 import org.sakaiproject.authz.api.GroupAlreadyDefinedException;
 import org.sakaiproject.authz.api.GroupIdInvalidException;
@@ -116,8 +99,21 @@ import org.sakaiproject.authz.api.SecurityAdvisor;
 import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.conditions.api.ConditionService;
-import org.sakaiproject.content.api.*;
+import org.sakaiproject.content.api.ContentChangeHandler;
+import org.sakaiproject.content.api.ContentCollection;
+import org.sakaiproject.content.api.ContentCollectionEdit;
+import org.sakaiproject.content.api.ContentEntity;
+import org.sakaiproject.content.api.ContentFilterService;
+import org.sakaiproject.content.api.ContentHostingHandler;
+import org.sakaiproject.content.api.ContentHostingService;
+import org.sakaiproject.content.api.ContentResource;
+import org.sakaiproject.content.api.ContentResourceEdit;
+import org.sakaiproject.content.api.ContentTypeImageService;
+import org.sakaiproject.content.api.GroupAwareEdit;
+import org.sakaiproject.content.api.GroupAwareEntity;
 import org.sakaiproject.content.api.GroupAwareEntity.AccessMode;
+import org.sakaiproject.content.api.ResourceType;
+import org.sakaiproject.content.api.ResourceTypeRegistry;
 import org.sakaiproject.content.api.providers.SiteContentAdvisor;
 import org.sakaiproject.content.api.providers.SiteContentAdvisorProvider;
 import org.sakaiproject.content.api.providers.SiteContentAdvisorTypeRegistry;
@@ -191,9 +187,19 @@ import org.sakaiproject.util.Validator;
 import org.sakaiproject.util.Web;
 import org.sakaiproject.util.Xml;
 import org.sakaiproject.util.api.LinkMigrationHelper;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.Attributes;
+import org.xml.sax.ContentHandler;
+import org.xml.sax.SAXException;
+import org.zwobble.mammoth.DocumentConverter;
+import org.zwobble.mammoth.Result;
 
-import static org.sakaiproject.content.util.IdUtil.isolateContainingId;
-import static org.sakaiproject.content.util.IdUtil.isolateName;
+import fr.opensagres.odfdom.converter.xhtml.XHTMLConverter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * <p>
@@ -292,7 +298,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	/** Dependency: MemoryService. */
 	protected MemoryService m_memoryService = null;
 
-    	/**
+	/**
 	 * Use a timer for repeating actions
 	 */
 	private Timer virusScanTimer = new Timer(true);
@@ -854,7 +860,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			// Get resource bundle
 			String resourceClass = m_serverConfigurationService.getString(RESOURCECLASS, DEFAULT_RESOURCECLASS);
 			String resourceBundle = m_serverConfigurationService.getString(RESOURCEBUNDLE, DEFAULT_RESOURCEBUNDLE);
-			rb = new Resource().getLoader(resourceClass, resourceBundle);
+			rb = Resource.getResourceLoader(resourceClass, resourceBundle);
 
 			m_relativeAccessPoint = REFERENCE_ROOT;
 
@@ -930,12 +936,11 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 			log.info("init(): site quota: " + m_siteQuota + ", dropbox quota: " + m_dropBoxQuota + ", body path: " + m_bodyPath + " volumes: "+ buf.toString());
 
-            int virusScanPeriod = m_serverConfigurationService.getInt(VIRUS_SCAN_CHECK_PERIOD_PROPERTY, VIRUS_SCAN_PERIOD);
-            int virusScanDelay = m_serverConfigurationService.getInt(VIRUS_SCAN_START_DELAY_PROPERTY, VIRUS_SCAN_DELAY);
+			int virusScanPeriod = m_serverConfigurationService.getInt(VIRUS_SCAN_CHECK_PERIOD_PROPERTY, VIRUS_SCAN_PERIOD);
+			int virusScanDelay = m_serverConfigurationService.getInt(VIRUS_SCAN_START_DELAY_PROPERTY, VIRUS_SCAN_DELAY);
 
-            virusScanDelay += new Random().nextInt(60); // add some random delay to get the servers out of sync
-            virusScanTimer.schedule(new VirusTimerTask(), (virusScanDelay * 1000), (virusScanPeriod * 1000) );
-
+ 			virusScanDelay += new Random().nextInt(60); // add some random delay to get the servers out of sync
+			virusScanTimer.schedule(new VirusTimerTask(), (virusScanDelay * 1000), (virusScanPeriod * 1000) );
 		}
 		catch (Exception t)
 		{
@@ -1217,7 +1222,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 					rv[1] = ((BasicGroupAwareEdit) r).getContext();
 					rv[2] = Long.valueOf(((ContentResource) r).getContentLength());
 					rv[3] = ((BasicGroupAwareEdit) r).getResourceType();
-					rv[4] = StringUtil.trimToZero(((BaseResourceEdit) r).m_filePath);
+					rv[4] = StringUtils.trimToEmpty(((BaseResourceEdit) r).m_filePath);
 					return rv;
 				}
 
@@ -1239,7 +1244,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 				{
 					Object[] rv = new Object[2];
 					rv[0] = StringUtil.referencePath(((ContentResource) r).getId());
-					rv[1] = StringUtil.trimToZero(((BaseResourceEdit) r).m_filePath);
+					rv[1] = StringUtils.trimToEmpty(((BaseResourceEdit) r).m_filePath);
 					return rv;
 				}
 
@@ -2964,17 +2969,17 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		if ( ! entity.isAvailable() )
 		{
 			// schedule an event to tell when resource becomes available
-			if (entity.getReleaseDate() != null)
+			if (entity.getReleaseInstant() != null)
 			{
 				eventTrackingService.delay(eventTrackingService.newEvent(EVENT_RESOURCE_AVAILABLE, ref,
-																							false, priority), entity.getReleaseDate());
+																							false, priority), entity.getReleaseInstant());
 				entity.getProperties().addProperty(PROP_AVAIL_NOTI, Boolean.FALSE.toString());
 			}
 			// schedule an event to tell when resource becomes unavailable
-			if ( entity.getRetractDate() != null )
+			if ( entity.getRetractInstant() != null )
 			{
 				eventTrackingService.delay(eventTrackingService.newEvent(EVENT_RESOURCE_UNAVAILABLE, ref,
-																							false, priority), entity.getRetractDate());
+																							false, priority), entity.getRetractInstant());
 				entity.getProperties().addProperty(PROP_AVAIL_NOTI, Boolean.FALSE.toString());
 			}
 		}
@@ -2994,10 +2999,10 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			}
 			
 			// schedule an event to tell when resource becomes unavailable
-			if ( entity.getRetractDate() != null )
+			if ( entity.getRetractInstant() != null )
 			{
 				eventTrackingService.delay(eventTrackingService.newEvent(EVENT_RESOURCE_UNAVAILABLE, ref,
-																							false, priority), entity.getRetractDate());
+																							false, priority), entity.getRetractInstant());
 				entity.getProperties().addProperty(PROP_AVAIL_NOTI, Boolean.FALSE.toString());
 			}
 		}
@@ -4018,8 +4023,9 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			name = name.substring(0, name.length() - 1);
 		}
 
+		final String uuid = idManager.createUuid();
 		// form a name based on the attachments collection, a unique folder id, and the given name
-		String collection = ATTACHMENTS_COLLECTION + idManager.createUuid() + Entity.SEPARATOR;
+		String collection = ATTACHMENTS_COLLECTION + uuid + Entity.SEPARATOR;
 		String id = collection + name;
 
 		if (id.length() > MAXIMUM_RESOURCE_ID_LENGTH)
@@ -4031,8 +4037,9 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		addAndCommitAttachmentCollection(collection, name, null);
 
 		// and add the resource
-		return addResource(id, type, content, properties, new ArrayList(), NotificationService.NOTI_NONE);
+		ContentResource resource = addResource(id, type, content, properties, new ArrayList(), NotificationService.NOTI_NONE);
 
+		return resource;
 	} // addAttachmentResource
 
 	/**
@@ -4123,9 +4130,10 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		addAndCommitAttachmentCollection(collection, name, siteCreator);
 
 		// and add the resource
-		return addResource(id, type, content, properties, new ArrayList(), NotificationService.NOTI_NONE);
+		ContentResource resource = addResource(id, type, content, properties, new ArrayList(), NotificationService.NOTI_NONE);
 
-			} // addAttachmentResource
+		return resource;
+	} // addAttachmentResource
 
 	/**
 	 * Create a new resource as an attachment to some other resource in the system, locked for update. Must commitResource() to make official, or cancelResource() when done! The new resource will be placed into a newly created collecion in the attachment
@@ -8340,6 +8348,10 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 						}
 
 						ResourceProperties oProperties = oResource.getProperties();
+						if (StringUtils.equals((String)oProperties.get(ResourceProperties.PROP_DO_NOT_DUPLICATE), Boolean.TRUE.toString())) {
+							// This resource has been marked as do not duplicate. Skip it.
+							continue;
+						}
 						boolean isCollection = false;
 						try {
 							isCollection = oProperties.getBooleanProperty(ResourceProperties.PROP_IS_COLLECTION);
@@ -8654,7 +8666,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 				+ c.getProperties().getPropertyFormatted(ResourceProperties.PROP_CREATION_DATE) + " by "
 				+ c.getProperties().getPropertyFormatted(ResourceProperties.PROP_CREATOR) + "(User Id:"
 				+ c.getProperties().getProperty(ResourceProperties.PROP_CREATOR) + ")\n"
-				+ StringUtil.limit(c.getProperties().getPropertyFormatted(ResourceProperties.PROP_DESCRIPTION), 30);
+				+ StringUtils.abbreviate(c.getProperties().getPropertyFormatted(ResourceProperties.PROP_DESCRIPTION), 30);
 			}
 			else
 			{
@@ -8663,7 +8675,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 				+ ")\n" + " Created: " + r.getProperties().getPropertyFormatted(ResourceProperties.PROP_CREATION_DATE)
 				+ " by " + r.getProperties().getPropertyFormatted(ResourceProperties.PROP_CREATOR) + "(User Id:"
 				+ r.getProperties().getProperty(ResourceProperties.PROP_CREATOR) + ")\n"
-				+ StringUtil.limit(r.getProperties().getPropertyFormatted(ResourceProperties.PROP_DESCRIPTION), 30);
+				+ StringUtils.abbreviate(r.getProperties().getPropertyFormatted(ResourceProperties.PROP_DESCRIPTION), 30);
 			}
 		} catch (PermissionException e) {
 			log.error("PermissionEception:", e);
@@ -8755,7 +8767,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	 */
 	protected void enableResources(String context)
 	{
-		unlockCheck(SITE_UPDATE_ACCESS, context);
+		unlockCheck(SiteService.SECURE_UPDATE_SITE, context);
 
 		// it would be called
 		String id = getSiteCollection(context);
@@ -9946,8 +9958,6 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	protected static final String DROPBOX_ID = " Drop Box";
 
-	public static final String SITE_UPDATE_ACCESS = "site.upd";
-
 	protected static final String GROUP_LIST = "sakai:authzGroup";
 
 	protected static final String GROUP_NAME = "sakai:group_name";
@@ -10006,7 +10016,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		if ( userId == null ) return rv;
 
 		// form the current user's dropbox collection within this site's
-		rv += StringUtil.trimToZero(userId) + "/";
+		rv += StringUtils.trimToEmpty(userId) + "/";
 		return rv;
 	}
 
@@ -14484,13 +14494,24 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		
 		//cleanup
 		try {
-			log.debug("Removing collection: " + collectionId);
+			log.debug("Removing collection: {}", collectionId);
 			removeCollection(collectionId);
+		} catch (IdUnusedException ide) {
+			log.warn("No resources in collection {}.", collectionId);
 		} catch (Exception e) {
 			log.warn("Failed to remove collection {}.", collectionId, e);
 		}
     }
 
+	@Override
+	public String getInstructorUploadFolderName() {
+		return m_serverConfigurationService.getString("content.direct.upload.instructors", DEFAULT_INSTRUCTOR_FOLDER);
+	}
+
+	@Override
+	public String getStudentUploadFolderName() {
+		return m_serverConfigurationService.getString("content.direct.upload.students", DEFAULT_STUDENT_FOLDER);
+	}
 
 	private String getDisplayName(User userIn) {
 		User user = (userIn== null)?userDirectoryService.getCurrentUser():userIn ;

@@ -80,27 +80,22 @@
 		</div>
 		
 		## show or hide assignment instruction and attachment
-			#if ($assignment_expand_flag)
-				<p class="discTria">
-					<a href="javascript:void(0)" onclick="ASN.submitForm( 'gradeForm', 'hide_instruction_review', null, null ); return false;">
-					<img src="#imageLink("sakai/collapse.gif")" alt="$tlang.getString("gradingsub.opecliass")" border="0" width="13" height="13" align="top" /></a>
+		<div id="assignamentInstructionPanel">
+			<p class="discTria">
+				<a href="javascript:void(0)" onclick="ASN.toggleAssignamentInstructionPanel();">
+					<img id="expandAssignamentInstruction" src="#imageLink("sakai/expand.gif")" alt="$tlang.getString("gen.clocli")" border="0" width="13" height="13" align="top"/>
+					<img id="collapseAssignamentInstruction" style="display: none;" src="#imageLink("sakai/collapse.gif")" alt="$tlang.getString("gradingsub.opecliass")" border="0" width="13" height="13" align="top"/>
 					$tlang.getString("gen.assinf")
-				</p>	
-			#else
-				<p class="discTria">
-					<a href="javascript:void(0)" onclick="ASN.submitForm( 'gradeForm', 'show_instruction_review', null, null ); return false;">
-					<img src="#imageLink("sakai/expand.gif")" alt="$tlang.getString("gen.clocli")" border="0" width="13" height="13" align="top" /></a>
-					$tlang.getString("gen.assinf")
-				</p>	
-			#end
-			#if ($assignment_expand_flag)
-				#if ($assignment.Instructions && !$assignment.Instructions.isEmpty())
-					<div class="textPanel">$formattedText.escapeHtmlFormattedText($assignment.Instructions)</div>
-				#else
-				#end
-				## attachments of assignment
+				</a>
+			</p>
+			<div id="assignamentInstructionPanelContent" style="display: none;">
+				<p>$formattedText.escapeHtmlFormattedText($assignment.Instructions)</p>
+				## Assignment Attachments
 				#attachmentFragment($assignment.Attachments $assignmentAttachmentReferences $!decoratedUrlMap false)
-			#end	## show the assignment content
+				##end
+				## show the assignment content
+			</div>
+		</div>
 			
 			#supplementItems($!allowViewModelAnswer $!allowReadAssignmentNoteItem $!allowViewAllPurposeItem $!assignmentModelAnswerItem $!assignmentNoteItem $!assignmentAllPurposeItem)
 			
@@ -134,12 +129,13 @@
 					<h3>$tlang.getString("gen.stuatt")</h3>
 					#set ($attachments = $submission.Attachments)
 					#if ($attachments)
-						#set ($size = $attachments.size())
+						#set ($size = $submissionAttachmentReferences.size())
 						#if ($size == 0)
 							<p class="instruction">$tlang.getString("gen.noattsubmitted")</p>
 						#else
 							<ul class="attachList indnt1">
 								#foreach ($attachmentReference in $attachments)
+									#set ($reference = false)
 									#set ($reference = $submissionAttachmentReferences.get($attachmentReference))
 									#if ($reference)
 										#set ($props = false)
@@ -255,7 +251,7 @@
 						#end
                     </table>
 				#end
-                <div class="highlightPanel specialLink" style="margin:0;padding-bottom:.5em;background:#fff">
+                <div class="highlightPanel specialLink" style="margin:0;padding-bottom:.5em;">
 					#if ($size==0)
 						#set($howManySubAtts=$tlang.getString("stuviewsubm.attfromcomputerlabel"))
 						#set($howManySubAttsLinks=$tlang.getString("stuviewsubm.attfromserverlabel"))
@@ -324,9 +320,9 @@
 							<input type="button" accesskey="s" name="return" value="$tlang.getString('peerassessment.removereview')" onclick="SPNR.disableControlsAndSpin( this, null ); ASN.submitForm( 'gradeForm', 'toggleremove_review', '$formattedText.escapeUrl($submissionReference)', null ); return false;" title="$tlang.getString("peerassessment.removereview")" />
 						#end
 					#else
+						<input type="button" id="post" name="returnSubmit" value="$tlang.getString('gen.subm3')" class="active" onclick="SPNR.disableControlsAndSpin( this, null ); ASN.submitForm( 'gradeForm', 'submitgrade_review', '$formattedText.escapeUrl($submissionReference)', null ); return false;" title="$tlang.getString("gen.subm3")" />
 						<input type="button" accesskey="s" name="return" value="$tlang.getString('gen.sav')" onclick="SPNR.disableControlsAndSpin( this, null ); ASN.submitForm( 'gradeForm', 'savegrade_review', '$formattedText.escapeUrl($submissionReference)', null ); return false;" title="$tlang.getString("gen.sav")" />
 						<input type="button" accesskey="x" name="cancel" value="$tlang.getString('cancel_changes')" onclick="SPNR.disableControlsAndSpin( this, null ); ASN.submitForm( 'gradeForm', 'cancelgrade_review', null, null ); return false;" />
-						<input type="button" id="post" name="returnSubmit" value="$tlang.getString('gen.subm3')" onclick="SPNR.disableControlsAndSpin( this, null ); ASN.submitForm( 'gradeForm', 'submitgrade_review', '$formattedText.escapeUrl($submissionReference)', null ); return false;" title="$tlang.getString("gen.subm3")" />
 					#end
 					#if ($!prevSubmissionId)
 						<input type="hidden" name="prevSubmissionId" value = "$!prevSubmissionId" />

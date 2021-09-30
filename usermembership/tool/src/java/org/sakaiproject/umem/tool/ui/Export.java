@@ -30,16 +30,16 @@ import javax.servlet.http.HttpServletResponse;
 
 import lombok.extern.slf4j.Slf4j;
 
-import org.sakaiproject.jsf.spreadsheet.SpreadsheetDataFileWriterCsv;
-import org.sakaiproject.jsf.spreadsheet.SpreadsheetDataFileWriterXlsx;
-import org.sakaiproject.jsf.spreadsheet.SpreadsheetUtil;
+import org.sakaiproject.jsf2.spreadsheet.SpreadsheetDataFileWriterCsv;
+import org.sakaiproject.jsf2.spreadsheet.SpreadsheetDataFileWriterXlsx;
+import org.sakaiproject.jsf2.spreadsheet.SpreadsheetUtil;
 import org.sakaiproject.util.ResourceLoader;
 
 @Slf4j
 public class Export {
 
 	/** Resource bundle */
-	private static transient ResourceLoader	msgs	= new ResourceLoader("org.sakaiproject.umem.tool.bundle.Messages");
+	private static final ResourceLoader	msgs	= new ResourceLoader("org.sakaiproject.umem.tool.bundle.Messages");
 
     /**
      * Given tabular data and the file-name, export the data to the response output

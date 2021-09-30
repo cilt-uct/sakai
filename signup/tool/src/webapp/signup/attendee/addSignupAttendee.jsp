@@ -1,6 +1,6 @@
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://myfaces.apache.org/tomahawk" prefix="t" %>
 <f:view locale="#{UserLocale.locale}">
 	<jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
@@ -12,10 +12,18 @@
 		</style>
 		<h:outputText value="#{Portal.latestJQuery}" escape="false"/>
 		<script src="/sakai-signup-tool/js/signupScript.js"></script>
-		
+
+        <script>
+        $(document).ready( function() {
+          var menuLink = $('#signupMainMenuLink');
+          menuLink.addClass('current');
+          menuLink.html(menuLink.find('a').text());
+        });
+        </script>
 		<sakai:view_content>
-			<h:outputText value="#{msgs.event_error_alerts} #{messageUIBean.errorMessage}" styleClass="alertMessage" escape="false" rendered="#{messageUIBean.error}"/> 
 			<h:form id="meeting">
+				<%@ include file="/signup/menu/signupMenu.jsp" %>
+				<h:outputText value="#{msgs.event_error_alerts} #{messageUIBean.errorMessage}" styleClass="alertMessage" escape="false" rendered="#{messageUIBean.error}"/>
 				<div class="page-header">
 					<sakai:view_title value="#{msgs.event_addSignup_attendee_page_title}"/>
 				</div>
@@ -62,7 +70,7 @@
 				   	
 				  <h:outputText id="commentSetting_1" style="display:none" value="&nbsp;" escape="false"/>
 				  <h:panelGroup id="commentSetting_2" style="display:none">		   
-				  		<sakai:rich_text_area value="#{AttendeeSignupMBean.timeslotWrapper.newAttendee.comments}" height="200" rows="5"  columns="70"/>
+				  		<sakai:inputRichText value="#{AttendeeSignupMBean.timeslotWrapper.newAttendee.comments}" height="200" rows="5"  cols="70"/>
 				  </h:panelGroup>	
 				</h:panelGrid>
 				

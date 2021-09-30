@@ -3,15 +3,15 @@
 <%-- Core JSF tag library --%>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
 <%-- Sakai JSF tag library --%>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://myfaces.apache.org/tomahawk" prefix="t" %>
 
 <f:view>
 	<sakai:view_container title="#{msgs.prefs_title}">
 	<sakai:view_content>
-<f:verbatim>
 <h:outputText value="#{Portal.latestJQuery}" escape="false"/>
-<script type="text/javascript" src="/sakai-user-tool-prefs/js/prefs.js">// </script>
+<f:verbatim>
+<script type="text/javascript" src="/sakai-user-tool-prefs/js/prefs.js"> </script>
 </f:verbatim>
 	
 		<h:form id="site_list_form">

@@ -8,7 +8,7 @@
 </jsp:useBean>
 
 <f:view>
-  <sakai:view title="#{msgs.pvt_detmsgreply}">
+  <sakai:view toolCssHref="/messageforums-tool/css/msgcntr-qtip.css" title="#{msgs.pvt_detmsgreply}">
     <h:form id="pvtMsgDetail">
     		<script>
        			// Define i18n for js text
@@ -17,10 +17,35 @@
        				"cdfm_profile_information":<h:outputText value="\"#{msgs.cdfm_profile_information}\"" />
        			};
        		</script>
-           		<script>includeLatestJQuery("msgcntr");</script>
-           	<script src="/library/webjars/qtip2/3.0.3/jquery.qtip.min.js"></script>
+           	<script>includeLatestJQuery("msgcntr");</script>
+           	<script>includeWebjarLibrary("qtip2");</script>
        		<script src="/messageforums-tool/js/sak-10625.js"></script>
        		<script src="/messageforums-tool/js/messages.js"></script>
+			<script>
+				$(document).ready(function () {
+					var menuLink = $('#messagesMainMenuLink');
+					var menuLinkSpan = menuLink.closest('span');
+					menuLinkSpan.addClass('current');
+					menuLinkSpan.html(menuLink.text());
+					
+					$('#pvtMsgDetail .authorProfile').each(function() {
+						$(this).qtip({ 
+							content: {
+								ajax: {
+									url: $(this).prop('href'),
+									type: 'GET'
+								}
+							},
+							position: {	my: 'left center', at: 'top center'},
+							show: { event: 'click', solo: true, effect: {length:0} },
+							hide: { when:'unfocus', fixed:true, delay: 300,  effect: {length:0} },
+							style: { classes: 'msgcntr-profile-qtip' }
+						});
+						$(this).prop('href', 'javascript:;');
+					});
+				});
+			</script>
+			<%@ include file="/jsp/privateMsg/pvtMenu.jsp" %>
 <!--jsp/privateMsg/pvtMsgDetail.jsp-->
 <%--			<sakai:tool_bar_message value="#{msgs.pvt_detmsgreply}" /> --%> 
 			<h:messages styleClass="alertMessage" id="errorMessages" rendered="#{! empty facesContext.maximumSeverity}"/> 

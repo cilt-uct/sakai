@@ -22,18 +22,13 @@
 package org.sakaiproject.site.impl;
 
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.Stack;
-import java.util.Iterator;
-
-import lombok.extern.slf4j.Slf4j;
-
-import org.sakaiproject.authz.api.AuthzRealmLockException;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
 
 import org.sakaiproject.authz.api.AuthzGroup;
+import org.sakaiproject.authz.api.AuthzRealmLockException;
 import org.sakaiproject.authz.api.GroupNotDefinedException;
 import org.sakaiproject.authz.api.Member;
 import org.sakaiproject.authz.api.Role;
@@ -42,10 +37,13 @@ import org.sakaiproject.entity.api.ResourceProperties;
 import org.sakaiproject.entity.api.ResourcePropertiesEdit;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
-import org.sakaiproject.time.api.Time;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.util.BaseResourceProperties;
 import org.sakaiproject.util.BaseResourcePropertiesEdit;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * <p>
@@ -135,7 +133,6 @@ public class BaseGroup implements Group, Identifiable
 		if (exact)
 		{
 			m_id = bOther.m_id;
-			bOther.getRealmLocks().forEach(a -> setLockForReference(a[0], RealmLockMode.valueOf(a[1])));
 		}
 		else
 		{
@@ -416,16 +413,16 @@ public class BaseGroup implements Group, Identifiable
 	{
 		try {
 			insertMember(userId, roleId, active, provided);
-		} catch (IllegalStateException ise) {
-			log.warn(ise.getMessage());
+		} catch (AuthzRealmLockException | IllegalStateException e) {
+			log.warn(e.toString());
 		}
 	}
 
-	public void insertMember(String userId, String roleId, boolean active, boolean provided) throws IllegalStateException
+	public void insertMember(String userId, String roleId, boolean active, boolean provided) throws AuthzRealmLockException, IllegalStateException
 	{
 		RealmLockMode lockMode = getRealmLock();
 		if(RealmLockMode.ALL.equals(lockMode) || RealmLockMode.MODIFY.equals(lockMode)) {
-			throw new IllegalStateException("Can't add member " + userId + " with role " + roleId + " to a locked group");
+			throw new AuthzRealmLockException("Can't add member " + userId + " with role " + roleId + " to a locked group");
 		}
 		m_azgChanged = true;
 		try
@@ -472,10 +469,6 @@ public class BaseGroup implements Group, Identifiable
 		return getAzg().getCreatedBy();
 	}
 
-	public Time getCreatedTime()
-	{
-		return getAzg().getCreatedTime();
-	}
 	
 	public Date getCreatedDate()
 	{
@@ -503,11 +496,6 @@ public class BaseGroup implements Group, Identifiable
 		return getAzg().getModifiedBy();
 	}
 
-	public Time getModifiedTime()
-	{
-		return getAzg().getModifiedTime();
-	}
-	
 	public Date getModifiedDate() {
 		
 		return getAzg().getModifiedDate();

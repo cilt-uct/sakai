@@ -36,11 +36,9 @@ import org.apache.wicket.markup.head.IHeaderResponse;
 import org.apache.wicket.markup.head.JavaScriptHeaderItem;
 import org.apache.wicket.markup.html.WebMarkupContainer;
 import org.apache.wicket.markup.html.basic.Label;
-import org.apache.wicket.markup.html.form.Button;
 import org.apache.wicket.markup.html.form.ChoiceRenderer;
 import org.apache.wicket.markup.html.form.DropDownChoice;
 import org.apache.wicket.markup.html.form.Form;
-import org.apache.wicket.markup.html.form.HiddenField;
 import org.apache.wicket.markup.html.panel.EmptyPanel;
 import org.apache.wicket.model.LoadableDetachableModel;
 import org.apache.wicket.model.Model;
@@ -78,13 +76,13 @@ import org.sakaiproject.gradebookng.tool.panels.BulkEditItemsPanel;
 import org.sakaiproject.gradebookng.tool.panels.SortGradeItemsPanel;
 import org.sakaiproject.gradebookng.tool.panels.ToggleGradeItemsToolbarPanel;
 import org.sakaiproject.portal.util.PortalUtils;
-import org.sakaiproject.rubrics.logic.RubricsConstants;
 import org.sakaiproject.service.gradebook.shared.Assignment;
 import org.sakaiproject.service.gradebook.shared.GraderPermission;
 import org.sakaiproject.service.gradebook.shared.GradingType;
 import org.sakaiproject.service.gradebook.shared.PermissionDefinition;
 import org.sakaiproject.service.gradebook.shared.SortType;
 import org.sakaiproject.tool.gradebook.Gradebook;
+import org.sakaiproject.wicket.component.SakaiAjaxButton;
 
 /**
  * Grades page. Instructors and TAs see this one. Students see the {@link StudentPage}.
@@ -174,6 +172,7 @@ public class GradebookPage extends BasePage {
 		 */
 		this.addOrEditGradeItemWindow = new GbModalWindow("addOrEditGradeItemWindow");
 		this.addOrEditGradeItemWindow.showUnloadConfirmation(false);
+		this.addOrEditGradeItemWindow.setCssClassName("modal-add-or-edit-gbitem");
 		this.form.add(this.addOrEditGradeItemWindow);
 
 		this.studentGradeSummaryWindow = new GbModalWindow("studentGradeSummaryWindow");
@@ -213,6 +212,8 @@ public class GradebookPage extends BasePage {
 		this.form.add(this.courseGradeStatisticsWindow);
 
 		this.bulkEditItemsWindow = new GbModalWindow("bulkEditItemsWindow");
+		this.bulkEditItemsWindow.setWidthUnit("%");
+		this.bulkEditItemsWindow.setInitialWidth(65);
 		this.bulkEditItemsWindow.setPositionAtTop(true);
 		this.bulkEditItemsWindow.showUnloadConfirmation(false);
 		this.form.add(this.bulkEditItemsWindow);
@@ -308,7 +309,7 @@ public class GradebookPage extends BasePage {
 
 		this.tableArea.add(this.gradeTable);
 
-		final Button toggleCategoriesToolbarItem = new Button("toggleCategoriesToolbarItem") {
+		final SakaiAjaxButton toggleCategoriesToolbarItem = new SakaiAjaxButton("toggleCategoriesToolbarItem") {
 			@Override
 			protected void onInitialize() {
 				super.onInitialize();
@@ -316,10 +317,11 @@ public class GradebookPage extends BasePage {
 					add(new AttributeAppender("class", " on"));
 				}
 				add(new AttributeModifier("aria-pressed", settings.isGroupedByCategory()));
+				setWillRenderOnClick(true);
 			}
 
 			@Override
-			public void onSubmit() {
+			public void onSubmit(AjaxRequestTarget target, Form<?> form) {
 				settings.setGroupedByCategory(!settings.isGroupedByCategory());
 				setUiSettings(settings, true);
 
@@ -366,9 +368,11 @@ public class GradebookPage extends BasePage {
 				final String siteId = GradebookPage.this.businessService.getCurrentSiteId();
 
 				window.setTitle(getString("bulkedit.heading"));
-				window.setContent(new BulkEditItemsPanel(window.getContentId(), Model.of(siteId), window));
+				BulkEditItemsPanel panel = new BulkEditItemsPanel(window.getContentId(), Model.of(siteId), window);
+				window.setContent(panel.setOutputMarkupId(true));
 				window.setComponentToReturnFocusTo(this);
 				window.show(target);
+				target.appendJavaScript("GBBE.init('" + panel.getMarkupId() + "');");
 			}
 
 			@Override
@@ -544,6 +548,7 @@ public class GradebookPage extends BasePage {
 
 		if (settings == null) {
 			settings = new GradebookUiSettings();
+			settings.setCategoriesEnabled(this.businessService.categoriesAreEnabled());
 			settings.initializeCategoryColors(this.businessService.getGradebookCategories());
 			settings.setCategoryColor(getString(GradebookPage.UNCATEGORISED), GradebookUiSettings.generateRandomRGBColorString(null));
 			setUiSettings(settings);
@@ -552,10 +557,7 @@ public class GradebookPage extends BasePage {
 		// See if the user has a database-persisted preference for Group by Category
 		String userGbUiCatPref = this.businessService.getUserGbPreference("GROUP_BY_CAT");
 		if (StringUtils.isNotBlank(userGbUiCatPref)) {
-			settings.setCategoriesEnabled(new Boolean(userGbUiCatPref));
-		}
-		else {
-			settings.setCategoriesEnabled(this.businessService.categoriesAreEnabled());
+			settings.setGroupedByCategory(Boolean.valueOf(userGbUiCatPref));
 		}
  
 		return settings;
@@ -579,14 +581,6 @@ public class GradebookPage extends BasePage {
 		super.renderHead(response);
 
 		final String version = PortalUtils.getCDNQuery();
-
-		// Drag and Drop/Date Picker (requires jQueryUI)
-		response.render(JavaScriptHeaderItem
-				.forUrl(String.format("/library/webjars/jquery-ui/1.12.1/jquery-ui.min.js%s", version)));
-
-		// Include Sakai Date Picker
-		response.render(JavaScriptHeaderItem
-				.forUrl(String.format("/library/js/lang-datepicker/lang-datepicker.js%s", version)));
 
 		// tablesorted used by student grade summary
 		response.render(JavaScriptHeaderItem.forScript("includeWebjarLibrary('jquery.tablesorter')", null));

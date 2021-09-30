@@ -33,8 +33,8 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 
 public interface ItemDataIfc extends Comparable<ItemDataIfc>, java.io.Serializable {
 
-  public static Integer ACTIVE_STATUS = Integer.valueOf(1);
-  public static Integer INACTIVE_STATUS = Integer.valueOf(0);
+  public static final Integer ACTIVE_STATUS = 1;
+  public static final Integer INACTIVE_STATUS = 0;
 
   Long getItemId();
 
@@ -221,5 +221,4 @@ public interface ItemDataIfc extends Comparable<ItemDataIfc>, java.io.Serializab
   Boolean getScoreDisplayFlag();
   void setScoreDisplayFlag(Boolean scoreDisplayFlag);
   public String getTagListToJsonString();
-  public void setTagListToJsonString(String tagListToJsonString);
 }

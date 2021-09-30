@@ -20,7 +20,7 @@ import java.util.Date;
 import java.util.HashMap;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.orm.hibernate4.HibernateOptimisticLockingFailureException;
+import org.springframework.orm.hibernate5.HibernateOptimisticLockingFailureException;
 
 import org.sakaiproject.api.app.messageforums.Area;
 import org.sakaiproject.api.app.messageforums.AreaManager;
@@ -189,7 +189,7 @@ public class ForumScheduleNotificationImpl implements ForumScheduleNotification 
 				HashMap<String, Integer> beforeChangeHM = SynopticMsgcntrManagerCover
 						.getUserToNewMessagesForForumMap(siteId, topic.getBaseForum().getId(), topic.getId());
 
-				forumManager.saveTopic(topic, topic.getDraft(), null, "-forumScheduler-");
+				topic = forumManager.saveTopic(topic, topic.getDraft(), null, "-forumScheduler-");
 				updateSynopticMessagesForForumComparingOldMessagesCount(siteId, topic.getBaseForum().getId(),
 						topic.getId(), beforeChangeHM, SynopticMsgcntrManager.NUM_OF_ATTEMPTS);
 			}

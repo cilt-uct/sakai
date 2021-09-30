@@ -9,7 +9,7 @@
 	<parent>
 		<groupId>org.sakaiproject.contentreview</groupId>
 		<artifactId>content-review-impl</artifactId>
-		<version>21-SNAPSHOT</version>
+		<version>22-SNAPSHOT</version>
 	</parent>
 
 	<dependencies>
@@ -52,11 +52,6 @@
 		<dependency>
 			<groupId>javax.transaction</groupId>
 			<artifactId>jta</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.hibernate</groupId>
-			<artifactId>hibernate-ehcache</artifactId>
 			<scope>test</scope>
 		</dependency>
 		<dependency>

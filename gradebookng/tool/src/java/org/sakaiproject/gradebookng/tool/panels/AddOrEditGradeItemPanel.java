@@ -16,10 +16,8 @@
 package org.sakaiproject.gradebookng.tool.panels;
 
 import java.text.MessageFormat;
-import java.util.Date;
 import java.util.List;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.wicket.Component;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.extensions.ajax.markup.html.modal.ModalWindow;
@@ -45,7 +43,6 @@ import org.sakaiproject.service.gradebook.shared.GradebookHelper;
 import org.sakaiproject.service.gradebook.shared.GradebookService;
 import org.sakaiproject.service.gradebook.shared.InvalidGradeItemNameException;
 import org.sakaiproject.tool.gradebook.Gradebook;
-import org.sakaiproject.util.DateFormatterUtil;
 
 /**
  * The panel for the add and edit grade item window
@@ -56,9 +53,7 @@ import org.sakaiproject.util.DateFormatterUtil;
 public class AddOrEditGradeItemPanel extends BasePanel {
 
 	private static final long serialVersionUID = 1L;
-	private static String HIDDEN_DUEDATE_ISO8601 = "duedate_iso8601";
 
-	private Date dueDate;
 	private GbModalWindow window;
 
 	IModel<Long> model;
@@ -174,27 +169,8 @@ public class AddOrEditGradeItemPanel extends BasePanel {
 		}
 	}
 
-	private void setISODates() {
-		final String dueDateString = StringUtils.trimToNull(
-				getRequest().getRequestParameters().getParameterValue(HIDDEN_DUEDATE_ISO8601).toString(""));
-		//Allow for clearing the due date
-
-		if (dueDateString == null) {
-			this.dueDate = null;
-		}
-		else if (DateFormatterUtil.isValidISODate(dueDateString)) {
-			this.dueDate = DateFormatterUtil.parseISODate(dueDateString);
-		}
-		else {
-			error(new ResourceModel("error.addgradeitem.duedate").getObject());
-		}
-	}
-
 	private void createGradeItem(final AjaxRequestTarget target, final Form<?> form, final boolean createAnother) {
 		final Assignment assignment = (Assignment) form.getModelObject();
-
-		setISODates();
-		assignment.setDueDate(AddOrEditGradeItemPanel.this.dueDate);
 
 		boolean validated = true;
 
@@ -240,12 +216,36 @@ public class AddOrEditGradeItemPanel extends BasePanel {
 
 		// OK
 		if (validated) {
+
+			Long assignmentId = null;
+			boolean success = true;
+
+			try {
+				if (AddOrEditGradeItemPanel.this.mode == UiMode.EDIT) {
+					assignmentId = assignment.getId();
+					AddOrEditGradeItemPanel.this.businessService.updateAssignment(assignment);
+				} 
+				else {
+					assignmentId = AddOrEditGradeItemPanel.this.businessService.addAssignment(assignment);
+				}
+				rubricsService.saveRubricAssociation(RubricsConstants.RBCS_TOOL_GRADEBOOKNG, assignmentId.toString(), getRubricParameters(""));
+			}
+			catch (final AssignmentHasIllegalPointsException e) {
+				error(new ResourceModel("error.addgradeitem.points").getObject());
+				success = false;
+			} catch (final ConflictingAssignmentNameException e) {
+				error(new ResourceModel("error.addgradeitem.title").getObject());
+				success = false;
+			} catch (final ConflictingExternalIdException e) {
+				error(new ResourceModel("error.addgradeitem.exception").getObject());
+				success = false;
+			} catch (final Exception e) {
+				error(new ResourceModel("error.addgradeitem.exception").getObject());
+				success = false;
+			}
+				
 			if (AddOrEditGradeItemPanel.this.mode == UiMode.EDIT) {
-
-				final boolean success = AddOrEditGradeItemPanel.this.businessService.updateAssignment(assignment);
-
 				if (success) {
-					rubricsService.saveRubricAssociation(RubricsConstants.RBCS_TOOL_GRADEBOOKNG, assignment.getId().toString(), getRubricParameters(""));
 					getSession().success(MessageFormat.format(getString("message.edititem.success"), assignment.getName()));
 					setResponsePage(getPage().getPageClass(),
 							new PageParameters().add(GradebookPage.FOCUS_ASSIGNMENT_ID_PARAM, assignment.getId()));
@@ -255,27 +255,7 @@ public class AddOrEditGradeItemPanel extends BasePanel {
 				}
 
 			} else {
-
-				Long assignmentId = null;
-
-				boolean success = true;
-				try {
-					assignmentId = AddOrEditGradeItemPanel.this.businessService.addAssignment(assignment);
-				} catch (final AssignmentHasIllegalPointsException e) {
-					error(new ResourceModel("error.addgradeitem.points").getObject());
-					success = false;
-				} catch (final ConflictingAssignmentNameException e) {
-					error(new ResourceModel("error.addgradeitem.title").getObject());
-					success = false;
-				} catch (final ConflictingExternalIdException e) {
-					error(new ResourceModel("error.addgradeitem.exception").getObject());
-					success = false;
-				} catch (final Exception e) {
-					error(new ResourceModel("error.addgradeitem.exception").getObject());
-					success = false;
-				}
 				if (success) {
-					rubricsService.saveRubricAssociation(RubricsConstants.RBCS_TOOL_GRADEBOOKNG, assignmentId.toString(), getRubricParameters(""));
 					final String successMessage = MessageFormat.format(getString("notification.addgradeitem.success"), assignment.getName());
 					getSession()
 							.success(successMessage);

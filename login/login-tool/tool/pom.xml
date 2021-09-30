@@ -4,7 +4,7 @@
   <parent>
     <artifactId>login</artifactId>
     <groupId>org.sakaiproject.login</groupId>
-    <version>21-SNAPSHOT</version>
+    <version>22-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
   <name>sakai-login-tool</name>
@@ -59,12 +59,12 @@
 	<dependency>
 	    <groupId>org.springframework.security.extensions</groupId>
 	    <artifactId>spring-security-saml2-core</artifactId>
-	    <version>1.0.2.RELEASE</version>
+	    <version>1.0.10.RELEASE</version>
 	</dependency>
       <dependency>
           <groupId>org.jasig.cas.client</groupId>
           <artifactId>cas-client-core</artifactId>
-          <version>3.4.1</version>
+          <version>3.6.2</version>
       </dependency>
       <dependency>
           <groupId>org.springframework</groupId>

@@ -31,7 +31,9 @@ import javax.faces.event.ActionEvent;
 import javax.faces.model.SelectItem;
 import javax.faces.validator.ValidatorException;
 
+import org.apache.commons.lang3.StringUtils;
 import lombok.extern.slf4j.Slf4j;
+import lombok.Setter;
 
 import org.quartz.CronScheduleBuilder;
 import org.quartz.InterruptableJob;
@@ -60,6 +62,7 @@ import org.sakaiproject.api.app.scheduler.events.TriggerEventManager;
 import org.sakaiproject.component.app.scheduler.JobDetailWrapperImpl;
 import org.sakaiproject.component.app.scheduler.TriggerWrapperImpl;
 import org.sakaiproject.util.ResourceLoader;
+import org.sakaiproject.util.api.FormattedText;
 
 @Slf4j
 public class SchedulerTool
@@ -98,6 +101,9 @@ public class SchedulerTool
   public SchedulerTool()
   {
   }
+
+  @Setter
+  private FormattedText formattedText;
 
   public void setTriggerEventManager (TriggerEventManager tem)
   {
@@ -554,8 +560,8 @@ public class SchedulerTool
      * @param job
      * @return JobDetail object constructed from the job argument
      */
-  private JobDetail createJobDetail (JobBeanWrapper job)
-  {
+  private JobDetail createJobDetail (JobBeanWrapper job) {
+      jobName = escapeEntities(jobName);
       JobDetail
           jd = JobBuilder.newJob(job.getJobClass())
               .withIdentity(jobName, Scheduler.DEFAULT_GROUP)
@@ -586,6 +592,8 @@ public class SchedulerTool
         //  (eg. if we have returned her from a validation error
        JobDetail jd = getJobDetail();
        JobBeanWrapper job = getSchedulerManager().getJobBeanWrapper(selectedClass);
+
+      jobName = escapeEntities(jobName);
 
        if (job != null)
        {
@@ -1463,16 +1471,24 @@ public class SchedulerTool
        return "events";
    }
 
-   public List<SelectItem> getScheduledJobs() throws SchedulerException
-   {
-       ArrayList<SelectItem> scheduledJobs = new ArrayList<SelectItem> ();
-       Set<JobKey> jobKeys = schedulerManager.getScheduler().getJobKeys(GroupMatcher.groupEquals(Scheduler.DEFAULT_GROUP));
+    public List<SelectItem> getScheduledJobs() throws SchedulerException {
+        List<SelectItem> scheduledJobs = new ArrayList<>();
+        List<String> groupNames = schedulerManager.getScheduler().getJobGroupNames();
+        for (String groupName : groupNames) {       
+            Set<JobKey> jobKeys = schedulerManager.getScheduler().getJobKeys(GroupMatcher.groupEquals(groupName));
+            for (JobKey key : jobKeys) {
+                scheduledJobs.add(new SelectItem(key.getName()));
+            }
+        }
+        return scheduledJobs;
+    }
 
-       for (JobKey key : jobKeys) {
-           scheduledJobs.add(new SelectItem(key.getName()));
-       }
+    private String escapeEntities (String input) {
+        String output = formattedText.escapeHtml(input);
+        // Avoid Javacript injection as commandLink params
+        output = StringUtils.remove(output, ";");
+        output = StringUtils.remove(output, "'");
+        return output;
+    }
 
-       return scheduledJobs;
-   }
 }
-

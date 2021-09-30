@@ -35,27 +35,57 @@ import net.oauth.SimpleOAuthValidator;
 import net.oauth.server.OAuthServlet;
 import net.oauth.signature.OAuthSignatureMethod;
 
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.text.StringEscapeUtils;
+
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 
 import static org.tsugi.basiclti.BasicLTIUtil.getArray;
+import static org.tsugi.basiclti.BasicLTIUtil.getObject;
 import static org.tsugi.basiclti.BasicLTIUtil.getString;
+import static org.tsugi.basiclti.BasicLTIUtil.getDouble;
 
+// https://www.imsglobal.org/specs/lticiv1p0/specification
 /* {
-	"@context": "http:\/\/purl.imsglobal.org\/ctx\/lti\/v1\/ContentItem",
-	"@graph": [ {
-		"@type": "LtiLinkItem",
-		"@id": ":item2",
-		"text": "The mascot for the Sakai Project",
-		"title": "The fearsome mascot of the Sakai Project",
-		"url": "http:\/\/localhost:8888\/sakai-api-test\/tool.php?sakai=98765",
-		"icon": {
-			"@id": "fa-bullseye",
-			"width": 50,
-			"height": 50
-		}
-	} ]
+  "@context" : [
+    "http://purl.imsglobal.org/ctx/lti/v1/ContentItem",
+    {
+      "lineItem" : "http://purl.imsglobal.org/ctx/lis/v2/LineItem",
+      "res" : "http://purl.imsglobal.org/ctx/lis/v2p1/Result#"
+    }
+  ],
+  "@graph" : [
+    { "@type" : "LtiLinkItem",
+      "mediaType" : "application/vnd.ims.lti.v1.ltilink",
+      "title" : "Chapter 12 quiz",
+      "lineItem" : {
+        "@type" : "LineItem",
+        "label" : "Chapter 12 quiz",
+        "reportingMethod" : "res:totalScore",
+        "assignedActivity" : {
+          "@id" : "http://toolprovider.example.com/assessment/66400",
+          "activity_id" : "a-9334df-33"
+        },
+        "scoreConstraints" : {
+          "@type" : "NumericLimits",
+          "normalMaximum" : 100,
+          "extraCreditMaximum" : 10,
+          "totalMaximum" : 110
+        }
+      },
+      { "@type" : "FileItem",
+        "url" : "http://www.imsglobal.org/xsd/qti/qtiv2p1/imsqti_v2p1.xsd",
+        "copyAdvice" : "true",
+        "expiresAt" : "2014-03-05T00:00:00Z",
+        "mediaType" : "application/xml",
+        "title" : "QTI v2.1 Specification Information Model",
+        "placementAdvice" : {
+          "windowTarget" : "_blank"
+        }
+      }
+  ]
 } */
 
 public class ContentItem {
@@ -70,10 +100,9 @@ public class ContentItem {
 	public static final String MEDIA_CC_1_1 = "application/vnd.ims.imsccv1p1";
 	public static final String MEDIA_CC_1_2 = "application/vnd.ims.imsccv1p2";
 	public static final String MEDIA_CC_1_3 = "application/vnd.ims.imsccv1p3";
-	public static final String MEDIA_CC = MEDIA_CC_1_3+","+MEDIA_CC_1_2+","+MEDIA_CC_1_3;
+	public static final String MEDIA_CC = MEDIA_CC_1_1+","+MEDIA_CC_1_2+","+MEDIA_CC_1_3;
 
 	public static final String TYPE_LTILINKITEM = "LtiLinkItem";
-	public static final String TYPE_LTILINK_OLD = "LtiLink";
 	public static final String TYPE_CONTENTITEM = "ContentItem";
 	public static final String TYPE_FILEITEM = "FileItem";
 	public static final String TYPE_IMPORTITEM = "ImportItem";
@@ -82,8 +111,18 @@ public class ContentItem {
 	public static final String TEXT = "text";
 	public static final String URL = "url";
 	public static final String LINEITEM = "lineItem";
+	public static final String SCORE_CONSTRAINTS = "scoreConstraints";
+	public static final String SCORE_CONSTRAINTS_NORMAL_MAXIMUM = "normalMaximum";
+	public static final String SCORE_CONSTRAINTS_EXTRA_CREDIT_MAXIMUM = "extraCreditMaximum";
+	public static final String SCORE_CONSTRAINTS_TOTAL_MAXIMUM = "totalMaximum";
 	public static final String CUSTOM = "custom";
 	public static final String ICON = "icon";
+	public static final String CONTENT_ITEMS = "content_items";
+	public static final String NO_CONTENT_ITEMS = "Missing content_items= parameter from ContentItem return";
+	public static final String BAD_CONTENT_MESSAGE = "CONTENT_ITEMS is wrong type ";
+	public static final String NO_DATA_MESSAGE = "Missing data= parameter from ContentItem return";
+	public static final String NO_GRAPH_MESSAGE = "A content_item must include a @graph";
+	public static final String BAD_DATA_MESSAGE = "data= parameter is wrong type ";
 
 	HttpServletRequest servletRequest = null;
 
@@ -104,22 +143,24 @@ public class ContentItem {
 	{
 		this.servletRequest = req;
 
-		String content_items = req.getParameter("content_items");
-		if ( content_items == null || content_items.length() < 1 ) {
-			throw new java.lang.RuntimeException("Missing content_items= parameter from ContentItem return");
+		String contentItems = req.getParameter(CONTENT_ITEMS);
+		if ( StringUtils.isEmpty(contentItems) ) {
+			throw new java.lang.RuntimeException(NO_CONTENT_ITEMS);
 		}
 
-		Object cit = JSONValue.parse(content_items);
+		Object cit = JSONValue.parse(contentItems);
 		if ( cit != null && cit instanceof JSONObject ) {
 			contentItem = (JSONObject) cit;
 		} else {
-			throw new java.lang.RuntimeException("content_items is wrong type "+cit.getClass().getName());
+			throw new java.lang.RuntimeException(BAD_CONTENT_MESSAGE + cit.getClass().getName());
 		}
 
 		String returnedData = req.getParameter("data");
-		if ( returnedData == null || returnedData.length() < 1 ) {
-			throw new java.lang.RuntimeException("Missing data= parameter from ContentItem return");
+		if ( StringUtils.isEmpty(returnedData) ) {
+			throw new java.lang.RuntimeException(NO_DATA_MESSAGE);
 		}
+
+		returnedData = StringEscapeUtils.unescapeJson(returnedData);
 
 		Object dat = JSONValue.parse(returnedData);
 		JSONObject dataJson = null;
@@ -139,7 +180,7 @@ public class ContentItem {
 
 		graph = getArray(contentItem,BasicLTIConstants.GRAPH);
 		if ( graph == null ) {
-			throw new java.lang.RuntimeException("A content_item must include a @graph");
+			throw new java.lang.RuntimeException(NO_GRAPH_MESSAGE);
 		}
 	}
 
@@ -218,7 +259,7 @@ public class ContentItem {
 		for ( Object i : graph ) {
 			if ( ! (i instanceof JSONObject) ) continue;
 			JSONObject item = (JSONObject) i;
-			String type = getString(item,BasicLTIConstants.TYPE);
+			String type = getString(item, BasicLTIConstants.TYPE);
 			if ( type == null ) continue;
 			if ( type.equals(itemType) ) return item;
 		}
@@ -276,6 +317,24 @@ public class ContentItem {
 			sb.append(URLEncoder.encode(value));
 		}
 		return sb.toString();
+	}
+
+	/**
+	 * Get the maximum score from a lineItem
+	 *
+	 * This logic is to produce the DeepLink equivalent of maxScore from a Content Item
+	 */
+	public static Double getScoreMaximum(JSONObject lineItem) {
+        if ( lineItem == null ) return null;
+        JSONObject scoreConstraints = getObject(lineItem, SCORE_CONSTRAINTS);
+        if ( scoreConstraints == null ) return null;
+		Double normalMaximum = getDouble(scoreConstraints, SCORE_CONSTRAINTS_NORMAL_MAXIMUM);
+		Double totalMaximum = getDouble(scoreConstraints, SCORE_CONSTRAINTS_TOTAL_MAXIMUM);
+
+		if ( totalMaximum == null ) return normalMaximum;
+		if ( normalMaximum == null ) return totalMaximum;
+		if ( normalMaximum > totalMaximum ) return normalMaximum;
+		return totalMaximum;
 	}
 
 }

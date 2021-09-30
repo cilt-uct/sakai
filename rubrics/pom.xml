@@ -4,7 +4,7 @@
     <parent>
         <groupId>org.sakaiproject</groupId>
         <artifactId>master</artifactId>
-        <version>21-SNAPSHOT</version>
+        <version>22-SNAPSHOT</version>
         <relativePath>../master/pom.xml</relativePath>
     </parent>
 
@@ -22,7 +22,6 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <spring.data.rest.webmvc.version>2.6.23.RELEASE</spring.data.rest.webmvc.version>
     </properties>
 
     <dependencyManagement>

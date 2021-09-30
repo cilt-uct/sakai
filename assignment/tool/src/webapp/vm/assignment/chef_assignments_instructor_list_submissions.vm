@@ -1,35 +1,9 @@
 <!-- start: chef_assignments_instructor_list_submissions.vm  -->
-#module("/rubrics-service/webcomponents/rubric-association-requirements.js")
+#rubricsRequirements
 #set( $H = '-' )
 <script>includeLatestJQuery('assignments');</script>
 #javascript("/library/js/lang-datepicker/lang-datepicker.js")
 <script type="module" src="/webcomponents/grader/grader-toggle.js" />
-
-<script>
-	$(document).ready(function(){
-		$('#submissionList input:checkbox').click(function()
-		{
-			var feedbackPanel = document.getElementById("sendFeedbackPanelContent");
-			var resubPanel = document.getElementById("allowResubmissionPanelContent");
-			var checkedCount = $("#submissionList input:checked").length;
-
-			if ( (checkedCount === 0 && feedbackPanel.style.display !== "none")
-				|| (checkedCount !== 0 && feedbackPanel.style.display === "none") )
-			{
-				ASN.toggleSendFeedbackPanel();
-			}
-
-			if ( resubPanel != null && ((checkedCount === 0 && resubPanel.style.display !== "none")
-				|| (checkedCount !== 0 && resubPanel.style.display === "none") ))
-			{
-				ASN.toggleAllowResubmissionPanel();
-			}
-		});
-
-		ASN.enableLinks();
-	});
-	var escapeList = [ 'toggleModel' ];
-</script>
 
 <script>
 function printView(url) {
@@ -47,16 +21,21 @@ function printView(url) {
 
 <div class="portletBody container-fluid">
     #navBarHREF( $allowAddAssignment $withGrade $allowGradeSubmission $allowAddAssignment $allowRecoverAssignment $allowAllGroups $assignmentscheck $allowUpdateSite $enableViewOption $view "" )
-	<div class="page-header">
-		<h1>
-		$formattedText.escapeHtml($assignment.Title)
-		<small>
-		#if ($!assignment.IsGroup )
-			<i class="fa fa-users" aria-hidden="true" title="$tlang.getString('gen.groupassignment')"></i>
-		#end
-		  - $tlang.getString('gen.subm2')
-		</small>
-		</h1>
+	<div id="assignment-header">
+		<div class="page-header">
+			<h1>
+			$formattedText.escapeHtml($assignment.Title)
+			<small>
+			#if ($!assignment.IsGroup )
+				<i class="fa fa-users" aria-hidden="true" title="$tlang.getString('gen.groupassignment')"></i>
+			#end
+			  - $tlang.getString('gen.subm2')
+			</small>
+			</h1>
+		</div>
+		<div>
+			<grader-toggle #if(!$useGraderByDefault)unchecked-by-default#end tool="assignments"></grader-toggle>
+		</div>
 	</div>
 
 	#if ($alertMessage)<div class="sak-banner-error"><strong>$tlang.getString("gen.alert")</strong> $alertMessage</div>#end
@@ -80,8 +59,18 @@ function printView(url) {
 			#if(!$disableGrade)
 				<form id="defaultGradeForm" name="defaultGradeForm" class="inlineForm" method="post" action="#toolForm($action)">
 					<input type="hidden" name="$!form_action" value="setScore" />
-					<label for="defaultGrade_1" style="display:block" class="textPanelFooter">$!form_label</label>
+					<div class="form-group">
+						<label for="defaultGrade_1" style="display:block" class="textPanelFooter">$!form_label</label>
 					##for non-point-based grading, choose the default grade from drop-down
+						<div>
+							<label class="textPanelFooter">
+								<input type="checkbox" checked="checked" name="notGrade" value="true"/> $tlang.getString("defaultGrade.notGrade")
+							</label>
+							<label class="textPanelFooter">
+								<input type="checkbox" checked="checked" name="notSubmit" value="true"/>$tlang.getString("defaultGrade.notSubmit")<br/>
+							</label>
+						</div>
+					</div>
 					#if ($!gradeType != 3)
 						<select id="defaultGrade_1" name="defaultGrade" size="1" >
 							<option value="">$tlang.getString("non.submission.grade.select")</option>
@@ -103,10 +92,9 @@ function printView(url) {
 						## instructor needs to type in default points in point-based-grading
 						<input type="text" id="defaultGrade_2" name="defaultGrade" value="$!defaultGrade" size="5" />
 					#end
-					<input type="button" accesskey="a" class="active" name="apply" value="$tlang.getString('gen.applygrade')" onclick="SPNR.disableControlsAndSpin( this, escapeList ); ASN.submitForm( 'defaultGradeForm', null, null, null );" title="$tlang.getString("gen.applygrade")" />
+					<input type="button" accesskey="a" class="active" name="apply" value="$tlang.getString('gen.applygrade')" onclick="SPNR.disableControlsAndSpin( this, null ); ASN.submitForm( 'defaultGradeForm', null, null, null );" title="$tlang.getString("gen.applygrade")" />
 					<input type="hidden" name="sakai_csrf_token" value="$sakai_csrf_token" />
 				</form>
-				<grader-toggle tool="assignments"></grader-toggle>
 			#end
 			</div>
 		</div>
@@ -127,11 +115,13 @@ function printView(url) {
 			#else
 				<div class="listNav">
 						## download all
-							<a href="#toolLinkParam("$action" "doPrep_download_all" "view=$view")" class="noPointers" id="downloadAll" onclick="SPNR.insertSpinnerAfter( this, escapeList, null );" title="$!tlang.getString('downall')">$!tlang.getString('downall')</a>
+							<a href="#toolLinkParam("$action" "doPrep_download_all" "view=$view")" class="button" id="downloadAll" title="$!tlang.getString('downall')">$!tlang.getString('downall')</a>
 						#if(!$disableGrade)
 							## upload all
-							|  <a href="" class="noPointers" id="uploadAll" onclick="SPNR.insertSpinnerAfter( this, escapeList, null ); ASN.submitForm( 'viewForm', 'upload', null, null ); return false;" title="$!tlang.getString('uploadall.title')">$!tlang.getString('uploadall.title')</a>
-							|  <a href="" class="noPointers" id="releaseGrades" onclick="SPNR.insertSpinnerAfter( this, escapeList, null ); ASN.submitForm( 'viewForm', 'releaseGrades', null, null ); return false;"
+							<a href="#toolLinkParam("$action" "doPrep_upload_all" "view=$view")" class="button" id="uploadAll" title="$!tlang.getString('uploadall.title')">$!tlang.getString('uploadall.title')</a>
+							<a href="#"
+								class="button"
+ 								id="releaseGrades"
 							#if ($withGrade)
 								title="$!tlang.getString('relgrad')">$!tlang.getString('relgrad')</a>
 							#else
@@ -143,7 +133,7 @@ function printView(url) {
 								#set ($helperInfo = false)
 								#set ($helperInfo = $provider.provider.getItemsHelperInfo($activity.Reference))
 								#if ($helperInfo)
-									|  <a id="helpItems" class="noPointers" onclick="SPNR.insertSpinnerAfter( this, escapeList, null );" href="#toolLinkParam("$action" "doHelp_items" "activityRef=$formattedText.escapeUrl($activity.Reference)&providerId=$formattedText.escapeUrl($provider.provider.id)")" title="$!helperInfo.description">$!helperInfo.name</a>
+									<a id="helpItems" class="button" onclick="SPNR.insertSpinnerAfter( this, escapeList, null );" href="#toolLinkParam("$action" "doHelp_items" "activityRef=$formattedText.escapeUrl($activity.Reference)&providerId=$formattedText.escapeUrl($provider.provider.id)")" title="$!helperInfo.description">$!helperInfo.name</a>
 								#end
 							#end
 						#end
@@ -428,6 +418,7 @@ function printView(url) {
 					#end
 					#if ($!submission)## && $submission.submitted)
 						## SAK-17606
+						#set($submissionId = $submission.Id)
 						#set($anonymousSubmissionId = $submission.getId() + ' ' + ($tlang.getString("grading.anonymous.title")))
 
 						<tr>
@@ -438,20 +429,12 @@ function printView(url) {
 							</td>
 							<td headers="attachment" class="attach">
 								#set ($size = $submission.Attachments.size())
-								#if ($size > 0)
+								#if ($size > 0 && $submission.submitted)
 									<img src="#imageLink("sakai/attachments.gif")" border="0" alt="$tlang.getString("gen.att")" width="15" height="15" class="attachmentsIcon" />
 								#end
 							</td>
 							<td headers="studentname">
 								#if ($taggable)
-									#if (!$!submission.submitted)
-										#set($submittedText = $!submission.submittedText)
-										#set($submittedAttachments = $submission.Attachments)
-										#if ($!submittedText.length() > 0 || $!submittedAttachments.size() > 0 )
-										<span class="highlight">$tlang.getString("gen.dra2") </span>
-										#end
-									#end
-									
 									#if ($value_CheckAnonymousGrading)
 										$anonymousSubmissionId
 									#else
@@ -493,14 +476,6 @@ function printView(url) {
 								#else
 									#if(!$disableGrade)
 										<a href="#toolLinkParam("AssignmentAction" "doGrade_submission" "assignmentId=$formattedText.escapeUrl($assignmentReference)&submissionId=$formattedText.escapeUrl($userSubmission.Reference)")" title="$tlang.getString("listsub.grasub")">
-											#if (!$!submission.submitted)
-												#set($submittedText = $!submission.submittedText)
-												#set($submittedAttachments = $submission.Attachments)
-												#if ($submittedText && !$submittedText.isEmpty() || $!submittedAttachments.size() > 0 )
-												<span class="highlight">$tlang.getString("gen.dra2") </span>
-												#end
-											#end
-											
 											#if ($value_CheckAnonymousGrading)
 												$anonymousSubmissionId
 											#else
@@ -529,21 +504,19 @@ function printView(url) {
 							</td>
 							#end
 							<td headers="submitted">
-									#if ($!submission && $submission.DateSubmitted)
+									#if ($!submission && $submission.DateSubmitted && $submission.submitted)
 										#set($submitTime = $submission.DateSubmitted)
 										#if ($!submitTime) $!service.getUsersLocalDateTimeString($submitTime) #end
 										#if ($!submitTime && $submitTime.isAfter($assignment.DueDate))
 											<span class="highlight">$tlang.getString("gen.late2")</span> 
 										#end
 									#end
-									#if ($!submittedBy) 
+									#if ($!submittedBy && $submission.submitted)
 									<br /> $tlang.getString("listsub.submitted.by") $!submittedBy.sortName ($tlang.getString("listsub.submitted.on.behalf") $formattedText.escapeHtml($submitterSortName))
 									#end
 							</td>
 							<td headers="status">
-								#if ($!submission)
-									$!service.getSubmissionStatus($submission.Id)
-								#end
+								$!service.getSubmissionStatus($!submissionId)
 							</td>
 							#if ($assignment.AllowPeerAssessment)
 								<td>
@@ -597,6 +570,7 @@ function printView(url) {
 										$!service.getGradeForSubmitter($submission, $userSubmission.User.Id)
 									#end
 									<sakai-rubric-student-button
+										 dont-check-association
 										 token="$!rbcs-token"
 										 tool-id="sakai.assignment"
 										 evaluated-item-id="$submission.Id"
@@ -787,4 +761,54 @@ function printView(url) {
 	#end
 	</div>	
 </div>
+<script>
+	var escapeList = [ 'toggleModel' ];
+	$(document).ready(function () {
+
+		$('#submissionList input:checkbox').click(function () {
+
+			var feedbackPanel = document.getElementById("sendFeedbackPanelContent");
+			var resubPanel = document.getElementById("allowResubmissionPanelContent");
+			var checkedCount = $("#submissionList input:checked").length;
+
+			if ( (checkedCount === 0 && feedbackPanel.style.display !== "none")
+				|| (checkedCount !== 0 && feedbackPanel.style.display === "none") ) {
+				ASN.toggleSendFeedbackPanel();
+			}
+
+			if ( resubPanel != null && ((checkedCount === 0 && resubPanel.style.display !== "none")
+				|| (checkedCount !== 0 && resubPanel.style.display === "none") )) {
+				ASN.toggleAllowResubmissionPanel();
+			}
+		});
+
+		ASN.enableLinks();
+
+		var assignmentId ="$assignment.Id";
+		var rubricsToken = "$!rbcs-token";
+
+		if (assignmentId && rubricsToken) {
+			const options = {
+				method: "GET",
+				headers: {
+				  "Authorization": `Bearer ${rubricsToken}`,
+				  "Accept": "application/json",
+				  "Content-Type": "application/json"
+				}
+			};
+
+			fetch(`/rubrics-service/rest/rubric-associations/search/by-tool-and-assignment?toolId=sakai.assignment&itemId=${assignmentId}`, options)
+			.then(r => r.json())
+			.then(data => {
+
+				const association = data._embedded["rubric-associations"][0];
+
+				if (association) {
+					[...document.getElementsByTagName("sakai-rubric-student-button")].forEach(b => b.hidden = false);
+				}
+			});
+		}
+	}); // document.ready
+</script>
+
 <!-- end: chef_assignments_instructor_list_submissions.vm  -->

@@ -28,9 +28,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
 import java.util.TreeMap;
 
-import javax.annotation.Resource;
 import javax.faces.application.FacesMessage;
 import javax.faces.bean.ManagedBean;
 import javax.faces.bean.SessionScoped;
@@ -85,10 +85,13 @@ import org.sakaiproject.tool.assessment.shared.api.assessment.SecureDeliveryServ
 import org.sakaiproject.tool.assessment.ui.listener.author.SaveAssessmentAttachmentListener;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 import org.sakaiproject.tool.assessment.ui.listener.util.TimeUtil;
+import org.sakaiproject.tool.assessment.util.ExtendedTimeValidator;
 import org.sakaiproject.util.ResourceLoader;
 import org.sakaiproject.util.api.FormattedText;
-import org.springframework.web.context.ContextLoader;
-import org.springframework.web.context.WebApplicationContext;
+import org.sakaiproject.util.comparator.AlphaNumericComparator;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.web.context.support.SpringBeanAutowiringSupport;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -100,8 +103,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @ManagedBean(name="assessmentSettings")
 @SessionScoped
-public class AssessmentSettingsBean implements Serializable {
-
+public class AssessmentSettingsBean extends SpringBeanAutowiringSupport implements Serializable {
     private static final IntegrationContextFactory integrationContextFactory =
       IntegrationContextFactory.getInstance();
     private static final GradebookServiceHelper gbsHelper =
@@ -196,7 +198,7 @@ public class AssessmentSettingsBean implements Serializable {
   private boolean noTemplate;
   private String publishedUrl;
   private String alias;
-  private static boolean error;
+  private boolean error;
 
   private List attachmentList;
 
@@ -237,29 +239,33 @@ public class AssessmentSettingsBean implements Serializable {
   
   private SimpleDateFormat displayFormat;
 
-  private ResourceLoader assessmentSettingMessages;
+  private static final ResourceLoader assessmentSettingMessages = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AssessmentSettingsMessages");
+  private static final ResourceLoader authorMessages = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AuthorMessages");
 
-  @Resource(name = "org.sakaiproject.service.gradebook.GradebookService")
+  @Autowired
+  @Qualifier("org.sakaiproject.service.gradebook.GradebookService")
   private GradebookService gradebookService;
-  @Resource(name = "org.sakaiproject.tool.api.SessionManager")
+
+  @Autowired
+  @Qualifier("org.sakaiproject.tool.api.SessionManager")
   private SessionManager sessionManager;
-  @Resource(name = "org.sakaiproject.tool.api.ToolManager")
+
+  @Autowired
+  @Qualifier("org.sakaiproject.tool.api.ToolManager")
   private ToolManager toolManager;
-  @Resource(name = "org.sakaiproject.util.api.FormattedText")
+
+  @Autowired
+  @Qualifier("org.sakaiproject.util.api.FormattedText")
   private FormattedText formattedText;
-  @Resource(name = "org.sakaiproject.time.api.UserTimeService")
+
+  @Autowired
+  @Qualifier("org.sakaiproject.time.api.UserTimeService")
   private UserTimeService userTimeService;
 
   /*
    * Creates a new AssessmentBean object.
    */
   public AssessmentSettingsBean() {
-    this(ContextLoader.getCurrentWebApplicationContext());
-  }
-
-  public AssessmentSettingsBean(WebApplicationContext context) {
-    context.getAutowireCapableBeanFactory().autowireBean(this);
-    this.assessmentSettingMessages = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AssessmentSettingsMessages");
   }
 
   public AssessmentFacade getAssessment() {
@@ -367,7 +373,7 @@ public class AssessmentSettingsBean implements Serializable {
         if (accessControl.getHonorPledge() != null) {
           this.honorPledge = accessControl.getHonorPledge();
         } else {
-          this.honorPledge = false;
+          this.honorPledge = true;
         }
         // default to unlimited if control value is null
         if (accessControl.getUnlimitedSubmissions()!=null && !accessControl.getUnlimitedSubmissions()){
@@ -376,7 +382,7 @@ public class AssessmentSettingsBean implements Serializable {
         }
         else{
           this.unlimitedSubmissions=AssessmentAccessControlIfc.UNLIMITED_SUBMISSIONS.toString();
-          this.submissionsAllowed="";
+          this.submissionsAllowed="1";
         }
         if (accessControl.getLateHandling() !=null)
           this.lateHandling = accessControl.getLateHandling().toString();
@@ -1169,7 +1175,7 @@ public class AssessmentSettingsBean implements Serializable {
       return this.originalStartDateString;
     }
     else {
-      return userTimeService.dateTimeFormat(startDate, new ResourceLoader().getLocale(), DateFormat.MEDIUM);
+      return userTimeService.dateTimeFormat(startDate, assessmentSettingMessages.getLocale(), DateFormat.LONG);
     }
   }
 
@@ -1209,7 +1215,7 @@ public class AssessmentSettingsBean implements Serializable {
       return this.originalDueDateString;
     }
     else {
-      return userTimeService.dateTimeFormat(dueDate, new ResourceLoader().getLocale(), DateFormat.MEDIUM);
+      return userTimeService.dateTimeFormat(dueDate, assessmentSettingMessages.getLocale(), DateFormat.LONG);
     }
   }
 
@@ -1284,7 +1290,7 @@ public class AssessmentSettingsBean implements Serializable {
       return this.originalFeedbackDateString;
     }
     else {
-      return userTimeService.dateTimeFormat(feedbackDate, new ResourceLoader().getLocale(), DateFormat.MEDIUM);
+      return userTimeService.dateTimeFormat(feedbackDate, assessmentSettingMessages.getLocale(), DateFormat.LONG);
     }
   }
 
@@ -1323,7 +1329,7 @@ public class AssessmentSettingsBean implements Serializable {
       return this.originalFeedbackEndDateString;
     }
     else {
-      return userTimeService.dateTimeFormat(feedbackEndDate, new ResourceLoader().getLocale(), DateFormat.MEDIUM);
+      return userTimeService.dateTimeFormat(feedbackEndDate, assessmentSettingMessages.getLocale(), DateFormat.LONG);
     }
   }
 
@@ -1470,11 +1476,10 @@ public class AssessmentSettingsBean implements Serializable {
 
     public String checkDate(){
   FacesContext context=FacesContext.getCurrentInstance();
-  ResourceLoader rb = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AuthorMessages");
         String err;
-  if(AssessmentSettingsBean.error)
+  if(error)
       {
-	err=rb.getString("deliveryDate_error");
+	err=authorMessages.getString("deliveryDate_error");
     context.addMessage(null,new FacesMessage(err));
     log.error("START DATE ADD MESSAGE");
     return "deliveryDate_error";
@@ -1630,30 +1635,20 @@ public class AssessmentSettingsBean implements Serializable {
    */
   public SelectItem[] getGroupsForSite(){
       SelectItem[] groupSelectItems = new SelectItem[0];
-      TreeMap sortedSelectItems = new TreeMap();
-      Site site;
+      // This TreeMap will sort the group names nicely in AlphaNumeric order
+      SortedMap<String, SelectItem> sortedSelectItems = new TreeMap<>(new AlphaNumericComparator());
       try {
-          site = SiteService.getSite(toolManager.getCurrentPlacement().getContext());
-          Collection groups = site.getGroups();
+          Site site = SiteService.getSite(toolManager.getCurrentPlacement().getContext());
+          Collection<Group> groups = site.getGroups();
           if (groups != null && groups.size() > 0) {
-              groupSelectItems = new SelectItem[groups.size()];
-              Iterator groupIter = groups.iterator();
-              while (groupIter.hasNext()) {
-                  Group group = (Group) groupIter.next();
-                  String title = group.getTitle();
-                  String groupId = group.getId();
-                  String uniqueTitle = title + groupId;
-                  sortedSelectItems.put(uniqueTitle.toUpperCase(), new SelectItem(group.getId(), title));
+              for (Group group : groups) {
+                  sortedSelectItems.put(group.getTitle(), new SelectItem(group.getId(), group.getTitle()));
               }
-              Set keySet = sortedSelectItems.keySet();
-              groupIter = keySet.iterator();
-              int i = 0;
-              while (groupIter.hasNext()) {
-                  groupSelectItems[i++] = (SelectItem) sortedSelectItems.get(groupIter.next());
-              }
+
+              groupSelectItems = sortedSelectItems.values().toArray(new SelectItem[0]);
           }
       } catch (IdUnusedException ex) {
-          // No site available
+          log.warn("No site found while attempting to get groups, {}", ex.toString());
       }
       return groupSelectItems;
   }
@@ -1822,7 +1817,7 @@ public class AssessmentSettingsBean implements Serializable {
             String gradebookUid = toolManager.getCurrentPlacement().getContext();
             categoryDefinitions = gradebookService.getCategoryDefinitions(gradebookUid);
 
-            selectList.add(new SelectItem("-1","Uncategorized")); // -1 for a cat id means unassigned
+            selectList.add(new SelectItem("-1", assessmentSettingMessages.getString("gradebook_uncategorized"))); // -1 for a cat id means unassigned
             for (CategoryDefinition categoryDefinition: categoryDefinitions) {
                 selectList.add(new SelectItem(categoryDefinition.getId().toString(), categoryDefinition.getName()));
             }
@@ -1936,12 +1931,8 @@ public class AssessmentSettingsBean implements Serializable {
     //Internal to be able to supress error easier
     public void addExtendedTime() {
         ExtendedTime entry = this.extendedTime;
-        if (StringUtils.isBlank(entry.getUser()) && StringUtils.isBlank(entry.getGroup())) {
-            FacesContext context = FacesContext.getCurrentInstance();
-            String errorString = ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.AssessmentSettingsMessages", "extended_time_user_and_group_set");
-            context.addMessage(null, new FacesMessage(FacesMessage.SEVERITY_WARN, errorString, null));
-        }
-        else {
+        FacesContext context = FacesContext.getCurrentInstance();
+        if (new ExtendedTimeValidator().validateEntry(entry, context, this)) {
             AssessmentAccessControlIfc accessControl = new AssessmentAccessControl();
             accessControl.setStartDate(this.startDate);
             accessControl.setDueDate(this.dueDate);

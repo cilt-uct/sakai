@@ -28,14 +28,12 @@ import java.util.Iterator;
 import java.util.Locale;
 import java.util.Properties;
 
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.routines.UrlValidator;
-
 import org.sakaiproject.authz.api.AuthzGroup;
+import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.authz.api.GroupNotDefinedException;
 import org.sakaiproject.authz.api.Role;
-import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.cheftool.Context;
 import org.sakaiproject.cheftool.JetspeedRunData;
 import org.sakaiproject.cheftool.RunData;
@@ -61,8 +59,10 @@ import org.sakaiproject.tool.cover.ToolManager;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserNotDefinedException;
 import org.sakaiproject.user.cover.UserDirectoryService;
-import org.sakaiproject.util.FormattedText;
 import org.sakaiproject.util.ResourceLoader;
+import org.sakaiproject.util.api.FormattedText;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * <p>
@@ -170,23 +170,23 @@ public class IFrameAction extends VelocityPortletPaneledAction
 	private final static String MACRO_EXPANSION       = "expandMacros";
 
 	/** Macro name: Site id (GUID) */
-	protected static final String MACRO_SITE_ID             = "${SITE_ID}";
+	protected static final String MACRO_SITE_ID             = "SITE_ID";
 	/** Macro name: User id */
-	protected static final String MACRO_USER_ID             = "${USER_ID}";
+	protected static final String MACRO_USER_ID             = "USER_ID";
 	/** Macro name: User enterprise id */
-	protected static final String MACRO_USER_EID            = "${USER_EID}";
+	protected static final String MACRO_USER_EID            = "USER_EID";
 	/** Macro name: First name */
-	protected static final String MACRO_USER_FIRST_NAME     = "${USER_FIRST_NAME}";
+	protected static final String MACRO_USER_FIRST_NAME     = "USER_FIRST_NAME";
 	/** Macro name: Last name */
-	protected static final String MACRO_USER_LAST_NAME      = "${USER_LAST_NAME}";
+	protected static final String MACRO_USER_LAST_NAME      = "USER_LAST_NAME";
 	/** Macro name: Role */
-	protected static final String MACRO_USER_ROLE           = "${USER_ROLE}";
+	protected static final String MACRO_USER_ROLE           = "USER_ROLE";
 
 	private static final String MACRO_CLASS_SITE_PROP = "SITE_PROP:";
 	
 	private static final String IFRAME_ALLOWED_MACROS_PROPERTY = "iframe.allowed.macros";
 	
-	private static final String MACRO_DEFAULT_ALLOWED = "${USER_ID},${USER_EID},${USER_FIRST_NAME},${USER_LAST_NAME},${SITE_ID},${USER_ROLE}";
+	private static final String MACRO_DEFAULT_ALLOWED = "$USER_ID,$USER_EID,$USER_FIRST_NAME,$USER_LAST_NAME,$SITE_ID,$USER_ROLE";
 	
 	private static ArrayList allowedMacrosList;
 	// initialize list of approved macros for replacement within URL
@@ -195,7 +195,9 @@ public class IFrameAction extends VelocityPortletPaneledAction
 		allowedMacrosList = new ArrayList();
 		
 		final String allowedMacros = 
-			ServerConfigurationService.getString(IFRAME_ALLOWED_MACROS_PROPERTY, MACRO_DEFAULT_ALLOWED);
+			ServerConfigurationService.getString(IFRAME_ALLOWED_MACROS_PROPERTY, MACRO_DEFAULT_ALLOWED)
+			// Remove braces from allowedMacros as those were previously allowed so this is for compatibility 
+			.replaceAll("\\{|\\}", "");
 			
 		String parts[] = allowedMacros.split(",");
 		
@@ -214,6 +216,7 @@ public class IFrameAction extends VelocityPortletPaneledAction
 	private static EventTrackingService m_eventTrackingService = null;
 
 	private AuthzGroupService authzGroupService;
+	private FormattedText formattedText;
 	/**
 	 * Populate the state with configuration settings
 	 */
@@ -348,6 +351,9 @@ public class IFrameAction extends VelocityPortletPaneledAction
 		if (authzGroupService == null)
 		{
 			authzGroupService = ComponentManager.get(AuthzGroupService.class);
+		}
+		if (formattedText == null) {
+			formattedText = ComponentManager.get(FormattedText.class);
 		}
 		
 	}
@@ -658,9 +664,9 @@ public class IFrameAction extends VelocityPortletPaneledAction
 				return this.getUserRole();
 			}
 
-			if (macroName.startsWith("${"+MACRO_CLASS_SITE_PROP)) 
+			if (macroName.startsWith("$"+MACRO_CLASS_SITE_PROP)) 
 			{
-				macroName = macroName.substring(2); // Remove leading "${"
+				macroName = macroName.substring(1); // Remove leading "$"
 				macroName = macroName.substring(0, macroName.length()-1); // Remove trailing "}" 
 				
 				// at this point we have "SITE_PROP:some-property-name"
@@ -720,10 +726,13 @@ public class IFrameAction extends VelocityPortletPaneledAction
 		/*
 		 * Quit now if no macros are embedded in the text
 		 */
-		if (originalText.indexOf("${") == -1)
+		if (originalText.indexOf("$") == -1)
 		{
 			return originalText;
 		}
+		// Remove braces from allowedMacros as those were previously allowed so this is for compatibility 
+		originalText = originalText.replaceAll("\\{|\\}", "");
+
 		/*
 		 * Expand each macro
 		 */
@@ -872,7 +881,7 @@ public class IFrameAction extends VelocityPortletPaneledAction
 					String description = StringUtils.trimToNull(s.getDescription());
 					if (description != null)
 					{
-	                    description = FormattedText.escapeHtmlFormattedTextarea(description);
+	                    description = formattedText.escapeHtmlFormattedTextarea(description);
 						context.put("description", description);
 					}
 				}
@@ -1156,8 +1165,7 @@ public class IFrameAction extends VelocityPortletPaneledAction
 			}
 			
 			// Validate the url
-			UrlValidator urlValidator = new UrlValidator();
-			if (!urlValidator.isValid(source)) 
+			if (!formattedText.validateURL(source)) 
 			{
 				addAlert(state, rb.getString("gen.url.invalid"));
 				return;
@@ -1174,7 +1182,7 @@ public class IFrameAction extends VelocityPortletPaneledAction
 				infoUrl = "http://" + infoUrl;
 			}
 			String description = StringUtils.trimToNull(data.getParameters().getString("description"));
-			description = FormattedText.processEscapedHtml(description);
+			description = formattedText.processEscapedHtml(description);
 
 			// update the site info
 			try

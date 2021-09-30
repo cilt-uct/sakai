@@ -16,9 +16,9 @@
 }
 
 #gradebookSorter .gb-sorter-sortable {
-  border: 1px solid #EEE;
+  border: 1px solid var(--sakai-border-color);
   padding: 4px 10px;
-  background-color: #FAFAFA;
+  background-color: var(--sakai-background-color-3);
   margin-bottom: 4px;
   cursor: move;
   position: relative;
@@ -31,7 +31,7 @@
 }
 
 #gradebookSorter .gb-sorter-placeholder {
-  border: 1px dashed #CCC;
+  border: 1px dashed var(--sakai-border-color);
   padding: 4px 10px;
   margin-bottom: 4px;
 }
@@ -80,4 +80,8 @@
 #gradebookSorter ul {
   list-style: none;
   padding: 0;
+}
+
+.gb-sorter-form .nav-tabs a {
+  color: var(--tool-tab-active-text-color);
 }

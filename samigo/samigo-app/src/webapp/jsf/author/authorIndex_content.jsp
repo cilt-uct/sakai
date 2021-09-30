@@ -204,16 +204,6 @@
                 updateRemoveButton();
             });
 
-            // Highlight the due date if it is coming up soon
-            $("#authorIndexForm\\:coreAssessments .dueDate").each( function( index, element ) {
-                var dateNow = moment(new Date(), 'YYYYMMDDHHmmss');
-                var dueDate = moment($( this ).find(".hidden").text() || 0, 'YYYYMMDDHHmmss');
-                var dateDiff = dueDate.diff(dateNow, 'days');
-                if (dateDiff > 0 && dateDiff < 14) {
-                  $( this ).addClass("highlight");
-                }
-            });
-
             function updateRemoveButton() {
                 var length = $(".select-checkbox:checked").length;
                 if (length > 0) {
@@ -227,13 +217,15 @@
         function removeSelectedButtonAction() {
             if (!$("#authorIndexForm\\:remove-selected").hasClass("disabled")) {
                 var message = <h:outputText value="'#{authorMessages.cert_rem_assmt}'" />;
+                message += "\n\n";
+                message += <h:outputText value="'#{authorMessages.cert_rem_assmt2}'" />;
                 var elem = document.createElement('div');
                 elem.innerHTML = message;
                 if(!confirm(elem.textContent)) {
                     event.preventDefault();
                     return false;
                 }
-                return true   
+                return true;
             }
         }
     </script>
@@ -243,9 +235,9 @@
         <!-- HEADINGS -->
         <%@ include file="/jsf/author/assessmentHeadings.jsp" %>
 
-        <p>
-            <h:messages styleClass="sak-banner-error" rendered="#{! empty facesContext.maximumSeverity}" layout="table"/>
-        </p>
+        <h:panelGroup layout="block" styleClass="sak-banner-error" rendered="#{! empty facesContext.maximumSeverity}">
+            <h:messages rendered="#{! empty facesContext.maximumSeverity}" layout="table"/>
+        </h:panelGroup>
 
         <div class="samigo-container">
             <div class="page-header">
@@ -366,7 +358,7 @@
 
 
                             <t:dataList layout="unorderedList" value="#{author.publishedSelectActionList}" var="pendingSelectActionList" rowIndexVar="index" styleClass="dropdown-menu row">
-                                <h:commandLink action="#{author.getOutcome}" value="#{authorMessages.action_scores}" styleClass="hiddenBtn_scores" rendered="#{index == 0}">
+                                <h:commandLink action="#{author.getOutcome}" value="#{authorMessages.action_scores}" styleClass="hiddenBtn_scores" rendered="#{index == 0 && assessment.submittedCount > 0}">
                                     <f:param name="action" value="scores" />
                                     <f:param name="publishedId" value="#{assessment.publishedAssessmentId}"/>
                                     <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.author.ActionSelectListener" />
@@ -403,7 +395,7 @@
                             <f:verbatim></button></f:verbatim>
 
                             <t:dataList layout="unorderedList" value="#{author.publishedSelectActionList}" var="pendingSelectActionList" styleClass="dropdown-menu row" rowIndexVar="index">
-                                <h:commandLink action="#{author.getOutcome}" value="#{authorMessages.action_scores}" rendered="#{index == 0}" styleClass="hiddenBtn_scores">
+                                <h:commandLink action="#{author.getOutcome}" value="#{authorMessages.action_scores}" rendered="#{index == 0 && assessment.submittedCount > 0}" styleClass="hiddenBtn_scores">
                                     <f:param name="action" value="scores" />
                                     <f:param name="publishedId" value="#{assessment.publishedAssessmentId}"/>
                                     <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.author.ActionSelectListener" />
@@ -578,6 +570,9 @@
                     <h:outputText value="#{assessment.dueDate}">
                         <f:convertDateTime dateStyle="medium" timeStyle="short" timeZone="#{author.userTimeZone}" />
                     </h:outputText>
+                    <h:panelGroup rendered="#{assessment['class'].simpleName == 'PublishedAssessmentFacade'}">
+                        <h:outputText value=" #{selectIndexMessages.late} " styleClass="text-danger" rendered="#{assessment.pastDue}" />
+                    </h:panelGroup>
 
                     <h:outputText value="#{assessment.dueDate}" styleClass="hidden spanValue">
                         <f:convertDateTime pattern="yyyyMMddHHmmss" />
@@ -632,8 +627,7 @@
 
             <h:panelGroup rendered="#{author.isAnyAssessmentRetractForEdit == true && author.allAssessments.size() > 0}">
                 <f:verbatim><p></f:verbatim>
-                    <h:outputText styleClass="highlight fa fa-fw fa-exclamation-circle" />
-                    <h:outputText id="assessment-retracted" value="#{authorFrontDoorMessages.retracted_for_edit}" styleClass="highlight" />
+                    <h:outputText id="assessment-retracted" value="#{authorFrontDoorMessages.retracted_for_edit}" styleClass="sak-banner-red-warn" />
                 <f:verbatim></p></f:verbatim>
             </h:panelGroup>
         </div>

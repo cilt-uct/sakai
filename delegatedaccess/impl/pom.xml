@@ -6,7 +6,7 @@
     <parent>
         <artifactId>delegatedaccess</artifactId>
         <groupId>org.sakaiproject.delegatedaccess</groupId>
-        <version>21-SNAPSHOT</version>
+        <version>22-SNAPSHOT</version>
     </parent>
 
     <name>Delegated Access - Implementation</name>
@@ -80,11 +80,6 @@
         <dependency>
             <groupId>com.sun.mail</groupId>
             <artifactId>jakarta.mail</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>joda-time</groupId>
-            <artifactId>joda-time</artifactId>
-            <version>${joda.time.version}</version>
         </dependency>
     </dependencies>
 

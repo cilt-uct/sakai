@@ -100,7 +100,9 @@ public class StudentGradeSummaryGradesPanel extends BasePanel {
 				GbRole.STUDENT,
 				gradebook.isCourseGradeDisplayed(),
 				gradebook.isCoursePointsDisplayed(),
-				true);
+				true,
+				false,
+                this.businessService.getShowCalculatedGrade());
 
 		// build up table data
 		final Map<Long, GbGradeInfo> grades = this.businessService.getGradesForStudent(userId);
@@ -149,7 +151,6 @@ public class StudentGradeSummaryGradesPanel extends BasePanel {
 			}
 			categoriesMap = this.businessService.getGradebookCategoriesForStudent(userId).stream()
 				.collect(Collectors.toMap(cat -> cat.getName(), cat -> cat));
-			Collections.sort(categoryNames);
 		}
 
 		// build the model for table

@@ -42,6 +42,8 @@ public interface MessageForumsForumManager {
    * attachments, and the topics' attachments.
    */
     public List<DiscussionForum> getForumsForMainPage();
+
+    public List<DiscussionForum> getForumsForSite(String siteId);
   
     public Topic getTopicByIdWithMessages(final Long topicId);
     
@@ -208,23 +210,23 @@ public interface MessageForumsForumManager {
     
     /**
 	 * Returns # moderated topics that the current user has moderate
-	 * perm for, given the user's memberships and contextid
+	 * perm for, given the user's memberships and topics
 	 * based on permissionLevelId (custom permissions)
 	 * @param membershipItems
-	 * @param contextId
+	 * @param moderatedTopics
 	 * @return
 	 */
-	public int getNumModTopicCurrentUserHasModPermForWithPermissionLevel(final List membershipItems);
+	public int getNumModTopicCurrentUserHasModPermForWithPermissionLevel(final List<String> membershipItems, final List<Topic> moderatedTopics);
 	
 	/**
 	 * Returns # moderated topics that the current user has moderate
-	 * perm for, given the user's memberships and contextid
+	 * perm for, given the user's memberships and topics
 	 * based on permissionLevelName (non-custom permissions)
 	 * @param membershipItems
-	 * @param contextId
+	 * @param moderatedTopics
 	 * @return
 	 */
-	public int getNumModTopicCurrentUserHasModPermForWithPermissionLevelName(final List membershipItems);
+	public int getNumModTopicCurrentUserHasModPermForWithPermissionLevelName(final List<String> membershipItems, final List<Topic> moderatedTopics);
 	
 	/**
 	 * Returns forum with topics, topic attachments, and topic messages
@@ -278,6 +280,6 @@ public interface MessageForumsForumManager {
 	 */
 	public boolean doesRoleHavePermissionInTopic(final Long topicId, final String roleName, final String permissionName);
 
-	public String getAllowedGroupForRestrictedForum(final Long forumId, final String permissionName);
-	public String getAllowedGroupForRestrictedTopic(final Long topicId, final String permissionName);
+	public List<String> getAllowedGroupForRestrictedForum(final Long forumId, final String permissionName);
+	public List<String> getAllowedGroupForRestrictedTopic(final Long topicId, final String permissionName);
 }

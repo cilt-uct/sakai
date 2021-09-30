@@ -1,6 +1,6 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <% response.setContentType("text/html; charset=UTF-8"); %>
 
 <jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
@@ -17,11 +17,16 @@
 </script>
 <script>
     $(document).ready(function(){
-        initializePopover("podMainForm\\:popover", "<h:outputText value="#{msgs.popup_text}" />"); 
+        initializePopover("podMainForm\\:popover", "<h:outputText value="#{msgs.popup_text}" />");
+        var menuLink = $('#podcastMainMenuLink');
+        var menuLinkSpan = menuLink.closest('span');
+        menuLinkSpan.addClass('current');
+        menuLinkSpan.html(menuLink.text());
     });
 </script>
 
 <h:form id="podMainForm">
+    <%@ include file="/podcasts/podcastMenu.jsp" %>
 
     <%-- if Resources tool not exist, if instructor, display error message
       		if student, display no podcasts exists --%>
@@ -30,12 +35,6 @@
     </h:panelGroup>
 
 	<h:panelGroup rendered="#{podHomeBean.resourceToolExists && podHomeBean.canAccessFolder}" >
-		<sakai:tool_bar rendered="#{podHomeBean.canUpdateSite || podHomeBean.hasNewPerm}">
-        	  <sakai:tool_bar_item action="podcastAdd" value="#{msgs.add}" rendered="#{podHomeBean.hasNewPerm || podHomeBean.canUpdateSite}" />
-	          <sakai:tool_bar_item action="podcastOptions" value="#{msgs.options}" rendered="#{podHomeBean.canUpdateSite}" />
-			  <sakai:tool_bar_item action="#{podHomeBean.processPermissions}" value="#{msgs.permissions}" rendered="#{podHomeBean.canUpdateSite}" /> 
-		</sakai:tool_bar>
-
 		<h:outputText value="#{msgs.no_access}" styleClass="validation" rendered="#{! podHomeBean.hasAllGroups && ! podHomeBean.hasReadPerm }" />
       
 		<h:panelGroup rendered="#{podHomeBean.hasReadPerm || podHomeBean.hasAllGroups}"> 
@@ -98,8 +97,14 @@
 
 		<h:column>
 			<f:facet name="header"><h:outputText value="#{msgs.actions}"/></f:facet>
+			<%--  go to Listen page --%>
+			<f:verbatim><i class="fa fa-volume-up" aria-hidden="true"></i></f:verbatim>
+			<h:commandLink action="podcastListen" actionListener="#{podHomeBean.podMainListener}" value="#{msgs.listen}">
+				<f:param name="resourceId" value="#{eachPodcast.resourceId}" />
+			</h:commandLink>
+			<f:verbatim></br></f:verbatim>
 			<f:verbatim><i class="fa fa-download" aria-hidden="true"></i></f:verbatim>
-			<h:outputLink value="#{eachPodcast.fileURL}" styleClass="active" target="#{eachPodcast.newWindow}">
+			<h:outputLink value="#{eachPodcast.fileURL}" target="#{eachPodcast.newWindow}">
 				 <h:outputText value="#{msgs.download}" />
 			</h:outputLink>
 			<h:outputText value=" #{msgs.open_paren}#{eachPodcast.size} #{eachPodcast.type}#{msgs.close_paren}" />
@@ -107,7 +112,7 @@
 			<%--  go to Revise page --%>
 			<h:panelGroup rendered="#{podHomeBean.canUpdateSite || podHomeBean.hasReviseAnyPerm || (podHomeBean.hasReviseOwnPerm && eachPodcast.author == podHomeBean.userName)}">
 				<f:verbatim><i class="fa fa-pencil-square-o" aria-hidden="true"></i></f:verbatim>
-				<h:commandLink action="podcastRevise" actionListener="#{podHomeBean.podMainListener}" value="#{msgs.revise}" styleClass="active" 
+				<h:commandLink action="podcastRevise" actionListener="#{podHomeBean.podMainListener}" value="#{msgs.revise}" 
 					rendered="#{podHomeBean.canUpdateSite || podHomeBean.hasReviseAnyPerm || (podHomeBean.hasReviseOwnPerm && eachPodcast.author == podHomeBean.userName)}" >
 				<f:param name="resourceId" value="#{eachPodcast.resourceId}" />
 				</h:commandLink>
@@ -116,7 +121,7 @@
 			<%--  go to Delete page --%> 
 			<h:panelGroup rendered="#{podHomeBean.canUpdateSite || podHomeBean.hasDelAnyPerm || (podHomeBean.hasDelOwnPerm && eachPodcast.author == podHomeBean.userName)}">
 				<f:verbatim><i class="fa fa-trash" aria-hidden="true"></i></f:verbatim>
-				<h:commandLink action="podcastDelete" actionListener="#{podHomeBean.podMainListener}" value="#{msgs.delete}" styleClass="active" 
+				<h:commandLink action="podcastDelete" actionListener="#{podHomeBean.podMainListener}" value="#{msgs.delete}" 
 					rendered="#{podHomeBean.canUpdateSite || podHomeBean.hasDelAnyPerm || (podHomeBean.hasDelOwnPerm && eachPodcast.author == podHomeBean.userName)}" >
 				<f:param name="resourceId" value="#{eachPodcast.resourceId}" />
 				</h:commandLink>

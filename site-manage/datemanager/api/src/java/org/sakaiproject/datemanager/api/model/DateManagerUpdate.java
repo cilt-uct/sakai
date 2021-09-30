@@ -15,12 +15,24 @@ package org.sakaiproject.datemanager.api.model;
 
 import java.time.Instant;
 
-import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
 
-@AllArgsConstructor
+@Getter @Setter
 public class DateManagerUpdate {
 	public Object object;
 	public Instant openDate;
 	public Instant dueDate;
 	public Instant acceptUntilDate;
+	public Instant feedbackStartDate;
+	public Instant feedbackEndDate;
+	public Instant signupBegins;
+	public Instant signupDeadline;
+
+	public DateManagerUpdate(Object object, Instant openDate, Instant dueDate, Instant acceptUntilDate) {
+		this.object = object;
+		this.openDate = openDate;
+		this.dueDate = dueDate;
+		this.acceptUntilDate = acceptUntilDate;
+	}
 }

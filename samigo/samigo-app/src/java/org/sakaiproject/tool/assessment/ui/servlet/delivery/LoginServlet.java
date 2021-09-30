@@ -113,6 +113,7 @@ public class LoginServlet
 
     String siteId = pub.getOwnerSiteId();
 
+
     boolean isInstructor = PersistenceService.getInstance()
         .getAuthzQueriesFacade()
         .hasPrivilege(SamigoConstants.AUTHZ_EDIT_ASSESSMENT_ANY, siteId);
@@ -120,6 +121,7 @@ public class LoginServlet
     if (isInstructor) {
         delivery.setActionString("previewAssessment");
     } else {
+        delivery.setSiteId(siteId);
         delivery.setActionString("takeAssessmentViaUrl");
     }
 
@@ -249,6 +251,10 @@ public class LoginServlet
     	  }
     	  else { //isAuthenticated but not authorized
     		  path = "/jsf/delivery/accessDenied.faces";
+    		  if (releaseTo.contains(AssessmentAccessControl.RELEASE_TO_SELECTED_GROUPS)) {
+    			  // log access denied because they are not in a valid group for the quiz
+    			  delivery.updatEventLog("error_access_denied");
+    		  }
     	  }
       }
       if ("true".equals(req.getParameter("fromDirect"))) {

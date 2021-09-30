@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *             http://opensource.org/licenses/ecl2
+ * http://opensource.org/licenses/ecl2
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,15 +15,17 @@
  */
 package org.sakaiproject.gradebookng.tool.panels;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.wicket.AttributeModifier;
+import org.apache.wicket.Component;
 import org.apache.wicket.ajax.AjaxRequestTarget;
+import org.apache.wicket.ajax.IAjaxIndicatorAware;
 import org.apache.wicket.behavior.AttributeAppender;
 import org.apache.wicket.extensions.ajax.markup.html.modal.ModalWindow;
 import org.apache.wicket.markup.head.IHeaderResponse;
@@ -34,13 +36,11 @@ import org.apache.wicket.markup.html.list.ListItem;
 import org.apache.wicket.markup.html.list.ListView;
 import org.apache.wicket.model.IModel;
 import org.apache.wicket.model.Model;
-import org.apache.wicket.model.ResourceModel;
 import org.apache.wicket.model.StringResourceModel;
 import org.sakaiproject.gradebookng.business.GbRole;
 import org.sakaiproject.gradebookng.business.model.GbGradeInfo;
 import org.sakaiproject.gradebookng.business.util.FormatHelper;
 import org.sakaiproject.gradebookng.tool.component.GbAjaxLink;
-import org.sakaiproject.gradebookng.tool.model.GbModalWindow;
 import org.sakaiproject.gradebookng.tool.model.GradebookUiSettings;
 import org.sakaiproject.gradebookng.tool.pages.BasePage;
 import org.sakaiproject.gradebookng.tool.pages.GradebookPage;
@@ -49,12 +49,13 @@ import org.sakaiproject.rubrics.logic.RubricsConstants;
 import org.sakaiproject.service.gradebook.shared.Assignment;
 import org.sakaiproject.service.gradebook.shared.CategoryDefinition;
 import org.sakaiproject.service.gradebook.shared.GradebookInformation;
+import org.sakaiproject.service.gradebook.shared.GradeDefinition;
 import org.sakaiproject.service.gradebook.shared.GradingType;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class GradeSummaryTablePanel extends BasePanel {
+public class GradeSummaryTablePanel extends BasePanel implements IAjaxIndicatorAware {
 
 	private static final long serialVersionUID = 1L;
 
@@ -97,6 +98,9 @@ public class GradeSummaryTablePanel extends BasePanel {
 		final Map<String, CategoryDefinition> categoriesMap = (Map<String, CategoryDefinition>) data.get("categoriesMap");
 		final ModalWindow assignmentStatsWindow = new ModalWindow("assignmentStatsWindow");
 		addOrReplace(assignmentStatsWindow);
+
+		final ModalWindow compareGradesWindow = new ModalWindow("compareGradesWindow");
+		addOrReplace(compareGradesWindow);
 
 		if (getPage() instanceof GradebookPage) {
 			final GradebookPage page = (GradebookPage) getPage();
@@ -177,6 +181,13 @@ public class GradeSummaryTablePanel extends BasePanel {
 				categoryRow.setVisible(categoriesEnabled && GradeSummaryTablePanel.this.isGroupedByCategory && !categoryAssignments.isEmpty());
 				categoryItem.add(categoryRow);
 				categoryRow.add(new Label("category", categoryName));
+
+				// popover flags
+				final CategoryFlags cf = getCategoryFlags(categoryName, categoriesMap);
+				final WebMarkupContainer flags = new WebMarkupContainer("flags");
+				flags.add(newPopoverFlag("isExtraCredit", getString("label.gradeitem.extracreditcategory"), cf.extraCredit));
+				flags.add(newPopoverFlag("isEqualWeight", getString("label.gradeitem.equalweightcategory"), cf.equalWeight));
+				categoryRow.add(flags.setVisible(cf.hasFlags()));
 
 				final DropInfoPair pair = getDropInfo(categoryName, categoriesMap);
 				if (!pair.second.isEmpty()) {
@@ -271,41 +282,59 @@ public class GradeSummaryTablePanel extends BasePanel {
 
 						assignmentItem.add(assignmentStatsLink);
 
+						final GbAjaxLink compareLink = new GbAjaxLink("compareLink") {
+							@Override
+							public void onClick(AjaxRequestTarget target) {
+								assignment.getId();
+								compareGradesWindow.setContent(
+										new StudentCompareGradesPanel(
+												compareGradesWindow.getContentId(),
+												Model.of(assignment),
+												compareGradesWindow
+										)
+								);
+								compareGradesWindow.show(target);
+							}
+							
+							@Override
+							public boolean isVisible() {
+								return GradeSummaryTablePanel.
+										this.
+										serverConfigService.
+										getBoolean("gradebookng.allowStudentsToCompareGradesWithClassmates", false) &&
+										getSettings().isAllowStudentsToCompareGrades() &&
+										// Inlcuding all assigments that doesn't count if this property is set
+										(getSettings().isComparingIncludeAllGrades() || assignment.isCounted())
+										&&
+										// Only show this to students because this panel is also accesible for instructors
+										GradeSummaryTablePanel.this.getUserRole() == GbRole.STUDENT;
+							}
+						};
+						assignmentItem.add(compareLink);
+
 						// popover flags
 						final WebMarkupContainer flags = new WebMarkupContainer("flags");
-						flags.add(page.buildFlagWithPopover("isExtraCredit", getString("label.gradeitem.extracredit"))
-								.add(new AttributeModifier("data-trigger", "focus"))
-								.add(new AttributeModifier("data-container", "#gradeSummaryTable"))
-								.setVisible(assignment.isExtraCredit()));
-						flags.add(page.buildFlagWithPopover("isNotCounted", getString("label.gradeitem.notcounted"))
-								.add(new AttributeModifier("data-trigger", "focus"))
-								.add(new AttributeModifier("data-container", "#gradeSummaryTable"))
-								.setVisible(!assignment.isCounted()));
-						flags.add(page.buildFlagWithPopover("isNotReleased", getString("label.gradeitem.notreleased"))
-								.add(new AttributeModifier("data-trigger", "focus"))
-								.add(new AttributeModifier("data-container", "#gradeSummaryTable"))
-								.setVisible(!assignment.isReleased()));
-						flags.add(page.buildFlagWithPopover("isExcused", getString("grade.notifications.excused"))
-								.add(new AttributeModifier("data-trigger", "focus"))
-								.add(new AttributeModifier("data-container", "#gradeSummaryTable"))
-								.setVisible(excused));
-						flags.add(page
-								.buildFlagWithPopover("isExternal",
-										new StringResourceModel("label.gradeitem.externalapplabel", null,
-												new Object[] { assignment.getExternalAppName() }).getString())
-								.add(new AttributeModifier("data-trigger", "focus"))
-								.add(new AttributeModifier("data-container", "#gradeSummaryTable"))
-								.add(new AttributeModifier("class",
-										"gb-external-app-flag " + GradeSummaryTablePanel.this.businessService.getIconClass(assignment)))
-								.setVisible(assignment.isExternallyMaintained()));
-
+						flags.add(newPopoverFlag("isExtraCredit", getString("label.gradeitem.extracredit"), assignment.isExtraCredit()));
+						flags.add(newPopoverFlag("isNotCounted", getString("label.gradeitem.notcounted"), !assignment.isCounted()));
+						flags.add(newPopoverFlag("isNotReleased", getString("label.gradeitem.notreleased"), !assignment.isReleased()));
+						flags.add(newPopoverFlag("isExcused", getString("grade.notifications.excused"), excused));
+						String extAppName = new StringResourceModel("label.gradeitem.externalapplabel", null, new Object[] { assignment.getExternalAppName() }).getString();
+						flags.add(newPopoverFlag("isExternal", extAppName, assignment.isExternallyMaintained())
+								.add(new AttributeModifier("class", "gb-external-app-flag " + GradeSummaryTablePanel.this.businessService.getIconClass(assignment))));
+						flags.setVisible(
+								assignment.isExtraCredit() ||
+								!assignment.isCounted() ||
+								!assignment.isReleased() ||
+								excused ||
+								assignment.isExternallyMaintained()
+						);
 						assignmentItem.add(flags);
 
 						assignmentItem.add(new WebMarkupContainer("weight")
 								.setVisible(isCategoryWeightEnabled && GradeSummaryTablePanel.this.isGroupedByCategory));
 
 						final Label dueDate = new Label("dueDate",
-								FormatHelper.formatDate(assignment.getDueDate(), getString("label.studentsummary.noduedate")));
+								GradeSummaryTablePanel.this.businessService.formatDate(assignment.getDueDate(), getString("label.studentsummary.noduedate")));
 						dueDate.add(new AttributeModifier("data-sort-key",
 								assignment.getDueDate() == null ? 0 : assignment.getDueDate().getTime()));
 						assignmentItem.add(dueDate);
@@ -323,58 +352,52 @@ public class GradeSummaryTablePanel extends BasePanel {
 
 							gradeScore.add(new Label("outOf").setVisible(false));
 
-							final WebMarkupContainer sakaiRubricPreview = new WebMarkupContainer("sakai-rubric-student-button");
-							sakaiRubricPreview.add(AttributeModifier.append("display", "icon"));
-							sakaiRubricPreview.add(AttributeModifier.append("tool-id", RubricsConstants.RBCS_TOOL_GRADEBOOKNG));
-							sakaiRubricPreview.add(AttributeModifier.append("evaluated-item-id", assignment.getId() + "." + studentUuid));
-							sakaiRubricPreview.add(AttributeModifier.append("token", rubricsService.generateJsonWebToken(RubricsConstants.RBCS_TOOL_GRADEBOOKNG)));
+							final WebMarkupContainer sakaiRubricButton = new WebMarkupContainer("sakai-rubric-student-button");
+							sakaiRubricButton.add(AttributeModifier.append("display", "icon"));
+							sakaiRubricButton.add(AttributeModifier.append("tool-id", RubricsConstants.RBCS_TOOL_GRADEBOOKNG));
+							sakaiRubricButton.add(AttributeModifier.append("evaluated-item-id", assignment.getId() + "." + studentUuid));
+							sakaiRubricButton.add(AttributeModifier.append("token", rubricsService.generateJsonWebToken(RubricsConstants.RBCS_TOOL_GRADEBOOKNG)));
 
-							if (!showingStudentView && (GradeSummaryTablePanel.this.getUserRole() == GbRole.INSTRUCTOR
-										|| GradeSummaryTablePanel.this.getUserRole() == GbRole.TA)) {
-								sakaiRubricPreview.add(AttributeModifier.append("instructor", true));
-							}
+							addInstructorAttributeOrHide(sakaiRubricButton, assignment, studentUuid, showingStudentView);
 
 							if (assignment.getId() != null) {
-								sakaiRubricPreview.add(AttributeModifier.append("entity-id", assignment.getId()));
+								sakaiRubricButton.add(AttributeModifier.append("entity-id", assignment.getId()));
 							}
 
-							gradeScore.add(sakaiRubricPreview);
+							gradeScore.add(sakaiRubricButton);
 						} else {
 							gradeScore.add(
 									new Label("grade", FormatHelper.convertEmptyGradeToDash(FormatHelper.formatGradeForDisplay(rawGrade))));
 							gradeScore.add(new Label("outOf",
 									new StringResourceModel("label.studentsummary.outof", null, assignment.getPoints())));
 
-							final WebMarkupContainer sakaiRubricPreview = new WebMarkupContainer("sakai-rubric-student-button");
-							sakaiRubricPreview.add(AttributeModifier.append("display", "icon"));
-							sakaiRubricPreview.add(AttributeModifier.append("token", rubricsService.generateJsonWebToken(RubricsConstants.RBCS_TOOL_GRADEBOOKNG)));
+							final WebMarkupContainer sakaiRubricButton = new WebMarkupContainer("sakai-rubric-student-button");
+							sakaiRubricButton.add(AttributeModifier.append("display", "icon"));
+							sakaiRubricButton.add(AttributeModifier.append("token", rubricsService.generateJsonWebToken(RubricsConstants.RBCS_TOOL_GRADEBOOKNG)));
 
-							if (!showingStudentView && (GradeSummaryTablePanel.this.getUserRole() == GbRole.INSTRUCTOR
-										|| GradeSummaryTablePanel.this.getUserRole() == GbRole.TA)) {
-								sakaiRubricPreview.add(AttributeModifier.append("instructor", true));
-							}
+							addInstructorAttributeOrHide(sakaiRubricButton, assignment, studentUuid, showingStudentView);
 
 							if (assignment.isExternallyMaintained()) {
-								sakaiRubricPreview.add(AttributeModifier.append("tool-id", RubricsConstants.RBCS_TOOL_ASSIGNMENT));
+								sakaiRubricButton.add(AttributeModifier.append("tool-id", RubricsConstants.RBCS_TOOL_ASSIGNMENT));
 								String[] bits = assignment.getExternalId().split("/");
 								if (bits != null && bits.length >= 1) {
 									String assignmentId = bits[bits.length-1];
 									String submissionId = rubricsService.getRubricEvaluationObjectId(assignmentId, studentUuid, RubricsConstants.RBCS_TOOL_ASSIGNMENT);
-									sakaiRubricPreview.add(AttributeModifier.append("entity-id", assignmentId));
-									sakaiRubricPreview.add(AttributeModifier.append("evaluated-item-id", submissionId));
+									sakaiRubricButton.add(AttributeModifier.append("entity-id", assignmentId));
+									sakaiRubricButton.add(AttributeModifier.append("evaluated-item-id", submissionId));
 								} else {
 									log.warn(assignment.getExternalId() + " is not a valid assignment reference");
 								}
 							} else {
-								sakaiRubricPreview.add(AttributeModifier.append("tool-id", RubricsConstants.RBCS_TOOL_GRADEBOOKNG));
-								sakaiRubricPreview.add(AttributeModifier.append("evaluated-item-id", assignment.getId() + "." + studentUuid));
+								sakaiRubricButton.add(AttributeModifier.append("tool-id", RubricsConstants.RBCS_TOOL_GRADEBOOKNG));
+								sakaiRubricButton.add(AttributeModifier.append("evaluated-item-id", assignment.getId() + "." + studentUuid));
 
 								if (assignment.getId() != null) {
-									sakaiRubricPreview.add(AttributeModifier.append("entity-id", assignment.getId()));
+									sakaiRubricButton.add(AttributeModifier.append("entity-id", assignment.getId()));
 								}
 							}
 
-							gradeScore.add(sakaiRubricPreview);
+							gradeScore.add(sakaiRubricButton);
 						}
 						if (gradeInfo != null && gradeInfo.isDroppedFromCategoryScore()) {
 							gradeScore.add(AttributeModifier.append("class", "gb-summary-grade-score-dropped"));
@@ -389,6 +412,13 @@ public class GradeSummaryTablePanel extends BasePanel {
 						final WebMarkupContainer catCon = new WebMarkupContainer("category");
 						catCon.setVisible(categoriesEnabled && !GradeSummaryTablePanel.this.isGroupedByCategory);
 						catCon.add(new Label("categoryName", assignment.getCategoryName()));
+
+						final CategoryFlags cf = getCategoryFlags(assignment.getCategoryName(), categoriesMap);
+						final WebMarkupContainer cflags = new WebMarkupContainer("cflags");
+						cflags.add(newPopoverFlag("isExtraCredit", getString("label.gradeitem.extracreditcategory"), cf.extraCredit));
+						cflags.add(newPopoverFlag("isEqualWeight", getString("label.gradeitem.equalweightcategory"), cf.equalWeight));
+						catCon.add(cflags.setVisible(cf.hasFlags()));
+
 						final DropInfoPair pair = getDropInfo(assignment.getCategoryName(), categoriesMap);
 						catCon.add(new Label("categoryDropInfo", pair.first).setVisible(!pair.first.isEmpty()));
 						catCon.add(new Label("categoryDropInfo2", pair.second).setVisible(!pair.second.isEmpty()));
@@ -399,7 +429,20 @@ public class GradeSummaryTablePanel extends BasePanel {
 		});
 	}
 
-	private final class DropInfoPair {
+	private void addInstructorAttributeOrHide(WebMarkupContainer sakaiRubricButton, Assignment assignment, String studentId, boolean showingStudentView) {
+
+		if (!showingStudentView && (GradeSummaryTablePanel.this.getUserRole() == GbRole.INSTRUCTOR
+					|| GradeSummaryTablePanel.this.getUserRole() == GbRole.TA)) {
+			sakaiRubricButton.add(AttributeModifier.append("instructor", true));
+		} else {
+			GradeDefinition gradeDefinition = businessService.getGradeForStudentForItem(studentId, assignment.getId());
+			if (assignment.isExternallyMaintained() && gradeDefinition.getGrade() == null) {
+				sakaiRubricButton.add(AttributeModifier.replace("force-preview", true));
+			}
+		}
+	}
+
+	private final class DropInfoPair implements Serializable {
 		public String first = "";
 		public String second = "";
 	}
@@ -419,10 +462,42 @@ public class GradeSummaryTablePanel extends BasePanel {
 		return pair;
 	}
 
+	@Override
+	public String getAjaxIndicatorMarkupId() {
+		return "loading-grade-summary";
+	}
+
 	public void renderHead(final IHeaderResponse response) {
 
 		final String version = PortalUtils.getCDNQuery();
 		response.render(StringHeaderItem.forString(
-			"<script type=\"module\" src=\"/rubrics-service/webcomponents/rubric-association-requirements.js" + version + "\"></script>"));
-    }
+			"<script src=\"/webcomponents/rubrics/sakai-rubrics-utils.js" + version + "\"></script>"));
+		response.render(StringHeaderItem.forString(
+			"<script type=\"module\" src=\"/webcomponents/rubrics/rubric-association-requirements.js" + version + "\"></script>"));
+	}
+
+	private Component newPopoverFlag(String id, String msg, boolean visible) {
+		final BasePage page = (BasePage) getPage();
+		return page.buildFlagWithPopover(id, msg, "focus", "#gradeSummaryTable").setVisible(visible);
+	}
+
+	private final class CategoryFlags implements Serializable {
+		public boolean extraCredit = false;
+		public boolean equalWeight = false;
+
+		public boolean hasFlags() {
+			return extraCredit || equalWeight;
+		}
+	}
+
+	private CategoryFlags getCategoryFlags(String catName, final Map<String, CategoryDefinition> categoriesMap) {
+		CategoryFlags flags = new CategoryFlags();
+		if (catName != null && !catName.equals(getString(GradebookPage.UNCATEGORISED))) {
+			CategoryDefinition cat = categoriesMap.get(catName);
+			flags.extraCredit = cat != null && Boolean.TRUE.equals(cat.getExtraCredit());
+			flags.equalWeight = cat != null && Boolean.TRUE.equals(cat.getEqualWeight());
+		}
+
+		return flags;
+	}
 }

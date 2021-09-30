@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.sakaiproject</groupId>
         <artifactId>master</artifactId>
-        <version>21-SNAPSHOT</version>
+        <version>22-SNAPSHOT</version>
         <relativePath>../master/pom.xml</relativePath>
     </parent>
 
@@ -16,6 +16,7 @@
     
     <modules>
         <module>jsf2-app</module>
+        <module>jsf2-spreadsheet</module>
         <module>jsf2-tool</module>
         <module>jsf2-tool-sun</module>
         <module>jsf2-widgets</module>
@@ -28,6 +29,11 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>jsf2-app</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>jsf2-spreadsheet</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -52,14 +58,14 @@
                 <type>pom</type>
             </dependency>
             <dependency>
-                <groupId>javax.faces</groupId>
-                <artifactId>javax.faces-api</artifactId>
-                <version>2.3</version>
+                <groupId>jakarta.faces</groupId>
+                <artifactId>jakarta.faces-api</artifactId>
+                <version>2.3.2</version>
             </dependency>
             <dependency>
                 <groupId>org.glassfish</groupId>
-                <artifactId>javax.faces</artifactId>
-                <version>2.3.9</version>
+                <artifactId>jakarta.faces</artifactId>
+                <version>2.3.16</version>
             </dependency>
     </dependencies>
     </dependencyManagement>

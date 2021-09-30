@@ -25,38 +25,31 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import lombok.extern.slf4j.Slf4j;
-import net.htmlparser.jericho.Source;
-
-import org.sakaiproject.component.cover.ComponentManager;
-import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.entity.api.EntityManager;
-import org.sakaiproject.entity.api.Reference;
 import org.sakaiproject.entitybroker.EntityReference;
 import org.sakaiproject.entitybroker.entityprovider.EntityProviderManager;
 import org.sakaiproject.event.api.Event;
 import org.sakaiproject.search.api.EntityContentProducer;
 import org.sakaiproject.search.api.EntityContentProducerEvents;
-import org.sakaiproject.search.api.SearchIndexBuilder;
-import org.sakaiproject.search.api.SearchService;
 import org.sakaiproject.search.model.SearchBuilderItem;
 import org.sakaiproject.tool.assessment.entity.impl.PublishedItemEntityProviderImpl;
 import org.sakaiproject.tool.assessment.facade.PublishedAssessmentFacade;
 import org.sakaiproject.tool.assessment.facade.PublishedItemFacade;
 import org.sakaiproject.tool.assessment.services.assessment.PublishedAssessmentService;
 
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+import net.htmlparser.jericho.Source;
+
 @Slf4j
 public class PublishedItemContentProducer implements EntityContentProducer, EntityContentProducerEvents {
 
-    private SearchService searchService;
-    private SearchIndexBuilder searchIndexBuilder;
-    private EntityManager entityManager = null;
+    @Setter @Getter private EntityManager entityManager = null;
+    @Setter EntityProviderManager entityProviderManager;
     PublishedAssessmentService publishedAssessmentService  = new PublishedAssessmentService();
 
     protected void init() throws Exception {
-        if ("true".equals(ServerConfigurationService.getString("search.enable", "false"))) {
-            getSearchIndexBuilder().registerEntityContentProducer(this);
-        }
     }
 
     @Override
@@ -74,27 +67,11 @@ public class PublishedItemContentProducer implements EntityContentProducer, Enti
         log.info("destroy() PublishedItemContentProducer");
     }
 
-
-    private Reference getReference(String reference) {
-        return null;
-    }
-
-    private EntityReference getEntityReference(String reference) {
-        try {
-            return new EntityReference("/sam_publisheditem/"+reference);
-        } catch ( Exception ex ) {
-            log.debug("Managed exception getting the published item entity reference: " + ex.getClass().getName() + " : " + ex.getMessage());
-            return null;
-        }
-    }
-
-
     /**
      * {@inheritDoc}
      */
     public boolean canRead(String eventResource) {
         String reference= getReferenceFromEventResource(eventResource);
-        EntityProviderManager entityProviderManager = ComponentManager.get(EntityProviderManager.class);
         EntityReference er= new EntityReference("/sam_publisheditem/"+reference);
 
         try {
@@ -131,11 +108,10 @@ public class PublishedItemContentProducer implements EntityContentProducer, Enti
         return all;
     }
 
-    public HashMap<String,Object> getAllFields(String resourceName){
-        HashMap<String,Object> allInfo = new HashMap();
+    public Map<String,Object> getAllFields(String resourceName){
+        Map<String,Object> allInfo = new HashMap<>();
 
         String reference = getReferenceFromEventResource(resourceName);
-        EntityProviderManager entityProviderManager = ComponentManager.get(EntityProviderManager.class);
         EntityReference er= new EntityReference("/sam_publisheditem/"+reference);
         PublishedItemEntityProviderImpl qhp= (PublishedItemEntityProviderImpl)entityProviderManager.getProviderByPrefix(er.getPrefix());
         try {
@@ -176,7 +152,6 @@ public class PublishedItemContentProducer implements EntityContentProducer, Enti
      */
     public String getContent(String eventResource) {
         String reference = getReferenceFromEventResource(eventResource);
-        EntityProviderManager entityProviderManager = ComponentManager.get(EntityProviderManager.class);
         EntityReference er= new EntityReference("/sam_publisheditem/"+reference);
         PublishedItemEntityProviderImpl qhp= (PublishedItemEntityProviderImpl)entityProviderManager.getProviderByPrefix(er.getPrefix());
         try {
@@ -201,7 +176,7 @@ public class PublishedItemContentProducer implements EntityContentProducer, Enti
      * {@inheritDoc}
      */
     public Map getCustomProperties(String eventResource) {
-        HashMap<String, List> customProperties = new HashMap();
+        Map<String, List> customProperties = new HashMap();
         try {
             return customProperties;
         }catch (Exception ex){
@@ -213,7 +188,6 @@ public class PublishedItemContentProducer implements EntityContentProducer, Enti
 
     public List<String> getTags(String resource) {
         String reference = getReferenceFromEventResource(resource);
-        EntityProviderManager entityProviderManager = ComponentManager.get(EntityProviderManager.class);
         EntityReference er= new EntityReference("/sam_publisheditem/"+reference);
         PublishedItemEntityProviderImpl qhp= (PublishedItemEntityProviderImpl)entityProviderManager.getProviderByPrefix(er.getPrefix());
 
@@ -228,7 +202,6 @@ public class PublishedItemContentProducer implements EntityContentProducer, Enti
 
     public String getHash(String resource) {
         String reference = getReferenceFromEventResource(resource);
-        EntityProviderManager entityProviderManager = ComponentManager.get(EntityProviderManager.class);
         EntityReference er= new EntityReference("/sam_publisheditem/"+reference);
         PublishedItemEntityProviderImpl qhp= (PublishedItemEntityProviderImpl)entityProviderManager.getProviderByPrefix(er.getPrefix());
 
@@ -291,18 +264,11 @@ public class PublishedItemContentProducer implements EntityContentProducer, Enti
 
     }
 
-    private String getSiteId(Reference ref) {
-        String reference= getReferenceFromEventResource(ref.getReference());
-        return getSiteId(reference);
-
-    }
-
     /**
      * {@inheritDoc}
      */
     public String getSiteId(String resource) {
         String reference = getReferenceFromEventResource(resource);
-        EntityProviderManager entityProviderManager = ComponentManager.get(EntityProviderManager.class);
         EntityReference er= new EntityReference("/sam_publisheditem/"+reference);
         PublishedItemEntityProviderImpl qhp= (PublishedItemEntityProviderImpl)entityProviderManager.getProviderByPrefix(er.getPrefix());
 
@@ -315,23 +281,8 @@ public class PublishedItemContentProducer implements EntityContentProducer, Enti
         }
     }
 
-    /*public String getOrigin(String resource){
-        String reference = getReferenceFromEventResource(resource);
-        EntityProviderManager entityProviderManager = ComponentManager.get(EntityProviderManager.class);
-        EntityReference er= new EntityReference("/sam_publisheditem/"+reference);
-        PublishedItemEntityProviderImpl qhp= (PublishedItemEntityProviderImpl)entityProviderManager.getProviderByPrefix(er.getPrefix());
-        try {
-            PublishedItemFacade item = (PublishedItemFacade) qhp.getEntity(er);
-            return qhp.origin(item);
-        }catch (Exception ex) {
-            log.debug("Managed exception getting the question origin" + ex.getClass().getName() + " : " + ex.getMessage());
-            return null;
-        }
-    }*/
-
     public String getAssessmentId(String resource){
         String reference = getReferenceFromEventResource(resource);
-        EntityProviderManager entityProviderManager = ComponentManager.get(EntityProviderManager.class);
         EntityReference er= new EntityReference("/sam_publisheditem/"+reference);
         PublishedItemEntityProviderImpl qhp= (PublishedItemEntityProviderImpl)entityProviderManager.getProviderByPrefix(er.getPrefix());
         try {
@@ -393,7 +344,6 @@ public class PublishedItemContentProducer implements EntityContentProducer, Enti
     {
         String reference = getReferenceFromEventResource(resource);
         //Basically is a true always... but in case the reference is not valid let's maintain this.
-        EntityProviderManager entityProviderManager = ComponentManager.get(EntityProviderManager.class);
         EntityReference er= new EntityReference("/sam_publisheditem/"+reference);
         PublishedItemEntityProviderImpl qhp= (PublishedItemEntityProviderImpl)entityProviderManager.getProviderByPrefix(er.getPrefix());
 
@@ -410,7 +360,6 @@ public class PublishedItemContentProducer implements EntityContentProducer, Enti
      */
     public boolean matches(String resource) {
         String reference = getReferenceFromEventResource(resource);
-        EntityProviderManager entityProviderManager = ComponentManager.get(EntityProviderManager.class);
         EntityReference er= new EntityReference("/sam_publisheditem/"+getReferenceFromEventResource(reference));
         PublishedItemEntityProviderImpl qhp= (PublishedItemEntityProviderImpl)entityProviderManager.getProviderByPrefix(er.getPrefix());
 
@@ -436,35 +385,6 @@ public class PublishedItemContentProducer implements EntityContentProducer, Enti
             reference = resource.substring(resource.indexOf(" publishedItemId=") + 17);
         }
         return reference;
-    }
-
-
-    public SearchService getSearchService() {
-        return searchService;
-    }
-
-
-    public void setSearchService(SearchService searchService) {
-        this.searchService = searchService;
-    }
-
-
-    public EntityManager getEntityManager() {
-        return entityManager;
-    }
-
-
-    public void setEntityManager(EntityManager entityManager) {
-        this.entityManager = entityManager;
-    }
-
-
-    public SearchIndexBuilder getSearchIndexBuilder() {
-        return searchIndexBuilder;
-    }
-
-    public void setSearchIndexBuilder(SearchIndexBuilder searchIndexBuilder) {
-        this.searchIndexBuilder = searchIndexBuilder;
     }
 
 }

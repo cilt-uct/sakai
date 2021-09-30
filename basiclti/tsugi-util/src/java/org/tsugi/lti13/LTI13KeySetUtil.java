@@ -38,6 +38,19 @@ public class LTI13KeySetUtil {
 		return new Integer(publicEncoded.hashCode()).toString();
 	}
 
+	public static boolean addPublicKey(Map<String, RSAPublicKey> keys, String publicSerialized)
+	{
+		if (publicSerialized == null || publicSerialized.trim().length() < 1 ) return false;
+		Key publicKey = LTI13Util.string2PublicKey(publicSerialized);
+		if (publicKey == null) return false;
+		// Cast should work :)
+		RSAPublicKey rsaPublic = (RSAPublicKey) publicKey;
+		String kid = LTI13KeySetUtil.getPublicKID(rsaPublic);
+		// Duplicates witll just work out
+		keys.put(kid, rsaPublic);
+		return true;
+	}
+
 	public static String getKeySetJSON(Map<String, RSAPublicKey> keys)
 			throws java.security.NoSuchAlgorithmException {
 		JSONArray jar = new JSONArray();
@@ -75,4 +88,25 @@ public class LTI13KeySetUtil {
 		return getKeySetJSON(keys);
 	}
 
+	public static RSAPublicKey getKeyFromKeySet(String kid, String url) 
+		throws java.text.ParseException, com.nimbusds.jose.JOSEException, java.net.MalformedURLException, java.io.IOException
+	{
+		com.nimbusds.jose.jwk.JWKSet localKeys = com.nimbusds.jose.jwk.JWKSet.load(new java.net.URL(url));
+
+		com.nimbusds.jose.jwk.RSAKey nimbusPublic = (com.nimbusds.jose.jwk.RSAKey) localKeys.getKeyByKeyId(kid);
+
+		RSAPublicKey publicKey = nimbusPublic.toRSAPublicKey();
+		return publicKey;
+	}
+
+	public static RSAPublicKey getKeyFromKeySetString(String kid, String json) 
+		throws java.text.ParseException, com.nimbusds.jose.JOSEException
+	{
+		com.nimbusds.jose.jwk.JWKSet localKeys = com.nimbusds.jose.jwk.JWKSet.parse(json);
+
+		com.nimbusds.jose.jwk.RSAKey nimbusPublic = (com.nimbusds.jose.jwk.RSAKey) localKeys.getKeyByKeyId(kid);
+
+		RSAPublicKey publicKey = nimbusPublic.toRSAPublicKey();
+		return publicKey;
+	}
 }

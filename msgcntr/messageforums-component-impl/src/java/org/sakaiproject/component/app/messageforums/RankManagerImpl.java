@@ -27,11 +27,11 @@ import java.util.List;
 
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.hibernate.Query;
+import org.hibernate.query.Query;
 import org.hibernate.type.LongType;
 import org.hibernate.type.StringType;
-import org.springframework.orm.hibernate4.HibernateCallback;
-import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
+import org.springframework.orm.hibernate5.HibernateCallback;
+import org.springframework.orm.hibernate5.support.HibernateDaoSupport;
 
 import org.sakaiproject.api.app.messageforums.Rank;
 import org.sakaiproject.api.app.messageforums.RankImage;
@@ -227,7 +227,7 @@ public class RankManagerImpl extends HibernateDaoSupport implements RankManager 
         if (rank.getRankImage() != null) {
             removeImageAttachmentObject(rank.getRankImage());
         }
-        getHibernateTemplate().delete(rank);
+        getHibernateTemplate().delete(getHibernateTemplate().merge(rank));
     }
 
     public void removeImageAttachmentObject(RankImage o) {
@@ -237,7 +237,7 @@ public class RankManagerImpl extends HibernateDaoSupport implements RankManager 
             log.warn("removeImageAttachmentObject invoked, but ranks are disabled");
             return;
         }
-        getHibernateTemplate().delete(o);
+        getHibernateTemplate().delete(getHibernateTemplate().merge(o));
     }
 
     public void removeImageAttachToRank(final Rank rank, final RankImage imageAttach) {

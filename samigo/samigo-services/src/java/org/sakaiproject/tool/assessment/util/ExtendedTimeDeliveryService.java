@@ -19,6 +19,7 @@ package org.sakaiproject.tool.assessment.util;
 
 import java.util.*;
 
+import lombok.Getter;
 import org.sakaiproject.authz.api.AuthzGroup;
 import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.component.cover.ComponentManager;
@@ -37,8 +38,8 @@ import org.sakaiproject.tool.assessment.services.assessment.PublishedAssessmentS
  *
  */
 public class ExtendedTimeDeliveryService {
-	private static int MINS_IN_HOUR = 60;
-	private static int SECONDS_IN_MIN = 60;
+	private static final int MINS_IN_HOUR = 60;
+	private static final int SECONDS_IN_MIN = 60;
 
 	private String siteId;
 	private AuthzGroupService authzGroupService;
@@ -48,6 +49,11 @@ public class ExtendedTimeDeliveryService {
 	private Date startDate;
 	private Date dueDate;
 	private Date retractDate;
+
+	@Getter
+	private Long publishedAssessmentId;
+	@Getter
+	private String agentId;
 
 	/**
 	 * Creates an ExtendedTimeService object using the userId in the agentFacade as the current user
@@ -74,9 +80,12 @@ public class ExtendedTimeDeliveryService {
 		// Grab the site id from the publishedAssessment because the user may
 		// not be in a site
 		// if they're taking the test via url.
-		String pubId = publishedAssessment.getPublishedAssessmentId().toString();
+		publishedAssessmentId = publishedAssessment.getPublishedAssessmentId();
+		String pubId = publishedAssessmentId.toString();
 		siteId = publishedAssessmentService.getPublishedAssessmentSiteId(pubId);
 		PublishedAssessmentData pubData = publishedAssessmentService.getBasicInfoOfPublishedAssessment(pubId);
+
+		this.agentId = agentId;
 
 		ExtendedTimeFacade extendedTimeFacade = PersistenceService.getInstance().getExtendedTimeFacade();
 		List<ExtendedTime> extendedTimes = extendedTimeFacade.getEntriesForPub(pubData);

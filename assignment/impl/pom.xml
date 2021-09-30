@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.sakaiproject.assignment</groupId>
         <artifactId>assignment</artifactId>
-        <version>21-SNAPSHOT</version>
+        <version>22-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -43,10 +43,6 @@
         <dependency>
             <groupId>org.sakaiproject.assignment</groupId>
             <artifactId>sakai-assignment-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.sakaiproject.assignment</groupId>
-            <artifactId>sakai-assignment-bundles</artifactId>
         </dependency>
         <dependency>
             <groupId>org.sakaiproject.edu-services.gradebook</groupId>
@@ -117,11 +113,6 @@
         <dependency>
             <groupId>org.hibernate</groupId>
             <artifactId>hibernate-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.hibernate</groupId>
-            <artifactId>hibernate-ehcache</artifactId>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
@@ -196,9 +187,12 @@
             <artifactId>elasticsearch-api</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.elasticsearch</groupId>
+            <artifactId>elasticsearch</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.sun.mail</groupId>
             <artifactId>jakarta.mail</artifactId>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
@@ -217,6 +211,20 @@
             <artifactId>javafaker</artifactId>
             <version>0.13</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.sakaiproject.basiclti</groupId>
+            <artifactId>basiclti-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.sakaiproject.basiclti</groupId>
+            <artifactId>basiclti-util</artifactId>
+            <version>${sakai.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.sakaiproject.basiclti</groupId>
+            <artifactId>basiclti-common</artifactId>
+            <version>${sakai.version}</version>
         </dependency>
     </dependencies>
 

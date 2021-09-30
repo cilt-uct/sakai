@@ -96,7 +96,6 @@ import org.sakaiproject.tool.assessment.services.QuestionPoolService;
 import org.sakaiproject.tool.assessment.services.assessment.AssessmentService;
 import org.sakaiproject.tool.assessment.ui.bean.authz.AuthorizationBean;
 import org.sakaiproject.tool.assessment.ui.bean.delivery.SectionContentsBean;
-import org.sakaiproject.tool.assessment.ui.bean.questionpool.QuestionPoolBean;
 import org.sakaiproject.tool.assessment.ui.bean.shared.PersonBean;
 import org.sakaiproject.tool.assessment.ui.listener.author.ItemAddListener;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
@@ -114,7 +113,7 @@ public class ItemAuthorBean implements Serializable {
 
   /** Use serialVersionUID for interoperability. */
   private final static long serialVersionUID = 8266438770394956874L;
-
+  private static final ResourceLoader rb = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AuthorMessages");
   private final static int MAX_DECIMAL_PLACES = 10;
   public final static String FROM_QUESTIONPOOL= "questionpool";
   public final static String FROM_ASSESSMENT= "assessment";
@@ -776,8 +775,7 @@ public class ItemAuthorBean implements Serializable {
 
   public List getSectionSelectList() {
     List list = new ArrayList();
-    
-    ResourceLoader rb = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AuthorMessages");
+
     AssessmentBean assessbean = (AssessmentBean) ContextUtil.lookupBean("assessmentBean");
     List<SectionContentsBean> sectionSet = assessbean.getSections();
     Iterator<SectionContentsBean> iter = sectionSet.iterator();
@@ -821,9 +819,7 @@ public class ItemAuthorBean implements Serializable {
 
   public List getSelectRelativeWidthList() {
 	  List<SelectItem> list = new ArrayList();
-	  ResourceLoader rb = new ResourceLoader(
-		"org.sakaiproject.tool.assessment.bundle.AuthorMessages");
-	  
+
 	  final String[] widthLists = {
 			  rb.getString("matrix_width_list_default"),
 			  rb.getString("matrix_width_list_1"),
@@ -854,8 +850,6 @@ public class ItemAuthorBean implements Serializable {
 	public Map getSectionList() {
 		Map items = new Hashtable();
 
-		ResourceLoader rb = new ResourceLoader(
-				"org.sakaiproject.tool.assessment.bundle.AuthorMessages");
 		AssessmentBean assessbean = (AssessmentBean) ContextUtil
 				.lookupBean("assessmentBean");
 		List<SectionContentsBean> sectionSet = assessbean.getSections();
@@ -1526,7 +1520,7 @@ public class ItemAuthorBean implements Serializable {
 	    FacesContext context = FacesContext.getCurrentInstance();
 	    ExternalContext external = context.getExternalContext();
 	    Long fileSize = (Long)((ServletContext)external.getContext()).getAttribute("TEMP_FILEUPLOAD_SIZE");
-	    Long maxSize = Long.valueOf(ServerConfigurationService.getString("samigo.sizeMax", "40960"));
+	    Long maxSize = Long.valueOf(ServerConfigurationService.getString("samigo.sizeMax", "20480"));
 
 	    ((ServletContext)external.getContext()).removeAttribute("TEMP_FILEUPLOAD_SIZE");
 	    if (fileSize!=null){

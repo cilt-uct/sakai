@@ -1,6 +1,6 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <% response.setContentType("text/html; charset=UTF-8"); %>
 
 <jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
@@ -24,11 +24,17 @@
               val: '',
               ashidden: { iso8601: 'podAddISO8601' }
           });
+
+          var menuLink = $('#podcastAddMenuLink');
+          var menuLinkSpan = menuLink.closest('span');
+          menuLinkSpan.addClass('current');
+          menuLinkSpan.html(menuLink.text());
+
         });
       </script>
       
   <h:form id="podAdd" enctype="multipart/form-data">
-
+    <%@ include file="/podcasts/podcastMenu.jsp" %>
     <div>  <!-- Page title and Instructions -->
         <div class="page-header">
             <h1><h:outputText value="#{msgs.add_title}" /></h1>
@@ -92,9 +98,9 @@
 		</table>
 
     <sakai:button_bar>
-        <sakai:button_bar_item action="#{podHomeBean.processAdd}" value="#{msgs.add}"
+        <h:commandButton action="#{podHomeBean.processAdd}" value="#{msgs.add}"
             accesskey="a" title="Add a Podcast" styleClass="active" />
-        <sakai:button_bar_item action="#{podHomeBean.processCancelAdd}" value="#{msgs.cancel}" 
+        <h:commandButton action="#{podHomeBean.processCancelAdd}" value="#{msgs.cancel}"
             accesskey="x" title="Cancel a Podcast" />
     </sakai:button_bar>
   </h:form>

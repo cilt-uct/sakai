@@ -71,6 +71,7 @@ public class UploadRenderer extends Renderer {
     writer.startElement("input", component);
     writer.writeAttribute("type","file","type");
     writer.writeAttribute("name",clientId + UPLOAD,"clientId");
+    writer.writeAttribute("id",clientId + UPLOAD,"clientId");
     writer.writeAttribute("size", "50", null);
     writer.endElement("input");
     writer.flush();
@@ -87,7 +88,7 @@ public class UploadRenderer extends Renderer {
     log.debug("wrappedUpload = {}", item);
 
     ServerConfigurationService serverConfigurationService = ComponentManager.get(ServerConfigurationService.class);
-    Long maxSize = Long.valueOf(serverConfigurationService.getString("samigo.sizeMax", "40960"));
+    Long maxSize = Long.valueOf(serverConfigurationService.getString("samigo.sizeMax", "20480"));
 
     // Check if file > maxSize allowed
     if (item != null && item.getSize()/1000 > maxSize.intValue()){
@@ -148,7 +149,7 @@ public class UploadRenderer extends Renderer {
             Part part = request.getPart(name);
             if (part != null) return new WrappedUpload(part);
         } catch (Exception e) {
-            log.error("Failed to get upload part from request. Null will be returned.", e);
+            log.warn("Failed to get upload part from request, NULL will be returned, {}", e.toString());
         }
         return null;
     }

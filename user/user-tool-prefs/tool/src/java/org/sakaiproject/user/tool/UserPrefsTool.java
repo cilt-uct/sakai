@@ -64,9 +64,8 @@ import org.sakaiproject.user.api.PreferencesService;
 import org.sakaiproject.user.api.UserNotificationPreferencesRegistration;
 import org.sakaiproject.user.api.UserNotificationPreferencesRegistrationService;
 import org.sakaiproject.user.cover.UserDirectoryService;
-import org.sakaiproject.util.FormattedText;
 import org.sakaiproject.util.ResourceLoader;
-import org.sakaiproject.util.Web;
+import org.sakaiproject.util.api.FormattedText;
 
 /**
  * UserPrefsTool is the Sakai end-user tool to view and edit one's preferences.
@@ -77,7 +76,7 @@ public class UserPrefsTool
 {
 
 	/** * Resource bundle messages */
-	ResourceLoader msgs = new ResourceLoader("user-tool-prefs");
+	private static final ResourceLoader msgs = new ResourceLoader("user-tool-prefs");
 
 	/** The string to get whether privacy status should be visible */
 	private static final String ENABLE_PRIVACY_STATUS = "enable.privacy.status";
@@ -175,7 +174,7 @@ public class UserPrefsTool
 
 	private String[] tablist;
 
-	private int noti_selection, tab_selection, timezone_selection, language_selection, privacy_selection, hidden_selection, editor_selection, j;
+	private int noti_selection, tab_selection, timezone_selection, language_selection, privacy_selection, hidden_selection, editor_selection, theme_selection, j;
 
 	private String hiddenSitesInput = null;
 
@@ -186,6 +185,7 @@ public class UserPrefsTool
 	private String Privacy="prefs_privacy_title";
 	private String Hidden="prefs_hidden_title";
 	private String Editor="prefs_editor_title";
+	private String Theme="prefs_theme_title";
 	
 	private boolean refreshMode=false;
 
@@ -197,6 +197,8 @@ public class UserPrefsTool
 
 	protected final static String EDITOR_TYPE = "editor:type";
 
+	protected final static String THEME_PREF = "sakai:portal:theme";
+
 	protected boolean isNewUser = false;
 
 	// user's currently selected time zone
@@ -207,6 +209,9 @@ public class UserPrefsTool
 
 	// user's currently selected regional language locale
 	private Locale m_locale = null;
+
+	// user's currently selected Sakai theme
+	private String m_theme = null;
 
 	/** The user id retrieved from UsageSessionService */
 	private String userId = "";
@@ -220,10 +225,17 @@ public class UserPrefsTool
 	// SAK-23895
 	private boolean prefShowTabLabelOption = true;
 	
+	// SAK-45006: only show Themes preference page if themes are enabled
+	private boolean prefShowThemePreferences = false;
+	
 	// //////////////////////////////// PROPERTY GETTER AND SETTER ////////////////////////////////////////////
 
 	public boolean isPrefShowTabLabelOption() {
 	    return prefShowTabLabelOption;
+	}
+	
+	public boolean isPrefShowThemePreferences() {
+	    return prefShowThemePreferences;
 	}
 
 	/**
@@ -271,7 +283,7 @@ public class UserPrefsTool
 			Arrays.sort(timeZoneArray);
 			for (int i = 0; i < timeZoneArray.length; i++) {
 				String tzt = timeZoneArray[i];
-				if (StringUtils.contains(tzt, '/') && StringUtils.indexOf(tzt, "SystemV/") != 0) {
+				if (StringUtils.contains(tzt, '/') && !StringUtils.startsWith(tzt, "SystemV") && !StringUtils.startsWith(tzt, "Etc/GMT")) {
 					String id = tzt;
 					String name = tzt;
 					if (StringUtils.contains(tzt, '_')) {
@@ -344,6 +356,28 @@ public class UserPrefsTool
 		return m_editorType;
 	}
 
+	/**
+	 * @return Returns the user's selected Sakai theme
+	 */
+	public String getSelectedTheme()
+	{
+		if (m_theme != null) { return m_theme; }
+
+		Preferences prefs = (PreferencesEdit) preferencesService.getPreferences(getUserId());
+		String userTheme = StringUtils.defaultIfEmpty(prefs.getProperties(org.sakaiproject.user.api.PreferencesService.USER_SELECTED_UI_THEME_PREFS).getProperty("theme"), "sakaiUserTheme-notSet");
+
+		if (hasValue(userTheme))
+		{
+			m_theme = userTheme;
+		}
+		else
+		{
+			m_theme = "sakaiUserTheme-notSet";
+		}
+
+		return m_theme;
+	}
+
 
 	/**
 	 * @param selectedTimeZone
@@ -358,7 +392,7 @@ public class UserPrefsTool
 	}
 
 	/**
-	 * @param selectedTimeZone
+	 * @param selectedEditorType
 	 *        The selectedTimeZone to set.
 	 */
 	public void setSelectedEditorType(String selectedEditorType)
@@ -367,6 +401,22 @@ public class UserPrefsTool
 			m_editorType = selectedEditorType;
 		else
 			log.warn(this + "setSelectedEditorType() has null Editor");
+	}
+
+	/**
+	 * @param selectedTheme
+	 *        The selected theme to set.
+	 */
+	public void setSelectedTheme(String selectedTheme)
+	{
+		if (selectedTheme != null)
+		{
+			m_theme = selectedTheme;
+		}
+		else
+		{
+			log.warn(this + "setSelectedTheme() has null theme");
+		}
 	}
 
 
@@ -455,10 +505,12 @@ public class UserPrefsTool
 		// do we show the option to display by site title or short description?
 		boolean show_tab_label_option = ServerConfigurationService.getBoolean("preference.show.tab.label.option", true);
 		setPrefShowTabLabelOption(show_tab_label_option);
+		
+		setPrefShowThemePreferences(ServerConfigurationService.getBoolean("portal.themes", true));
 
 		//To indicate that it is in the refresh mode
 		refreshMode=true;
-		String tabOrder = ServerConfigurationService.getString("preference.pages", "prefs_noti_title, prefs_timezone_title, prefs_lang_title, prefs_hidden_title, prefs_hidden_title, prefs_editor_title");
+		String tabOrder = ServerConfigurationService.getString("preference.pages", "prefs_noti_title, prefs_timezone_title, prefs_lang_title, prefs_hidden_title, prefs_hidden_title, prefs_editor_title,prefs_theme_title");
 		log.debug("Setting preference.pages as " + tabOrder);
 
 		tablist=tabOrder.split(",");
@@ -472,6 +524,7 @@ public class UserPrefsTool
 			else if (tablist[i].equals(Privacy)) privacy_selection=i+1;
 			else if (tablist[i].equals(Hidden)) hidden_selection=i+1;
 			else if (tablist[i].equals(Editor)) editor_selection=i+1;
+			else if (tablist[i].equals(Theme)) theme_selection=i+1;
 			else log.warn(tablist[i] + " is not valid!!! Please fix preference.pages property in sakai.properties");
 		}
 
@@ -557,6 +610,16 @@ public class UserPrefsTool
 		return editor_selection;
 	}
 
+	public int getTheme_selection()
+	{
+		//Loading the data for notification in the refresh mode
+		if (theme_selection==1 && refreshMode==true)
+		{
+			processActionHiddenFrmEdit();
+		}
+		return theme_selection;
+	}
+
 	public String getTabTitle()
 	{
 		return "tabtitle";
@@ -575,14 +638,15 @@ public class UserPrefsTool
 	 */
 	public static String getUserSpecificSiteTitle( Site site, boolean truncate )
 	{
+		FormattedText formattedText = ComponentManager.get(FormattedText.class);
 		String retVal = SiteService.getUserSpecificSiteTitle( site, UserDirectoryService.getCurrentUser().getId() );
 		if (truncate)
 		{
-			return Web.escapeHtml( FormattedText.makeShortenedText( retVal, null, null, null ) );
+			return formattedText.escapeHtml( formattedText.makeShortenedText( retVal, null, null, null ) );
 		}
 		else
 		{
-			return Web.escapeHtml( retVal );
+			return formattedText.escapeHtml( retVal );
 		}
 	}
 
@@ -664,6 +728,21 @@ public class UserPrefsTool
 	}
 
 	/**
+	 * Process the cancel command from the edit view of Theme.
+	 * 
+	 * @return navigation outcome to editor page (list)
+	 */
+	public String processActionThemeFrmEdit()
+	{
+		log.debug("processActionThemeFrmEdit()");
+
+		refreshMode=false;
+		cancelEdit();
+		// navigation page data are loaded through getter method as navigation is the default page for 'sakai.preferences' tool.
+		return "theme";
+	}
+
+	/**
 	 * Process the cancel command from the edit view.
 	 * 
 	 * @return navigation outcome to locale page (list)
@@ -722,6 +801,7 @@ public class UserPrefsTool
 		refreshUpdated = false;
 		hiddenUpdated = false;
 		editorUpdated = false;
+		themeUpdated = false;
 	}
 
 	/**
@@ -892,6 +972,9 @@ public class UserPrefsTool
 	@Getter @Setter
 	protected boolean editorUpdated = false;
 
+	@Getter @Setter
+	protected boolean themeUpdated = false;
+
 	// ///////////////////////////////////////NOTIFICATION ACTION - copied from NotificationprefsAction.java////////
 	// TODO - clean up method call. These are basically copied from legacy legacy implementations.
 	/**
@@ -1046,6 +1129,38 @@ public class UserPrefsTool
 		getSelectedLocale();
 
 		return "locale";
+	}
+
+	/**
+	 * Process the save command from the theme view.
+	 * 
+	 * @return navigation outcome to theme page
+	 */
+	public String processActionThemeSave() 
+	{
+		setUserEditingOn();
+		ResourcePropertiesEdit props = m_edit.getPropertiesEdit(PreferencesService.USER_SELECTED_UI_THEME_PREFS);
+		props.addProperty("theme", m_theme);
+		preferencesService.commit(m_edit);
+
+		themeUpdated = true; // set for display of text message
+		return "theme";
+	}
+
+		/**
+	 * process theme cancel
+	 * 
+	 * @return navigation outcome to theme page
+	 */
+	public String processActionThemeCancel()
+	{
+		log.debug("processActionThemeCancel()");
+
+		// restore original theme
+		m_theme = null;
+		getSelectedTheme();
+
+		return "theme";
 	}
 
 	/**

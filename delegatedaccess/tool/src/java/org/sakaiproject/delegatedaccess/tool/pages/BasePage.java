@@ -30,6 +30,7 @@ import org.apache.wicket.markup.head.StringHeaderItem;
 import org.apache.wicket.markup.html.IHeaderContributor;
 import org.apache.wicket.markup.html.WebPage;
 import org.apache.wicket.markup.html.basic.Label;
+import org.apache.wicket.markup.html.link.BookmarkablePageLink;
 import org.apache.wicket.markup.html.link.Link;
 import org.apache.wicket.markup.html.panel.FeedbackPanel;
 import org.apache.wicket.model.Model;
@@ -90,11 +91,8 @@ public class BasePage extends WebPage implements IHeaderContributor {
 		hasDelegatedAccess = projectLogic.hasDelegatedAccessNodes(sakaiProxy.getCurrentUserId());
 		hasAccessAdmin = projectLogic.hasAccessAdminNodes(sakaiProxy.getCurrentUserId());
 		//access page link
-		accessPageLink = new Link<Void>("accessPageLink") {
+		accessPageLink = new BookmarkablePageLink<Void>("accessPageLink", UserPage.class) {
 			private static final long serialVersionUID = 1L;
-			public void onClick() {
-				setResponsePage(new UserPage());
-			}
 			@Override
 			public boolean isVisible() {
 				return shoppingPeriodTool || (!shoppingPeriodTool && hasDelegatedAccess); 
@@ -102,28 +100,25 @@ public class BasePage extends WebPage implements IHeaderContributor {
 		};
 		if(shoppingPeriodTool){
 			accessPageLink.add(new Label("firstLinkLabel",new ResourceModel("link.first.shopping")).setRenderBodyOnly(true));
-			accessPageLink.add(new AttributeModifier("title", true, new ResourceModel("link.first.tooltip.shopping")));
+			accessPageLink.add(new AttributeModifier("title",  new ResourceModel("link.first.tooltip.shopping")));
 		}else{
 			accessPageLink.add(new Label("firstLinkLabel",new ResourceModel("link.first")).setRenderBodyOnly(true));
-			accessPageLink.add(new AttributeModifier("title", true, new ResourceModel("link.first.tooltip")));
+			accessPageLink.add(new AttributeModifier("title", new ResourceModel("link.first.tooltip")));
 		}
 		add(accessPageLink);
 
 
 
 		//shopping admin link
-		shoppingAdminLink = new Link<Void>("shoppingAdminLink") {
+		shoppingAdminLink = new BookmarkablePageLink<Void>("shoppingAdminLink", ShoppingEditPage.class) {
 			private static final long serialVersionUID = 1L;
-			public void onClick() {
-				setResponsePage(new ShoppingEditPage());
-			}
 			@Override
 			public boolean isVisible() {
 				return !shoppingPeriodTool && hasShoppingAdmin;
 			}
 		};
 		shoppingAdminLink.add(new Label("secondLinkLabel",new ResourceModel("link.second")).setRenderBodyOnly(true));
-		shoppingAdminLink.add(new AttributeModifier("title", true, new ResourceModel("link.second.tooltip")));
+		shoppingAdminLink.add(new AttributeModifier("title", new ResourceModel("link.second.tooltip")));
 		add(shoppingAdminLink);
 		
 		//shopping stats link
@@ -138,52 +133,43 @@ public class BasePage extends WebPage implements IHeaderContributor {
 			}
 		};
 		shoppingStatsLink.add(new Label("shoppingStatsLinkLabel",new ResourceModel("link.shoppingStats")).setRenderBodyOnly(true));
-		shoppingStatsLink.add(new AttributeModifier("title", true, new ResourceModel("link.shoppingStats.tooltip")));
+		shoppingStatsLink.add(new AttributeModifier("title", new ResourceModel("link.shoppingStats.tooltip")));
 		add(shoppingStatsLink);
 
 		//search users link
-		searchUsersLink = new Link<Void>("searchUsersLink") {
+		searchUsersLink = new BookmarkablePageLink<Void>("searchUsersLink", SearchUsersPage.class) {
 			private static final long serialVersionUID = 1L;
-			public void onClick() {
-				setResponsePage(new SearchUsersPage());
-			}
 			@Override
 			public boolean isVisible() {
 				return (sakaiProxy.isSuperUser() || hasAccessAdmin) && !shoppingPeriodTool;
 			}
 		};
 		searchUsersLink.add(new Label("thirdLinkLabel",new ResourceModel("link.third")).setRenderBodyOnly(true));
-		searchUsersLink.add(new AttributeModifier("title", true, new ResourceModel("link.third.tooltip")));
+		searchUsersLink.add(new AttributeModifier("title", new ResourceModel("link.third.tooltip")));
 		add(searchUsersLink);
 		
 		//search access link
-		searchAccessLink = new Link<Void>("searchAccessLink") {
+		searchAccessLink = new BookmarkablePageLink<Void>("searchAccessLink", SearchAccessPage.class) {
 			private static final long serialVersionUID = 1L;
-			public void onClick() {
-				setResponsePage(new SearchAccessPage());
-			}
 			@Override
 			public boolean isVisible() {
 				return (sakaiProxy.isSuperUser() || hasAccessAdmin) && !shoppingPeriodTool;
 			}
 		};
 		searchAccessLink.add(new Label("searchAccessLinkLabel",new ResourceModel("searchAccessLinkLabel")).setRenderBodyOnly(true));
-		searchAccessLink.add(new AttributeModifier("title", true, new ResourceModel("searchAccessLinkLabel.tooltip")));
+		searchAccessLink.add(new AttributeModifier("title", new ResourceModel("searchAccessLinkLabel.tooltip")));
 		add(searchAccessLink);
 		
 		//administrate link
-		administrateLink = new Link<Void>("administrateLink") {
+		administrateLink = new BookmarkablePageLink<Void>("administrateLink", AdministratePage.class) {
 			private static final long serialVersionUID = 1L;
-			public void onClick() {
-				setResponsePage(new AdministratePage());
-			}
 			@Override
 			public boolean isVisible() {
 				return sakaiProxy.isSuperUser() && !shoppingPeriodTool;
 			}
 		};
 		administrateLink.add(new Label("administrateLinkLabel",new ResourceModel("link.administrate")).setRenderBodyOnly(true));
-		administrateLink.add(new AttributeModifier("title", true, new ResourceModel("link.administrate.tooltip")));
+		administrateLink.add(new AttributeModifier("title", new ResourceModel("link.administrate.tooltip")));
 		add(administrateLink);
 
 		// Add a FeedbackPanel for displaying our messages
@@ -272,8 +258,6 @@ public class BasePage extends WebPage implements IHeaderContributor {
 
 		//for datepicker
 		response.render(CssHeaderItem.forUrl("/library/webjars/jquery-ui/1.12.1/jquery-ui.css"));
-		response.render(JavaScriptHeaderItem.forUrl("javascript/jquery.asmselect.js"));
-		response.render(CssHeaderItem.forUrl("css/jquery.asmselect.css"));
 		response.render(JavaScriptHeaderItem.forUrl("/library/js/lang-datepicker/lang-datepicker.js"));
 	}
 

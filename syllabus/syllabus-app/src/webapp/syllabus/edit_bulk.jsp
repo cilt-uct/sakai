@@ -1,6 +1,6 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://sakaiproject.org/jsf/syllabus" prefix="syllabus" %>
 <% response.setContentType("text/html; charset=UTF-8"); %>
 <f:view>
@@ -15,7 +15,7 @@
 <script type="text/javascript" src="/library/js/lang-datepicker/lang-datepicker.js"></script>
 
 
-	<script type="text/javascript">
+	<script>
 		jQuery(document).ready(function() {
 			localDatePicker({
 				input: '#syllabusEdit\\:dataStartDate',
@@ -33,6 +33,11 @@
 				val: '<h:outputText value="#{SyllabusTool.bulkEntry.endDate}"><f:convertDateTime pattern="yyyy-MM-dd"/></h:outputText>',
 				ashidden: {iso8601: 'dataEndDateISO8601'}
 			});
+
+			var menuLink = $('#syllabusMenuBulkAddItemLink');
+			menuLink.addClass('current');
+			menuLink.find('a').removeAttr('href');
+
 		});
 		$(function() {
 			$('.timeInput').timepicker({
@@ -127,25 +132,13 @@
 		    }
 		}
 	</script>
-	<style>
-		.radioOption{
-			background: none repeat scroll 0 0 #EEEEEE;
-			border-radius: 5px 5px 5px 5px;
-			padding: .5em;
-			width: 35em;
-		}
-		
-		.radioOptionSelected{
-			background: none repeat scroll 0 0 #CCCCCC;
-		}
-	</style>
-			<h:outputText value="#{SyllabusTool.alertMessage}" styleClass="sak-banner-error" rendered="#{SyllabusTool.alertMessage != null}" />
-				
-			<sakai:tool_bar_message value="#{msgs.add_sylla_bulk}" /> 
-			<sakai:doc_section>
-				<h:outputText value="#{msgs.newSyllabusBulkForm}"/>
-			</sakai:doc_section>
 			<h:form id="syllabusEdit">
+				<%@ include file="mainMenu.jsp" %>
+				<h:outputText value="#{SyllabusTool.alertMessage}" styleClass="sak-banner-error" rendered="#{SyllabusTool.alertMessage != null}" />
+				<sakai:tool_bar_message value="#{msgs.add_sylla_bulk}" /> 
+				<sakai:doc_section>
+					<h:outputText value="#{msgs.newSyllabusBulkForm}"/>
+				</sakai:doc_section>
 				<h:panelGrid columns="1" styleClass="jsfFormTable">
 					<h:panelGroup styleClass="shorttext">
 						<h:outputLabel for="title">

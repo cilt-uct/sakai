@@ -8,6 +8,7 @@
 // It doesn't include anything that was already disabled.
 
 var disabledButtons = [];
+var counter = 0;
 
 // confirm box needs to disable autosave temporarily
 
@@ -36,6 +37,12 @@ function GetFormContent(formId, buttonName) {
     var elements = theForm.elements;
     var pairs = [];
     disabledButtons = [];
+
+    // show autosaving message
+    document.getElementById("autosave-lasttime-msg").style.display = "none";
+    document.getElementById("autosave-msg").style.visibility = "visible";
+    document.getElementById("autosave-msg").style.display = "inline";
+
     //autosave for ckeditor
     for(var i in CKEDITOR.instances) {
         var encoded = encodeURIComponent(CKEDITOR.instances[i].name)+"="+encodeURIComponent(CKEDITOR.instances[i].getSnapshot());
@@ -138,11 +145,9 @@ function SaveFormContentAsync(toUrl, formId, buttonName, updateVar, updateVar2, 
 	window.status = "";
 
     //check noLateSubmission or isRetracted controlled by pastDueDate()
-    var noLateSubmission = text.indexOf("noLateSubmission");
-    var isRetracted = text.indexOf("isRetracted");
-    if (noLateSubmission >= 0 || isRetracted >= 0) {
+    if (text.indexOf("noLateSubmission") >= 0 || text.indexOf("isRetracted") >= 0 || text.indexOf("assessment_has_been_submitted") >= 0) {
         $("#autosave-timeexpired-warning").show();
-        $("[id$=\\:submitNoCheck]")[0].click();
+        $("[id$=\\:save]")[0].click();
     }
 
     if (d !== -1) {
@@ -163,15 +168,32 @@ function SaveFormContentAsync(toUrl, formId, buttonName, updateVar, updateVar2, 
         }
         if (j >= 0) {
             var dueDateorRetractDate = text.substring(i+7, j);
-            if (dueDateorRetractDate - timeNow <= repeatMilliseconds) {
+            if (document.getElementById("progressbar") === null && dueDateorRetractDate - timeNow <= repeatMilliseconds) {
                 $("#autosave-timeleft-warning").show();
             }
+        }
+    }
+
+    // we're done saving now so remove the autosaving message and update the last autosave date
+    document.getElementById("autosave-msg").style.display = "none";
+    let start = text.indexOf("lastSubmittedDateStr");
+    if (start >= 0) {
+        start = text.indexOf("value=", start);
+        let end = -1;
+        if (start >= 0)	{
+            end = text.indexOf('" />', start + 7);
+        }
+        if (end >= 0) {
+            const submittedDateStr = text.substring(start + 7, end);
+            document.getElementById("autosave-lasttime").innerText = submittedDateStr;
+            document.getElementById("autosave-lasttime-msg").style.display = "inline";
         }
     }
 
         // when the request is done the scope of the function can be garbage collected...
     }
 
+    if (counter > 0) {
       var payload = GetFormContent(formId, buttonName);
 
       $.ajax({ method: "POST", url: toUrl, data: payload }, function () {
@@ -184,8 +206,12 @@ function SaveFormContentAsync(toUrl, formId, buttonName, updateVar, updateVar2, 
           $("#autosave-failed-warning").show();
           onready_callback("");
         });
+    } else {
+	    var onTimeout = TimeOutAction(toUrl, formId, buttonName, updateVar, updateVar2, repeatMilliseconds);
+	    setTimeout(onTimeout, repeatMilliseconds);
+    }
 
-    // onready_callback called on request response.
+    counter += 1;
 }
 
 function TimeOutAction(toUrl, formId, buttonName, updateVar, updateVar2, repeatMilliseconds) {

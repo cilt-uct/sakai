@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2003-2018 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.calendar.impl;
 
 import org.junit.Before;
@@ -92,7 +107,7 @@ public class PDFExportServiceTest {
     @Test
     public void testListExport() throws IOException, InterruptedException {
         Document doc = docBuilder.newDocument();
-        TimeRange officeHours = newTimeRange("2007-12-03T09:00:00.00Z", "PT8H");
+        Instant officeHours = Instant.parse("2007-12-03T09:00:00.00Z");
         // One week.
         TimeRange range = newTimeRange("2007-12-03T00:00:00.00Z", "P7D");
         List<String> calendarReferenceList = Collections.singletonList("/calendar/1");
@@ -122,7 +137,7 @@ public class PDFExportServiceTest {
     @Test
     public void testDayExport() throws IOException, InterruptedException {
         Document doc = docBuilder.newDocument();
-        TimeRange officeHours = newTimeRange("2007-12-03T09:00:00.00Z", "PT8H");
+        Instant officeHours = Instant.parse("2007-12-03T09:00:00.00Z");
         // One week.
         TimeRange range = newTimeRange("2007-12-03T00:00:00.00Z", "P7D");
         List<String> calendarReferenceList = Collections.singletonList("/calendar/1");
@@ -152,7 +167,7 @@ public class PDFExportServiceTest {
     @Test
     public void testWeekExport() throws IOException, InterruptedException {
         Document doc = docBuilder.newDocument();
-        TimeRange officeHours = newTimeRange("2007-12-03T09:00:00.00Z", "PT8H");
+        Instant officeHours = Instant.parse("2007-12-03T09:00:00.00Z");
         // One week.
         TimeRange range = newTimeRange("2007-12-03T00:00:00.00Z", "P7D");
         List<String> calendarReferenceList = Collections.singletonList("/calendar/1");
@@ -163,8 +178,8 @@ public class PDFExportServiceTest {
         when(event.getDisplayName()).thenReturn("Test Event");
         events.add(event);
 
-        when(baseCalendarService.getEvents(eq(calendarReferenceList), any(TimeRange.class))).thenReturn(new CalendarEventVector());
-        when(baseCalendarService.getEvents(eq(calendarReferenceList), argThat(arg -> arg.contains(eventTimeRange)))).thenReturn(events);
+        when(baseCalendarService.getEvents(eq(calendarReferenceList), any(TimeRange.class), any(boolean.class))).thenReturn(new CalendarEventVector());
+        when(baseCalendarService.getEvents(eq(calendarReferenceList), any(TimeRange.class))).thenReturn(events);
 
         Path file = Files.createTempFile("calendar", ".pdf");
         OpenOption[] options = (deleteFiles) ? new OpenOption[]{DELETE_ON_CLOSE, CREATE} : new OpenOption[]{CREATE};
@@ -182,7 +197,7 @@ public class PDFExportServiceTest {
     @Test
     public void testMonthExport() throws IOException, InterruptedException, TransformerException {
         Document doc = docBuilder.newDocument();
-        TimeRange officeHours = newTimeRange("2007-11-03T09:00:00.00Z", "PT8H");
+        Instant officeHours = Instant.parse("2007-12-03T09:00:00.00Z");
         // One week.
         TimeRange range = newTimeRange("2007-11-03T00:00:00.00Z", "P7D");
         List<String> calendarReferenceList = Collections.singletonList("/calendar/1");

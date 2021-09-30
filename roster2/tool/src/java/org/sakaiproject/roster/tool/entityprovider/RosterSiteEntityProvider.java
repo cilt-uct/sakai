@@ -39,9 +39,11 @@ import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 
-import lombok.Setter;
+import javax.annotation.Resource;
+
 import lombok.extern.slf4j.Slf4j;
 
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.entitybroker.EntityReference;
 import org.sakaiproject.entitybroker.EntityView;
 import org.sakaiproject.entitybroker.entityprovider.annotations.EntityCustomAction;
@@ -84,7 +86,7 @@ public class RosterSiteEntityProvider extends AbstractEntityProvider implements
 	public final static String KEY_ENROLLMENT_STATUS			= "enrollmentStatus";
 	public final static String KEY_PAGE_SIZE					= "pageSize";
 
-    @Setter
+    @Resource
 	private SakaiProxy sakaiProxy;
 	
 	/**
@@ -252,18 +254,35 @@ public class RosterSiteEntityProvider extends AbstractEntityProvider implements
 		if (parameters.containsKey(KEY_ENROLLMENT_SET_ID)) {
 			enrollmentSetId = parameters.get(KEY_ENROLLMENT_SET_ID).toString();
 		}
+		
+		String groupId = null;
+		if (parameters.containsKey(KEY_GROUP_ID)) {
+			groupId = parameters.get(KEY_GROUP_ID).toString();
+		}
+		
+		String roleId = null;
+		if (parameters.containsKey(KEY_ROLE_ID)) {
+			roleId = parameters.get(KEY_ROLE_ID).toString();
+		}
 
 		List<RosterMember> membership = new ArrayList();
 		Map<String, Integer> roleCounts = new HashMap(1);
 
 		for (String userId : userIds) {
-			RosterMember member = sakaiProxy.getMember(siteId, userId, enrollmentSetId);
+			RosterMember member = sakaiProxy.getMember(siteId, userId, groupId, enrollmentSetId);
 
 			if (null == member) {
 				throw new EntityException("Unable to retrieve membership", reference.getReference());
 			}
-
-			membership.add(member);
+			
+			if(roleId != null) {
+				if(StringUtils.equals(member.getRole(), roleId)) {
+					membership.add(member);
+				}
+			} else {
+				membership.add(member);
+			}
+			
 
 			String role = member.getRole();
 			if (!roleCounts.containsKey(role)) {
@@ -316,23 +335,6 @@ public class RosterSiteEntityProvider extends AbstractEntityProvider implements
 		}
 		return sakaiProxy.getSearchIndex(siteId, userId, groupId, roleId, enrollmentSetId, enrollmentStatus);
 	}
-
-    /*
-	@EntityCustomAction(action = "get-enrollment", viewKey = EntityView.VIEW_SHOW)
-	public Object getEnrollment(EntityReference reference, Map<String, Object> parameters) {
-		
-		if (null == reference.getId() || DEFAULT_ID.equals(reference.getId())) {
-			throw new EntityException(ERROR_INVALID_SITE, reference.getReference());
-		}
-		
-		String enrollmentSetId = null;
-		if (parameters != null && parameters.containsKey(KEY_ENROLLMENT_SET_ID)) {
-			enrollmentSetId = parameters.get(KEY_ENROLLMENT_SET_ID).toString();
-		}
-		
-		return sakaiProxy.getEnrollmentMembership(reference.getId(), enrollmentSetId, null);
-	}
-    */
 
 	/**
 	 * {@inheritDoc}

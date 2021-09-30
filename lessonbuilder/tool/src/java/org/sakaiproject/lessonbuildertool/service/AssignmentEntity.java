@@ -26,38 +26,42 @@ package org.sakaiproject.lessonbuildertool.service;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
-
-import org.jdom.Element;
-import org.jdom.Namespace;
-
-import uk.org.ponder.messageutil.MessageLocator;
-
+import org.jdom2.Element;
+import org.jdom2.Namespace;
 import org.sakaiproject.assignment.api.AssignmentService;
 import org.sakaiproject.assignment.api.model.Assignment;
 import org.sakaiproject.assignment.api.model.AssignmentNoteItem;
 import org.sakaiproject.assignment.api.model.AssignmentSubmission;
 import org.sakaiproject.assignment.api.model.AssignmentSupplementItemService;
+import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.component.cover.ServerConfigurationService;
-import org.sakaiproject.entity.cover.EntityManager;  
+import org.sakaiproject.entity.cover.EntityManager;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.exception.PermissionException;
+import org.sakaiproject.lessonbuildertool.SimplePageItem;
 import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean;
 import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean.UrlItem;
-import org.sakaiproject.memory.api.Cache;
-import org.sakaiproject.memory.api.MemoryService;
-import org.sakaiproject.memory.api.SimpleConfiguration;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.ToolConfiguration;
 import org.sakaiproject.site.cover.SiteService;
 import org.sakaiproject.tool.cover.ToolManager;
-import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.cover.UserDirectoryService;
-import org.sakaiproject.util.FormattedText;
+import org.sakaiproject.util.api.FormattedText;
+
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+import uk.org.ponder.messageutil.MessageLocator;
+
 
 /**
  * Interface to Assignment
@@ -76,16 +80,18 @@ import org.sakaiproject.util.FormattedText;
 // injected class to handle tests and quizes as well. That will eventually
 // be converted to be a LessonEntity.
 @Slf4j
+@NoArgsConstructor
 public class AssignmentEntity implements LessonEntity, AssignmentInterface {
 
     public static final int CACHE_MAX_ENTRIES = 5000;
     public static final int CACHE_TIME_TO_LIVE_SECONDS = 600;
     public static final int CACHE_TIME_TO_IDLE_SECONDS = 360;
 
-    private static Cache assignmentCache = null;
+    @Setter private static AssignmentService assignmentService;
+    @Setter private static MessageLocator messageLocator;
+    @Setter private static AssignmentSupplementItemService assignmentSupplementItemService;
 
     private SimplePageBean simplePageBean;
-    @Setter private static AssignmentService assignmentService;
 
     public void setSimplePageBean(SimplePageBean simplePageBean) {
 	this.simplePageBean = simplePageBean;
@@ -95,48 +101,13 @@ public class AssignmentEntity implements LessonEntity, AssignmentInterface {
     public void setNextEntity(LessonEntity e) {
 	nextEntity = e;
     }
+
     public LessonEntity getNextEntity() {
 	return nextEntity;
     }
-    
-    static MemoryService memoryService = null;
-    public void setMemoryService(MemoryService m) {
-	memoryService = m;
-    }
-
-    static MessageLocator messageLocator = null;
-    public void setMessageLocator(MessageLocator m) {
-	messageLocator = m;
-    }
-
-    static AssignmentSupplementItemService assignmentSupplementItemService = null;
-    public void setAssignmentSupplementItemService(AssignmentSupplementItemService a) {
-	assignmentSupplementItemService = a;
-    }
-
-    public void init () {
-	assignmentCache = memoryService
-	    .createCache("org.sakaiproject.lessonbuildertool.service.AssignmentEntity.cache",
-	    new SimpleConfiguration(CACHE_MAX_ENTRIES, CACHE_TIME_TO_LIVE_SECONDS, CACHE_TIME_TO_IDLE_SECONDS));
-
-	log.info("init()");
-
-    }
-
-    public void destroy()
-    {
-	//	assignmentCache.destroy();
-	//	assignmentCache = null;
-
-	log.info("destroy()");
-    }
-
 
     // to create bean. the bean is used only to call the pseudo-static
     // methods such as getEntitiesInSite. So type, id, etc are left uninitialized
-
-    protected AssignmentEntity() {
-    }
 
     protected AssignmentEntity(int type, String id, int level) {
 	this.type = type;
@@ -157,27 +128,15 @@ public class AssignmentEntity implements LessonEntity, AssignmentInterface {
     protected Assignment assignment;
 
     public Assignment getAssignment(String ref) {
-	return getAssignment(ref, false);
+		try {
+	     	return assignmentService.getAssignment(ref);
+		} catch (IdUnusedException | PermissionException e) {
+			log.warn("Attempted to retrieve assignment: {}, {}", ref, e.toString());
+			return null;
+		}
     }
 
-    public Assignment getAssignment(String ref, boolean nocache) {
-	Assignment ret = (Assignment)assignmentCache.get(ref);
-	if (!nocache && ret != null)
-	    return ret;
-
-	try {
-	    ret = assignmentService.getAssignment(ref);
-	} catch (Exception e) {
-	    ret = null;
-	}
-	
-	if (ret != null)
-	    assignmentCache.put(ref, ret);
-	return ret;
-    }
-
-
-    // type of the underlying object
+	// type of the underlying object
     public int getType() {
 	return type;
     }
@@ -303,6 +262,18 @@ public class AssignmentEntity implements LessonEntity, AssignmentInterface {
         // return "/direct/assignment/" + id;
     }
 
+	public Boolean isHiddenDueDate() {
+		if (assignment == null) {
+			assignment = getAssignment(id);
+		}
+
+		if (assignment == null) {
+			return false;
+		}
+
+		return assignment.getHideDueDate();
+	}
+
     public Date getDueDate() {
 	if (assignment == null)
 	    assignment = getAssignment(id);
@@ -311,170 +282,15 @@ public class AssignmentEntity implements LessonEntity, AssignmentInterface {
 	return Date.from(assignment.getDueDate());
     }
 
-    // the following methods all take references. So they're in effect static.
-    // They ignore the entity from which they're called.
-    // The reason for not making them a normal method is that many of the
-    // implementations seem to let you set access control and find submissions
-    // from a reference, without needing the actual object. So doing it this
-    // way could save some database activity
-
-    // access control
-    public boolean addEntityControl(String siteId, String groupId) throws IOException {
-	Site site = null;
-	String ref = "/assignment/a/" + siteId + "/" + id;
-
-	try {
-	    site = SiteService.getSite(siteId);
-	} catch (Exception e) {
-	    log.warn("Unable to find site " + siteId, e);
-	    return false;
-	}
-
-	Assignment edit = null;
-
-	try {
-	    edit = assignmentService.getAssignment(ref);
-	} catch (IdUnusedException | PermissionException e) {
-	    log.warn(e.getMessage(), e);
-	    return false;
-	}
-
-	boolean doCancel = true;
-
-	try {
-	    // need this to make sure we always unlock
-	    
-	    if (edit.getTypeOfAccess() == Assignment.Access.GROUP) {
-		Collection<String> groups = edit.getGroups();
-		groupId = "/site/" + siteId + "/group/" + groupId;
-
-		if (groups.contains(groupId)) {
-		    return true;
+	public Date getOpenDate() {
+		if (assignment == null) {
+			assignment = getAssignment(id);
 		}
-		
-		Group group = site.getGroup(groupId);
-		if (group == null) {
-		    return false;
+		if (assignment == null) {
+			return null;
 		}
-		
-	    groups.add(group.getId());
-
-		edit.setIsGroup(true);
-
-		assignmentService.updateAssignment(edit);
-		doCancel = false;
-		return true;
-
-	    } else {
-		// currently not grouped
-		Set<String> groups = new HashSet<>();
-		Group group = site.getGroup(groupId);
-		
-		if (group == null) {
-		    log.warn("Could not find Group");
-		    return false;
-		}
-		
-		groups.add(group.getId());
-
-			// this change mode to grouped
-			edit.setGroups(groups);
-			edit.setTypeOfAccess(Assignment.Access.GROUP);
-
-			assignmentService.updateAssignment(edit);
-		doCancel = false;
-		return true;
-	    }
-	} catch (Exception e) {
-	    log.warn(e.getMessage());
-	    return false;
-	} finally {
-	    if (doCancel) {
-	    	assignmentService.resetAssignment(edit);
-	    }
+		return Date.from(assignment.getOpenDate());
 	}
-    }
-
-    public boolean removeEntityControl(String siteId, String groupId) throws IOException {
-	Site site = null;
-	String ref = "/assignment/a/" + siteId + "/" + id;
-	try {
-	    site = SiteService.getSite(siteId);
-	} catch (Exception e) {
-	    log.warn("Unable to find site " + siteId, e);
-	    return false;
-	}
-	
-	Assignment edit = null;
-	
-	try {
-	    edit = assignmentService.getAssignment(ref);
-	} catch (IdUnusedException | PermissionException e) {
-	    log.warn(e.getMessage());
-	    return false;
-	}
-	
-	boolean doCancel = true;
-	
-	try {
-	    // need this to make sure we always unlock
-	    
-	    if (edit.getTypeOfAccess() == Assignment.Access.GROUP) {
-		Collection<String> groups = edit.getGroups();
-		groupId = "/site/" + siteId + "/group/" + groupId;
-		
-		if (!groups.contains(groupId)) {
-		    // nothing to do
-		    return true;
-		}
-
-		// odd; getgruops returns a list of string
-		// but setgroupacces wants a collection of actual groups
-		// so we have to copy the list
-		Set<String> newGroups = new HashSet<>();
-		for (String gid : groups) {
-		    // remove our group
-		    if (!gid.equals(groupId)) {
-				newGroups.add(gid);
-		    }
-		}
-
-		if (newGroups.size() > 0) {
-		    // there's groups left, just remove ours
-				edit.setGroups(newGroups);
-		} else {
-		    // no groups left, put site access back
-		    edit.setTypeOfAccess(Assignment.Access.SITE);
-		    edit.setGroups(new HashSet<>());
-		}
-
-		assignmentService.updateAssignment(edit);
-		doCancel = false;
-		return true;
-		
-	    } else {
-		// currently not grouped
-		// nothing to do
-		
-		return true;
-	    }
-	    
-	} catch (Exception e) {
-	    log.warn(e.getMessage());
-	    return false;
-	} finally {
-	    if (doCancel) {
-			assignmentService.resetAssignment(edit);
-	    }
-	}
-	
-    }
-
-    // submission
-    // do we need the data from submission?
-    public boolean needSubmission(){
-	return true;
-    }
 
     public LessonSubmission getSubmission(String userId) {
 
@@ -555,7 +371,7 @@ public class AssignmentEntity implements LessonEntity, AssignmentInterface {
 
     public boolean objectExists() {
 	if (assignment == null)
-	    assignment = getAssignment(id, true);
+	    assignment = getAssignment(id);
 	return assignment != null;
     }
 	
@@ -578,7 +394,7 @@ public class AssignmentEntity implements LessonEntity, AssignmentInterface {
     // null if it's accessible to the whole site.
     public Collection<String> getGroups(boolean nocache) {
 	if (nocache)
-	    assignment = getAssignment(id, true);
+	    assignment = getAssignment(id);
 	else if (assignment == null)
 	    assignment = getAssignment(id);
 	if (assignment == null)
@@ -767,7 +583,7 @@ public class AssignmentEntity implements LessonEntity, AssignmentInterface {
 		Element instructionsElement = resource.getChild("text", ns);
 		String type = instructionsElement.getAttributeValue("texttype");
 		if ("text/plain".equals(type))
-		    instructions = FormattedText.convertPlaintextToFormattedText(instructions);
+		    instructions = ComponentManager.get(FormattedText.class).convertPlaintextToFormattedText(instructions);
 		else
 		    instructions = instructions.replaceAll("\\$IMS-CC-FILEBASE\\$", base);
 		a.setInstructions(instructions);
@@ -850,7 +666,7 @@ public class AssignmentEntity implements LessonEntity, AssignmentInterface {
 		// unfortunately we can only store plain text. Replacing IMS-CC-FILEBASE may be futile in this case,
 		// but it seems better to do it than not.
 		if ("text/html".equals(type))
-		    note = FormattedText.convertFormattedTextToPlaintext(note.replaceAll("\\$IMS-CC-FILEBASE\\$", base));
+		    note = ComponentManager.get(FormattedText.class).convertFormattedTextToPlaintext(note.replaceAll("\\$IMS-CC-FILEBASE\\$", base));
 		
 		AssignmentNoteItem nNote = assignmentSupplementItemService.newNoteItem();
 		nNote.setAssignmentId(a.getId());
@@ -892,4 +708,10 @@ public class AssignmentEntity implements LessonEntity, AssignmentInterface {
 	public Integer getScaleFactor() {
 		return assignment.getScaleFactor();
 	}
+
+	@Override
+    public void preShowItem(SimplePageItem simplePageItem)
+    {
+		// Not currently used
+    }
 }

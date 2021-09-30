@@ -98,7 +98,7 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
      * @return
      */
     public boolean canRead(Long resourceId, String resourceType) {
-        Modifiable resource = repositories.get(resourceType).findOne(resourceId);
+        Modifiable resource = repositories.get(resourceType).findById(resourceId).get();
         boolean result = resource.getModified().isShared() || isAuthorizedToAccessContextResource(resourceId, resourceType);
         if (result) result = verifyResourceSpecificReadRules(resource);
         return result;
@@ -145,7 +145,7 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
         boolean allowed = authenticatedRequestContext.isSuperUser();
         if (!allowed) {
             String currentUserId = authenticatedRequestContext.getUserId();
-            Modifiable resource = repositories.get(resourceType).findOne(resourceId);
+            Modifiable resource = repositories.get(resourceType).findById(resourceId).get();
             // Allow if the current user is an editor on the source site, or created the source resource.
             allowed = securityService.unlock(currentUserId, "rubrics.editor", "/site/" + resource.getModified().getOwnerId())
                 || resource.getModified().getCreatorId().equalsIgnoreCase(currentUserId);
@@ -174,7 +174,7 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
                 result = true; // All evaluators in a context can view all evaluations
                 // NOTE: TBD Peer evaluators will require a more limited access to only their evaluations or a sub-context/group
                 // result = authenticatedRequestContext.getUserId().equalsIgnoreCase(((Evaluation)resource).getEvaluatorId());
-            } else if (authenticatedRequestContext.isEvalueeOnly()) {
+            } else if (authenticatedRequestContext.isEvaluee()) {
                 // Can always see Evaluation that they are evaluatedId on
                 result = authenticatedRequestContext.getUserId().equalsIgnoreCase(((Evaluation) resource).getEvaluatedItemOwnerId());
             }

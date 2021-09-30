@@ -32,9 +32,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 
-import lombok.extern.slf4j.Slf4j;
 import org.apache.wicket.AttributeModifier;
-import org.apache.wicket.request.mapper.parameter.PageParameters;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.ajax.form.AjaxFormComponentUpdatingBehavior;
 import org.apache.wicket.extensions.markup.html.form.select.IOptionRenderer;
@@ -62,10 +60,10 @@ import org.apache.wicket.model.Model;
 import org.apache.wicket.model.PropertyModel;
 import org.apache.wicket.model.ResourceModel;
 import org.apache.wicket.model.StringResourceModel;
+import org.apache.wicket.request.mapper.parameter.PageParameters;
 import org.apache.wicket.util.convert.IConverter;
 import org.apache.wicket.util.convert.converter.IntegerConverter;
-
-import org.sakaiproject.authz.api.Role;
+import org.sakaiproject.authz.api.GroupNotDefinedException;
 import org.sakaiproject.event.api.EventTrackingService;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.site.api.Group;
@@ -74,7 +72,6 @@ import org.sakaiproject.sitestats.api.PrefsData;
 import org.sakaiproject.sitestats.api.StatsManager;
 import org.sakaiproject.sitestats.api.event.EventInfo;
 import org.sakaiproject.sitestats.api.event.ToolInfo;
-import org.sakaiproject.sitestats.api.parser.EventParserTip;
 import org.sakaiproject.sitestats.api.report.ReportDef;
 import org.sakaiproject.sitestats.api.report.ReportManager;
 import org.sakaiproject.sitestats.api.report.ReportParams;
@@ -86,11 +83,13 @@ import org.sakaiproject.sitestats.tool.wicket.components.LastJobRun;
 import org.sakaiproject.sitestats.tool.wicket.components.Menus;
 import org.sakaiproject.sitestats.tool.wicket.components.StylableSelectOptions;
 import org.sakaiproject.sitestats.tool.wicket.components.StylableSelectOptionsGroup;
-import org.sakaiproject.sitestats.tool.wicket.components.SakaiDateTimeField;
 import org.sakaiproject.sitestats.tool.wicket.models.EventModel;
 import org.sakaiproject.sitestats.tool.wicket.models.ReportDefModel;
 import org.sakaiproject.sitestats.tool.wicket.models.ToolModel;
 import org.sakaiproject.sitestats.tool.wicket.util.Comparators;
+import org.sakaiproject.wicket.component.SakaiDateTimeField;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * @author Nuno Fernandes
@@ -124,7 +123,10 @@ public class ReportsEditPage extends BasePage {
 	private boolean					usersLoaded		= false;
 
 	private ZonedDateTime startDate, endDate;
-	
+
+	// namespace for sakai icons see _icons.scss
+	public static final String ICON_SAKAI = "icon-sakai--";
+
 	public ReportsEditPage() {
 		this(null, null, null);
 	}
@@ -184,8 +186,6 @@ public class ReportsEditPage extends BasePage {
 	public void renderHead(IHeaderResponse response) {
 		super.renderHead(response);
 		response.render(JavaScriptHeaderItem.forUrl(JQUERYSCRIPT));
-		response.render(JavaScriptHeaderItem.forUrl(JQUERYUISCRIPT));
-		response.render(JavaScriptHeaderItem.forUrl(DATEPICKERSCRIPT));
 		response.render(JavaScriptHeaderItem.forUrl(StatsManager.SITESTATS_WEBAPP + "/script/reports.js"));
 		StringBuilder onDomReady = new StringBuilder();
 		onDomReady.append("checkWhatSelection();");
@@ -547,10 +547,10 @@ public class ReportsEditPage extends BasePage {
 		startDate = ZonedDateTime.ofInstant(getReportParams().getWhenFrom().toInstant(), sys);
 		endDate = ZonedDateTime.ofInstant(getReportParams().getWhenTo().toInstant(), sys);
 		SakaiDateTimeField startDateField = new SakaiDateTimeField("whenFrom", new PropertyModel<>(this, "startDate"), sys);
-		startDateField.setUseTime(false);
+		startDateField.setUseTime(false).setAllowEmptyDate(false);
 		form.add(startDateField);
 		SakaiDateTimeField endDateField = new SakaiDateTimeField("whenTo", new PropertyModel<>(this, "endDate"), sys);
-		endDateField.setUseTime(false);
+		endDateField.setUseTime(false).setAllowEmptyDate(false);
 		form.add(endDateField);
 	}
 	
@@ -906,7 +906,7 @@ public class ReportsEditPage extends BasePage {
 		IStylableOptionRenderer optionRenderer = new IStylableOptionRenderer() {
 			public String getDisplayValue(Object object) {
 				SelectOption opt = (SelectOption) object;
-				return ((ToolModel) opt.getDefaultModel()).getToolName();				
+				return " " + ((ToolModel) opt.getDefaultModel()).getToolName();
 			}
 			public IModel getModel(Object value) {
 				SelectOption opt = (SelectOption) value;
@@ -916,13 +916,16 @@ public class ReportsEditPage extends BasePage {
 				SelectOption opt = (SelectOption) object;
 				ToolModel toolModel = (ToolModel) opt.getDefaultModel();
 				String toolId = toolModel.getToolId();
-				if(!ReportManager.WHAT_EVENTS_ALLTOOLS.equals(toolId)) {
-					String toolIconPath = "background-image: url(" + Locator.getFacade().getEventRegistryService().getToolIcon(toolId) + ");";
-					String style = "background-position:left center; background-repeat:no-repeat; margin-left:3px; padding-left:20px; "+toolIconPath;
-					return style;
-				}
-				return null;
-			}		
+				String style = "display:block;";
+				return style;
+			}
+			public String getIconClass(Object object) {
+				SelectOption opt = (SelectOption) object;
+				ToolModel toolModel = (ToolModel) opt.getDefaultModel();
+				String toolId = toolModel.getToolId();
+				String hclass = ICON_SAKAI + toolId.replace('.', '-');
+				return hclass;
+			}
 		};
 		Collections.sort(tools, Comparators.getOptionRendererComparator(optionRenderer));
 		// "all" tools (insert in position 0
@@ -952,10 +955,11 @@ public class ReportsEditPage extends BasePage {
 				WebMarkupContainer optgroupItem = new WebMarkupContainer(rv.newChildId());
 				optgroupItem.setRenderBodyOnly(true);
 				rv.add(optgroupItem);
-				String toolIconPath = "background-image: url(" + Locator.getFacade().getEventRegistryService().getToolIcon(toolInfo.getToolId()) + ");";
-				String style = "background-position:left top; background-repeat:no-repeat; margin-left:3px; padding-left:20px; "+toolIconPath;
-				String toolName = Locator.getFacade().getEventRegistryService().getToolName(toolInfo.getToolId());
-				StylableSelectOptionsGroup group = new StylableSelectOptionsGroup("group", new Model(toolName), new Model(style));
+				String style = "display:block;";
+				String toolId = toolInfo.getToolId();
+				String toolName = Locator.getFacade().getEventRegistryService().getToolName(toolId);
+				String hclass = ICON_SAKAI + toolId.replace('.', '-');
+				StylableSelectOptionsGroup group = new StylableSelectOptionsGroup("group", new Model(toolName), new Model(style), new Model(hclass));
 				optgroupItem.add(group);
 				SelectOptions selectOptions = new SelectOptions("selectOptions", events, new IOptionRenderer() {
 					public String getDisplayValue(Object object) {
@@ -1119,19 +1123,23 @@ public class ReportsEditPage extends BasePage {
 	}
 	
 	private List<String> getRoles() {
-		List<String> roles = new ArrayList<String>();
-		try{
-			Set<Role> roleSet = Locator.getFacade().getSiteService().getSite(siteId).getRoles();
-			Iterator<Role> i = roleSet.iterator();
-			while(i.hasNext()){
-				Role r = i.next();
-				roles.add(r.getId());
-			}
-		}catch(IdUnusedException e){
-			log.warn("Site does not exist: " + siteId);
-			
+		Set<String> siteIdWithRoles = new HashSet<>(Arrays.asList("/site/" + siteId));
+
+		if ("!admin".equals(siteId) || "~admin".equals(siteId)) {
+			siteIdWithRoles.add("!site.template");
+			siteIdWithRoles.add("!site.user");
+			Locator.getFacade().getSiteService().getSiteTypes().stream().map(s -> "!site.template." + s).forEach(siteIdWithRoles::add);
 		}
-		return roles;
+
+		Set<String> roles = new HashSet<String>();
+		for (String s : siteIdWithRoles) {
+			try {
+				Locator.getFacade().getAuthzGroupService().getAuthzGroup(s).getRoles().forEach(r -> roles.add(r.getId()));
+			} catch (GroupNotDefinedException e) {
+				log.debug("AuthzGroup does not exist, skipping: {}", s);
+			}
+		}
+		return new ArrayList<String>(roles);
 	}
 	
 	private boolean isToolSuported(final ToolInfo toolInfo) {
@@ -1194,7 +1202,7 @@ public class ReportsEditPage extends BasePage {
 
 		// check WHO
 		if(getReportParams().getWho().equals(ReportManager.WHO_ROLE)){
-			if(site.getUsersHasRole(getReportParams().getWhoRoleId()).isEmpty())
+			if(!siteId.equals("!admin") && !siteId.equals("~admin") && site.getUsersHasRole(getReportParams().getWhoRoleId()).isEmpty())
 				error((String) new ResourceModel("report_err_emptyrole").getObject());	
 		}else if(getReportParams().getWho().equals(ReportManager.WHO_GROUPS)){
 			if(getReportParams().getWhoGroupId() == null || getReportParams().getWhoGroupId().equals(""))

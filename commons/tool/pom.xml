@@ -10,7 +10,7 @@
     <parent>
         <artifactId>commons</artifactId>
         <groupId>org.sakaiproject.commons</groupId>
-        <version>21-SNAPSHOT</version>
+        <version>22-SNAPSHOT</version>
     </parent>
 
     <packaging>war</packaging>
@@ -57,16 +57,16 @@
             <artifactId>javax.servlet-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>log4j</groupId>
-            <artifactId>log4j</artifactId>
-        </dependency>
-        <dependency>
             <groupId>commons-fileupload</groupId>
             <artifactId>commons-fileupload</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>

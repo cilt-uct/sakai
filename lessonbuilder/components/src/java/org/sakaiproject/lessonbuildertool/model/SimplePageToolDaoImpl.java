@@ -36,13 +36,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.Iterator;
 import java.util.stream.Collectors;
 
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import org.hibernate.CacheMode;
-import org.hibernate.Query;
+import org.hibernate.query.Query;
+import org.hibernate.type.LongType;
+import org.hibernate.type.StringType;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.criterion.DetachedCriteria;
@@ -53,8 +56,8 @@ import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 
 import org.springframework.dao.DataAccessException;
-import org.springframework.orm.hibernate4.HibernateTemplate;
-import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
+import org.springframework.orm.hibernate5.HibernateTemplate;
+import org.springframework.orm.hibernate5.support.HibernateDaoSupport;
 import org.springframework.transaction.support.TransactionSynchronizationAdapter;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -94,6 +97,7 @@ import org.sakaiproject.lessonbuildertool.SimpleStudentPageImpl;
 import org.sakaiproject.lessonbuildertool.api.LessonBuilderConstants;
 import org.sakaiproject.lessonbuildertool.api.LessonBuilderEvents;
 import org.sakaiproject.lessonbuildertool.util.LessonsSubNavBuilder;
+import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SitePage;
 import org.sakaiproject.site.api.SiteService;
@@ -801,41 +805,25 @@ public class SimplePageToolDaoImpl extends HibernateDaoSupport implements Simple
 		}
 
 		try {
-			getHibernateTemplate().delete(o);
+			Object p = getDaoHibernateTemplate().merge(o);
+			getHibernateTemplate().delete(p);
+			getHibernateTemplate().flush();
 			return true;
 		} catch (DataAccessException | IllegalArgumentException e) {
-			try {
-				
-				/* If we have multiple objects of the same item, you must merge them
-				 * before deleting.  If the first delete fails, we merge and try again.
-				 */
-				getHibernateTemplate().delete(getHibernateTemplate().merge(o));
-				
-				return true;
-			}catch(DataAccessException | IllegalArgumentException ex) {
-				log.warn("Hibernate could not delete: " + ex.toString());
-				return false;
-			}
+			log.warn("Hibernate could not delete: {}", e.toString());
+			return false;
 		}
 	}
 
 	public boolean quickDelete(Object o) {
 		try {
-			getHibernateTemplate().delete(o);
+			Object p = getHibernateTemplate().merge(o);
+			getHibernateTemplate().delete(p);
+			getHibernateTemplate().flush();
 			return true;
 		} catch (DataAccessException | IllegalArgumentException e) {
-			try {
-				
-				/* If we have multiple objects of the same item, you must merge them
-				 * before deleting.  If the first delete fails, we merge and try again.
-				 */
-				getHibernateTemplate().delete(getHibernateTemplate().merge(o));
-				
-				return true;
-			}catch(DataAccessException ex) {
-				log.warn("Hibernate could not delete: " + e.toString());
-				return false;
-			}
+			log.warn("Hibernate could not delete: {}", e.toString());
+			return false;
 		}
 	}
 
@@ -1323,8 +1311,8 @@ public class SimplePageToolDaoImpl extends HibernateDaoSupport implements Simple
 	public void incrementQRCount(long questionId, long responseId) {
 		getHibernateTemplate().execute(session -> {
 			Query query = session.createQuery("update SimplePageQuestionResponseTotalsImpl s set s.count = s.count + 1 where s.questionId= :questionId and s.responseId = :responseId");
-			query.setLong("questionId", questionId);
-			query.setLong("responseId", responseId);
+			query.setParameter("questionId", questionId, LongType.INSTANCE);
+			query.setParameter("responseId", responseId, LongType.INSTANCE);
 			return query.executeUpdate();
 		});
 	}
@@ -1473,8 +1461,8 @@ public class SimplePageToolDaoImpl extends HibernateDaoSupport implements Simple
 	    
 	    // normal case -- no flag
 	    if (needsList == null || needsList.size() == 0) {
-		return 0;
-	    }	    
+	      return 0;
+	    }
 
 	    // there is a flag, do something more carefully avoiding race conditions
 	    //   There is a possible timing issue if someone copies data into the site after the
@@ -1536,7 +1524,7 @@ public class SimplePageToolDaoImpl extends HibernateDaoSupport implements Simple
 		tx = session.beginTransaction();
 
 		Query query = session.createQuery("from SimplePagePropertyImpl as prop where prop.attribute = :attr");
-		query.setString("attr", property);
+		query.setParameter("attr", property, StringType.INSTANCE);
 
 		SimplePageProperty prop = (SimplePageProperty)query.uniqueResult();
 
@@ -1594,7 +1582,7 @@ public class SimplePageToolDaoImpl extends HibernateDaoSupport implements Simple
 		tx = session.beginTransaction();
 
 		Query query = session.createQuery("from SimplePagePropertyImpl as prop where prop.attribute = :attr");
-		query.setString("attr", property);
+		query.setParameter("attr", property, StringType.INSTANCE);
 
 		SimplePageProperty prop = (SimplePageProperty)query.uniqueResult();
 
@@ -1872,7 +1860,8 @@ public class SimplePageToolDaoImpl extends HibernateDaoSupport implements Simple
 				" p2.releaseDate AS pageReleaseDate," +
 				" log.complete AS completed," +
 				" i.required," +
-				" i.prerequisite" +
+				" i.prerequisite," +
+				" i.item_groups" +
 				" FROM lesson_builder_pages p" +
 				" INNER JOIN SAKAI_SITE_TOOL s" +
 				"   ON p.toolId = s.page_id" +
@@ -1893,19 +1882,24 @@ public class SimplePageToolDaoImpl extends HibernateDaoSupport implements Simple
 			fields[i+1] = pageIds.get(i);
 		}
 
-		final LessonsSubNavBuilder lessonsSubNavBuilder = new LessonsSubNavBuilder(siteId, canSeeAll);
+		try {
+			final List groupIds = siteService.getSite(siteId).getGroupsWithMember(userId).stream().map(Group::getId).collect(Collectors.toList());
 
-		sqlService.dbRead(sql, fields, new SqlReader() {
-			public Object readSqlResultRecord(final ResultSet result) {
+			final LessonsSubNavBuilder lessonsSubNavBuilder = new LessonsSubNavBuilder(siteId, canSeeAll, groupIds);
+
+			sqlService.dbRead(sql, fields, (SqlReader) result -> {
 				try {
 					return lessonsSubNavBuilder.processResult(result);
 				} catch (SQLException e) {
 					return null;
 				}
-			}
-		});
+			});
 
-		return lessonsSubNavBuilder.toJSON();
+			return lessonsSubNavBuilder.toJSON();
+		}catch(Exception impossible){
+			log.error("Exception getting groups for site: " + impossible);
+			return null;
+		}
 	}
 
     // returns top level pages; null if none

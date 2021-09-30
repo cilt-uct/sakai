@@ -77,6 +77,7 @@ import org.sakaiproject.util.ResourceLoader;
 @Slf4j
 public class BeginDeliveryActionListener implements ActionListener
 {
+  private static final ResourceLoader rl = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.DeliveryMessages");
   private RubricsService rubricsService = ComponentManager.get(RubricsService.class);
 
   /**
@@ -101,11 +102,12 @@ public class BeginDeliveryActionListener implements ActionListener
       // e.g. take assessment via url, actionString is set by LoginServlet.
       // preview and take assessment is set by the parameter in the jsp pages
       delivery.setActionString(actionString);
-      if ("reviewAssessment".equals(actionString) || "takeAssessment".equals(actionString)) {
-        delivery.setRbcsToken(rubricsService.generateJsonWebToken(RubricsConstants.RBCS_TOOL_SAMIGO));
-      }
     }
-    
+
+    if (StringUtils.equalsAny(delivery.getActionString(), "reviewAssessment", "takeAssessment", "takeAssessmentViaUrl", "previewAssessment")) {
+      delivery.setRbcsToken(rubricsService.generateJsonWebToken(RubricsConstants.RBCS_TOOL_SAMIGO, delivery.getSiteId()));
+    }
+
     if ("previewAssessment".equals(delivery.getActionString()) || "editAssessment".equals(actionString)) {
     	String isFromPrint = ContextUtil.lookupParam("isFromPrint");
         if (StringUtils.isNotBlank(isFromPrint)) {
@@ -113,7 +115,6 @@ public class BeginDeliveryActionListener implements ActionListener
     	}
     } else {
     	delivery.setFromPrint(false);
-        delivery.calculateMinutesAndSecondsLeft();
     }
 
     int action = delivery.getActionMode();
@@ -173,7 +174,7 @@ public class BeginDeliveryActionListener implements ActionListener
     delivery.setProtocol(ContextUtil.getProtocol());
 
     ServerConfigurationService serverConfigurationService = ComponentManager.get(ServerConfigurationService.class);
-    Long sizeMax = Long.valueOf(serverConfigurationService.getInt("samigo.sizeMax", 40960));
+    Long sizeMax = Long.valueOf(serverConfigurationService.getInt("samigo.sizeMax", 20480));
     delivery.setFileUploadSizeMax(Math.round(sizeMax.floatValue()/1024));
     delivery.setPublishedAssessment(pub);
 
@@ -407,7 +408,7 @@ public class BeginDeliveryActionListener implements ActionListener
     				delivery.setTimeLimit_minute(minute);
     				delivery.setTimeExpired(false);
     				StringBuilder sb = new StringBuilder();
-    				ResourceLoader rl = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.DeliveryMessages");
+
     				if (hour == 0) {
     					if (minute == 1) {
     						sb.append(minute).append(" ").append(rl.getString("time_limit_minute"));

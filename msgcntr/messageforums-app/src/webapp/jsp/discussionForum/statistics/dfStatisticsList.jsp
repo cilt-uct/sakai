@@ -12,13 +12,22 @@
        		<script>includeLatestJQuery("msgcntr");</script>
        		<script src="/messageforums-tool/js/sak-10625.js"></script>
        		<link rel="stylesheet" type="text/css" href="/messageforums-tool/css/msgcntr_statistics.css" />
+        <script>
+        $(document).ready(function() {
+            var menuLink = $('#forumsStatisticsMenuLink');
+            var menuLinkSpan = menuLink.closest('span');
+            menuLinkSpan.addClass('current');
+            menuLinkSpan.html(menuLink.text());
+        });
+        </script>
+        <%@ include file="/jsp/discussionForum/menu/forumsMenu.jsp" %>
   		<h:panelGrid columns="2" width="100%" styleClass="navPanel  specialLink">
           <h:panelGroup>
 			  <div class="page-header">
 			 	<f:verbatim><h1></f:verbatim>
 				  <h:commandLink action="#{ForumTool.processActionHome}" value="#{msgs.cdfm_message_forums}" title=" #{msgs.cdfm_message_forums}"
 						rendered="#{ForumTool.messagesandForums}" />
-				  <h:commandLink action="#{ForumTool.processActionHome}" value="#{msgs.cdfm_discussion_forums}" title=" #{msgs.cdfm_discussion_forums}"
+				  <h:commandLink action="#{ForumTool.processActionHome}" value="#{msgs.cdfm_discussions}" title=" #{msgs.cdfm_discussions}"
 						rendered="#{ForumTool.forumsTool}" />
 				  <h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " />
 				  <h:outputText value="#{msgs.stat_list}" />

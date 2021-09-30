@@ -11,7 +11,7 @@
     <parent>
         <artifactId>commons</artifactId>
         <groupId>org.sakaiproject.commons</groupId>
-        <version>21-SNAPSHOT</version>
+        <version>22-SNAPSHOT</version>
     </parent>
 
    <properties>
@@ -84,6 +84,14 @@
             <artifactId>commons-lang3</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-collections4</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
+        </dependency>
+        <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>4.0</version>
@@ -107,18 +115,6 @@
             </resource>
         </resources>
         <!-- unit testing -->
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <!--
-                    By default, the surefire plugin will automatically include all test classes with the following wildcard patterns:
-                    "**/Test*.java" - includes all of its subdirectory and all java filenames that start with "Test".
-                    "**/*Test.java" - includes all of its subdirectory and all java filenames that end with "Test".
-                    "**/*TestCase.java" - includes all of its subdirectory and all java filenames that end with "TestCase".
-                -->
-            </plugin>
-        </plugins>
         <testResources>
             <testResource>
                 <directory>${basedir}/src/test</directory>

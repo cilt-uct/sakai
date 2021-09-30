@@ -11,9 +11,22 @@
 		<script>includeLatestJQuery("msgcntr");</script>
 		<script src="/messageforums-tool/js/sak-10625.js"></script>
 		<script src="/messageforums-tool/js/forum.js"></script>
-		<script type="module" src="/rubrics-service/webcomponents/rubric-association-requirements.js<h:outputText value="#{ForumTool.CDNQuery}" />"></script>
+		<script src="/webcomponents/rubrics/sakai-rubrics-utils.js<h:outputText value="#{ForumTool.CDNQuery}" />"></script>
+		<script type="module" src="/webcomponents/rubrics/rubric-association-requirements.js<h:outputText value="#{ForumTool.CDNQuery}" />"></script>
+		<script>
+			$(document).ready(function() {
+				var menuLink = $('#forumsMainMenuLink');
+				var menuLinkSpan = menuLink.closest('span');
+				menuLinkSpan.addClass('current');
+				menuLinkSpan.html(menuLink.text());
+
+				setupLongDesc();
+
+			});
+		</script>
 <!--jsp/discussionForum/forum/dfForumDetail.jsp-->
 
+		<%@ include file="/jsp/discussionForum/menu/forumsMenu.jsp" %>
 			<h:outputText styleClass="showMoreText"  style="display:none" value="#{msgs.cdfm_show_more_full_description}"  />
 
 
@@ -21,7 +34,7 @@
           		<%-- Display the proper home page link: either Messages & Forums OR Forums --%>
 			      <h:commandLink action="#{ForumTool.processActionHome}" value="#{msgs.cdfm_message_forums}" title=" #{msgs.cdfm_message_forums}"
 			      		rendered="#{ForumTool.messagesandForums}" />
-			      <h:commandLink action="#{ForumTool.processActionHome}" value="#{msgs.cdfm_discussion_forums}" title=" #{msgs.cdfm_discussion_forums}"
+			      <h:commandLink action="#{ForumTool.processActionHome}" value="#{msgs.cdfm_discussions}" title=" #{msgs.cdfm_discussions}"
 			      		rendered="#{ForumTool.forumsTool}" />
 			      <h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " />
 			      <h:outputText value="#{ForumTool.selectedForum.forum.title}" />
@@ -68,7 +81,7 @@
 				<h:panelGroup>
 					<h:panelGroup layout="block" id="openLinkBlock" styleClass="toggleParent openLinkBlock #{ForumTool.alwaysShowFullDesc ? 'display-none' : ''}">
 						<a href="#" id="showMessage" class="toggle show">
-							<h:graphicImage url="/images/expand.gif" alt=""/>
+							<h:graphicImage url="/images/collapse.gif" alt=""/>
 							<h:outputText value=" #{msgs.cdfm_read_full_description}" />
 							<h:outputText value=" #{msgs.cdfm_and}" rendered="#{!empty ForumTool.selectedForum.attachList}"/>
 							<h:outputText value=" #{msgs.cdfm_attach}" rendered="#{!empty ForumTool.selectedForum.attachList}"/>
@@ -76,7 +89,7 @@
 					</h:panelGroup>
 					<h:panelGroup layout="block" id="hideLinkBlock" styleClass="toggleParent hideLinkBlock #{ForumTool.alwaysShowFullDesc ? '' : 'display-none'}">
 						<a href="#" id="hideMessage" class="toggle show">
-							<h:graphicImage url="/images/collapse.gif" alt="" />
+							<h:graphicImage url="/images/expand.gif" alt="" />
 							<h:outputText value=" #{msgs.cdfm_hide_full_description}"/>
 							<h:outputText value=" #{msgs.cdfm_and}" rendered="#{!empty ForumTool.selectedForum.attachList}" />
 							<h:outputText value=" #{msgs.cdfm_attach}" rendered="#{!empty ForumTool.selectedForum.attachList}"/>
@@ -190,7 +203,7 @@
 							<h:panelGroup layout="block" id="openLinkBlock" styleClass="toggleParent openLinkBlock #{ForumTool.alwaysShowFullDesc ? 'display-none' : ''}">
 								<a href="#" id="showMessage" class="toggle show">
 									<h:graphicImage url="/images/expand.gif" alt=""/>
-									<h:outputText value=" #{msgs.cdfm_read_full_description}" />
+									<h:outputText value=" #{msgs.cdfm_hide_full_description}" />
 									<h:outputText value=" #{msgs.cdfm_and}" rendered="#{!empty topic.attachList}"/>
 									<h:outputText value=" #{msgs.cdfm_attach}" rendered="#{!empty topic.attachList}"/>
 								</a>
@@ -198,7 +211,7 @@
 							<h:panelGroup layout="block" id="hideLinkBlock" styleClass="toggleParent hideLinkBlock #{ForumTool.alwaysShowFullDesc ? '' : 'display-none'}">
 								<a href="#" id="hideMessage" class="toggle show">
 									<h:graphicImage url="/images/collapse.gif" alt="" />
-									<h:outputText value=" #{msgs.cdfm_hide_full_description}"/>
+									<h:outputText value=" #{msgs.cdfm_read_full_description}"/>
 									<h:outputText value=" #{msgs.cdfm_and}" rendered="#{!empty topic.attachList}" />
 									<h:outputText value=" #{msgs.cdfm_attach}" rendered="#{!empty topic.attachList}"/>
 								</a>
@@ -244,7 +257,6 @@
   				mySetMainFrameHeight('<%= org.sakaiproject.util.Web.escapeJavascript(thisId)%>');
   			}
 			</script> 
-<h:outputText escape="false" value="<script>$(document).ready(function() {setupLongDesc()});</script>"  rendered="#{!ForumTool.showShortDescription}"/>
 	 </h:form>
 	 <h:outputText value="#{msgs.cdfm_insufficient_privileges_view_forum}" rendered="#{ForumTool.selectedForum.forum.draft && ForumTool.selectedForum.forum.createdBy != ForumTool.userId}" />
     </sakai:view>

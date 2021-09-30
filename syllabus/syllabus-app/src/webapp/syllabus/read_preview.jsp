@@ -1,6 +1,6 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://sakaiproject.org/jsf/syllabus" prefix="syllabus" %>
 <% response.setContentType("text/html; charset=UTF-8"); %>
 <f:view>
@@ -11,8 +11,17 @@
 
 	<sakai:view_container>
 		<sakai:view_content>
-			<h:outputText value="#{SyllabusTool.alertMessage}" styleClass="sak-banner-error" rendered="#{SyllabusTool.alertMessage != null}" />
+		<script>includeLatestJQuery('read_preview.jsp');</script>
+		<script>
+			jQuery(document).ready(function() {
+				var menuLink = $('#syllabusMenuBulkEditLink');
+				menuLink.addClass('current');
+				menuLink.find('a').removeAttr('href');
+			});
+		 </script>
 			<h:form>
+			<%@ include file="mainMenu.jsp" %>
+			<h:outputText value="#{SyllabusTool.alertMessage}" styleClass="sak-banner-error" rendered="#{SyllabusTool.alertMessage != null}" />
 		  	<sakai:tool_bar_message value="#{msgs.previewNotice}" />
 			<h4>
 				<h:outputText value="#{SyllabusTool.syllabusDataTitle}" />

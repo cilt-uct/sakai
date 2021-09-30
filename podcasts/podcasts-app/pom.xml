@@ -4,7 +4,7 @@
   <parent>
     <artifactId>podcasts-base</artifactId>
     <groupId>org.sakaiproject</groupId>
-    <version>21-SNAPSHOT</version>
+    <version>22-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
   <name>sakai-podcasts</name>
@@ -29,8 +29,8 @@
       <artifactId>sakai-component-manager</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.sakaiproject.jsf</groupId>
-      <artifactId>jsf-tool-sun</artifactId>
+      <groupId>org.sakaiproject.jsf2</groupId>
+      <artifactId>jsf2-tool-sun</artifactId>
       <type>pom</type>
     </dependency>
     <dependency>
@@ -70,8 +70,14 @@
       <artifactId>commons-lang3</artifactId>
     </dependency>
     <dependency>
-        <groupId>javax.servlet</groupId>
-        <artifactId>jstl</artifactId>
+      <groupId>org.jboss.weld.servlet</groupId>
+      <artifactId>weld-servlet-shaded</artifactId>
+      <version>${sakai.weld.shaded.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>jakarta.servlet.jsp.jstl</groupId>
+      <artifactId>jakarta.servlet.jsp.jstl-api</artifactId>
+      <version>${sakai.jakarta.jstl-api.version}</version>
     </dependency>
   </dependencies>
 <!-- needed so it will compile the java files,

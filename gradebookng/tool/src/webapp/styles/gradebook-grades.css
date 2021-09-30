@@ -36,7 +36,7 @@
 /* Toolbar */
 #gradebookGradesToolbar {
   position: relative;
-  background: #FAFAFA;
+  background: var(--sakai-background-color-1);
   font-size: 0.9em;
   overflow: visible;
   padding: 0 0.4em;
@@ -91,20 +91,20 @@
   font-size: 12px;
 }
 #gradebookGradesToolbar .gb-item-summary.warn-items-hidden .gb-item-summary-counts {
-  color: #CA7311;
+  color: var(--sakai-color-orange);
   font-weight: bold;
 }
 /* Toolbar - Show/Hide grade items */
 #gradebookGradesToolbar .gb-toggle-grade-items-panel {
   position: absolute;
-  border: 1px solid #bdbdbd;
+  border: 1px solid var(--sakai-border-color);
   min-width: 200px;
   max-width: 240px;
   min-height: 100px;
   max-height: 340px;
   top: 38px;
-  background-color: #FFF;
-  box-shadow: 1px 1px 2px #AAA;
+  background-color: var(--sakai-background-color-1);
+  box-shadow: var(--elevation-2dp);
   z-index: 200;
   overflow: auto;
   padding-right: 14px;
@@ -126,7 +126,7 @@
   padding-right: 1.5em;
 }
 #gradeItemsTogglePanel label:hover {
-  background-color: #FAFAFA;
+  background-color: var(--sakai-background-color-2);
 }
 #gradeItemsTogglePanel input:before {
   height: 16px;
@@ -142,13 +142,13 @@
 }
 #gradeItemsTogglePanel .gb-item-category-filter .weighting {
   font-weight: 200;
-  color: #999;
+  color: var(--sakai-text-color-dimmed);
 }
 #gradeItemsTogglePanel .gb-item-filter-signal {
   height: 1.2em;
   width: 1.2em;
-  border: 1px solid #EEE;
-  background-color: #EEE;
+  border: 1px solid var(--sakai-border-color);
+  background-color: var(--sakai-color-gray);
   position: absolute;
   right: 0;
   top: 50%;
@@ -156,7 +156,7 @@
 }
 #gradeItemsTogglePanel .off .gb-item-filter-signal,
 #gradeItemsTogglePanel .partial .gb-item-filter-signal {
-  background-color: #FFF !important;
+  background-color: var(--sakai-background-color-1) !important;
 }
 #gradeItemsTogglePanel .gb-item-category-filter,
 #gradeItemsTogglePanel .gb-item-filter,
@@ -201,7 +201,7 @@
   border-bottom: none;
 }
 #gradeItemsTogglePanel .gb-item-filter-group {
-  border-bottom: 1px dotted #DDD;
+  border-bottom: 1px dotted var(--sakai-border-color);
   padding-bottom: 5px;
   margin-bottom: 5px;
 }
@@ -251,7 +251,7 @@ div.wicket-modal div.w_caption {
   height: auto;
 }
 div.wicket-mask-dark {
-  background-color: #FFF;
+  background-color: var(--sakai-background-color-1);
   opacity: 0.6;
   filter: alpha(opacity=6);
 }
@@ -263,7 +263,7 @@ div.wicket-mask-dark {
 }
 div.wicket-mask-transparent {
   opacity: 0.1; 
-  background-color: black; 
+  background-color: var(--sakai-color-black); 
   filter: alpha(opacity=10); 
 }
 /* IE9-11 does not support a blur filter. As such, we fallback to an opaque mask */
@@ -277,7 +277,7 @@ body:nth-child(n) div.wicket-mask-dark {
 @media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {
   div.wicket-mask-dark {
     opacity: 0.95;
-    background-color: #000;
+    background-color: var(--sakai-color-black);
   }
 }
 div.wicket-modal div.w_content_container {
@@ -289,7 +289,7 @@ div.wicket-modal div.w_content_container > div > form > h2:first-child {
   /* remove the large morpheus top padding and margin from the first header element */
   padding: 0 0 20px;
   margin: 0 0 20px;
-  border-bottom: 1px solid #EEE;
+  border-bottom: 1px solid var(--sakai-border-color);
 }
 /* override Bootstrap for the date picker */
 div.wicket-modal div.w_content_container .input-group-btn button {
@@ -319,7 +319,14 @@ div.wicket-modal div.w_caption {
   cursor: move;
 }
 div.wicket-modal div.w_right > div {
-  box-shadow: 0 0 5px 2px #444;
+  box-shadow: var(--elevation-4dp);
+}
+
+div.wicket-modal .w_blue div.w_caption,
+div.wicket-modal .w_blue div.w_content
+{
+  background: var(--sakai-background-color-1);
+  color: var(--sakai-text-color-1);
 }
 
 /** temporary override for page width **/
@@ -370,7 +377,7 @@ div.wicket-modal div.w_right > div {
   padding: 4px;
   font-size: 12px;
   line-height: 35px;
-  color: #666;
+  color: var(--sakai-text-color-2);
   margin: 0 0 0 10px;
 }
 
@@ -380,7 +387,7 @@ div.wicket-modal div.w_right > div {
   z-index: 99999999;
   top: 80px;
   padding: 5px;
-  box-shadow: 1px 1px 5px #999;
+  box-shadow: var(--elevation-2dp);
   font-size: 12px;
   width: 350px;
   margin-left: -175px;
@@ -395,12 +402,12 @@ div.wicket-modal div.w_right > div {
 /* Summary styles */
 #instructorView.tab-pane,
 #studentView.tab-pane {
-  border-top: 1px dotted #EEE;
+  border-top: 1px dotted var(--sakai-border-color);
   margin-top: 20px;
   padding-top: 20px;
 }
 .gb-summary-grade-score-outof {
-  color: #999;
+  color: var(--sakai-text-color-dimmed);
 }
 .gb-summary-grade-panel {
   position: relative;
@@ -441,6 +448,11 @@ div.wicket-modal div.w_right > div {
 .gb-summary-grade-panel .gb-summary-category-toggle:active {
   text-decoration: none;
   display: flex;
+  flex-grow: 2;
+}
+.gb-summary-grade-panel .gb-summary-category-toggle-container {
+  display: flex;
+  justify-content: space-between;
 }
 .gb-summary-grade-title {
   font-weight: normal;
@@ -449,7 +461,9 @@ div.wicket-modal div.w_right > div {
 .gb-summary-grade-score sakai-rubric-student-button {
     float: right;
 }
-
+.gb-summary-grade-panel .gb-summary-grade-stats.pull-right {
+  margin-left: 8px;
+}
 .gb-summary-grade-panel .gb-summary-grade-stats, .gb-summary-grade-panel .gb-summary-grade-stats:hover {
   text-decoration: none;
 }
@@ -503,7 +517,7 @@ div.wicket-modal div.w_right > div {
   -webkit-overflow-scrolling: touch;
   padding: 10px 0;
   margin: 0 0 10px;
-  border-bottom: 1px solid #DDD;
+  border-bottom: 1px solid var(--sakai-border-color);
 }
 .gb-summary-grade-panel .gb-summary-grade-flags {
   padding-left: 10px;
@@ -511,7 +525,7 @@ div.wicket-modal div.w_right > div {
 }
 .gb-summary-not-released-flag,
 .gb-summary-not-released-message {
-  color: #888;
+  color: var(--sakai-text-color-dimmed);
 }
 #studentGradeSummary {
   margin: 30px 0 0;
@@ -540,7 +554,7 @@ div.wicket-modal div.w_right > div {
 }
 .gb-summary-category-row td,
 .gb-summary-category-row th {
-  background-color: #F4F4F4;
+  background-color: var(--sakai-background-color-2);
 }
 .gb-summary-grade-comments div{
   overflow-y: scroll;
@@ -563,7 +577,7 @@ div.wicket-modal div.w_right > div {
 
 .gb-summary-grade-score-dropped
 {
-  background-image: repeating-linear-gradient(135deg, #eee, #eee 5px, #fff 5px, #fff 10px);
+  background-image: repeating-linear-gradient(135deg, var(--sakai-background-color-2), var(--sakai-background-color-2) 5px, var(--sakai-background-color-1) 5px, var(--sakai-background-color-1) 10px);
   position: relative;
 }
 
@@ -576,7 +590,7 @@ div.wicket-modal div.w_right > div {
 .gb-summary-grade-category-dropInfo
 {
   font-size: 0.9em;
-  color: #999999;
+  color: var(--sakai-text-color-dimmed);
   font-weight: normal;
   margin: 0 0 0 24px;
 }
@@ -589,7 +603,7 @@ div.wicket-modal div.w_right > div {
 .gb-summary-grade-category-col-dropInfo
 {
   font-size: 0.9em;
-  color: #999999;
+  color: var(--sakai-text-color-dimmed);
   font-weight: normal;
   margin: 0;
 }
@@ -604,8 +618,8 @@ div.wicket-modal div.w_right > div {
   padding: 1em;
   font-size: 20px;
   text-align: center;
-  color: #666;
-  background-color: #eee;
+  color: var(--sakai-text-color-2);
+  background-color: var(--sakai-background-color-3);
   -ms-grid-row: 3;
   -ms-grid-row-span: 1;
   -ms-grid-column: 2;
@@ -669,7 +683,7 @@ div.wicket-modal div.w_right > div {
 
 #gradeTableWrapper
 {
-  background-color: #eee;
+  background-color: var(--sakai-background-color-2);
 }
 
 @media all and (max-width: 1024px)
@@ -712,12 +726,12 @@ div.wicket-modal div.w_right > div {
   text-align: center;
   line-height: 1em;
   font-size: 16px;
-  color: #666;
+  color: var(--sakai-text-color-2);
 }
 
 .gradeTableOuterWrapper
 {
-  border-right: 1px solid #ddd;
+  border-right: 1px solid var(--sakai-border-color);
   position: relative;
 }
 

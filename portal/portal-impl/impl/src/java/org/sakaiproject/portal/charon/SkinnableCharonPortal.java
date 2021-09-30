@@ -157,7 +157,7 @@ public class SkinnableCharonPortal extends HttpServlet implements Portal
 	 * messages.
 	 */
 	private static ResourceLoader rloader = new ResourceLoader("sitenav");
-	private static ResourceLoader cmLoader = new Resource().getLoader("org.sakaiproject.portal.api.PortalService", "connection-manager");
+	private static ResourceLoader cmLoader = Resource.getResourceLoader("org.sakaiproject.portal.api.PortalService", "connection-manager");
 
 	/**
 	 * Parameter value to indicate to look up a tool ID within a site
@@ -228,6 +228,10 @@ public class SkinnableCharonPortal extends HttpServlet implements Portal
 
 	private boolean sakaiTutorialEnabled = true;
 	
+	private boolean sakaiThemesEnabled = true;
+	private boolean sakaiThemeSwitcherEnabled = false;
+	private boolean sakaiThemesAutoDetectDarkEnabled = false;
+
 	private String handlerPrefix;
 
 	private PageFilter pageFilter = new PageFilter() {
@@ -558,10 +562,6 @@ public class SkinnableCharonPortal extends HttpServlet implements Portal
 				rcontext.put("currentSite", siteView.getRenderContextObject());
 			}
 		}
-
-		//List l = siteHelper.convertSitesToMaps(req, mySites, prefix, siteId, myWorkspaceSiteId,
-		//		includeSummary, expandSite, resetTools, doPages, toolContextPath,
-		//		loggedIn);
 
 		SiteView siteView = siteHelper.getSitesView(SiteView.View.ALL_SITES_VIEW, req, session, siteId );
 		siteView.setPrefix(prefix);
@@ -1335,6 +1335,12 @@ public class SkinnableCharonPortal extends HttpServlet implements Portal
 		headJs.append("/library/js/headscripts.js");
 		headJs.append(PortalUtils.getCDNQuery());
 		headJs.append("\"></script>\n");
+
+		String [] parts = getParts(req);
+		if ((parts.length > 2) && (parts[1].equals("tool"))) {
+			headJs.append("<script src=\""+PortalUtils.getWebjarsPath()+"momentjs/"+PortalUtils.MOMENTJS_VERSION+"/min/moment-with-locales.min.js"+PortalUtils.getCDNQuery()+"\"></script>\n");
+		}
+
 		headJs.append("<script type=\"text/javascript\">var sakai = sakai || {}; sakai.editor = sakai.editor || {}; " +
 				"sakai.editor.editors = sakai.editor.editors || {}; " +
 				"sakai.editor.editors.ckeditor = sakai.editor.editors.ckeditor || {}; " +
@@ -1351,6 +1357,7 @@ public class SkinnableCharonPortal extends HttpServlet implements Portal
 		}
 		headJs.append("sakai.editor.siteToolSkin = '" + CSSUtils.getCssToolSkin(skin) + "';\n");
 		headJs.append("sakai.editor.sitePrintSkin = '" + CSSUtils.getCssPrintSkin(skin) + "';\n");
+		headJs.append("sakai.editor.sitePropertiesSkin = '" + CSSUtils.getCssPropertiesSkin(skin) + "';\n");
 		headJs.append("sakai.editor.editors.ckeditor.browser = '"+ EditorConfiguration.getCKEditorFileBrowser()+ "';\n");
 		headJs.append("</script>\n");
 		headJs.append(preloadScript);
@@ -1401,13 +1408,16 @@ public class SkinnableCharonPortal extends HttpServlet implements Portal
 		}
 
 		StringBuilder bodyonload = new StringBuilder();
+		String bodyclass = "Mrphs-container";
 		if (p != null)
 		{
 			String element = Web.escapeJavascript("Main" + p.getId());
 			bodyonload.append("setMainFrameHeight('" + element + "');");
+			bodyclass += " Mrphs-" + p.getToolId().replace(".","-");
 		}
 		bodyonload.append("setFocus(focus_path);");
 		req.setAttribute("sakai.html.body.onload", bodyonload.toString());
+		req.setAttribute("sakai.html.body.class", bodyclass.toString());
 
 		portalService.getRenderEngine(portalContext, req).setupForward(req, res, p, skin);
 	}
@@ -1585,7 +1595,7 @@ public class SkinnableCharonPortal extends HttpServlet implements Portal
 			String thisUser = SessionManager.getCurrentSessionUserId();
 			
 			//Get user preferences
-            Preferences prefs = preferencesService.getPreferences(thisUser);
+			Preferences prefs = preferencesService.getPreferences(thisUser);
 
 			boolean showServerTime = ServerConfigurationService.getBoolean("portal.show.time", true);
 			if (showServerTime) {
@@ -1728,8 +1738,20 @@ public class SkinnableCharonPortal extends HttpServlet implements Portal
                         		}
                         	}
                         }
-			// rcontext.put("bottomNavSitNewWindow",
-			// Web.escapeHtml(rb.getString("site_newwindow")));
+
+			if(sakaiThemesEnabled) {
+				rcontext.put("sakaiThemesEnabled", true);
+
+				if(sakaiThemeSwitcherEnabled) {
+					rcontext.put("themeSwitcher", true);
+				}
+				
+				if(sakaiThemesAutoDetectDarkEnabled) {
+					rcontext.put("themesAutoDetectDark", true);
+				}
+				String userTheme = StringUtils.defaultIfEmpty(prefs.getProperties(org.sakaiproject.user.api.PreferencesService.USER_SELECTED_UI_THEME_PREFS).getProperty("theme"), "sakaiUserTheme-notSet");
+				rcontext.put("userTheme", userTheme);
+			}
 
 			if ((poweredByUrl != null) && (poweredByImage != null)
 					&& (poweredByAltText != null)
@@ -1747,7 +1769,6 @@ public class SkinnableCharonPortal extends HttpServlet implements Portal
 						l.add(m);
 					}
 					rcontext.put("bottomNavPoweredBy", l);
-
 				}
 			}
 			else
@@ -1773,6 +1794,9 @@ public class SkinnableCharonPortal extends HttpServlet implements Portal
 				int bullhornAlertInterval = ServerConfigurationService.getInt("portal.bullhorns.poll.interval", 240000);
 				rcontext.put("bullhornsPollInterval", bullhornAlertInterval);
 			}
+
+			String faviconURL = ServerConfigurationService.getString("portal.favicon.url");
+			rcontext.put("faviconURL", faviconURL);
 
 			// SAK-25931 - Do not remove this from session here - removal is done by /direct
 	                Session s = SessionManager.getCurrentSession();
@@ -2045,6 +2069,10 @@ public class SkinnableCharonPortal extends HttpServlet implements Portal
 		gatewaySiteUrl = ServerConfigurationService.getString("gatewaySiteUrl", null);
 		
 		sakaiTutorialEnabled = ServerConfigurationService.getBoolean("portal.use.tutorial", true);
+
+		sakaiThemesEnabled = ServerConfigurationService.getBoolean("portal.themes", true);
+		sakaiThemeSwitcherEnabled = ServerConfigurationService.getBoolean("portal.themes.switcher", false);
+		sakaiThemesAutoDetectDarkEnabled = ServerConfigurationService.getBoolean("portal.themes.autoDetectDark", true);
 
 		basicAuth = new BasicAuth();
 		basicAuth.init();

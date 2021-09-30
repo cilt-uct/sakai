@@ -10,7 +10,7 @@
 	<parent>
 		<groupId>org.sakaiproject.profile2</groupId>
 		<artifactId>profile2</artifactId>
-	    <version>21-SNAPSHOT</version>
+	    <version>22-SNAPSHOT</version>
 	</parent>
 	<properties>
 		<deploy.target>components</deploy.target>
@@ -122,18 +122,6 @@
 	
 	
 		<!-- unit testing -->
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <!-- 
-                    By default, the surefire plugin will automatically include all test classes with the following wildcard patterns:
-                    "**/Test*.java" - includes all of its subdirectory and all java filenames that start with "Test".
-                    "**/*Test.java" - includes all of its subdirectory and all java filenames that end with "Test".
-                    "**/*TestCase.java" - includes all of its subdirectory and all java filenames that end with "TestCase".
-                -->
-            </plugin>
-        </plugins>
         <testResources>
             <testResource>
                 <directory>${basedir}/../pack/src/webapp/WEB-INF</directory>

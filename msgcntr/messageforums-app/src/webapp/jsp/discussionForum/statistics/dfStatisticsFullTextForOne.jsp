@@ -8,7 +8,7 @@
 <f:view>
   <sakai:view>
   
-  	<h:form id="dfStatisticsForm" rendered="#{ForumTool.instructor}">
+	<h:form id="dfStatisticsForm" rendered="#{ForumTool.instructor || mfStatisticsBean.isAuthor}">
 		<!-- discussionForum/statistics/dfStatisticsFullTextForOne.jsp -->
   	       	<script>includeLatestJQuery("msgcntr");</script>
        		<script src="/messageforums-tool/js/sak-10625.js"></script>
@@ -20,21 +20,22 @@
 						var msgBody = $(this).html();
 						msgBody = msgBody.replace(/\n/g,',').replace(/\s/g,' ').replace(/  ,/g,',');
 						var wordCountId = $(this).attr('id').substring(11, $(this).attr('id').length);
-		  				fckeditor_word_count_fromMessage(msgBody,'wordCountSpan' + wordCountId);
+		  				msgcntr_word_count(msgBody);
 					});
+
+                    var menuLink = $('#forumsStatisticsMenuLink');
+                    var menuLinkSpan = menuLink.closest('span');
+                    menuLinkSpan.addClass('current');
+                    menuLinkSpan.html(menuLink.text());
+
 				});
 			</script>
-  	
-  		<sakai:tool_bar>				
-			<h:outputLink id="print" value="javascript:printFriendly('#{ForumTool.printFriendlyFullTextForOne}');" title="#{msgs.cdfm_print}">
-				<h:graphicImage url="/../../library/image/silk/printer.png" alt="#{msgs.print_friendly}" title="#{msgs.print_friendly}" />
-			</h:outputLink>
-  		</sakai:tool_bar>
-  	
+            <%@ include file="/jsp/discussionForum/menu/forumsMenu.jsp" %>
+
           	 <f:verbatim><div class="breadCrumb"><h3></f:verbatim>
 			 <h:commandLink action="#{ForumTool.processActionHome}" value="#{msgs.cdfm_message_forums}" title=" #{msgs.cdfm_message_forums}"
 			      		rendered="#{ForumTool.messagesandForums}" />
-			 <h:commandLink action="#{ForumTool.processActionHome}" value="#{msgs.cdfm_discussion_forums}" title=" #{msgs.cdfm_discussion_forums}"
+			 <h:commandLink action="#{ForumTool.processActionHome}" value="#{msgs.cdfm_discussions}" title=" #{msgs.cdfm_discussions}"
 			      		rendered="#{ForumTool.forumsTool}" />
 			 <h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " />
 			 <h:commandLink action="#{ForumTool.processActionStatistics}" value="#{msgs.stat_list}" title="#{msgs.stat_list}"/>
@@ -65,7 +66,13 @@
 			 <h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " />
 			  <h:outputText value="#{mfStatisticsBean.selectedMsgSubject}" />
 			  <f:verbatim></h3></div></f:verbatim>
-  
+
+		<h:panelGroup id="forumsActions">
+			<h:outputLink styleClass="button" id="print" value="javascript:printFriendly('#{ForumTool.printFriendlyFullTextForOne}');" title="#{msgs.cdfm_print}">
+				<h:graphicImage url="/../../library/image/silk/printer.png" alt="#{msgs.print_friendly}" title="#{msgs.print_friendly}" />
+			</h:outputLink>
+		</h:panelGroup>
+
   		<h:dataTable id="subjectBody" value="#{mfStatisticsBean.userSubjectMsgBody}" var="stat" styleClass="table table-hover table-striped table-bordered" cellpadding="0" cellspacing="0" width="100%" columnClasses="bogus">	
    			<h:column>
 				<h:panelGroup rendered="#{!stat.msgDeleted}" layout="block">

@@ -94,6 +94,7 @@ import org.sakaiproject.util.ParameterParser;
 import org.sakaiproject.util.ResourceLoader;
 import org.sakaiproject.util.Validator;
 import org.sakaiproject.util.api.FormattedText;
+import org.sakaiproject.util.comparator.GroupTitleComparator;
 
 /**
  * ListItem
@@ -137,7 +138,7 @@ public class ListItem
 	/** A long representing the number of milliseconds in one week.  Used for date calculations */
 	public static final long ONE_WEEK = 7L * ONE_DAY;
 	
-	public static final int EXPANDABLE_FOLDER_NAV_SIZE_LIMIT = ServerConfigurationService.getInt("sakai.content.resourceLimit", 0);  //SAK-21955
+	public static final int EXPANDABLE_FOLDER_NAV_SIZE_LIMIT = ServerConfigurationService.getInt("sakai.content.resourceLimit", 5000);  //SAK-21955
 
 	/**
 	 * Services
@@ -146,17 +147,8 @@ public class ListItem
 	private static SecurityService securityService  = ComponentManager.get(SecurityService.class);
 	private static final org.sakaiproject.tool.api.ToolManager toolManager = (org.sakaiproject.tool.api.ToolManager) ComponentManager.get(org.sakaiproject.tool.api.ToolManager.class.getCanonicalName());
 
-	/** 
-	 ** Comparator for sorting Group objects
-	 **/
-	private static class GroupComparator implements Comparator {
-		public int compare(Object o1, Object o2) {
-			return ((Group)o1).getTitle().compareToIgnoreCase( ((Group)o2).getTitle() );
-		}
-	}
-	
 	// sort groups before display
-	private static GroupComparator groupComparator = new GroupComparator();
+	private static GroupTitleComparator groupComparator = new GroupTitleComparator();
 	
 	/**
 	 * @param entity
@@ -479,6 +471,8 @@ public class ListItem
 
 	protected Time lastChange = null;
 
+    private Boolean allowSecuredAccess;
+
 	private org.sakaiproject.content.api.ContentHostingService contentService;
 	
 	public String getConditionAssignmentPoints() {
@@ -682,8 +676,8 @@ public class ListItem
 			//SAK-21955
 			//Prevent concurrent mode failures in admin Resource tool when clicking on resources that are too large.  Similar to 'isTooBig' but defined in properties
 			//To enable add the property sakai.content.resourceLimit=<int> to sakai.properties where int is the limit of an accessible resource folder
-			String siteId = getSiteContext(refstr);
-			if(this.EXPANDABLE_FOLDER_NAV_SIZE_LIMIT != 0 && siteId != null && ("!admin".equals(siteId) || SiteService.getUserSiteId("admin").contains(siteId)) && (collection_size > this.EXPANDABLE_FOLDER_NAV_SIZE_LIMIT))
+
+			if (refstr.split(Entity.SEPARATOR).length <= 3 && this.EXPANDABLE_FOLDER_NAV_SIZE_LIMIT != 0 && (collection_size > this.EXPANDABLE_FOLDER_NAV_SIZE_LIMIT))
 			{
 				setIsTooBigNav(true);
 			}
@@ -745,7 +739,10 @@ public class ListItem
 			//does this object or its parent collection allow inlineHTML?
 			setAllowHtmlInline(isAllowInline(resource));
 			setAllowHtmlInlineInherited(isAllowInline(resource.getContainingCollection()));
-			
+
+            // Grant secured access to the resource.
+            setAllowSecuredAccess(isAllowSecured(resource));
+
 			String size = null;
 			String sizzle = null;
 			if(typeDef != null)
@@ -1661,6 +1658,10 @@ public class ListItem
 		{
 			this.captureOptionalPropertyValues(params, index);
 		}
+
+        // Get the secured parameter from the form for the resource.
+        captureAllowSecuredAccess(params, index);
+
 	}
 
 	protected void captureHtmlInline(ParameterParser params, String index) {
@@ -3536,7 +3537,10 @@ public class ListItem
 		setAccessOnEntity(edit);
 		setAvailabilityOnEntity(props, edit);
 		setHtmlInlineOnEntity(props, edit);
-		
+
+        // Set the secured parameter value in the entity.
+        setAllowSecuredAccessOnEntity(props);
+
 		if(! isUrl() && ! isCollection() && this.mimetype != null)
 		{
 			setMimetypeOnEntity(edit, props);
@@ -4439,7 +4443,7 @@ public class ListItem
 	public void setAllowHtmlInline(boolean allowHtmlInline) {
 		this.allowHtmlInline = allowHtmlInline;
 	}
-	
+
 	/**
 	 * Specifies whether or not the item has inherited the "allowHtmlInline" property from its
 	 * parent collection.
@@ -4482,6 +4486,37 @@ public class ListItem
 		// This is used when asking if the styles of the service should be used.
 		return ServerConfigurationService.getString("ui.service", "Sakai");
 	}
-	
+
+    protected void captureAllowSecuredAccess(ParameterParser params, String index) {
+        Boolean allowSecuredAccess = params.getBoolean("allowSecuredAccess" + index);
+        log.debug("Allow secured access: {}", allowSecuredAccess);
+        this.allowSecuredAccess = allowSecuredAccess;
+    }
+
+    private boolean isAllowSecured(ContentEntity entity) {
+        try {
+            return entity != null ? entity.getProperties().getBooleanProperty(ResourceProperties.PROP_SECURED) : false;
+        } catch (EntityPropertyNotDefinedException | EntityPropertyTypeException e) {
+            return false;
+        }
+    }
+
+    public boolean isAllowSecuredAccess() {
+        return this.allowSecuredAccess != null ? this.allowSecuredAccess : false;
+    }
+
+    public void setAllowSecuredAccess(boolean allowSecuredAccess) {
+        this.allowSecuredAccess = allowSecuredAccess;
+    }
+
+    private void setAllowSecuredAccessOnEntity(ResourcePropertiesEdit props)  {
+        log.debug("setAllowSecuredAccessOnEntity() with allowSecuredAccess {}.", allowSecuredAccess);
+        if (allowSecuredAccess != null && allowSecuredAccess) {
+            props.addProperty(ResourceProperties.PROP_SECURED, Boolean.TRUE.toString());
+        } else {
+            props.removeProperty(ResourceProperties.PROP_SECURED);
+        }
+    }
+
 }
 

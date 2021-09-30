@@ -23,6 +23,7 @@
 package org.sakaiproject.rubrics.logic.model;
 
 import java.io.Serializable;
+import javax.persistence.Column;
 import javax.persistence.Embedded;
 import javax.persistence.Entity;
 import javax.persistence.EntityListeners;
@@ -38,6 +39,9 @@ import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 
 import lombok.ToString;
+
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.sakaiproject.rubrics.logic.listener.MetadataListener;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -48,6 +52,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @AllArgsConstructor
+@Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
 @Data
 @Entity
 @EntityListeners(MetadataListener.class)
@@ -62,10 +67,13 @@ public class Rating implements Modifiable, Serializable, Cloneable {
     @GeneratedValue(strategy = GenerationType.AUTO, generator = "rbc_rat_seq")
     private Long id;
 
+    @Column(nullable = false)
     private String title;
 
     @Lob
     private String description;
+
+    @Column(nullable = false)
     private Double points;
 
     @ManyToOne(fetch = FetchType.LAZY)

@@ -56,11 +56,13 @@ public interface LTIService extends LTISubstitutionsFilter {
             "tool_id:integer:hidden=true",
             "SITE_ID:text:label=bl_content_site_id:required=true:maxlength=99:role=admin",
             "title:text:label=bl_title:required=true:allowed=true:maxlength=1024",
+            "description:textarea:label=bl_description:maxlength=4096",
             "pagetitle:text:label=bl_pagetitle:required=true:allowed=true:maxlength=1024",
             "fa_icon:text:label=bl_fa_icon:allowed=true:maxlength=1024",
             "frameheight:integer:label=bl_frameheight:allowed=true",
-            "toolorder:integer:label=bl_toolorder:maxlength=2",
+            "toolorder:integer:label=bl_toolorder:maxlength=2:role=admin",
             "newpage:checkbox:label=bl_newpage",
+            "protect:checkbox:label=bl_protect:role=admin",
             "debug:checkbox:label=bl_debug",
             "custom:textarea:label=bl_custom:rows=5:cols=25:allowed=true:maxlength=16384",
             "launch:url:label=bl_launch:maxlength=1024:allowed=true",
@@ -80,8 +82,6 @@ public interface LTIService extends LTISubstitutionsFilter {
             // 0=inherit, 1=LTI 1.1, 2=LTI 1.3
             "lti13:radio:hide=insert:label=bl_lti13:choices=inherit,off,on:role=admin",
             "lti13_settings:textarea:hidden=true:maxlength=1M:role=admin",
-            // SHA256 Support (See SAK-33898)
-            "sha256:radio:label=bl_sha256:hidden=true:role=admin:choices=off,on",
             "created_at:autodate",
             "updated_at:autodate"};
     String[] CONTENT_EXTRA_FIELDS = {
@@ -109,11 +109,11 @@ public interface LTIService extends LTISubstitutionsFilter {
             "visible:radio:label=bl_visible:choices=visible,stealth:role=admin",
             "deployment_id:integer:hidden=true",
             "launch:url:label=bl_launch:maxlength=1024:required=true",
-            "allowlaunch:radio:label=bl_allowlaunch:choices=disallow,allow:only=lti1",
+            "allowlaunch:radio:label=bl_allowlaunch:choices=disallow,allow",
             "consumerkey:text:label=bl_consumerkey:maxlength=1024",
-            "allowconsumerkey:radio:label=bl_allowconsumerkey:choices=disallow,allow:only=lti1",
+            "allowconsumerkey:radio:label=bl_allowconsumerkey:choices=disallow,allow",
             "secret:text:label=bl_secret:maxlength=1024",
-            "allowsecret:radio:label=bl_allowsecret:choices=disallow,allow:only=lti1",
+            "allowsecret:radio:label=bl_allowsecret:choices=disallow,allow",
             "frameheight:integer:label=bl_frameheight",
             "toolorder:integer:label=bl_toolorder:maxlength=2",
             "allowframeheight:radio:label=bl_allowframeheight:choices=disallow,allow",
@@ -121,46 +121,56 @@ public interface LTIService extends LTISubstitutionsFilter {
             "privacy:header:fields=sendname,sendemailaddr",
             "sendname:checkbox:label=bl_sendname",
             "sendemailaddr:checkbox:label=bl_sendemailaddr",
-            "services:header:fields=allowoutcomes,allowlineitems,allowroster,allowsettings",
+            "services:header:fields=allowoutcomes,allowlineitems,allowroster",
             "allowoutcomes:checkbox:label=bl_allowoutcomes",
-                        "allowlineitems:checkbox:label=bl_allowlineitems",
+            "allowlineitems:checkbox:label=bl_allowlineitems",
             "allowroster:checkbox:label=bl_allowroster",
-            "allowsettings:checkbox:label=bl_allowsettings",
-            // Hide these from end users until they are working in the various Sakai tools
-            "pl_header:header:fields=pl_launch,pl_linkselection,pl_importitem,pl_fileitem,pl_contenteditor,pl_assessmentselection",
+            // SAK-44810 changed this from allowsettings to allowsettings_ext
+            // because settings is used internally
+            "allowsettings_ext:checkbox:label=bl_allowsettings_ext",
+            "pl_header:header:fields=pl_launch,pl_linkselection",
             "pl_launch:checkbox:label=bl_pl_launch",
             "pl_linkselection:checkbox:label=bl_pl_linkselection",
+            // SAK-44637 - re-enable pl_lessonsselection
+            "pl_placement:header:fields=pl_lessonsselection,pl_assessmentselection,pl_content_editor,pl_importitem,pl_coursenav,pl_privacy,pl_fileitem,",
+            "pl_lessonsselection:checkbox:label=bl_pl_lessonsselection",
+            "pl_assessmentselection:checkbox:label=bl_pl_assessmentselection",
             "pl_contenteditor:checkbox:label=bl_pl_contenteditor",
+            "pl_privacy:checkbox:label=bl_pl_privacy:role=admin",
             "pl_importitem:checkbox:label=bl_pl_importitem:role=admin",
+            "pl_coursenav:checkbox:label=bl_pl_coursenav:role=admin:hidden=true",
             "pl_fileitem:checkbox:label=bl_pl_fileitem:role=admin",
-            "pl_assessmentselection:checkbox:label=bl_pl_assessmentselection:role=admin",
             "newpage:radio:label=bl_newpage:choices=off,on,content",
             "debug:radio:label=bl_debug:choices=off,on,content",
             // LTI 1.x user-entered custom
             "custom:textarea:label=bl_custom:rows=5:cols=25:maxlength=16384",
             "rolemap:textarea:label=bl_rolemap:rows=5:cols=25:maxlength=16384:role=admin",
             // Tool declared settings from web services (formerly in LTI 2.x)
-            "allowcustom:checkbox:label=bl_allowcustom",
             "splash:textarea:label=bl_splash:rows=5:cols=25:maxlength=16384",
             // LTI 1.3 expansion space (See SAK-33772)
             "lti13:radio:label=bl_lti13:choices=off,on:role=admin",
+
+            // The core values from LTI 1.3 tools (we prefer keyset over explicit key)
             "lti13_client_id:text:hide=insert:label=bl_lti13_client_id:maxlength=1024:role=admin",
-            "lti13_tool_public:textarea:hide=insert:label=bl_lti13_tool_public:maxlength=1M:role=admin",
-            // The tool keyset is a future feature - we can unhide it in the UI when Sakai supports this
-            "lti13_tool_keyset:textarea:hidden=true:label=bl_lti13_tool_keyset:maxlength=1M:role=admin",
-            // The tool kid is internal (comes through on launch and we store it and cache the public key)
-            "lti13_tool_kid:text:hidden=true:label=bl_lti13_tool_kid:maxlength=1024:role=admin",
-            "lti13_tool_private:textarea:hide=insert:label=bl_lti13_tool_private:maxlength=1M:role=admin",
-            "lti13_platform_public:textarea:hide=insert:label=bl_lti13_platform_public:maxlength=1M:role=admin",
-            "lti13_platform_private:textarea:hidden=true:label=bl_lti13_platform_private:maxlength=1M:role=admin",
+            "lti13_tool_keyset:text:label=bl_lti13_tool_keyset:maxlength=1024:role=admin",
             "lti13_oidc_endpoint:text:label=bl_lti13_oidc_endpoint:maxlength=1024:role=admin",
             "lti13_oidc_redirect:text:label=bl_lti13_oidc_redirect:maxlength=1024:role=admin",
+
+            // SAK-45491 - Key rotation interval
+            "lti13_platform_public_next:textarea:hidden=true:label=bl_lti13_platform_public:maxlength=1M:role=admin",
+            "lti13_platform_public_next_at:date",
+            "lti13_platform_private_next:textarea:hidden=true:label=bl_lti13_platform_public:maxlength=1M:role=admin",
+            "lti13_platform_public:textarea:hidden=true:label=bl_lti13_platform_public:maxlength=1M:role=admin",
+            "lti13_platform_private:textarea:hidden=true:label=bl_lti13_platform_private:maxlength=1M:role=admin",
+            "lti13_platform_public_old:textarea:hidden=true:label=bl_lti13_platform_public:maxlength=1M:role=admin",
+            "lti13_platform_public_old_at:date",
             "lti13_settings:textarea:hidden=true:maxlength=1M:role=admin",
 
-            // SHA256 Support (See SAK-33898)
-            "sha256:radio:label=bl_sha256:hidden=true:role=admin:choices=off,on,content",
             "lti11_launch_type:radio:label=bl_lti11_launch_type:role=admin:choices=inherit,legacy,lti112",
             "xmlimport:textarea:hidden=true:maxlength=1M",
+            "lti13_auto_token:text:hidden=true:maxlength=1024",
+            "lti13_auto_state:integer:hidden=true",
+            "lti13_auto_registration:textarea:hidden=true:maxlength=1M",
             "created_at:autodate",
             "updated_at:autodate"};
 
@@ -184,6 +194,7 @@ public interface LTIService extends LTISubstitutionsFilter {
     String LTI_FA_ICON = "fa_icon";
     String LTI_PLACEMENT = "placement";
     String LTI_DESCRIPTION = "description";
+    String LTI_ID_HISTORY = "id_history";
     String LTI_STATUS = "status";
     String LTI_VISIBLE = "visible";
     String LTI_LAUNCH = "launch";
@@ -202,17 +213,20 @@ public interface LTIService extends LTISubstitutionsFilter {
     String LTI_ALLOWOUTCOMES = "allowoutcomes";
     String LTI_ALLOWLINEITEMS = "allowlineitems";
     String LTI_ALLOWROSTER = "allowroster";
-    String LTI_ALLOWSETTINGS = "allowsettings";
+    String LTI_ALLOWSETTINGS_EXT = "allowsettings_ext";
     String LTI_ALLOWCONTENTITEM = "allowcontentitem";
     String LTI_SETTINGS = "settings";
     String LTI_SETTINGS_EXT = "settings_ext";
     String LTI_CONTENTITEM = "contentitem";
     String LTI_NEWPAGE = "newpage";
+    String LTI_PROTECT = "protect";
     String LTI_DEBUG = "debug";
     String LTI_CUSTOM = "custom";
     String LTI_ROLEMAP = "rolemap";
     String LTI_SPLASH = "splash";
-    String LTI_ALLOWCUSTOM = "allowcustom";
+    String LTI13_AUTO_TOKEN = "lti13_auto_token";
+    String LTI13_AUTO_STATE = "lti13_auto_state";
+    String LTI13_AUTO_REGISTRATION = "lti13_auto_registration";
     String LTI_XMLIMPORT = "xmlimport";
     String LTI_CREATED_AT = "created_at";
     String LTI_UPDATED_AT = "updated_at";
@@ -220,8 +234,6 @@ public interface LTIService extends LTISubstitutionsFilter {
     String LTI_NOTE = "note";
     String LTI_PLACEMENTSECRET = "placementsecret";
     String LTI_OLDPLACEMENTSECRET = "oldplacementsecret";
-    // SHA256 Support (See SAK-33898)
-    String LTI_SHA256 = "sha256";
 
 	// Removed LTI 2.0 - SAK-40065
     // SAK-40065 String LTI_RESOURCE_HANDLER = "resource_handler";
@@ -247,6 +259,8 @@ public interface LTIService extends LTISubstitutionsFilter {
     String LTI_PL_IMPORTITEM = "pl_importitem";
     String LTI_PL_CONTENTEDITOR = "pl_contenteditor";
     String LTI_PL_ASSESSMENTSELECTION = "pl_assessmentselection";
+    String LTI_PL_LESSONSSELECTION = "pl_lessonsselection";
+    String LTI_PL_COURSENAV = "pl_coursenav";
     String LTI_SEARCH_TOKEN_SEPARATOR_AND = "#&#";
     String LTI_SEARCH_TOKEN_SEPARATOR_OR = "#|#";
     String ESCAPED_LTI_SEARCH_TOKEN_SEPARATOR_AND = "\\#\\&\\#";
@@ -268,10 +282,14 @@ public interface LTIService extends LTISubstitutionsFilter {
     // LTI 1.3
     String LTI13 = "lti13";
     String LTI13_CLIENT_ID = "lti13_client_id";
-    String LTI13_TOOL_PUBLIC = "lti13_tool_public";
-    String LTI13_TOOL_PRIVATE = "lti13_tool_private";
+    String LTI13_TOOL_KEYSET = "lti13_tool_keyset";
+    String LTI13_PLATFORM_PUBLIC_NEXT = "lti13_platform_public_next";
+    String LTI13_PLATFORM_PUBLIC_NEXT_AT = "lti13_platform_public_next_at";
+    String LTI13_PLATFORM_PRIVATE_NEXT = "lti13_platform_private_next";
     String LTI13_PLATFORM_PUBLIC = "lti13_platform_public";
     String LTI13_PLATFORM_PRIVATE = "lti13_platform_private";
+    String LTI13_PLATFORM_PUBLIC_OLD = "lti13_platform_public_old";
+    String LTI13_PLATFORM_PUBLIC_OLD_AT = "lti13_platform_public_old_at";
     String LTI13_OIDC_ENDPOINT = "lti13_oidc_endpoint";
     String LTI13_OIDC_REDIRECT = "lti13_oidc_redirect";
 
@@ -357,7 +375,12 @@ public interface LTIService extends LTISubstitutionsFilter {
 
     String getExportUrl(String siteId, String filterId, ExportType exportType);
 
+    // Transferring content links from one tool to another
+    Object transferToolContentLinks(Long currentTool, Long newTool, String siteId);
 
+    Object transferToolContentLinksDao(Long currentTool, Long newTool);
+
+    // Tool Retrieval
     List<Map<String, Object>> getTools(String search, String order, int first, int last, String siteId);
 
     /**
@@ -396,6 +419,12 @@ public interface LTIService extends LTISubstitutionsFilter {
      */
     List<Map<String, Object>> getToolsAssessmentSelection(String siteId);
 
+    /**
+     * Get a list of tools that can be used for Lessons
+     * @param siteId
+     */
+    List<Map<String, Object>> getToolsLessonsSelection(String siteId);
+
     List<Map<String, Object>> getToolsDao(String search, String order, int first, int last, String siteId);
 
     List<Map<String, Object>> getToolsDao(String search, String order, int first, int last, String siteId, boolean isAdmin);
@@ -426,6 +455,8 @@ public interface LTIService extends LTISubstitutionsFilter {
     Object updateContent(Long key, Map<String, Object> newProps, String siteId);
 
     Object updateContent(Long key, Properties newProps, String siteId);
+
+    Object updateContentDao(Long key, Map<String, Object> newProps);
 
     Object updateContentDao(Long key, Map<String, Object> newProps, String siteId);
 

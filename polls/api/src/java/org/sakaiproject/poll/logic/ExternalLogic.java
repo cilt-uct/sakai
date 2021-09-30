@@ -63,6 +63,11 @@ public interface ExternalLogic {
 	 */
 	public String getCurrentLocationReference();
 	
+	/**
+	 * @return the current tool URL of the current user
+	 */
+	String getCurrentToolURL();
+	
 
 	/**
 	 * @return the current sakai user id (not username)
@@ -117,8 +122,9 @@ public interface ExternalLogic {
 	/**
 	 * Register a function with the Sakai Function manager
 	 * @param function
+     * @param userMutable
 	 */
-	public void registerFunction(String function);
+	public void registerFunction(String function, boolean userMutable);
 	
 	/** 
 	 *  get the correct Timezone for the the current user

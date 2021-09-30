@@ -6,7 +6,7 @@
     <parent>
         <artifactId>kernel</artifactId>
         <groupId>org.sakaiproject</groupId>
-        <version>21-SNAPSHOT</version><!-- KernelVersion -->
+        <version>22-SNAPSHOT</version><!-- KernelVersion -->
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -76,7 +76,6 @@
         <dependency>
             <groupId>commons-net</groupId>
             <artifactId>commons-net</artifactId>
-            <version>3.6</version>
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>

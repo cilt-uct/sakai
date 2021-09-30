@@ -47,14 +47,16 @@ import java.util.StringTokenizer;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.time.Instant;
 
-import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.math.NumberUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.complex.Complex;
 import org.apache.commons.math3.complex.ComplexFormat;
 import org.apache.commons.math3.exception.MathParseException;
 import org.apache.commons.math3.util.Precision;
-
+import org.mariuszgromada.math.mxparser.parsertokens.ParserSymbol;
 import org.sakaiproject.event.cover.EventTrackingService;
 import org.sakaiproject.samigo.util.SamigoConstants;
 import org.sakaiproject.service.gradebook.shared.GradebookExternalAssessmentService;
@@ -90,6 +92,11 @@ import org.sakaiproject.tool.assessment.services.assessment.PublishedAssessmentS
 import org.sakaiproject.tool.assessment.util.ExtendedTimeDeliveryService;
 import org.sakaiproject.tool.assessment.util.SamigoExpressionError;
 import org.sakaiproject.tool.assessment.util.SamigoExpressionParser;
+import org.sakaiproject.tool.assessment.util.comparator.ImageMapGradingItemComparator;
+
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * The GradingService calls the back end to get/store grading information. 
@@ -113,6 +120,8 @@ public class GradingService
   public static final String CLOSE_BRACKET = "\\}";
   public static final String CALCULATION_OPEN = "[["; // not regex safe
   public static final String CALCULATION_CLOSE = "]]"; // not regex safe
+  public static final char CALCULATION_AUX_OPEN = '└';
+  public static final char CALCULATION_AUX_CLOSE = '┐';
   public static final String FORMAT_MASK = "0E0";
   public static final BigDecimal DEFAULT_MAX_THRESHOLD = BigDecimal.valueOf(1.0e+11);
   public static final BigDecimal DEFAULT_MIN_THRESHOLD = BigDecimal.valueOf(0.0001);
@@ -130,43 +139,40 @@ public class GradingService
   public static final Pattern CALCQ_ANSWER_PATTERN = Pattern.compile("(?<!\\{)" + CALCQ_VAR_FORM_NAME_EXPRESSION_FORMATTED + "(?!\\})");
   public static final Pattern CALCQ_FORMULA_PATTERN = Pattern.compile(OPEN_BRACKET + CALCQ_VAR_FORM_NAME_EXPRESSION_FORMATTED + CLOSE_BRACKET);
   public static final Pattern CALCQ_FORMULA_SPLIT_PATTERN = Pattern.compile("(" + OPEN_BRACKET + OPEN_BRACKET + CALCQ_VAR_FORM_NAME + CLOSE_BRACKET + CLOSE_BRACKET + ")");
-  public static final Pattern CALCQ_CALCULATION_PATTERN = Pattern.compile("\\[\\[([^\\[\\]]+?)\\]\\]?"); // non-greedy
+  public static final Pattern CALCQ_CALCULATION_PATTERN = Pattern.compile("\\" + CALCULATION_AUX_OPEN + "([^\\" + CALCULATION_AUX_OPEN + "\\" + CALCULATION_AUX_CLOSE + "]+)\\" + CALCULATION_AUX_CLOSE);
   // SAK-39922 - Support (or at least watch for support) for binary/unary calculated question (-1--1)
   public static final Pattern CALCQ_ANSWER_AVOID_DOUBLE_MINUS = Pattern.compile("--");
   public static final Pattern CALCQ_ANSWER_AVOID_PLUS_MINUS = Pattern.compile("\\+-");
   // SAK-40942 - Error in calculated questions: the decimal representation .n or n. (where n is a number) does not work
   public static final Pattern CALCQ_FORMULA_ALLOW_POINT_NUMBER = Pattern.compile("([^\\d]|^)([\\.])([\\d])");
   public static final Pattern CALCQ_FORMULA_ALLOW_NUMBER_POINT = Pattern.compile("([\\d])([\\.])([^\\d]|$)");
+  
+  private static final int WRONG_IMAGE_MAP_ANSWER_NON_PARCIAL = -123456789;
+  
+  private static final String NBSP = "&#160;";
+
+  @Getter @Setter
+  private List<String> texts;
+  @Getter @Setter
+  private HashMap<Integer, String> answersMap = new HashMap<Integer, String>();
+  private static final int MAX_ERROR_TRIES = 100;
 	  
   /**
    * Get all scores for a published assessment from the back end.
    */
-  public List getTotalScores(String publishedId, String which)
+  public List<AssessmentGradingData> getTotalScores(String publishedId, String which)
   {
-    List results = null;
-    try {
-      results =
-        new ArrayList(PersistenceService.getInstance().
-           getAssessmentGradingFacadeQueries().getTotalScores(publishedId,
-             which));
-    } catch (Exception e) {
-      log.error(e.getMessage(), e);
-    }
-    return results;
+    return getTotalScores(publishedId, which, true);
   }
   
-  public List getTotalScores(String publishedId, String which, boolean getSubmittedOnly)
+  public List<AssessmentGradingData> getTotalScores(String publishedId, String which, boolean getSubmittedOnly)
   {
-    List results = null;
     try {
-      results =
-        new ArrayList(PersistenceService.getInstance().
-           getAssessmentGradingFacadeQueries().getTotalScores(publishedId,
-             which, getSubmittedOnly));
+      return PersistenceService.getInstance().getAssessmentGradingFacadeQueries().getTotalScores(NumberUtils.createLong(publishedId), which, getSubmittedOnly);
     } catch (Exception e) {
-      log.error(e.getMessage(), e);
+      log.warn("Could not retrieve total scores for published assessment {}", publishedId, e);
     }
-    return results;
+    return Collections.emptyList();
   }
   
  /**
@@ -880,9 +886,6 @@ public class GradingService
          throws GradebookServiceException, FinFormatException {
     log.debug("****x1. regrade ="+regrade+" "+(new Date()).getTime());
     try {
-    	boolean imageMapAllOk=true;
-    	boolean NeededAllOk = false;
-    	
       String agent = data.getAgentId();
       
       // note that this itemGradingSet is a partial set of answer submitted. it contains only 
@@ -912,6 +915,11 @@ public class GradingService
 	      });
       }
       
+    //IMAGEMAP_QUESTION - order by itemGradingId if it is an imageMap question
+      if (isImageMapQuestion(tempItemGradinglist, publishedItemHash)) {
+	      tempItemGradinglist.sort(new ImageMapGradingItemComparator());
+      }
+      
       Iterator<ItemGradingData> iter = tempItemGradinglist.iterator();
 
       // fibEmiAnswersMap contains a map of HashSet of answers for a FIB or EMI item,
@@ -931,10 +939,11 @@ public class GradingService
       log.debug("****x2. {}", (new Date()).getTime());
       double autoScore;
       Long itemId = (long)0;
+      Long previousItemId = (long)0;
       int calcQuestionAnswerSequence = 1; // sequence of answers for CALCULATED_QUESTION
-      while(iter.hasNext())
-      {
-        ItemGradingData itemGrading = iter.next();
+      boolean imageMapAlreadyOk = true;
+      boolean neededAllOk = false;
+      for(ItemGradingData itemGrading: tempItemGradinglist){
         
         // CALCULATED_QUESTION - We increment this so we that calculated 
         // questions can know where we are in the sequence of answers.
@@ -952,23 +961,33 @@ public class GradingService
         	log.error("unable to retrive itemDataIfc for: {}", publishedItemHash.get(itemId));
         	continue;
         }
+        
+        Long itemType = item.getTypeId(); 
+        /*
+         * IMAGEMAP_QUESTIONS can have some items for same question, so we need to remember
+         * between iterations if we have some wrong items in a question that has more than one item.
+         */
+        if(TypeIfc.IMAGEMAP_QUESTION.equals(itemType) && !itemId.equals(previousItemId)) {
+        	previousItemId = itemId;
+        	imageMapAlreadyOk = true;
+        }
+        
         for (ItemMetaDataIfc meta : item.getItemMetaDataSet())
         {
           if (meta.getLabel().equals(ItemMetaDataIfc.REQUIRE_ALL_OK))
           {
             if (meta.getEntry().equals("true"))
             {
-          	  NeededAllOk = true;
+          	  neededAllOk = true;
               break;
             }
             if (meta.getEntry().equals("false"))
             {
-          	  NeededAllOk = false;
+          	  neededAllOk = false;
               break;
             }
           }
         }
-        Long itemType = item.getTypeId();  
         itemGrading.setAssessmentGradingId(data.getAssessmentGradingId());
         //itemGrading.setSubmittedDate(new Date());
         itemGrading.setAgentId(agent);
@@ -1003,9 +1022,19 @@ public class GradingService
         		}
         	}
         }
-        if ((TypeIfc.IMAGEMAP_QUESTION.equals(itemType))&&(NeededAllOk)&&((autoScore==-123456789)||!imageMapAllOk)){
-        	autoScore=0;
-        	imageMapAllOk=false;
+        
+        if (TypeIfc.IMAGEMAP_QUESTION.equals(itemType) && neededAllOk){
+        	if(!imageMapAlreadyOk) {
+        		autoScore = 0;
+        	}else if(autoScore == WRONG_IMAGE_MAP_ANSWER_NON_PARCIAL){
+	        	autoScore = 0;
+	        	imageMapAlreadyOk = false;
+	        	//itemGradingSet have items with positive score if the actual answer isnt the first of the question
+	        	for(ItemGradingData imageMapItem: itemGradingSet) {
+	        		if(imageMapItem.getPublishedItemId().equals(itemId))
+	        			imageMapItem.setAutoScore(0.0);
+	        	}
+        	}
         } 
         
         log.debug("**!regrade, autoScore="+autoScore);
@@ -1043,6 +1072,7 @@ public class GradingService
       //collect min score information to determine if the auto score will need to be adjusted
       //since there can be multiple questions store in map: itemId -> {user's score, minScore, # of answers}
       Map<Long, Double[]> minScoreCheck = new HashMap<>();
+      Map<Long, Boolean> minScoreAnswered = new HashMap<>();
       double totalAutoScoreCheck = 0;
       Map<Long, Integer> countMcmcAllItemGradings = new HashMap<>();
       //get item information to check if it's MCMS and Not Partial Credit
@@ -1095,12 +1125,15 @@ public class GradingService
         if(item.getMinScore() != null){
         	Double accumulatedScore = itemGrading.getAutoScore();
         	Double itemParts = 1d;
+        	boolean answered = isAnswered(itemGrading, itemType2);
         	if(minScoreCheck.containsKey(itemId)){
         		Double[] accumulatedScoreArr = minScoreCheck.get(itemId);
         		accumulatedScore += accumulatedScoreArr[0];
         		itemParts += accumulatedScoreArr[2];
+        		answered = answered || minScoreAnswered.get(itemId);
         	}
         	minScoreCheck.put(itemId, new Double[]{accumulatedScore, item.getMinScore(), itemParts});
+        	minScoreAnswered.put(itemId, answered);
         }
       }
       
@@ -1185,25 +1218,28 @@ public class GradingService
     		  }
     	  }
       }
+
+        // If there is a minimum score value, then make sure the auto score is at least the minimum
+        // entry.getValue()[0] = total score for the question
+        // entry.getValue()[1] = min score
+        // entry.getValue()[2] = how many question answers to divide minScore across
+        for (Entry<Long, Double[]> entry : minScoreCheck.entrySet()) {
+            if (entry.getValue()[0] <= entry.getValue()[1]) {
+                //reset all scores to 0 since the user didn't get all correct answers
+                for (ItemGradingData itemGrading : itemGradingSet) {
+                    ItemDataIfc item = (ItemDataIfc) publishedItemHash.get(itemGrading.getPublishedItemId());
+                    if (!Boolean.valueOf(item.getPartialCreditFlag())) {
+                        // We should only set the autoScore to the min score
+                        // if partial credit is not in effect
+                        if (minScoreAnswered.get(entry.getKey()) && itemGrading.getPublishedItemId().equals(entry.getKey())) {
+                            itemGrading.setAutoScore(entry.getValue()[1]/entry.getValue()[2]);
+                        }
+                    }
+                }
+            }
+        }
       
-      //if there is a minimum score value, then make sure the auto score is at least the minimum
-      //entry.getValue()[0] = total score for the question
-      //entry.getValue()[1] = min score
-      //entry.getValue()[2] = how many question answers to divide minScore across
-      for(Entry<Long, Double[]> entry : minScoreCheck.entrySet()){
-    	  if(entry.getValue()[0] <= entry.getValue()[1]){
-    		  //reset all scores to 0 since the user didn't get all correct answers
-    		  iter = itemGradingSet.iterator();
-    		  while(iter.hasNext()){
-    			  ItemGradingData itemGrading = (ItemGradingData) iter.next();
-    			  if(itemGrading.getPublishedItemId().equals(entry.getKey())){
-    				  itemGrading.setAutoScore(entry.getValue()[1]/entry.getValue()[2]);
-    			  }
-    		  }
-    	  }
-      }
-      
-      log.debug("****x4. "+(new Date()).getTime());
+      log.debug("****x4. {}", Instant.now().toEpochMilli());
 
       // save#1: this itemGrading Set is a partial set of answers submitted. it contains new answers and
       // updated old answers and FIB answers ('cos we need the old answer to calculate the score for new
@@ -1272,6 +1308,27 @@ public class GradingService
     return totalAutoScore.doubleValue();
   }
 
+  private boolean isAnswered(ItemGradingData data, Long type) {
+    if(TypeIfc.MATCHING.equals(type)) {
+        if (data.getPublishedAnswerId() != null) {
+          return true;
+        }
+    } else if(TypeIfc.ESSAY_QUESTION.equals(type) || TypeIfc.FILL_IN_BLANK.equals(type) || TypeIfc.FILL_IN_NUMERIC.equals(type)) {
+        if (StringUtils.isNotEmpty(data.getAnswerText())) {
+          return true;
+        }
+    } else if(TypeIfc.IMAGEMAP_QUESTION.equals(type)) {
+        if (StringUtils.isNotEmpty(data.getAnswerText()) && data.getAnswerText().matches("\\{\"x\":-?\\d+,\"y\":-?\\d+\\}")) {
+          return true;
+        }
+    } else {
+        if (data.getPublishedAnswerId() != null || StringUtils.isNotEmpty(data.getAnswerText())) {
+          return true;
+        }
+	}
+	return false;
+  }
+
   public void notifyGradebookByScoringType(AssessmentGradingData data, PublishedAssessmentIfc pub){
     if (pub == null || pub.getEvaluationModel() == null) {
       // should not come to here
@@ -1283,7 +1340,11 @@ public class GradingService
       AssessmentGradingData d = data; // data is the last submission
       // need to decide what to tell gradebook
       if ((scoringType).equals(EvaluationModelIfc.HIGHEST_SCORE)) {
-        d = getHighestSubmittedAssessmentGrading(pub.getPublishedAssessmentId().toString(), data.getAgentId());
+        // If this next call comes back null, don't overwrite our real AG with a null one
+        final AssessmentGradingData highestAG = getHighestSubmittedAssessmentGrading(pub.getPublishedAssessmentId().toString(), data.getAgentId());
+        if (highestAG != null) {
+          d = highestAG;
+        }
       }
       // Send the average score if average was selected for multiple submissions
       else if (scoringType.equals(EvaluationModelIfc.AVERAGE_SCORE)) {
@@ -1454,10 +1515,10 @@ public class GradingService
               break;
       case 16:    	  
     	  initScore = getImageMapScore(itemGrading,item, publishedItemTextHash,publishedAnswerHash);
-    	  //if one answer is 0 or negative, and need all OK to be scored, then autoScore=-123456789
+    	  //if one answer is 0 or negative, and need all OK to be scored, then autoScore=WRONG_IMAGE_MAP_ANSWER_NON_PARCIAL
     	  //and we break the case...
     	  
-    	  boolean NeededAllOk = false;
+    	  boolean neededAllOk = false;
     	  Iterator i = item.getItemMetaDataSet().iterator();
           while (i.hasNext())
           {
@@ -1466,13 +1527,13 @@ public class GradingService
             {
               if (meta.getEntry().equals("true"))
               {
-            	  NeededAllOk = true;
+            	  neededAllOk = true;
                 break;
     }
             }
           }
-    	  if (NeededAllOk&&initScore<=0){
-    		  autoScore=-123456789;
+    	  if (neededAllOk && (initScore <= 0)){
+    		  autoScore = WRONG_IMAGE_MAP_ANSWER_NON_PARCIAL;
     		  break;
     	  }
           //if (initScore > 0) {
@@ -1535,11 +1596,13 @@ public class GradingService
     {
     	// return (double) 0;
     	// Para que descuente (For discount)
+    	double score = (double) 0;
     	if ((TypeIfc.EXTENDED_MATCHING_ITEMS).equals(itemType)||(TypeIfc.MULTIPLE_CHOICE).equals(itemType)||(TypeIfc.TRUE_FALSE).equals(itemType)||(TypeIfc.MULTIPLE_CORRECT_SINGLE_SELECTION).equals(itemType)){
-    		return (Math.abs(answer.getDiscount()) * ((double) -1));
-    	}else{
-    		return (double) 0;
+    		score = Math.abs(answer.getDiscount()) * ((double) -1);
     	}
+
+    	answer.setPartialCredit(score);
+    	return score;
     }
     return answer.getScore();
   }
@@ -1554,7 +1617,7 @@ public class GradingService
 		  EventLogData eventLogData= (EventLogData) eventLogDataList.get(0);
 		  //will do the i18n issue later.
 		  eventLogData.setErrorMsg("No Errors (Auto submit)");
-		  Date endDate = new Date();
+		  final Date endDate = adata.getSubmittedDate() != null ? adata.getSubmittedDate() : new Date();
 		  eventLogData.setEndDate(endDate);
 		  if(eventLogData.getStartDate() != null) {
 			  double minute= 1000*60;
@@ -2307,32 +2370,24 @@ Here are the definition and 12 cases I came up with (lydia, 01/2006):
   }
 
   private void setIsLate(AssessmentGradingData data, PublishedAssessmentIfc pub){
-	  // If submit from timeout popup, we don't record LATE
-	  if (data.getSubmitFromTimeoutPopup()) {
-		  data.setIsLate(false);
-	  }
-	  else {
-		  Boolean isLate = false;
-		  AssessmentAccessControlIfc a = pub.getAssessmentAccessControl();
-		  if (a.getDueDate() != null && a.getDueDate().before(new Date())) {
-			isLate = Boolean.TRUE;
-		  } else {
-			isLate = Boolean.FALSE;
-		  }
+    Boolean isLate = Boolean.FALSE;
+    AssessmentAccessControlIfc a = pub.getAssessmentAccessControl();
+    if (a.getDueDate() != null && a.getDueDate().before(new Date())) {
+      isLate = Boolean.TRUE;
+    }
 
-		  if (isLate) {
-			ExtendedTimeDeliveryService assessmentExtended = new ExtendedTimeDeliveryService((PublishedAssessmentFacade) pub, data.getAgentId());
-			if (assessmentExtended.hasExtendedTime() && assessmentExtended.getDueDate() != null && assessmentExtended.getDueDate().after(new Date())) {
-				isLate = Boolean.FALSE;
-			}
-		  }
+    if (isLate) {
+      ExtendedTimeDeliveryService assessmentExtended = new ExtendedTimeDeliveryService((PublishedAssessmentFacade) pub, data.getAgentId());
+      if (assessmentExtended.hasExtendedTime() && assessmentExtended.getDueDate() != null && assessmentExtended.getDueDate().after(new Date())) {
+          isLate = Boolean.FALSE;
+      }
+    }
 
-		  data.setIsLate(isLate);
-	  }
-	  
+    data.setIsLate(isLate);
+
     if (data.getForGrade())
       data.setStatus(1);
-    
+
     data.setTotalOverrideScore(Double.valueOf(0));
   }
 
@@ -2467,13 +2522,20 @@ Here are the definition and 12 cases I came up with (lydia, 01/2006):
 	    return typeId;
   }
   
-  public boolean fibmatch(String answer, String input, boolean casesensitive, boolean ignorespaces) {
-
-	  
+	public boolean fibmatch(final String rawAnswer, final String rawInput, final boolean casesensitive, final boolean ignorespaces) {
 		try {
+		 // User on Mac will input &uuml; instead of ü
+		 String answer = StringEscapeUtils.unescapeHtml4(rawAnswer);
+		 String input = StringEscapeUtils.unescapeHtml4(rawInput);
+
+		 // Always trim trailing spaces
+		 answer = answer.trim();
+		 input = input.trim();
+
+		 // Trim interior space including non-breaking spaces if instructor selects option
 		 if (ignorespaces) {
-			 answer = answer.replaceAll(" ", "");
-			 input = input.replaceAll(" ", "");
+			 answer = answer.replaceAll("\\p{javaSpaceChar}", "");
+			 input = input.replaceAll("\\p{javaSpaceChar}", "");
 		 }
  		 StringBuilder regex_quotebuf = new StringBuilder();
 		 
@@ -2499,8 +2561,6 @@ Here are the definition and 12 cases I came up with (lydia, 01/2006):
 		 Matcher m = p.matcher(input);
 		 boolean result = m.matches();
  		 return result;
-		  
-		
 		}
 		catch (Exception e){
 			return false;
@@ -2682,6 +2742,14 @@ Here are the definition and 12 cases I came up with (lydia, 01/2006):
 	    }
   }
   
+  public void removeAssessmentGradingData(AssessmentGradingData data) {
+	  try {
+		  PersistenceService.getInstance().getAssessmentGradingFacadeQueries().removeAssessmentGradingData(data);
+	  } catch (Exception e) {
+		  log.error("Exception thrown from removeAssessmentGradingData", e);
+	  }
+  }
+
   public boolean getHasGradingData(Long publishedAssessmentId) {
 	  boolean hasGradingData = false;
 	    try {
@@ -2701,10 +2769,11 @@ Here are the definition and 12 cases I came up with (lydia, 01/2006):
    * @return map of calc answers
    */
   private Map<Integer, String> getCalculatedAnswersMap(ItemGradingData itemGrading, ItemDataIfc item) {
-      Map<Integer, String> calculatedAnswersMap = new HashMap<>();
       // return value from extractCalcQAnswersArray is not used, calculatedAnswersMap is populated by this call
-      extractCalcQAnswersArray(calculatedAnswersMap, item, itemGrading.getAssessmentGradingId(), itemGrading.getAgentId());
-      return calculatedAnswersMap;
+      if (answersMap.isEmpty()) {
+          extractCalcQAnswersArray(answersMap, item, itemGrading.getAssessmentGradingId(), itemGrading.getAgentId());
+      }
+      return answersMap;
   }
 
   /**
@@ -2719,6 +2788,7 @@ Here are the definition and 12 cases I came up with (lydia, 01/2006):
    * list will be empty.
    */
   public List<String> extractCalculations(String text) {
+      text = text.replaceAll("\\[\\[", "" + CALCULATION_AUX_OPEN + CALCULATION_AUX_OPEN ).replaceAll("\\]\\](?!\\])", "" + CALCULATION_AUX_CLOSE + CALCULATION_AUX_CLOSE);
       List<String> calculations = extractCalculatedQuestionKeyFromItemText(text, CALCQ_CALCULATION_PATTERN);
       for (Iterator<String> iterator = calculations.iterator(); iterator.hasNext();) {
         String calc = iterator.next();
@@ -2977,7 +3047,6 @@ Here are the definition and 12 cases I came up with (lydia, 01/2006):
    * @return ArrayList of the pieces of text to display surrounding input boxes
    */
   public List<String> extractCalcQAnswersArray(Map<Integer, String> answerList, ItemDataIfc item, Long gradingId, String agentId) {
-      final int MAX_ERROR_TRIES = 100;
       boolean hasErrors = true;
       Map<String, String> variableRangeMap = buildVariableRangeMap(item);
       List<String> instructionSegments = new ArrayList<>(0);
@@ -2996,12 +3065,13 @@ Here are the definition and 12 cases I came up with (lydia, 01/2006):
               try {
                   instructions = replaceCalculationsWithValues(instructions, 5); // what decimal precision should we use here?
                   // if could not process the calculation into a result then throws IllegalStateException which will be caught below and cause the numbers to regenerate
+                  // only pull out the segments if the formulas worked
+                  instructionSegments = extractInstructionSegments(instructions);
+                  hasErrors = false;
               } catch (SamigoExpressionError e1) {
                   log.warn("Samigo calculated item ("+item.getItemId()+") calculation invalid: "+e1.get());
+                  attemptCount++;
               }
-              // only pull out the segments if the formulas worked
-              instructionSegments = extractInstructionSegments(instructions);
-              hasErrors = false;
           } catch (Exception e) {
               attemptCount++;
           }
@@ -3129,6 +3199,13 @@ Here are the definition and 12 cases I came up with (lydia, 01/2006):
               String suffix = expression.substring(index + name.length());
 
               String replacementValue = value;
+
+              // If replacement is a negative number, wrap in parentheses to avoid confused operations
+              // For example, 3 {y} with -10 should be 3*-10= -30 not 3 -10 = -7
+              if (value.charAt(0) == '-' && Character.isDigit(value.charAt(1))) {
+                  replacementValue = ParserSymbol.LEFT_PARENTHESES_STR + value + ParserSymbol.RIGHT_PARENTHESES_STR;
+              }
+
               // if last character of prefix is a number or the edge of parenthesis, multiply by the variable
               // if x = 37, 5{x} -> 5*37
               // if x = 37 (5+2){x} -> (5+2)*37 (prefix is (5+2)
@@ -3168,6 +3245,9 @@ Here are the definition and 12 cases I came up with (lydia, 01/2006):
       if (StringUtils.isEmpty(expression)) {
           expression = "";
       } else {
+          String calculationAuxOpen = "" + CALCULATION_AUX_OPEN + CALCULATION_AUX_OPEN;
+          String calculationAuxClose = "" + CALCULATION_AUX_CLOSE + CALCULATION_AUX_CLOSE;
+          expression = expression.replaceAll("\\[\\[", calculationAuxOpen).replaceAll("\\]\\](?!\\])", calculationAuxClose);
           Matcher keyMatcher = CALCQ_CALCULATION_PATTERN.matcher(expression);
           List<String> toReplace = new ArrayList<>();
           while (keyMatcher.find()) {
@@ -3176,10 +3256,12 @@ Here are the definition and 12 cases I came up with (lydia, 01/2006):
           }
           if (toReplace.size() > 0) {
               for (String formula : toReplace) {
-                  String replace = CALCULATION_OPEN+formula+CALCULATION_CLOSE;
+                  String replace = calculationAuxOpen + formula + calculationAuxClose;
+                  formula = StringEscapeUtils.unescapeHtml4(formula);
                   String formulaValue = processFormulaIntoValue(formula, decimalPlaces);
                   expression = StringUtils.replace(expression, replace, formulaValue);
               }
+              expression = expression.replaceAll(calculationAuxOpen, "\\[\\[").replaceAll(calculationAuxClose, "\\]\\]");
           }
       }
       return expression;
@@ -3230,53 +3312,6 @@ Here are the definition and 12 cases I came up with (lydia, 01/2006):
 
       return formula;
   }
-
-  /**
-   * isNegativeSqrt() looks at the incoming expression and looks specifically
-   * to see if it executes the SQRT function.  If it does, it evaluates it.  If
-   * it has an error, it assumes that the SQRT function tried to evaluate a 
-   * negative number and evaluated to NaN.
-   * <p>Note - the incoming expression should have no variables.  They should 
-   * have been replaced before this function was called
-   * @param expression a mathematical formula, with all variables replaced by
-   * real values, to be evaluated
-   * @return true if the function uses the SQRT function, and the SQRT function
-   * evaluates as an error; else false
-   * @throws SamigoExpressionError if the evaluation of the SQRT function throws
-   * some other parse error
-   */
-    public boolean isNegativeSqrt(String expression) throws SamigoExpressionError {
-        Pattern sqrt = Pattern.compile("sqrt\\s*\\(");
-        boolean isNegative = false;
-        if (expression == null) {
-            expression = "";
-        }
-        expression = expression.toLowerCase();
-        Matcher matcher = sqrt.matcher(expression);
-        while (matcher.find()) {
-            int x = matcher.end();
-            int p = 1; // Parentheses left to match
-            int len = expression.length();
-            while (p > 0 && x < len) {
-                if (expression.charAt(x) == ')') {
-                    --p;
-                } else if (expression.charAt(x) == '(') {
-                    ++p;
-                }
-                ++x;
-            }
-            if (p == 0) {
-                String sqrtExpression = expression.substring(matcher.start(), x);
-                SamigoExpressionParser parser = new SamigoExpressionParser();
-                String numericAnswerString = parser.parse(sqrtExpression);
-                if (!isAnswerValid(numericAnswerString)) {
-                    isNegative = true;
-                    break; // finding 1 invalid one is enough
-                }
-            }
-        }
-        return isNegative;
-    }
 
   /**
    * CALCULATED_QUESTION
@@ -3383,7 +3418,186 @@ Here are the definition and 12 cases I came up with (lydia, 01/2006):
 	  }
 	  return false;
   }
+  
+  /**
+   * IMAGE_MAP QUESTION
+   * Simple to check to see if this is a calculated question. It's used in storeGrades() to see if the sort is necessary.
+   */
+  private boolean isImageMapQuestion(List<ItemGradingData> tempItemGradinglist, Map publishedItemHash) {
+	  if (tempItemGradinglist == null) return false;
+	  if (tempItemGradinglist.isEmpty()) return false;
+	  
+	  
+	  for(ItemGradingData itemCheck: tempItemGradinglist){
+		  Long itemId = itemCheck.getPublishedItemId();
+		  ItemDataIfc item = (ItemDataIfc) publishedItemHash.get(itemId);
+		  if (item != null && (TypeIfc.IMAGEMAP_QUESTION).equals(item.getTypeId())) {
+		    return true;
+		  }
+	  }
+	  return false;
+  }
 
+  
+  /**
+   * FIB QUESTIONS
+   * we ensure that answer text between brackets is always nonempty, also that
+   * starting text is nonempty, we use a non-breaking space for this purpose
+   * @param fib
+   * @return
+   */
+  private static String padFibWithNonbreakSpacesText(String fib, String marker_left, String marker_right) {
+	  String fibTmp=fib;
+
+	  if (fibTmp.startsWith(marker_left)){
+		  fibTmp = NBSP + fibTmp;
+	  }
+	  String regExp = Pattern.quote("" + marker_right) + Pattern.quote("" + marker_left);
+	  return fibTmp.replaceAll(regExp, marker_right + NBSP + marker_left);
+  }
+
+  /**
+   * FIB QUESTIONS
+   *  Get list of form:
+   *  {ans=red, text=Roses are},
+   *  {ans=blue, text=and violets are},
+   *  {ans=null, text=.}
+   *  From String of form "Roses are {red} and violets are {blue}."
+   *
+   * @param input
+   * @return list of Maps
+   */
+  public List<Map<String, String>> parseFillInBlank(String input, String markers_pair) {
+	  String marker_left = "" + markers_pair.charAt(0);
+	  String marker_right = "" + markers_pair.charAt(1);
+	  String inputTmp = input;
+	  inputTmp = padFibWithNonbreakSpacesText(inputTmp, marker_left, marker_right);
+
+	  List<Map<String, String>> storeParts = new ArrayList<>();
+	  if (inputTmp == null) {
+		  return storeParts;
+	  }
+
+	  StringTokenizer st = new StringTokenizer(inputTmp, marker_right);
+	  String tempToken = "";
+	  String[] splitArray = null;
+
+	  while (st.hasMoreTokens()){
+		  tempToken = st.nextToken();
+		  Map<String, String> tempMap = new HashMap<>();
+
+		  //split out text and answer parts from token
+		  String splitRegEx = Pattern.quote("" + marker_left);
+		  splitArray = tempToken.trim().split(splitRegEx, 2);
+		  tempMap.put("text", splitArray[0].trim());
+		  if (splitArray.length > 1){
+
+			  tempMap.put("ans", (splitArray[1]));
+		  }
+		  else{
+			  tempMap.put("ans", null);
+		  }
+
+		  storeParts.add(tempMap);
+	  }
+
+	  return storeParts;
+  }
+
+  /**
+   * FIB QUESTIONS
+   * Check if every open marker has one to close the pair
+   * @param text
+   * @param markers_pair
+   * @return true if the text if malformed
+   */
+  public boolean checkPairErrorsFIB(String text, String markers_pair) {
+	  int index=0;
+	  boolean FIBerror=false;
+	  boolean hasOpen=false;
+	  int opencount=0;
+	  int closecount=0;
+	  boolean notEmpty=false;
+	  int indexOfOpen=-1;
+	  while(index<text.length()){
+		  char c=text.charAt(index);
+		  if (c == markers_pair.charAt(0)){
+			  opencount++;
+			  if(hasOpen){
+				  FIBerror=true;
+				  break;
+			  }
+			  else{
+				  hasOpen=true;
+				  indexOfOpen=index;
+			  }
+		  }
+		  else if (c == markers_pair.charAt(1)){
+			  closecount++;
+			  if(!hasOpen){
+				  FIBerror=true;
+				  break;
+			  }
+			  else{
+				  if(notEmpty && (indexOfOpen+1 != index) && (!(text.substring(indexOfOpen+1,index).equals("</p><p>")))){
+					  hasOpen=false;
+					  notEmpty=false;
+				  }
+				  else{
+					  //error for emptyString
+					  FIBerror=true;
+					  break;
+				  }
+			  }
+		  }
+
+		  else{
+			  if(hasOpen && (!Character.isWhitespace(c))){
+				  notEmpty=true;
+			  }
+		  }
+		  index++;
+	  }//end while
+	  if(hasOpen || (opencount<1) || (opencount!=closecount) || FIBerror){
+		  return true;
+	  }
+	  else{
+		  return false;
+	  }
+  }
+
+  /**
+   * FIB QUESTIONS
+   * Check if the markers_pair elected are valid markers.
+   * @param markers_pair
+   * @return an number that tell if markers are valid or which error they have
+   */
+  public int checkMarkersFIB(String markers_pair) {
+	  // if markers length is lower or more than 2
+	  if (markers_pair.length() < 2 || markers_pair.length() > 2) {
+		  return 1;
+	  }
+	  // if both chars are the same
+	  if (markers_pair.charAt(0) == markers_pair.charAt(1)) {
+		  return 2;
+	  }
+	  // if markers are some forbidden chars
+	  if (fibTextContainsIllegalCharacters(markers_pair)) {
+		  return 3;
+	  }
+
+	  return 0;
+  }
+  /**
+   * FIB QUESTIONS
+   * @param toExamine marker_pair to determine if contain illegal chars
+   * @return if contains illegals ["'.,&<>\s|*]
+   */
+  private boolean fibTextContainsIllegalCharacters(String toExamine) {
+	  Pattern pattern = Pattern.compile("[\"\'.,&<>\\s|*]");
+	  Matcher matcher = pattern.matcher(toExamine);
+	  return matcher.find();
+  }
   
   public List<Boolean> getHasGradingDataAndHasSubmission(Long publishedAssessmentId) {
 	    List<Boolean> al = new ArrayList<>();

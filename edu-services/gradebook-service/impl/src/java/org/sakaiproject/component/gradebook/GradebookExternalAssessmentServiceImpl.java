@@ -60,8 +60,8 @@ import org.sakaiproject.tool.gradebook.Category;
 import org.sakaiproject.tool.gradebook.Gradebook;
 import org.sakaiproject.tool.gradebook.GradebookAssignment;
 import org.sakaiproject.util.ResourceLoader;
-import org.springframework.orm.hibernate4.HibernateCallback;
-import org.springframework.orm.hibernate4.HibernateTemplate;
+import org.springframework.orm.hibernate5.HibernateCallback;
+import org.springframework.orm.hibernate5.HibernateTemplate;
 
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -295,8 +295,8 @@ public class GradebookExternalAssessmentServiceImpl extends BaseHibernateManager
 
 		final HibernateCallback<GradebookAssignment> hc = session -> (GradebookAssignment) session
 				.createQuery("from GradebookAssignment as asn where asn.gradebook = :gradebook and asn.externalId = :externalid")
-				.setEntity("gradebook", gradebook)
-				.setString("externalid", externalId)
+				.setParameter("gradebook", gradebook)
+				.setParameter("externalid", externalId)
 				.uniqueResult();
 		return getHibernateTemplate().execute(hc);
 	}
@@ -718,7 +718,7 @@ public class GradebookExternalAssessmentServiceImpl extends BaseHibernateManager
 			Category persistedCategory = null;
 			if (categoryId != null) {
 				persistedCategory = getCategory(categoryId);
-				if (persistedCategory.isDropScores()) {
+				if (persistedCategory.isDropScores() && !persistedCategory.isEqualWeightAssignments()) {
 					List<GradebookAssignment> thisCategoryAssignments = getAssignmentsForCategory(categoryId);
 					for (GradebookAssignment thisAssignment : thisCategoryAssignments) {
 						if (!Objects.equals(thisAssignment.getPointsPossible(), points)) {

@@ -15,6 +15,7 @@
  */
 package org.sakaiproject.assignment.api.persistence;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -68,8 +69,6 @@ public interface AssignmentRepository extends SerializableRepository<Assignment,
 
     AssignmentSubmission findSubmissionForGroup(String assignmentId, String groupId);
 
-    void initializeAssignment(Assignment assignment);
-
     /**
      * Count submissions for a given assignment.
      * If any of the parameters are null they are not included in the query.
@@ -90,4 +89,6 @@ public interface AssignmentRepository extends SerializableRepository<Assignment,
      * @return the assignment id or null if none is found
      */
     String findAssignmentIdForGradebookLink(String context, String linkId);
+
+    Collection<String> findGroupsForAssignmentById(String assignmentId);
 }

@@ -4,7 +4,7 @@
   <parent>
     <artifactId>citations-base</artifactId>
     <groupId>org.sakaiproject</groupId>
-    <version>21-SNAPSHOT</version>
+    <version>22-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
   <name>sakai-citations-util</name>
@@ -17,9 +17,8 @@
       <artifactId>sakai-citations-api</artifactId>
     </dependency>
     <dependency>
-      <groupId>zing</groupId>
+      <groupId>org.dspace</groupId>
       <artifactId>cql-java</artifactId>
-      <version>0.7</version>
     </dependency>
   </dependencies>
   <build>

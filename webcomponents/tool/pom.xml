@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.sakaiproject</groupId>
         <artifactId>webcomponents-parent</artifactId>
-        <version>21-SNAPSHOT</version>
+        <version>22-SNAPSHOT</version>
     </parent>
 
     <name>Sakai Web Components Tool</name>
@@ -44,23 +44,51 @@
         <sourceDirectory>src/main/java</sourceDirectory>
         <plugins>
             <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>buildnumber-maven-plugin</artifactId>
+                <version>1.4</version>
+                <executions>
+                    <execution>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>create</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <shortRevisionLength>8</shortRevisionLength>
+                    <revisionOnScmFailure>Sakai</revisionOnScmFailure>
+                </configuration>
+            </plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-clean-plugin</artifactId>
                 <configuration>
                     <filesets>
                         <fileset>
-                            <directory>src/main/frontend/assets</directory>
+                            <directory>src/main/frontend</directory>
                             <includes>
-                                <include>**/*</include>
+                                <include>**</include>
                             </includes>
-                            <followSymlinks>false</followSymlinks>
+                            <excludes>
+                                <exclude>js/**</exclude>
+                                <exclude>.config/**</exclude>
+                                <exclude>stories/**</exclude>
+                                <exclude>storybook-resources/**</exclude>
+                                <exclude>test/**</exclude>
+                                <exclude>.storybook/**</exclude>
+                                <exclude>package.json</exclude>
+                                <exclude>package-lock.json</exclude>
+                                <exclude>.gitignore</exclude>
+                                <exclude>.jshintrc</exclude>
+                                <exclude>.eslintrc.js</exclude>
+                            </excludes>
                         </fileset>
                         <fileset>
-                            <directory>src/main/frontend/dist</directory>
-                            <includes>
-                                <include>**/*</include>
-                            </includes>
-                            <followSymlinks>false</followSymlinks>
+                            <directory>src/main/frontend/js/assets</directory>
+                        </fileset>
+                        <fileset>
+                            <directory>src/main/frontend/node_modules</directory>
                         </fileset>
                     </filesets>
                 </configuration>
@@ -71,16 +99,24 @@
                 <configuration>
                     <warSourceDirectory>src/main/webapp</warSourceDirectory>
                     <packagingExcludes>
+                        js/**,
+                        .config/**,
                         node_modules/**,
-                        ckeditor-src.js,
                         package.json,
                         package-lock.json,
-                        webpack.config.js,
                         .jshintrc
                     </packagingExcludes>
                     <webResources>
                         <resource>
                             <directory>src/main/frontend</directory>
+                            <excludes>
+                                <exclude>js/**</exclude>
+                                <exclude>.config/**</exclude>
+                                <exclude>node_modules/**</exclude>
+                                <exclude>stories/**</exclude>
+                                <exclude>.storybook/**</exclude>
+                                <exclude>package*.json</exclude>
+                            </excludes>
                         </resource>
                     </webResources>
                 </configuration>
@@ -88,7 +124,7 @@
             <plugin>
                 <groupId>com.github.eirslett</groupId>
                 <artifactId>frontend-maven-plugin</artifactId>
-                <version>1.8.0</version>
+                <version>1.12.0</version>
                 <configuration>
                     <installDirectory>target</installDirectory>
                     <workingDirectory>src/main/frontend</workingDirectory>
@@ -100,8 +136,8 @@
                             <goal>install-node-and-npm</goal>
                         </goals>
                         <configuration>
-                            <nodeVersion>v12.14.0</nodeVersion>
-                            <npmVersion>6.13.4</npmVersion>
+                            <nodeVersion>v16.8.0</nodeVersion>
+                            <npmVersion>7.21.1</npmVersion>
                         </configuration>
                     </execution>
                     <execution>
@@ -123,24 +159,22 @@
                         </configuration>
                     </execution>
                     <execution>
-                        <id>npm install</id>
+                        <id>eslint</id>
                         <goals>
                             <goal>npm</goal>
                         </goals>
                         <configuration>
-                            <arguments>
-                                ci --unsafe-perm
-                            </arguments>
+                            <arguments>run eslint</arguments>
                         </configuration>
                     </execution>
                     <execution>
-                        <id>npm build</id>
+                        <id>npm empathise</id>
                         <goals>
                             <goal>npm</goal>
                         </goals>
                         <configuration>
                             <arguments>
-                                run build
+                                run empathise -- --query=version=${buildNumber}
                             </arguments>
                         </configuration>
                     </execution>

@@ -4,7 +4,7 @@
   <parent>
     <artifactId>common</artifactId>
     <groupId>org.sakaiproject.common</groupId>
-    <version>21-SNAPSHOT</version><!-- ProjectVersion -->
+    <version>22-SNAPSHOT</version><!-- ProjectVersion -->
     <relativePath>../pom.xml</relativePath>
   </parent>
   <name>Sakai Content Util</name>
@@ -28,8 +28,8 @@
       <artifactId>sakai-component-manager</artifactId>
     </dependency>
     <dependency>
-      <groupId>javax.activation</groupId>
-      <artifactId>javax.activation-api</artifactId>
+      <groupId>jakarta.activation</groupId>
+      <artifactId>jakarta.activation-api</artifactId>
     </dependency>
     <dependency>
       <groupId>org.sakaiproject.common</groupId>

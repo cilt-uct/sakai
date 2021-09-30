@@ -32,12 +32,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import org.json.simple.JSONObject;
+
 import lombok.extern.slf4j.Slf4j;
 
 import uk.org.ponder.messageutil.MessageLocator;
 
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.component.cover.ServerConfigurationService;
+import org.sakaiproject.lessonbuildertool.SimplePageItem;
 import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean;
 import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean.UrlItem;
 import org.sakaiproject.lti.api.LTIService;
@@ -48,8 +51,11 @@ import org.sakaiproject.site.api.ToolConfiguration;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.tool.api.ToolManager;
 
+import org.tsugi.basiclti.BasicLTIUtil;
+import org.sakaiproject.basiclti.util.SakaiBLTIUtil;
+
 /**
- * Interface to Assignment
+ * Interface to LTI Content Items
  *
  * @author Charles Hedrick <hedrick@rutgers.edu>
  * 
@@ -76,7 +82,7 @@ public class BltiEntity implements LessonEntity, BltiInterface {
     protected static LTIService ltiService = null; 
 
     public void setSimplePageBean(SimplePageBean simplePageBean) {
-	this.simplePageBean = simplePageBean;
+		this.simplePageBean = simplePageBean;
     }
 
     private LessonEntity nextEntity = null;
@@ -243,7 +249,7 @@ public class BltiEntity implements LessonEntity, BltiInterface {
     }
 
     public LessonEntity getEntity(String ref, SimplePageBean o) {    
-	return getEntity(ref);
+		return getEntity(ref);
     }
 
     public LessonEntity getEntity(String ref) {
@@ -266,6 +272,50 @@ public class BltiEntity implements LessonEntity, BltiInterface {
 	} else
 	    return null;
     }
+
+	public void preShowItem(SimplePageItem item) {
+		loadContent();
+		if ( content != null ) {
+			Long contentKey = getLong(id);
+			String item_name = item.getName();
+			String item_description = item.getDescription();
+			String content_title = (String) content.get(LTIService.LTI_TITLE);
+			// SAK-43966 - Until the field is added description will always be null
+			String content_description = (String) content.get(LTIService.LTI_DESCRIPTION);
+			// SAK-40044 - The pre-21 workaround is to pass description in settings
+			// once SAK-43996 is done, this can be deleted
+			String content_settings = (String) content.get(LTIService.LTI_SETTINGS);
+			JSONObject content_json = BasicLTIUtil.parseJSONObject(content_settings);
+			String json_description = (String) content_json.get(LTIService.LTI_DESCRIPTION);
+
+			if ( (item_name != null && ! item_name.equals(content_title)) ||
+				(item_description != null && ! item_description.equals(json_description)) || // Remove after SAK-43996
+				(item_description != null && ! item_description.equals(content_description)) ) {
+
+				Properties updates = new Properties();
+				if ( item_name != null ) updates.setProperty(LTIService.LTI_TITLE, item_name);
+				// Post SAK-43996 - this should work (Sakai-21)
+				if ( item_description != null ) updates.setProperty(LTIService.LTI_DESCRIPTION, item_description);
+				if ( item_description != null ) { // Remove after SAK-43996
+					content_json.put(LTIService.LTI_DESCRIPTION, item_description);
+					updates.setProperty(LTIService.LTI_SETTINGS, content_json.toString());
+				}
+				// This uses the Dao access since 99% of the time we are launching as a student
+				// after the instructor updates the assignment, and the student is
+				// the first to launch after the change.
+				if ( ltiService != null && contentKey != null ) {
+					// TODO: Remove these three lines after Sakai-21 and SAK-32679 is applied
+					boolean isMaintainRole = true;
+					boolean isAdminRole = true;
+					ltiService.updateContentDao(contentKey, updates, null, isAdminRole, isMaintainRole);
+					// TODO: Switch to this after Sakai-21 and SAK-32679 is applied
+					// ltiService.updateContentDao(contentKey, updates);
+					log.debug("Content Item id={} updated.", contentKey);
+				}
+			}
+		}
+
+	}
 
     protected void loadContent() {
 	if ( content != null ) return;
@@ -306,9 +356,11 @@ public class BltiEntity implements LessonEntity, BltiInterface {
 	if ( ltiService != null && tool != null && ltiService.isMaintain(getSiteId())
 	    	&& LTIService.LTI_SECRET_INCOMPLETE.equals((String) tool.get(LTIService.LTI_SECRET)) 
 		&& LTIService.LTI_SECRET_INCOMPLETE.equals((String) tool.get(LTIService.LTI_CONSUMERKEY)) ) {
+
 		String toolId = getCurrentTool("sakai.siteinfo");
 		if ( toolId != null ) {
 		    ret = editItemUrl(toolId);
+			ret = ret + "&secretonly=true";
 		    return ret;
 		}
 	}
@@ -319,29 +371,6 @@ public class BltiEntity implements LessonEntity, BltiInterface {
 
     public Date getDueDate() {
 	return null;
-    }
-
-    // the following methods all take references. So they're in effect static.
-    // They ignore the entity from which they're called.
-    // The reason for not making them a normal method is that many of the
-    // implementations seem to let you set access control and find submissions
-    // from a reference, without needing the actual object. So doing it this
-    // way could save some database activity
-
-    // access control
-    public boolean addEntityControl(String siteId, String groupId) throws IOException {
-	// not used for BLTI, control is done entirely within LB
-	return false;
-    }
-
-    public boolean removeEntityControl(String siteId, String groupId) throws IOException {
-	return false;
-    }
-
-    // submission
-    // do we need the data from submission?
-    public boolean needSubmission(){
-	return false;
     }
 
     public LessonSubmission getSubmission(String userId) {
@@ -375,13 +404,13 @@ public class BltiEntity implements LessonEntity, BltiInterface {
 	if (bltiToolId != null) {
 	    search = "lti_tools.id=" + bltiToolId;
 	} else if (appStoresOnly) {
-		search = LTIService.LTI_PL_LINKSELECTION + "=1";
+		search = LTIService.LTI_PL_LESSONSSELECTION+" = 1 AND "+LTIService.LTI_PL_LINKSELECTION + "=1";
 	} else {
-		search = LTIService.LTI_PL_LINKSELECTION + "=0 OR " + LTIService.LTI_PL_LINKSELECTION + " IS NULL";
+		search = LTIService.LTI_PL_LESSONSSELECTION+" = 1 AND ( "+LTIService.LTI_PL_LINKSELECTION + "=0 OR " + LTIService.LTI_PL_LINKSELECTION + " IS NULL )";
 	}
 	List<Map<String,Object>> tools = ltiService.getTools(search,null,0,0, bean.getCurrentSiteId());
 	for ( Map<String,Object> tool : tools ) {
-		String url = ServerConfigurationService.getToolUrl() + "/" + toolId + "/sakai.basiclti.admin.helper.helper?panel=ContentConfig&tool_id=" 
+		String url = ServerConfigurationService.getToolUrl() + "/" + toolId + "/sakai.basiclti.admin.helper.helper?panel=ContentConfig&flow=lessons&tool_id="
 			+ tool.get(LTIService.LTI_ID) + "&returnUrl=" + URLEncoder.encode(returnUrl);
 		String fa_icon = (String) tool.get(LTIService.LTI_FA_ICON);
 		Long ls = getLong(tool.get(LTIService.LTI_PL_LINKSELECTION));
@@ -423,7 +452,7 @@ public class BltiEntity implements LessonEntity, BltiInterface {
 	loadContent();
 	if (content == null)
 	    return null;
-	String url = ServerConfigurationService.getToolUrl() + "/" + toolId + "/sakai.basiclti.admin.helper.helper?panel=ContentConfig&id=" + 
+	String url = ServerConfigurationService.getToolUrl() + "/" + toolId + "/sakai.basiclti.admin.helper.helper?panel=ContentConfig&flow=lessons&id=" +
 		content.get(LTIService.LTI_ID);
 	if ( returnUrl != null ) {
 		url = url + "&returnUrl=" + URLEncoder.encode(returnUrl);
@@ -469,29 +498,11 @@ public class BltiEntity implements LessonEntity, BltiInterface {
     {
 	if ( ltiService == null ) return null;
 
-	String toolBaseUrl = launchUrl;
-	int pos = launchUrl.indexOf('?');
-	if ( pos > 1 ) {
-		toolBaseUrl = launchUrl.substring(0,pos);
-	}
+	String toolBaseUrl = SakaiBLTIUtil.stripOffQuery(launchUrl);
 
-	// Look for a tool that is a perfect match, and fall back
-	//
-	Map<String,Object> theTool = null;
-	Map<String,Object> theBaseTool = null;
+	// Lets find the right tool to assiociate with
 	List<Map<String,Object>> tools = ltiService.getTools(null,null,0,0, simplePageBean.getCurrentSiteId());
-	for ( Map<String,Object> tool : tools ) {
-		String toolLaunch = (String) tool.get(LTIService.LTI_LAUNCH);
-		if ( toolLaunch.equals(launchUrl) ) {
-			theTool = tool;
-			break;				
-		}
-		if ( theBaseTool == null && toolLaunch.equals(toolBaseUrl) ) {
-			theBaseTool = tool;
-		}
-	}
-
-	if ( theTool == null && theBaseTool != null ) theTool = theBaseTool;
+	Map<String, Object> theTool = SakaiBLTIUtil.findBestToolMatch(launchUrl, tools);
 
 	if ( theTool == null ) {
 		Properties props = new Properties ();
@@ -505,7 +516,6 @@ public class BltiEntity implements LessonEntity, BltiInterface {
 		props.setProperty(LTIService.LTI_CONSUMERKEY, LTIService.LTI_SECRET_INCOMPLETE);
 		props.setProperty(LTIService.LTI_SECRET, LTIService.LTI_SECRET_INCOMPLETE);
 		props.setProperty(LTIService.LTI_ALLOWLAUNCH, "1");
-		props.setProperty(LTIService.LTI_ALLOWCUSTOM, "1");
 		props.setProperty(LTIService.LTI_ALLOWTITLE, "1");
 		props.setProperty(LTIService.LTI_ALLOWPAGETITLE, "1");
 		props.setProperty(LTIService.LTI_ALLOWOUTCOMES, "1");

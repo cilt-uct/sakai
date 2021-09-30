@@ -304,11 +304,17 @@ public class AuthorActionListener
 				  needResubmitList)) {
 			  f.setActiveStatus(true);
 			  activeList.add(f);
+
+			  // check pastDue (alters display for instructor)
+			  if (f.getDueDate() != null && (new Date()).after(f.getDueDate())) {
+				  f.setPastDue(true);
+			  }
 		  }
 		  else {
 			  f.setActiveStatus(false);
 			  inActiveList.add(f);
 		  }
+
 		  try {
 			  String lastModifiedDateDisplay = tu.getIsoDateWithLocalTime(f.getLastModifiedDate());
 			  f.setLastModifiedDateForDisplay(lastModifiedDateDisplay);

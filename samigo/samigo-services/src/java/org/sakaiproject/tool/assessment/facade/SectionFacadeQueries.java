@@ -24,9 +24,9 @@ package org.sakaiproject.tool.assessment.facade;
 import java.util.List;
 
 import lombok.extern.slf4j.Slf4j;
-import org.hibernate.Query;
-import org.springframework.orm.hibernate4.HibernateCallback;
-import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
+import org.hibernate.query.Query;
+import org.springframework.orm.hibernate5.HibernateCallback;
+import org.springframework.orm.hibernate5.support.HibernateDaoSupport;
 
 import org.sakaiproject.tool.assessment.data.dao.assessment.SectionData;
 import org.sakaiproject.tool.assessment.data.dao.assessment.SectionMetaData;
@@ -84,8 +84,8 @@ public class SectionFacadeQueries  extends HibernateDaoSupport implements Sectio
     
     final HibernateCallback<List> hcb = session -> {
         Query q = session.createQuery(query);
-        q.setLong("id", sectionId);
-        q.setString("label", label);
+        q.setParameter("id", sectionId);
+        q.setParameter("label", label);
         return q.list();
     };
     List sectionmetadatalist = getHibernateTemplate().execute(hcb);

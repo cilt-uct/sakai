@@ -18,10 +18,15 @@ package org.sakaiproject.assignment.impl;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.text.NumberFormat;
+import java.text.Collator;
+import java.text.ParseException;
+import java.text.RuleBasedCollator;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,9 +35,11 @@ import java.util.TreeMap;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.builder.CompareToBuilder;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.CreationHelper;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -44,7 +51,6 @@ import org.sakaiproject.assignment.api.model.Assignment;
 import org.sakaiproject.assignment.api.model.AssignmentSubmission;
 import org.sakaiproject.assignment.api.model.AssignmentSubmissionSubmitter;
 import org.sakaiproject.assignment.impl.sort.AssignmentComparator;
-import org.sakaiproject.assignment.impl.sort.UserComparator;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
@@ -53,7 +59,10 @@ import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.util.ResourceLoader;
 import org.sakaiproject.util.api.FormattedText;
+import org.sakaiproject.util.comparator.UserSortNameComparator;
+import org.springframework.util.comparator.NullSafeComparator;
 
+import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -69,17 +78,36 @@ public class GradeSheetExporter {
     @Setter private UserDirectoryService userDirectoryService;
     @Setter private FormattedText formattedText;
 
-    private ResourceLoader rb = new ResourceLoader("assignment");
+    @Setter private ResourceLoader rb = new ResourceLoader("assignment");
 
     /**
-     * Access and output the grades spreadsheet for the reference, either for an assignment or all assignments in a context.
-     *
-     * @param out The outputStream to stream the grades spreadsheet into.
+    * A comparator that sorts by student sortName
+    */
+    private static final Comparator<Submitter> SUBMITTER_NAME_COMPARATOR = new Comparator<Submitter>() {
+        Collator collator;
+        {
+            this.collator = Collator.getInstance();
+            try {
+                this.collator = new RuleBasedCollator(
+                        ((RuleBasedCollator) this.collator).getRules().replaceAll("<'\u005f'", "<' '<'\u005f'"));
+            } catch (final ParseException e) {
+                log.warn(this + " Cannot init RuleBasedCollator. Will use the default Collator instead.", e);
+            }
+        }
+
+        @Override
+        public int compare(final Submitter s1, final Submitter s2) {
+            return new NullSafeComparator<>(collator, false).compare(s1.getSortName(), s2.getSortName());
+        }
+    };
+
+    /**
      * @param reference The reference, either to a specific assignment, or just to an assignment context.
      * @param query The query string from the request with the following params contextString, viewString, searchString, searchFilterOnly
      *              <br/>see <b>AssignmentAction#build_instructor_report_submissions()</b>
      */
-    public void getGradesSpreadsheet(final OutputStream out, final String reference, final String query) {
+    public Optional<Workbook> getGradesSpreadsheet(final String query) {
+
         Map<String, String> params = new HashMap<>();
         Pattern.compile("&").splitAsStream(query).map(p -> Arrays.copyOf(p.split("="), 2)).forEach(a -> params.put(a[0], a[1]));
         // get site title for display purpose
@@ -98,7 +126,7 @@ public class GradeSheetExporter {
             }
         } catch (Exception e) {
             log.warn("Cannot get site context: {}, {}", params.get("contextString"), e.getMessage());
-            return;
+            return Optional.empty();
         }
 
         // select only assignments that can be graded by the current user
@@ -110,9 +138,10 @@ public class GradeSheetExporter {
 
         if (downloadable.isEmpty()) {
             // no assignments to download
-            log.warn("No gradable assignments can be downloaded for reference: {}", reference);
+            log.warn("No gradable assignments can be downloaded for context: {}", context);
+            return Optional.empty();
         } else {
-        	// site members excluding those who can add assignments
+            // site members excluding those who can add assignments
             // hashmap which stores the Excel row number for particular user
 
             String refToCheck = group == null ? site.getReference() : group.getReference();
@@ -122,7 +151,7 @@ public class GradeSheetExporter {
                     site != null && candidateDetailProvider.isAdditionalNotesEnabled(site);
             // For details of all the users in the site.
             Map<String, Submitter> submitterMap = new HashMap<>();
-            members.sort(new UserComparator());
+            members.sort(new UserSortNameComparator());
             for (User user : members) {
                 // put user displayid and sortname in the first two cells
                 Submitter submitter = new Submitter(user.getDisplayId(), user.getSortName());
@@ -132,85 +161,91 @@ public class GradeSheetExporter {
                     submitter.setNotes(additionalNotes);
                 }
             }
-            
+
             Workbook wb = new SXSSFWorkbook(6 + members.size());
             Sheet sheet = wb.createSheet(WorkbookUtil.createSafeSheetName(sheetName));
 
+            int exportRowcount = 0;
+
             // cell 0,0 - title
-            Row row = sheet.createRow(0);
-            row.createCell(0).setCellValue(rb.getString("download.spreadsheet.title"));
+            sheet.createRow(exportRowcount++).createCell(0).setCellValue(rb.getString("download.spreadsheet.title"));
 
             // cell 1,0 - empty
-            row = sheet.createRow(1);
-            row.createCell(0).setCellValue("");
+            sheet.createRow(exportRowcount++).createCell(0).setCellValue("");
 
             // cell 2,0 - site title
-            row = sheet.createRow(2);
-            row.createCell(0).setCellValue(rb.getString("download.spreadsheet.site") + siteTitle);
+            sheet.createRow(exportRowcount++).createCell(0).setCellValue(rb.getString("download.spreadsheet.site") + siteTitle);
 
             // cell 3,0 - download date
-            row = sheet.createRow(3);
-            row.createCell(0).setCellValue(rb.getString("download.spreadsheet.date") + assignmentService.getUsersLocalDateTimeString(Instant.now()));
+            sheet.createRow(exportRowcount++).createCell(0).setCellValue(rb.getString("download.spreadsheet.date") + assignmentService.getUsersLocalDateTimeString(Instant.now()));
 
             // cell 4,0 - empty
-            row = sheet.createRow(4);
-            row.createCell(0).setCellValue("");
+            sheet.createRow(exportRowcount++).createCell(0).setCellValue("");
 
             CellStyle style = wb.createCellStyle();
             Cell cell;
 
             // this is the header row number
-            final int headerRowNumber = 5;
             // set up the header cells
-            row = sheet.createRow(headerRowNumber);
-            int cellColumnNum = 0;
+            int headerRowCellCount = 0;
+            Row tableHeaderRow = sheet.createRow(exportRowcount++);
 
             // user name column
-            cell = row.createCell(cellColumnNum++);
-            cell.setCellStyle(style);
-            cell.setCellValue(rb.getString("download.spreadsheet.column.name"));
+            tableHeaderRow.createCell(headerRowCellCount++).setCellValue(rb.getString("download.spreadsheet.column.name"));
 
             // user enterprise id column
-            cell = row.createCell(cellColumnNum);
-            cell.setCellStyle(style);
-            cell.setCellValue(rb.getString("download.spreadsheet.column.userid"));
+            tableHeaderRow.createCell(headerRowCellCount++).setCellValue(rb.getString("download.spreadsheet.column.userid"));
+
+            // Assignment title
+            tableHeaderRow.createCell(headerRowCellCount++).setCellValue(rb.getString("download.spreadsheet.column.asn.title"));
+
+            // Grade
+            tableHeaderRow.createCell(headerRowCellCount++).setCellValue(rb.getString("download.spreadsheet.column.asn.grade"));
+
+            // Scale
+            tableHeaderRow.createCell(headerRowCellCount++).setCellValue(rb.getString("download.spreadsheet.column.asn.scale"));
+
+            // Submission Date
+            tableHeaderRow.createCell(headerRowCellCount++).setCellValue(rb.getString("download.spreadsheet.column.submitted"));
+
+            // Is submission Late
+            tableHeaderRow.createCell(headerRowCellCount++).setCellValue(rb.getString("download.spreadsheet.column.late"));
+
+            // Assignment notes
+            if (isNotesEnabled) {
+                tableHeaderRow.createCell(headerRowCellCount++).setCellValue(rb.getString("gen.notes"));
+            }
 
             // We have to build a Map of the results so that we can sort them afterwards so that we don't expose data
             // by having the anonymous results in the same position as the original listing.
-            Map<Submitter, List<Object>> results = new TreeMap<>();
-            int index = 0;
-            int assignmentSize = downloadable.size();
+            Map<Submitter, SubmissionInfo> results = new TreeMap<>();
             // the grade data portion starts from the third column, since the first two are used for user's display id and sort name
-            for (Assignment a : downloadable) {
-                Assignment.GradeType assignmentType = a.getTypeOfGrade();
-
-                int rowNum = headerRowNumber;
-                row = sheet.getRow(rowNum++);
-                cellColumnNum = (index + 2);
-                cell = row.createCell(cellColumnNum); // since the first two column is taken by student id and name
-                cell.setCellStyle(style);
-                cell.setCellValue(a.getTitle());
-
+            for (Assignment assignment : downloadable) {
+                Assignment.GradeType assignmentTypeOfGrade = assignment.getTypeOfGrade();
+                boolean isAnonymousGrading = assignmentService.assignmentUsesAnonymousGrading(assignment);
+                boolean isGroupAssignment = assignment.getIsGroup();
                 // begin to populate the column for this assignment, iterating through student list
-                for (AssignmentSubmission submission : assignmentService.getSubmissions(a)) {
-                    if (a.getIsGroup()) {
+                for (AssignmentSubmission submission : assignmentService.getSubmissions(assignment)) {
+                    if (isGroupAssignment) {
                         for (AssignmentSubmissionSubmitter submissionSubmitter : submission.getSubmitters()) {
                             String userId = submissionSubmitter.getSubmitter();
                             Submitter submitter = submitterMap.get(userId);
+                            SubmissionInfo submissionInfo = null;
 
                             if (submitter != null) {
+
+                                // Set the groupId for group submissions
+                                submitter.setGroupId(submission.getGroupId());
+
                                 // find right row
                                 // Get the user ID for this result
-                                if (assignmentService.assignmentUsesAnonymousGrading(a)) {
+                                if (isAnonymousGrading) {
                                     submitter = new Submitter(userId, submitter);
                                 }
 
-                                List<Object> objects = results.computeIfAbsent(submitter, k -> new ArrayList<>(Collections.nCopies(assignmentSize, null)));
-                                // Create item and fill up if doesn't exist.
-
                                 if (submission.getGraded() && submission.getGrade() != null) {
                                     // graded and released
-                                    if (assignmentType == Assignment.GradeType.SCORE_GRADE_TYPE) {
+                                    if (assignmentTypeOfGrade == Assignment.GradeType.SCORE_GRADE_TYPE) {
                                         try {
                                             // numeric cell type?
                                             int factor = submission.getAssignment().getScaleFactor();
@@ -225,23 +260,21 @@ public class GradeSheetExporter {
                                             for (int j = 0; j < dec; j++) {
                                                 format = format.concat("0");
                                             }
-                                            objects.set(index, new FloatCell(format, f));
+                                            submissionInfo = new SubmissionInfo(new FloatCell(format, f), submission);
                                         } catch (Exception e) {
                                             // TODO originally
-                                            // objects.set(index, submission.getGradeForUser(userId) == null ? submission.getGrade() : submission.getGradeForUser(userId));
-                                            objects.set(index, submissionSubmitter.getGrade() == null ? submission.getGrade() : submissionSubmitter.getGrade());
+                                            submissionInfo = new SubmissionInfo(submissionSubmitter.getGrade() == null ? submission.getGrade() : submissionSubmitter.getGrade(), submission);
                                             log.warn("Cannot get grade for assignment submission={}, user={}", submission.getId(), userId);
                                         }
                                     } else {
                                         // String cell type
-                                        objects.set(index, submissionSubmitter.getGrade() == null ? submission.getGrade() : submissionSubmitter.getGrade());
-                                        // TODO originally
-                                        // objects.set(index, submission.getGradeForUser(userId) == null ? submission.getGradeDisplay() : submission.getGradeForUser(userId));
+                                        submissionInfo = new SubmissionInfo(submissionSubmitter.getGrade() == null ? submission.getGrade() : submissionSubmitter.getGrade(), submission);
                                     }
                                 } else if (submission.getSubmitted() && submission.getDateSubmitted() != null) {
                                     // submitted, but no grade available yet
-                                    objects.set(index, rb.getString("gen.nograd"));
+                                    submissionInfo = new SubmissionInfo(rb.getString("gen.nograd"), submission);
                                 }
+                                results.put(submitter, submissionInfo);
                             } // if
                         }
 
@@ -252,120 +285,172 @@ public class GradeSheetExporter {
                             continue;
                         }
                         Submitter submitter = submitterMap.get(submissionSubmitters[0].getSubmitter());
+                        SubmissionInfo submissionInfo = null;
                         if (submitter != null) {
-	                        // Get the user ID for this result
-	                        if (assignmentService.assignmentUsesAnonymousGrading(a)) {
-	                            submitter = new Submitter(submission.getId() + " " + rb.getString("grading.anonymous.title"), submitter);
-	                        }
-                        
-	                        List<Object> objects = results.computeIfAbsent(submitter, k -> new ArrayList<>(Collections.nCopies(assignmentSize, null)));
-	                        // Create item and fill up if doesn't exist.
-	                        // find right row
-	
-	                        if (submission.getGraded() && submission.getGrade() != null) {
-	                            // graded and released
-	                            String grade = assignmentService.getGradeForSubmitter(submission, submissionSubmitters[0].getSubmitter());
-	                            
-	                            if (assignmentType == Assignment.GradeType.SCORE_GRADE_TYPE) {
-	                                try {
-	                                    // numeric cell type?
-	                                    int factor = submission.getAssignment().getScaleFactor();
-	                                    int dec = (int) Math.log10(factor);
-	
-	                                    //We get float number no matter the locale it was managed with.
-	                                    NumberFormat nbFormat = formattedText.getNumberFormat(dec, dec, null);
-	                                    float f = nbFormat.parse(grade).floatValue();
-	
-	                                    String format = "#,##0.";
-	                                    for (int j = 0; j < dec; j++) {
-	                                        format = format.concat("0");
-	                                    }
-	                                    style.setDataFormat(wb.createDataFormat().getFormat(format));
-	                                    cell.setCellStyle(style);
-	                                    objects.set(index, new FloatCell(format, f));
-	                                } catch (Exception e) {
-	                                    objects.set(index, grade);
-	                                }
-	                            } else {
-	                                objects.set(index, grade);
-	                            }
-	                        } else if (submission.getSubmitted() && submission.getDateSubmitted() != null) {
-	                            objects.set(index, rb.getString("gen.nograd"));
-	                        }
-                    	}
+                            // Get the user ID for this result
+                            if (isAnonymousGrading) {
+                                submitter = new Submitter(submission.getId() + " " + rb.getString("grading.anonymous.title"), submitter);
+                            }
+
+                            // Create item and fill up if doesn't exist.
+                            // find right row
+    
+                            if (submission.getGraded() && submission.getGrade() != null) {
+                                // graded and released
+                                String grade = assignmentService.getGradeForSubmitter(submission, submissionSubmitters[0].getSubmitter());
+
+                                if (assignmentTypeOfGrade == Assignment.GradeType.SCORE_GRADE_TYPE) {
+                                    try {
+                                        // numeric cell type?
+                                        int factor = submission.getAssignment().getScaleFactor();
+                                        int dec = (int) Math.log10(factor);
+
+                                        //We get float number no matter the locale it was managed with.
+                                        NumberFormat nbFormat = formattedText.getNumberFormat(dec, dec, null);
+                                        float f = nbFormat.parse(grade).floatValue();
+
+                                        String format = "#,##0.";
+                                        for (int j = 0; j < dec; j++) {
+                                            format = format.concat("0");
+                                        }
+                                        style.setDataFormat(wb.createDataFormat().getFormat(format));
+                                        submissionInfo = new SubmissionInfo(new FloatCell(format, f), submission);
+                                    } catch (Exception e) {
+                                        submissionInfo = new SubmissionInfo(grade, submission);
+                                    }
+                                } else {
+                                    submissionInfo = new SubmissionInfo(grade, submission);
+                                }
+                            } else if (submission.getSubmitted() && submission.getDateSubmitted() != null) {
+                                submissionInfo = new SubmissionInfo(rb.getString("gen.nograd"), submission);
+                            }
+                            results.put(submitter, submissionInfo);
+                        }
                     }
-                }
-                index++;
 
-                if (isNotesEnabled) {
-                    // Add the notes header
-                    int cellNum = (index + 2);
-                    rowNum = headerRowNumber;
-                    row = sheet.getRow(rowNum++);
-                    cell = row.createCell(cellNum);
-                    cell.setCellType(CellType.STRING);
-                    cell.setCellValue(rb.getString("gen.notes"));
                 }
 
+                final List<Submitter> submitters = new ArrayList<>(results.keySet());
+                Collections.sort(submitters, SUBMITTER_NAME_COMPARATOR);
 
-                // The map is already sorted and so we just iterate over it and output rows.
-                for (Map.Entry<Submitter, List<Object>> entry : results.entrySet()) {
-                    Row sheetRow = sheet.createRow(rowNum++);
-                    Submitter submitter = entry.getKey();
-                    List<Object> rowValues = entry.getValue();
+                for (final Submitter submitter : submitters) {
+                    SubmissionInfo submissionInfo = results.get(submitter);
                     int column = 0;
-                    if (submitter.anonymous) {
-                        sheetRow.createCell(column++).setCellValue("");
+                    Row sheetRow = null;
+                    if (!submitter.anonymous) {
+                        sheetRow = sheet.createRow(exportRowcount++);
+                        // User name
+                        String userName = submitter.sortName;
+                        // If the assignment has group submissions, it's good to set the name of the group too.
+                        if (isGroupAssignment && submitter.getGroupId() != null) {
+                            Group submissionGroup = site.getGroup(submitter.getGroupId());
+                            if (submissionGroup != null) {
+                                userName = String.format(" %s [%s]", userName, submissionGroup.getTitle());
+                            }
+                        }
+                        sheetRow.createCell(column++).setCellValue(userName);
+                        // User Id
                         sheetRow.createCell(column++).setCellValue(submitter.id);
-                    } else {
-                        sheetRow.createCell(column++).setCellValue(submitter.sortName);
-                        sheetRow.createCell(column++).setCellValue(submitter.id);
-                    }
-                    for (Object rowValue : rowValues) {
-                        if (rowValue instanceof FloatCell) {
-                            FloatCell floatValue = (FloatCell) rowValue;
+                        // Assignment title
+                        sheetRow.createCell(column++).setCellValue(assignment.getTitle());
+
+                        if (submissionInfo != null && submissionInfo.grade instanceof FloatCell) {
+                            FloatCell floatValue = (FloatCell) submissionInfo.grade;
                             cell = sheetRow.createCell(column++, CellType.NUMERIC);
                             cell.setCellValue(floatValue.value);
                             style = wb.createCellStyle();
                             style.setDataFormat(wb.createDataFormat().getFormat(floatValue.format));
                             cell.setCellStyle(style);
-                        } else if (rowValue != null) {
-                            cell = sheetRow.createCell(column++, CellType.STRING);
-                            cell.setCellValue(rowValue.toString());
                         } else {
                             cell = sheetRow.createCell(column++, CellType.STRING);
-                            cell.setCellValue(rb.getString("listsub.nosub"));
+                            cell.setCellValue(submissionInfo != null ? submissionInfo.grade.toString() : rb.getString("listsub.nosub"));
                         }
-                    }
-                    if (isNotesEnabled) {
-                        int col = column;
-                        for (String note : submitter.notes) {
-                            Cell noteCell = sheetRow.createCell(col++, CellType.STRING);
-                            noteCell.setCellValue(note);
+
+                        // Scale
+                        String scaleValue = "";
+                        switch (assignmentTypeOfGrade) {
+                            case CHECK_GRADE_TYPE:
+                                scaleValue = rb.getString("check");
+                                break;
+                            case LETTER_GRADE_TYPE:
+                                scaleValue = "A-F";
+                                break;
+                            case PASS_FAIL_GRADE_TYPE:
+                                scaleValue = rb.getString("gen.pf");
+                                break;
+                            case SCORE_GRADE_TYPE:
+                                scaleValue = "0-"+assignmentService.getMaxPointGradeDisplay(assignment.getScaleFactor(), assignment.getMaxGradePoint());
+                                break;
+                            case UNGRADED_GRADE_TYPE:
+                                scaleValue = rb.getString("gen.nograd");
+                                break;
+                            case GRADE_TYPE_NONE:
+                            default:
+                                scaleValue = rb.getString("gen.notset");
+                                break;
+                        }
+                        sheetRow.createCell(column++).setCellValue(scaleValue);
+
+                        // Date submitted and Late.
+                        CellStyle dateCellStyle = wb.createCellStyle();
+                        CreationHelper createHelper = wb.getCreationHelper();
+                        dateCellStyle.setDataFormat(createHelper.createDataFormat().getFormat("mm/dd/yyyy hh:mm"));
+
+                        cell = sheetRow.createCell(column++, CellType.NUMERIC);
+                        cell.setCellStyle(dateCellStyle);
+                        if (submissionInfo != null && submissionInfo.dateSubmitted != null) {
+                            cell.setCellValue(Date.from(submissionInfo.dateSubmitted));
+                            cell = sheetRow.createCell(column++, CellType.BOOLEAN);
+                            cell.setCellValue(submissionInfo.late);
+                        } else {
+                            cell.setCellStyle(null);
+                            cell.setCellValue(0);
+                            cell = sheetRow.createCell(column++, CellType.BOOLEAN);
+                            cell.setCellValue(false);
+                        }
+                        if (isNotesEnabled) {
+                            for (String note : submitter.notes) {
+                                Cell noteCell = sheetRow.createCell(column++, CellType.STRING);
+                                noteCell.setCellValue(note);
+                            }
                         }
                     }
                 }
             }
 
-            try {
-                wb.write(out);
-            } catch (IOException e) {
-                log.warn("Failed to write out spreadsheet:" + e.getMessage());
-            }
-            finally {
-            	try {
-            		wb.close();
-            	}
-            	catch(IOException e) {
-            		log.warn("Failed to close spreadsheet:" + e.getMessage());
-            	}
-            }
+            return Optional.of(wb);
         }
     }
 
-	private String getGrade(final AssignmentSubmissionSubmitter submissionSubmitter) {
+    /**
+     * Access and output the grades spreadsheet for the reference, either for an assignment or all assignments in a context.
+     *
+     * @param out The outputStream to stream the grades spreadsheet into.
+     * @param reference The reference, either to a specific assignment, or just to an assignment context.
+     * @param query The query string from the request with the following params contextString, viewString, searchString, searchFilterOnly
+     *              <br/>see <b>AssignmentAction#build_instructor_report_submissions()</b>
+     */
+    public void writeGradesSpreadsheet(final OutputStream out, final String query) {
+
+        getGradesSpreadsheet(query).ifPresent(wb -> {
+
+            try  {
+                wb.write(out);
+            } catch (IOException e) {
+                log.warn("Failed to write out spreadsheet:" + e.getMessage());
+            } finally {
+                try {
+                    wb.close();
+                } catch(IOException e) {
+                    log.warn("Failed to close spreadsheet:" + e.getMessage());
+                }
+            }
+        });
+    }
+
+    private String getGrade(final AssignmentSubmissionSubmitter submissionSubmitter) {
         return assignmentService.getGradeForSubmitter(submissionSubmitter.getSubmission(), submissionSubmitter.getSubmitter());
-	}
+    }
 
     // This small holder is so that we can hold details about a floating point number while building up the list.
     // We can't create cells when we don't know where they will go yet.
@@ -399,6 +484,8 @@ public class GradeSheetExporter {
 
         boolean anonymous;
         public String id;
+        @Getter @Setter
+        public String groupId;
         String sortName;
         List<String> notes = Collections.emptyList();
 
@@ -409,7 +496,7 @@ public class GradeSheetExporter {
 
             Submitter submitter = (Submitter) o;
 
-            return anonymous == submitter.anonymous && id.equals(submitter.id);
+            return anonymous == submitter.anonymous && id.equals(submitter.id) && groupId.equals(submitter.groupId);
 
         }
 
@@ -422,21 +509,37 @@ public class GradeSheetExporter {
 
         @Override
         public int compareTo(Submitter o) {
-            int value = Boolean.compare(this.anonymous, o.anonymous);
-            if (value == 0) {
-                if (anonymous) {
-                    // Sort by ID for anonymous ones
-                    value = this.id.compareTo(o.id);
-                } else {
-                    // Sort by sortName for normal ones.
-                    value = this.sortName.compareTo(o.sortName);
-                }
-            }
-            return value;
+            // Sort by sortName for normal ones, but id if they're the same
+            return new CompareToBuilder().append(this.sortName, o.sortName).append(this.id, o.id).append(this.groupId, o.groupId).toComparison();
         }
 
         void setNotes(Optional<List<String>> notes) {
             notes.ifPresent(strings -> this.notes = strings);
+        }
+
+        public String getSortName() {
+            return sortName;
+        }
+
+        public void setSortName(String sortName) {
+            this.sortName = sortName;
+        }
+    }
+
+    private class SubmissionInfo {
+
+        Object grade;
+        Instant dateSubmitted;
+        boolean late = false;
+
+        SubmissionInfo(Object grade, AssignmentSubmission submission) {
+
+            this.grade = grade;
+            this.dateSubmitted = submission.getDateSubmitted();
+
+            if (this.dateSubmitted != null) {
+                this.late = submission.getDateSubmitted().isAfter(submission.getAssignment().getDueDate());
+            }
         }
     }
 }

@@ -84,9 +84,9 @@
         </div>
     </div>
     <div class="form-group row">
-        <h:outputLabel value="#{authorMessages.answer_point_value_display}" styleClass="col-md-4 form-control-label"/>
+        <h:outputLabel for="itemScore" value="#{authorMessages.answer_point_value_display}" styleClass="col-md-4 form-control-label"/>
         <div class="col-md-5 samigo-inline-radio">
-            <h:selectOneRadio value="#{itemauthor.currentItem.itemScoreDisplayFlag}" >
+            <h:selectOneRadio value="#{itemauthor.currentItem.itemScoreDisplayFlag}" id="itemScore">
                 <f:selectItem itemValue="true" itemLabel="#{authorMessages.yes}" />
                 <f:selectItem itemValue="false" itemLabel="#{authorMessages.no}" />
             </h:selectOneRadio>
@@ -99,10 +99,28 @@
             <h:outputLabel for="answerminptr" value="#{authorMessages.answer_min_point_value}" 
                            styleClass="col-md-4 form-control-label"/>
             <div class="col-md-2">
-                <h:inputText id="answerminptr" value="#{itemauthor.currentItem.itemMinScore}" styleClass="form-control ConvertPoint">
+                <h:inputText
+                    id="answerminptr"
+                    value="#{itemauthor.currentItem.itemMinScore}"
+                    styleClass="form-control ConvertPoint"
+                    disabled="#{itemauthor.currentItem.renderMinPointsWarning}">
                     <f:validateDoubleRange />
                 </h:inputText>    
-                <h:outputText value="#{authorMessages.answer_min_point_info}"/>
+                <small>
+                    <h:outputText
+                        id="min-point-info"
+                        value="#{authorMessages.answer_min_point_info}"
+                        styleClass="sak-banner-info"
+                        rendered="#{!itemauthor.currentItem.renderMinPointsWarning}" />
+                </small>
+                <small>
+                    <div><h:outputText
+                        id="min-point-warning"
+                        styleClass="sak-banner-info"
+                        style="display:#{(itemauthor.currentItem.renderMinPointsWarning)?'inline-block':'none'}"
+                        value="#{authorMessages.answer_min_point_value_warning}" />
+                    </div>
+                </small>
                 <h:message for="answerminptr" styleClass="validate"/>
             </div>
         </div>
@@ -114,10 +132,14 @@
         <div class="col-md-2">
             <h:inputText id="answerdsc" value="#{itemauthor.currentItem.itemDiscount}" 
                          required="true" styleClass="form-control ConvertPoint">
-                        <f:validateDoubleRange/>
+                <f:validateDoubleRange />
             </h:inputText>
             <h:message for="answerdsc" styleClass="validate"/>
-            <h:outputText value="#{authorMessages.note_negative_point_value_question}" />
+            <small>
+                <h:outputText
+                    styleClass="sak-banner-info"
+                    value="#{authorMessages.note_negative_point_value_question}" />
+            </small>
         </div>
     </div>
 
@@ -126,12 +148,12 @@
 
     <!-- 2 TEXT -->
     <div class="form-group row">
-        <h:outputLabel value="#{authorMessages.q_text}" styleClass="col-md-4 form-control-label"/>
+        <h:outputLabel for="questionItemText_textinput" value="#{authorMessages.q_text}" styleClass="col-md-4 form-control-label"/>
         <!-- STUB FOR WYSIWYG -->
         <!-- WYSIWYG -->   
         <div class="col-md-8">
             <h:panelGrid>
-                <samigo:wysiwyg rows="140" value="#{itemauthor.currentItem.itemText}" hasToggle="yes" mode="author">
+                <samigo:wysiwyg identity="questionItemText" rows="140" value="#{itemauthor.currentItem.itemText}" hasToggle="yes" mode="author">
                     <f:validateLength maximum="60000"/>
                 </samigo:wysiwyg>
             </h:panelGrid>
@@ -143,7 +165,7 @@
 
     <!-- 3 ANSWER -->
     <div class="form-group row">
-        <h:outputLabel value="#{authorMessages.answer} " styleClass="col-md-4 form-control-label"/>
+        <h:outputLabel for="TF" value="#{authorMessages.answer} " styleClass="col-md-4 form-control-label"/>
         <div class="col-md-8 samigo-inline-radio">
             <h:selectOneRadio layout="lineDirection" id="TF" border="0"
                               value="#{itemauthor.currentItem.corrAnswer}">
@@ -154,7 +176,7 @@
     
     <!-- 4 RATIONALE -->
     <div class="form-group row">
-        <h:outputLabel value="#{authorMessages.req_rationale}" styleClass="col-md-4 form-control-label"/>
+        <h:outputLabel for="rational" value="#{authorMessages.req_rationale}" styleClass="col-md-4 form-control-label"/>
         <div class="col-md-2 samigo-inline-radio">
             <h:selectOneRadio value="#{itemauthor.currentItem.rationale}" id="rational" required="true">
                 <f:selectItem itemValue="true" itemLabel="#{authorMessages.yes}" />
@@ -167,7 +189,7 @@
     <!-- 5 PART -->
     <h:panelGroup styleClass="form-group row" layout="block" rendered="#{itemauthor.target == 'assessment'}">
         <h:panelGroup rendered="#{!author.isEditPoolFlow}">
-            <h:outputLabel value="#{authorMessages.assign_to_p}" styleClass="col-md-4 form-control-label"/>
+            <h:outputLabel for="assignToPart" value="#{authorMessages.assign_to_p}" styleClass="col-md-4 form-control-label"/>
             <div class="col-md-8">
                 <h:selectOneMenu id="assignToPart" value="#{itemauthor.currentItem.selectedSection}">
                     <f:selectItems  value="#{itemauthor.sectionSelectList}" />
@@ -179,7 +201,7 @@
     <!-- 6 POOL -->
     <h:panelGroup styleClass="form-group row" layout="block" 
                   rendered="#{itemauthor.target == 'assessment' && author.isEditPendingAssessmentFlow}">  
-        <h:outputLabel value="#{authorMessages.assign_to_question_p}" styleClass="col-md-4 form-control-label"/>
+        <h:outputLabel for="assignToPool" value="#{authorMessages.assign_to_question_p}" styleClass="col-md-4 form-control-label"/>
         <div class="col-md-8">
             <h:selectOneMenu id="assignToPool" value="#{itemauthor.currentItem.selectedPool}">
                 <f:selectItem itemValue="" itemLabel="#{authorMessages.select_a_pool_name}" />
@@ -194,22 +216,22 @@
             <h:outputLabel value="#{authorMessages.correct_incorrect_an}" styleClass="col-md-12 form-control-label"/>
         </div>
         <div class="form-group row">
-            <h:outputLabel value="#{authorMessages.correct_answer_opti}" styleClass="col-md-4 form-control-label"/>
+            <h:outputLabel for="questionFeedbackCorrect_textinput" value="#{authorMessages.correct_answer_opti}" styleClass="col-md-4 form-control-label"/>
             <!-- WYSIWYG -->
             <div class="col-md-8">
                 <h:panelGrid>
-                    <samigo:wysiwyg rows="140" value="#{itemauthor.currentItem.corrFeedback}" hasToggle="yes" mode="author">
+                    <samigo:wysiwyg identity="questionFeedbackCorrect" rows="140" value="#{itemauthor.currentItem.corrFeedback}" hasToggle="yes" mode="author">
                         <f:validateLength maximum="60000"/>
                     </samigo:wysiwyg>
                 </h:panelGrid>
             </div>
         </div>
         <div class="form-group row">
-            <h:outputLabel  value="#{authorMessages.incorrect_answer_op}" styleClass="col-md-4 form-control-label"/>
+            <h:outputLabel for="questionFeedbackIncorrect_textinput" value="#{authorMessages.incorrect_answer_op}" styleClass="col-md-4 form-control-label"/>
             <!-- WYSIWYG -->
             <div class="col-md-8">
                 <h:panelGrid>
-                    <samigo:wysiwyg rows="140" value="#{itemauthor.currentItem.incorrFeedback}" hasToggle="yes" mode="author">
+                    <samigo:wysiwyg identity="questionFeedbackIncorrect" rows="140" value="#{itemauthor.currentItem.incorrFeedback}" hasToggle="yes" mode="author">
                         <f:validateLength maximum="60000"/>
                     </samigo:wysiwyg>
                 </h:panelGrid>

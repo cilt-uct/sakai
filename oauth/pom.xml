@@ -10,7 +10,7 @@
     <parent>
         <groupId>org.sakaiproject</groupId>
         <artifactId>master</artifactId>
-        <version>21-SNAPSHOT</version>
+        <version>22-SNAPSHOT</version>
         <relativePath>../master/pom.xml</relativePath>
     </parent>
 
@@ -50,7 +50,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <!-- dependencies versions -->
         <oauth.version>20100527</oauth.version>
-        <wicket.version>7.16.0</wicket.version>
+        <wicket.version>8.13.0</wicket.version>
     </properties>
 
     <dependencyManagement>
@@ -92,7 +92,6 @@
             <dependency>
                 <groupId>joda-time</groupId>
                 <artifactId>joda-time</artifactId>
-                <version>${joda.time.version}</version>
             </dependency>
             <dependency>
                 <groupId>net.oauth.core</groupId>
@@ -120,17 +119,5 @@
     </dependencyManagement>
 
     <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <compilerVersion>${sakai.jdk.version}</compilerVersion>
-                    <source>${sakai.jdk.version}</source>
-                    <target>${sakai.jdk.version}</target>
-                </configuration>
-            </plugin>
-            
-        </plugins>
     </build>
 </project>

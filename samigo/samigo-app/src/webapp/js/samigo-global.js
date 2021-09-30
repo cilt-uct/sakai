@@ -1,8 +1,8 @@
 // SAM-1817: This was originally in RichTextEditor.java
-function show_editor(client_id, frame_id) {
+function show_editor(client_id, frame_id, max_chars) {
 	var status =  document.getElementById(client_id + '_textinput_current_status');
 	status.value = "expanded";
-	chef_setupformattedtextarea(client_id, true, frame_id);
+	chef_setupformattedtextarea(client_id, true, frame_id, max_chars);
 	if (typeof setBlockDivs == "function" && typeof retainHideUnhideStatus == "function") {
 		setBlockDivs();
 		retainHideUnhideStatus('none');
@@ -22,9 +22,7 @@ function encodeHTML(text) {
 	return text;
 }
 
-function chef_setupformattedtextarea(client_id, shouldToggle, frame_id) {
-	$("body").height($("body").outerHeight() + 600);
-
+function chef_setupformattedtextarea(client_id, shouldToggle, frame_id, max_chars) {
 	var textarea_id = client_id + "_textinput";
 
 	if (shouldToggle == true) {
@@ -34,7 +32,11 @@ function chef_setupformattedtextarea(client_id, shouldToggle, frame_id) {
 		input_text.value = input_text_encoded;
 	}
 
-	sakai.editor.launch(textarea_id,'','450','240');
+	config = ''
+	if (max_chars) {
+		config = {wordcount: {'maxCharCount' : 32000}}
+	}
+	sakai.editor.launch(textarea_id, config,'450','240');
 	//setMainFrameHeight(frame_id);
 }
 
@@ -130,52 +132,16 @@ function initRubricDialog(gradingId, saveText, cancelText, titleText) {
 
 $(function () {
 
-  var addRubricInputs = function (e, type) {
-
-    var gradingId = e.detail.evaluatedItemId.split(".")[0];
-    var inputs = document.getElementById(gradingId + "-inputs");
-    var inputId = gradingId + "-" + type + "-" + e.detail.criterionId;
-    var input = document.getElementById(inputId );
-    if (!input) {
-      input = document.createElement("input");
-      input.setAttribute("type", "hidden");
-      input.setAttribute("id", inputId);
-      var name = "rbcs-" + e.detail.evaluatedItemId + "-" + e.detail.entityId + "-" + type;
-      if ("totalpoints" !== type && "state-details" !== type) name += "-" + e.detail.criterionId;
-      input.setAttribute("name", name);
-      if (inputs) {
-        inputs.appendChild(input);
-      }
-    }
-    input.setAttribute("value", "criterionrating" === type ? e.detail.ratingId : e.detail.value);
-  };
-
   $('body').on('total-points-updated', function (e) {
 
     e.stopPropagation();
-    var itemId = e.target.parentElement.getAttribute("item-id");
-
-    var points = e.detail.value;
 
     // handles point changes for assignments, updating the grade field if it exists.
-    var gradeField = $('.adjustedScore' + itemId);
+    var gradeField = $('.adjustedScore' + e.detail.evaluatedItemId.replace("\.", "\\."));
     if (gradeField) {
-      gradeField.val(points);
+      gradeField.val(e.detail.value);
     }
-
-    addRubricInputs(e, "totalpoints");
   });
-
-  $('body').on('update-comment', e => addRubricInputs(e, "criterion-comment") );
-
-  $('body').on('rubric-rating-tuned', e => addRubricInputs(e, "criterion-override"));
-
-  $('body').on('rubric-rating-changed', e => {
-    addRubricInputs(e, "criterion");
-    addRubricInputs(e, "criterionrating");
-  });
-
-  $('body').on('update-state-details', e => addRubricInputs(e, "state-details"));
 
   // SAK-38320: add scope to the table. Maybe can add these direct to the JSF table after JSF 2.3 upgrade?
 	$('table.matrixTable th.matrixSurvey').attr('scope', 'col');
@@ -185,4 +151,33 @@ $(function () {
   $(window.self).scroll(function () {
     resizeFrame("grow");
   });
+
+  const save = e => {
+    [...document.getElementsByTagName("sakai-rubric-grading")].forEach(srb => srb.release());
+  };
+
+  let saveButton = document.getElementById("editStudentResults:save");
+  saveButton && saveButton.addEventListener("click", save);
+
+  saveButton = document.getElementById("editTotalResults:save");
+  saveButton && saveButton.addEventListener("click", save);
+
+  if ( $("#selectIndexForm\\:selectTable").length ) {
+    $("#selectIndexForm\\:selectTable").tablesorter({ 
+      sortList: [[2,0]],
+      textExtraction: {
+        0: function(node, table, cellIndex) { return $(node).find("a").text(); }
+      }
+    });
+  }
+  if ( $("#editform\\:questionpool-questions").length ) {
+    $("#editform\\:questionpool-questions").tablesorter({
+      headers: {
+        0: {
+          sorter: false
+        }
+      }
+    });
+  }
+
 });

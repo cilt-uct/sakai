@@ -18,19 +18,23 @@
        		<script src="/messageforums-tool/js/sak-10625.js"></script>
        		<script src="/messageforums-tool/js/forum.js"></script>
        		<script src="/messageforums-tool/js/messages.js"></script>
-        <h:outputText styleClass="alertMessage" value="#{msgs.cdfm_reply_deleted}" rendered="#{ForumTool.errorSynch}" />
-		<script>
-				$(document).ready(function() {
-					$('#openLinkBlock').hide();
-					jQuery('.toggle').click(function(e) { 
-						$('#replytomessage').toggle('slow');
-						$('.toggleParent').toggle();					
-						resizeFrame('grow')
-				});					
-				});
-			</script>
-	
+        <script>
+            $(document).ready(function () {
+                var menuLink = $('#forumsMainMenuLink');
+                var menuLinkSpan = menuLink.closest('span');
+                menuLinkSpan.addClass('current');
+                menuLinkSpan.html(menuLink.text());
 
+                $('#openLinkBlock').hide();
+                jQuery('.toggle').click(function(e) {
+                    $('#replytomessage').toggle('slow');
+                    $('.toggleParent').toggle();
+                    resizeFrame('grow');
+                });
+            });
+        </script>
+        <%@ include file="/jsp/discussionForum/menu/forumsMenu.jsp" %>
+        <h:outputText styleClass="alertMessage" value="#{msgs.cdfm_reply_deleted}" rendered="#{ForumTool.errorSynch}" />
 		  <h3><h:outputText value="#{msgs.cdfm_reply_thread_tool_bar_message}"  /></h3>
 	
 		<table class="topicBloc topicBlocLone">
@@ -126,10 +130,8 @@
 		    <h:inputHidden id="titleHidden" value="#{ForumTool.selectedMessage.message.title}" />
 		<h:outputText value="&nbsp;&nbsp;&nbsp; " escape="false" />
 		<img src="/library/image/silk/paste_plain.png" />
-		<a  href="javascript:void(0)"  onclick="InsertHTML('<b><i><h:outputText value="#{msgs.cdfm_insert_original_text_comment}"/></i></b><br/><b><i><h:outputText value="#{msgs.cdfm_from}" /></i></b> <i><h:outputText value="#{ForumTool.selectedTopic.topic.postAnonymous ? ForumTool.selectedMessage.anonId : ForumTool.selectedMessage.message.author}" /><h:outputText value=" #{msgs.cdfm_openb}" /><h:outputText value="#{ForumTool.selectedMessage.message.created}" ><f:convertDateTime pattern="#{msgs.date_format_static}" locale="#{ForumTool.userLocale}" timeZone="#{ForumTool.userTimeZone}"/></h:outputText><h:outputText value="#{msgs.cdfm_closeb}" /></i><br/><b><i><h:outputText value="#{msgs.cdfm_subject}" /></i></b>');">
+		<a  href="javascript:void(0)"  onclick="InsertHTML('<b><i><h:outputText value="#{msgs.cdfm_insert_original_text_comment}"/></i></b><br/><b><i><h:outputText value="#{msgs.cdfm_from}" /></i></b> <i><h:outputText value="#{ForumTool.selectedTopic.topic.postAnonymous ? ForumTool.selectedMessage.anonId : ForumTool.selectedMessage.message.authorEscaped}" /><h:outputText value=" #{msgs.cdfm_openb}" /><h:outputText value="#{ForumTool.selectedMessage.message.created}" ><f:convertDateTime pattern="#{msgs.date_format_static}" locale="#{ForumTool.userLocale}" timeZone="#{ForumTool.userTimeZone}"/></h:outputText><h:outputText value="#{msgs.cdfm_closeb}" /></i><br/><b><i><h:outputText value="#{msgs.cdfm_subject}" /></i></b>');">
 		<h:outputText value="#{msgs.cdfm_message_insert}" /></a>
-			<span style="margin-left:3em"><img src="/library/image/silk/table_add.png" />&nbsp;<h:outputText value="#{msgs.cdfm_message_count}" />:&nbsp;<span  id="counttotal"> </span></span>		
-			
 		</div>
             <sakai:inputRichText textareaOnly="#{PrivateMessagesTool.mobileSession}" value="#{ForumTool.composeBody}" id="df_compose_body" rows="#{ForumTool.editorRows}" cols="132">
 			</sakai:inputRichText>
@@ -139,13 +141,6 @@
 		<script>
 			var textareas = document.getElementsByTagName("textarea");
 			var rteId = textareas.item(1).id;
-			
-//	        function FCKeditor_OnComplete( editorInstance )
-//	        {
-//	          // clears the FCK editor after initial loading
-//	          editorInstance.SetHTML( "" );
-//	        }
-	        
 	        // set the previous message variable
 	        var messagetext = document.forms['dfCompose'].elements['dfCompose:msgHidden'].value;
 	        var titletext = document.forms['dfCompose'].elements['dfCompose:titleHidden'].value;

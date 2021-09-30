@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
-import org.apache.log4j.BasicConfigurator;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -42,7 +41,7 @@ import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.event.api.SessionState;
 import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.tool.api.SessionManager;
-import org.sakaiproject.util.FormattedText;
+import org.sakaiproject.util.api.FormattedText;
 
 /**
  * Tests for AssignmentAction
@@ -55,10 +54,11 @@ public class AssignmentActionTestTools {
     private AssignmentAction assignmentAction;
     @Mock
     private AssignmentService assignmentService;
+    @Mock
+    private FormattedText formattedText;
 
     @Before
     public void setUp() {
-        BasicConfigurator.configure();
         PowerMockito.mockStatic(ComponentManager.class);
         // A mock component manager.
         when(ComponentManager.get(any(Class.class))).then(new Answer<Object>() {
@@ -71,9 +71,9 @@ public class AssignmentActionTestTools {
         });
         
         when(ComponentManager.get(SessionManager.class).getCurrentSession()).thenReturn(mock(Session.class));
-        when(FormattedText.getDecimalSeparator()).thenReturn(".");
+        when(formattedText.getDecimalSeparator()).thenReturn(".");
         
-        when(FormattedText.getNumberFormat()).thenReturn(NumberFormat.getInstance(Locale.ENGLISH));
+        when(formattedText.getNumberFormat()).thenReturn(NumberFormat.getInstance(Locale.ENGLISH));
         assignmentAction = new AssignmentAction();
 
         Mockito.when(ComponentManager.get(AssignmentService.class)).thenReturn(assignmentService);

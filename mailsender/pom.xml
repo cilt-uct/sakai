@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.sakaiproject</groupId>
     <artifactId>master</artifactId>
-    <version>21-SNAPSHOT</version>
+    <version>22-SNAPSHOT</version>
     <relativePath>../master/pom.xml</relativePath>
   </parent>
 
@@ -31,34 +31,6 @@
         <!-- Versions for these are inherited from master -->
         <sakai.mailarchive.groupId>org.sakaiproject.mailarchive</sakai.mailarchive.groupId>
         <sakai.message.groupId>org.sakaiproject.message</sakai.message.groupId>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <url.localsite>scpexe://source.sakaiproject.org/var/www/html/release/mailsender/${project.version}</url.localsite>
-      </properties>
-    </profile>
-    <profile>
-      <id>sakai-2.8</id>
-      <properties>
-        <sakai.mailarchive.groupId>org.sakaiproject</sakai.mailarchive.groupId>
-        <sakai.mailarchive.version>2.8.1</sakai.mailarchive.version>
-        <sakai.message.groupId>org.sakaiproject</sakai.message.groupId>
-        <sakai.message.version>2.8.1</sakai.message.version>
-        <rsfutil.version>0.7.5</rsfutil.version>
-        <sakairsf.components.version>0.7.5</sakairsf.components.version>
-        <sakairsf.version>0.7.5</sakairsf.version>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <url.localsite>scpexe://source.sakaiproject.org/var/www/html/release/mailsender/${project.version}</url.localsite>
-      </properties>
-    </profile>
-    <profile>
-      <id>sakai-2.7</id>
-      <properties>
-        <sakai.mailarchive.groupId>org.sakaiproject</sakai.mailarchive.groupId>
-        <sakai.mailarchive.version>2.7.2</sakai.mailarchive.version>
-        <sakai.message.groupId>org.sakaiproject</sakai.message.groupId>
-        <sakai.message.version>2.7.2</sakai.message.version>
-        <rsfutil.version>0.7.5</rsfutil.version>
-        <sakairsf.components.version>0.7.5</sakairsf.components.version>
-        <sakairsf.version>0.7.5</sakairsf.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <url.localsite>scpexe://source.sakaiproject.org/var/www/html/release/mailsender/${project.version}</url.localsite>
       </properties>

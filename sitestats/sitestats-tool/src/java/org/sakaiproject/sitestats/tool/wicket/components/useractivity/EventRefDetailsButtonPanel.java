@@ -23,7 +23,7 @@ import org.apache.wicket.model.IModel;
 import org.sakaiproject.sitestats.api.event.detailed.DetailedEvent;
 import org.sakaiproject.sitestats.api.event.detailed.DetailedEventsManager;
 import org.sakaiproject.sitestats.tool.facade.Locator;
-import org.sakaiproject.sitestats.tool.wicket.components.SakaiAjaxButton;
+import org.sakaiproject.wicket.component.SakaiAjaxButton;
 
 /**
  * A panel showing a button that can be clicked to show more details about an event
@@ -31,6 +31,8 @@ import org.sakaiproject.sitestats.tool.wicket.components.SakaiAjaxButton;
  */
 public class EventRefDetailsButtonPanel extends GenericPanel<DetailedEvent>
 {
+	private static final long serialVersionUID = 1L;
+
 	public final boolean resolvable;
 
 	private final String siteID;

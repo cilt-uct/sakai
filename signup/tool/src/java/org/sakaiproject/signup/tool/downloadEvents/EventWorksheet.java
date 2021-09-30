@@ -90,7 +90,7 @@ public class EventWorksheet implements MeetingTypes, SignupBeanConstants {
 
 	private static final int COLUMNS_GROUPING_BY_SLOT = 7;
 
-	private ResourceLoader rb = new ResourceLoader("messages");
+	private static final ResourceLoader rb = new ResourceLoader("messages");
 
 	private String[] tabTitles_Organizor;
 
@@ -513,9 +513,9 @@ public class EventWorksheet implements MeetingTypes, SignupBeanConstants {
 		// timezone row
 		final Row timezoneRow = sheet.createRow(1);
 		timezoneRow.setHeightInPoints(16);
-		log.info("timezoneRow");
+		log.debug("timezoneRow");
 		for (int i = 1; i <= 6; i++) {
-			log.info("timezone: " + i);
+			log.debug("timezone: {}", i);
 			timezoneRow.createCell(i).setCellStyle(styles.get("tabItem_fields"));
 		}
 		final Cell timezoneCell = timezoneRow.getCell(2);

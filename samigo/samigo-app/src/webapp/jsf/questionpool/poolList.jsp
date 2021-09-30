@@ -37,28 +37,16 @@
           <script>
               function flagFolders() {
                   collapseAllRows();
-                  flagRows();
               }
               window.onload = flagFolders;
           </script>
       </head>
-<body onload="collapseAllRows();flagRows();;<%= request.getAttribute("html.body.onload") %>;disabledButton()">
+<body onload="collapseAllRows();<%= request.getAttribute("html.body.onload") %>;disabledButton()">
 <h:panelGroup layout="block" styleClass="portletBody container-fluid">
 <!-- content... -->
 <h:form id="questionpool">
 
 <ul class="navIntraTool actionToolbar" role="menu">
-    <h:panelGroup rendered="#{authorization.createAssessment}">
-        <li role="menuitem">
-            <h:panelGroup styleClass="menuitem">
-                <h:commandLink title="#{generalMessages.add}" action="#{author.getOutcome}" immediate="true">
-                    <f:param name="action" value="create_assessment_title" />
-                    <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.author.AuthorAssessmentListener" />
-                    <h:outputText value="#{generalMessages.add}" />
-                </h:commandLink>
-            </h:panelGroup>
-        </li>
-    </h:panelGroup>
     <h:panelGroup rendered="#{authorization.createAssessment or authorization.editAnyAssessment or authorization.editOwnAssessment or authorization.gradeAnyAssessment or authorization.gradeOwnAssessment}">
         <li role="menuitem">
             <h:panelGroup styleClass="menuitem">
@@ -75,6 +63,17 @@
                    <f:actionListener
                      type="org.sakaiproject.tool.assessment.ui.listener.author.AuthorActionListener" />
                </h:commandLink>
+            </h:panelGroup>
+        </li>
+    </h:panelGroup>
+    <h:panelGroup rendered="#{authorization.createAssessment}">
+        <li role="menuitem">
+            <h:panelGroup styleClass="menuitem">
+                <h:commandLink title="#{generalMessages.add}" action="#{author.getOutcome}" immediate="true">
+                    <f:param name="action" value="create_assessment_title" />
+                    <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.author.AuthorAssessmentListener" />
+                    <h:outputText value="#{generalMessages.add}" />
+                </h:commandLink>
             </h:panelGroup>
         </li>
     </h:panelGroup>

@@ -5,7 +5,7 @@
     <parent>
         <artifactId>basiclti</artifactId>
         <groupId>org.sakaiproject.basiclti</groupId>
-        <version>21-SNAPSHOT</version>
+        <version>22-SNAPSHOT</version>
     </parent>
 
     <name>Tsugi LTI Utilities (basiclti-util variant)</name>
@@ -21,6 +21,10 @@
     <dependencies>
         <!-- This pom should *never* add any "org.sakaiproject" dependencies - any
             Sakai-specific code needs to be placed in the basiclti-common folder -->
+        <dependency>
+            <groupId>jakarta.xml.bind</groupId>
+            <artifactId>jakarta.xml.bind-api</artifactId>
+        </dependency>
         <dependency>
             <groupId>javax.servlet</groupId>
             <artifactId>javax.servlet-api</artifactId>
@@ -79,6 +83,11 @@
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+            <scope>test</scope>
         </dependency>
 <!--
         <dependency>

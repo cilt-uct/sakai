@@ -36,6 +36,7 @@ import javax.faces.model.SelectItem;
 
 import lombok.extern.slf4j.Slf4j;
 
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.authz.api.AuthzGroup;
 import org.sakaiproject.api.privacy.PrivacyManager;
 import org.sakaiproject.tool.cover.SessionManager;
@@ -73,7 +74,7 @@ public class PrivacyBean {
 	private SelectItem[] sites;
 
 	/** * Resource bundle messages */
-	ResourceLoader msgs = new ResourceLoader("user-tool-prefs");
+	private static final ResourceLoader msgs = new ResourceLoader("user-tool-prefs");
 
 	/** Inject PrivacyManager */
 	private PrivacyManager privacyManager;
@@ -368,7 +369,7 @@ public class PrivacyBean {
 		allChanged = false;
 		noSiteProcessErr = false;
 		
-		if ("".equals((String) e.getNewValue())) {
+		if (StringUtils.isEmpty((String) e.getNewValue())) {
 			siteSelected = false;
 		} else {
 			curSite = (String) e.getNewValue();

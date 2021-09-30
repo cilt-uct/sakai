@@ -3,14 +3,14 @@
 <%-- Core JSF tag library --%>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
 <%-- Sakai JSF tag library --%>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://myfaces.apache.org/tomahawk" prefix="t"%>
 <%-- Core JSTL tag library --%>
 <%@ taglib uri = "http://java.sun.com/jsp/jstl/core" prefix = "c" %>
 
 <f:view>
 	<sakai:view_container title="#{msgs.prefs_title}">
-  	<sakai:stylesheet path="/css/prefs.css"/>
+  	<link rel="stylesheet" href="/sakai-user-tool-prefs/css/prefs.css" type="text/css" />
 	<sakai:view_content>
 		<h:form id="ckeditor_form">
 
@@ -19,26 +19,25 @@
                         <script type="text/javascript" src="/sakai-user-tool-prefs/js/prefs.js">// </script>
                         <script type="text/javascript" src="/library/js/spinner.js"></script>
                         <script type="text/javascript">
-                                $(document).ready(function(){
-                                        setupPrefsGen();
+                                $PBJQ(document).ready(function(){
                                         fixImplicitLabeling();
                                 })  
                         </script>
 
-						<c:set var="cTemplate" value = "editor" scope="session"/>
+                        <c:set var="cTemplate" value = "editor" scope="session"/>
 
-						<%@ include file="toolbar.jspf"%>
+                        <%@ include file="toolbar.jspf"%>
+
+                        <div class="page-header">
+                                <h1><h:outputText value="#{msgs.prefs_editor_tab_title}" /></h1>
+                        </div>
 
                         <t:div rendered="#{UserPrefsTool.editorUpdated}">
                                 <jsp:include page="prefUpdatedMsg.jsp"/>
                         </t:div>
 
-                        <h3 style="display: inline-block;">
-                                <h:outputText rendered="#{UserPrefsTool.prefShowTabLabelOption==true}" value="#{msgs.prefs_editor_tab_options}" />
-                        </h3>
-
-                        <p class="instruction"><h:outputText value="#{msgs.editor_prompt}"  rendered="#{UserPrefsTool.prefShowTabLabelOption==true}"/></p>
-                        <h:selectOneRadio value="#{UserPrefsTool.selectedEditorType}" layout="pageDirection"  rendered="#{UserPrefsTool.prefShowTabLabelOption==true}">
+                        <p class="instruction"><h:outputText value="#{msgs.editor_prompt}" /></p>
+                        <h:selectOneRadio value="#{UserPrefsTool.selectedEditorType}" layout="pageDirection" styleClass="addRadioLabelPadding">
                                                 <f:selectItem itemValue="auto" itemLabel="#{msgs.editor_auto}"/>
                                                 <f:selectItem itemValue="basic" itemLabel="#{msgs.editor_basic}"/>
                                                 <f:selectItem itemValue="full" itemLabel="#{msgs.editor_full}"/>

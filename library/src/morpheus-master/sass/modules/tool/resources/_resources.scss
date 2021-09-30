@@ -1,9 +1,4 @@
 .#{$namespace}sakai-resources {
-
-	ul, ol {
-		padding-top: 0;
-	}
-
 	input, textarea{
 		max-width: 100%;
 	}
@@ -58,7 +53,7 @@
 			}
 			&.inactive {
 				* {
-					color: #333 !important;
+					color: var(--sakai-text-color-disabled) !important;
 				}
 				.resource-name, .resource-access, .resource-creator, .resource-modified, .resource-size {
 					font-style: italic;
@@ -67,10 +62,10 @@
 					font-size: initial;
 				}
 				button {
-					border:1px solid #ccc !important;
+					border:1px solid var(--sakai-border-color) !important;
 				}
 				.dropdown-menu a {
-					color:#000 !important;
+					color:var(--sakai-text-color-1) !important;
 				}
 			} 
 		}
@@ -111,7 +106,7 @@
 
 	.navigatePanelControls{
 		padding:0 10px 5px 5px;
-		border-bottom:1px solid #ccc;
+		border-bottom:1px solid var(--sakai-border-color);
 	}
 	#navigatePanelSearch {
 	   font-size: 12px;
@@ -120,17 +115,27 @@
 		width: 201px;
 	}
 	.jstree-search {
-		border:1px solid #ffe4bb;
-		background:#ffe;
 		-webkit-border-radius: 5px;
 		-moz-border-radius: 5px;
 		border-radius: 5px;
 	}
+	.jstree-anchor.jstree-search {
+		@extend .sakai-colorize--sakai-color-gold--lighter-6;
+	}
 	.jstree-anchor:hover {
 		text-decoration:none !important;
+		@extend .sakai-colorize--sakai-color-gold--lighter-5;
+	}
+	.jstree-default .jstree-anchor, .jstree-default .jstree-wholerow {
+		transition: none;
+	}
+	@media (max-width: 768px) {
+		.jstree-default-responsive .jstree-anchor {
+			text-shadow: none;
+		}
 	}
 	#spinner {
-		color: $primary-color;
+		color: var(--sakai-primary-color-1);
 		width:100%;
 		height:128px;
 		position: absolute;
@@ -147,13 +152,13 @@
 				&:before{
 					position: relative;
 					top: 5px;
-					color: $text-color;
+					color: var(--sakai-text-color-1);
 					padding: 0 0 0 26px;
 				}
 			}
 		}
 		* {
-			color:#999 !important;
+			color: var(--sakai-text-color-2) !important;
 		}
 	}
 	/* move this one to tool-base.css as it goes along*/
@@ -162,13 +167,13 @@
 		font-size:1em;
 	}
 	td.actions2 .dropdown-toggle {
-		padding: 2px 6px !important;
+		padding: 2px 6px;
 	}
 	td.actions2 .dropdown-header {
 		padding: 0 21px;
 	}
 	.table tr{
-		border-bottom: 1px solid #ddd;
+		border-bottom: 1px solid var(--sakai-border-color);
 	}
 
 	.breadCrumb .btn-group button.breadProp {
@@ -198,12 +203,10 @@
 			list-style: none;
 			font-size: 1em;
 			text-align: left;
-			background-color: #fff;
-			border: 1px solid #ccc;
-			border: 1px solid rgba(0,0,0,0.15);
-			border-radius: 4px;
-			-webkit-box-shadow: 0 0 5px 0 rgba(0,0,0,0.5);
-			box-shadow: 0 0 5px 0 rgba(0,0,0,0.5);
+			background-color: var(--sakai-background-color-1);
+			border: 1px solid var(--sakai-border-color);
+			border-radius: $button-radius;
+			box-shadow: var(--elevation-2dp);
 			background-clip: padding-box;
 
 			.close-button{
@@ -251,7 +254,7 @@
 	/* SAK-32371 : Resources doesnt use font awesome icons */
 	.fa {
 		display : inline;
-		color : $primary-color;
+		color : var(--button-text-color);
 		text-decoration: none;
 	}
 	
@@ -259,7 +262,7 @@
 	a.nil.fa-folder {
 		position: static;
 		&::after {
-			color: #fff;
+			color: var(--sakai-text-color-inverted);
 			content: "+";
 			display: inline-block;
 			position: absolute;
@@ -276,7 +279,7 @@
 	a.nil.fa-folder-open {
 		position: static;
 		&::after {
-			color: #FFF;
+			color: var(--sakai-text-color-inverted);
 			content: "-";
 			display: inline-block;
 			position: absolute;
@@ -314,6 +317,11 @@
 		display: none;
 		clear: both;
 	}
+
+	label[for="notify"] {
+		padding-left: $standard-spacing;
+		padding-right: 5px;
+	}
 }
 
 /* this belongs to resources but it is accessed out of its namespace */
@@ -321,7 +329,7 @@
 	float: right;
 	width: 5%;
 	border: 1.0px dashed;
-	border-color: #9c9c9c;
+	border-color: var(--sakai-border-color);
 	border-radius: 5px;
 }
 
@@ -371,5 +379,5 @@
 }
 
 .jstree-node a[href]:focus{
-	outline: 1px solid #5b9dd9;
+	outline: 1px solid var(--focus-outline-color);
 }

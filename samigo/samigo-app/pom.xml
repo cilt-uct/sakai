@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.sakaiproject.samigo</groupId>
 		<artifactId>samigo</artifactId>
-		<version>21-SNAPSHOT</version>
+		<version>22-SNAPSHOT</version>
 	</parent>
     
 	<name>Sakai Samigo Tool (samigo-app)</name>
@@ -124,21 +124,24 @@
             <artifactId>commons-fileupload</artifactId>
         </dependency>
         <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-math3</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.dom4j</groupId>
             <artifactId>dom4j</artifactId>
         </dependency>
 		<dependency>
-            <groupId>javax.activation</groupId>
-            <artifactId>javax.activation-api</artifactId>
-            <scope>provided</scope>
+            <groupId>jakarta.activation</groupId>
+            <artifactId>jakarta.activation-api</artifactId>
         </dependency>
         <dependency>
             <groupId>com.sun.mail</groupId>
@@ -231,13 +234,6 @@
             <artifactId>mockito-core</artifactId>
         </dependency>
         <dependency>
-        	<groupId>joda-time</groupId>
-        	<artifactId>joda-time</artifactId>
-        	<version>${joda.time.version}</version>
-        	<type>jar</type>
-        	<scope>compile</scope>
-        </dependency>
-        <dependency>
             <groupId>org.sakaiproject.tags</groupId>
             <artifactId>tags-api</artifactId>
         </dependency>
@@ -250,16 +246,20 @@
             <groupId>org.sakaiproject.rubrics</groupId>
             <artifactId>rubrics-service-api</artifactId>
         </dependency>
-
-        <!--JSF 2.3 dependencies-->
         <dependency>
-            <groupId>javax.servlet</groupId>
-            <artifactId>jstl</artifactId>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
         </dependency>
+        <!--JSF 2.3 dependencies-->
         <dependency>
             <groupId>org.jboss.weld.servlet</groupId>
             <artifactId>weld-servlet-shaded</artifactId>
             <version>${sakai.weld.shaded.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.servlet.jsp.jstl</groupId>
+            <artifactId>jakarta.servlet.jsp.jstl-api</artifactId>
+            <version>${sakai.jakarta.jstl-api.version}</version>
         </dependency>
     </dependencies>
     

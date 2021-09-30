@@ -50,7 +50,9 @@ should be included in file importing DeliveryMessages
 
 <samigo:dataLine value="#{question.finArray}" var="answer" separator=" " first="0" rows="100">
   <h:column>
-      <h:outputText id="fin-question-text" styleClass="fin-question-text" value="#{answer.text} " escape="false" />
+      <h:outputText id="fin-question-text" styleClass="fin-question-text" value="#{answer.text} " escape="false">
+        <f:converter converterId="org.sakaiproject.tool.assessment.jsf.convert.SecureContentWrapper" />
+      </h:outputText>
       <f:verbatim>&nbsp;</f:verbatim>
       <h:panelGroup styleClass="icon-sakai--check feedBackCheck" id="image"
         rendered="#{delivery.feedback eq 'true' &&
@@ -131,56 +133,6 @@ should be included in file importing DeliveryMessages
 </h:panelGroup>
 
 <script>
-//Setup qtips
-window.onload = function() {
-	$('.hasTooltip').each(function() { // Notice the .each() loop, discussed below
-	    $(this).qtip({
-	        content: {
-	            text: $(this).next('div') // Use the "div" element after this for the content
-	        },
-	        position: {
-	          target: 'mouse', 
-	          adjust: {
-	            mouse: false
-	          }
-	       },
-	       style: {
-	         classes: 'qtip-tipped qtip-shadow qtipBodyContent',
-	       },
-	       show: 'click',
-	       hide: 'unfocus click'
-	      });
-	});
-};
-
-includeWebjarLibrary('mathjs');
 var finFormatError = '<h:outputText value="#{deliveryMessages.fin_invalid_characters_error}" escape="false"/>';
-
-$( document ).ready(function() {
-
-  $('.fillInNumericInput').each( function() {
-    $(this).attr('data-toggle', 'popover'); 
-    $(this).attr('data-content', finFormatError);
-  });
-
-  $('#takeAssessmentForm').submit(function() {
-    $('.fillInNumericInput').each(function() {
-      //If a part or an exam is submitted, validate all the FIN inputs and alert about the invalid ones to prevent a response loss.
-      validateFinInput(this);
-    });
-  });
-
-  $('.fillInNumericInput').focus( function() {
-    $(this).popover();
-  });
-
-  $('.fillInNumericInput').change( function() {
-    validateFinInput(this);
-  });
-
-  $('.fillInNumericInput').keyup( throttle(function(){
-    validateFinInput(this);
-  }));
-
-});
 </script>
+<script src="/samigo-app/js/finInputValidator.js"></script>

@@ -54,7 +54,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateUtils;
 
 import org.hibernate.Criteria;
-import org.hibernate.Query;
+import org.hibernate.query.Query;
 import org.hibernate.Session;
 import org.hibernate.criterion.Expression;
 import org.hibernate.criterion.Order;
@@ -97,7 +97,7 @@ import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserNotDefinedException;
 import org.sakaiproject.util.ResourceLoader;
 import org.sakaiproject.util.api.FormattedText;
-import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
+import org.springframework.orm.hibernate5.support.HibernateDaoSupport;
 import org.springframework.transaction.support.TransactionSynchronizationAdapter;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -177,13 +177,13 @@ public class ChatManagerImpl extends HibernateDaoSupport implements ChatManager,
 
             // register functions
             if(functionManager.getRegisteredFunctions(ChatFunctions.CHAT_FUNCTION_PREFIX).size() == 0) {
-                functionManager.registerFunction(ChatFunctions.CHAT_FUNCTION_READ);
-                functionManager.registerFunction(ChatFunctions.CHAT_FUNCTION_NEW);
-                functionManager.registerFunction(ChatFunctions.CHAT_FUNCTION_DELETE_ANY);
-                functionManager.registerFunction(ChatFunctions.CHAT_FUNCTION_DELETE_OWN);
-                functionManager.registerFunction(ChatFunctions.CHAT_FUNCTION_DELETE_CHANNEL);
-                functionManager.registerFunction(ChatFunctions.CHAT_FUNCTION_NEW_CHANNEL);
-                functionManager.registerFunction(ChatFunctions.CHAT_FUNCTION_EDIT_CHANNEL);
+                functionManager.registerFunction(ChatFunctions.CHAT_FUNCTION_READ, true);
+                functionManager.registerFunction(ChatFunctions.CHAT_FUNCTION_NEW, true);
+                functionManager.registerFunction(ChatFunctions.CHAT_FUNCTION_DELETE_ANY, true);
+                functionManager.registerFunction(ChatFunctions.CHAT_FUNCTION_DELETE_OWN, true);
+                functionManager.registerFunction(ChatFunctions.CHAT_FUNCTION_DELETE_CHANNEL, true);
+                functionManager.registerFunction(ChatFunctions.CHAT_FUNCTION_NEW_CHANNEL, true);
+                functionManager.registerFunction(ChatFunctions.CHAT_FUNCTION_EDIT_CHANNEL, true);
             }
 
             pollInterval = serverConfigurationService.getInt("chat.pollInterval", 5000);
@@ -412,13 +412,11 @@ public class ChatManagerImpl extends HibernateDaoSupport implements ChatManager,
         }
 
         // Date settings should always override the max message setting
-        if (localDate == null && localMax > 0) {
+        if (localMax > 0) {
             c.setMaxResults(localMax);
         }
 
-        if (localDate != null || localMax > 0) {
-            messages = c.list();
-        }
+        messages = c.list();
 
         //Reorder the list
         if (sortAsc) {
@@ -934,9 +932,9 @@ public class ChatManagerImpl extends HibernateDaoSupport implements ChatManager,
         try {
             session = getSessionFactory().getCurrentSession();
             Query query = session.createSQLQuery("update CHAT2_CHANNEL c set c.placementDefaultChannel = :channel, c.PLACEMENT_ID = NULL WHERE c.context = :context and c.PLACEMENT_ID = :placement");
-            query.setBoolean("channel", false);
-            query.setString("context", context);
-            query.setString("placement", placement);
+            query.setParameter("channel", false);
+            query.setParameter("context", context);
+            query.setParameter("placement", placement);
             query.executeUpdate();
         } catch(Exception e) {
             log.warn(e.getMessage());

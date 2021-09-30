@@ -6,7 +6,7 @@
     <parent>
         <artifactId>kernel</artifactId>
         <groupId>org.sakaiproject</groupId>
-        <version>21-SNAPSHOT</version>
+        <version>22-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -48,14 +48,5 @@
         </dependency>
     </dependencies>
     <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <configuration>
-                    <reuseForks>false</reuseForks>
-                </configuration>
-            </plugin>
-        </plugins>
     </build>
 </project>

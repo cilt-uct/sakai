@@ -21,7 +21,7 @@
         <script>includeWebjarLibrary('awesomplete')</script>
         <script src="/library/js/sakai-reminder.js"></script>
         <script src="/webcomponents/assets/@webcomponents/webcomponentsjs/webcomponents-loader.js"></script>
-        <script type="module" src="/rubrics-service/webcomponents/rubric-association-requirements.js<h:outputText value="#{ForumTool.CDNQuery}" />"></script>
+        <script type="module" src="/webcomponents/rubrics/rubric-association-requirements.js<h:outputText value="#{ForumTool.CDNQuery}" />"></script>
         <h:form id="msgForum">
             <!--jsp\discussionForum\message\dfMsgGrade.jsp-->
 
@@ -65,13 +65,13 @@
             <%
             }
 
-            String stateDetails = forumTool.getRbcsStateDetails();
             boolean hasAssociatedRubric = forumTool.hasAssociatedRubric();
             String entityId = forumTool.getRubricAssociationId();
 
             if (userId == null) userId = forumTool.getUserId();
 
             String rbcsEvaluationId = entityId + "." + userId;
+            String rbcsEvaluationOwnerId = userId;
             %>
 
             <script>
@@ -93,11 +93,6 @@
                 %>
             </script>
             <script src="/library/js/spinner.js"></script>
-            <!-- RUBRICS JAVASCRIPT -->
-            <script>
-              rubricsEventHandlers();
-            </script>
-            <!-- END RUBRICS JAVASCRIPT -->
 
             <script>
                 $(document).ready(function() {
@@ -207,22 +202,20 @@
                     tool-id="sakai.gradebookng"
                     entity-id='<%= entityId %>'
                     evaluated-item-id='<%= rbcsEvaluationId %>'
-                    <% if (stateDetails != null && !"".equals(stateDetails)) { %>
-                        state-details='<%= stateDetails %>'
-                    <%}%>
+                    evaluated-item-owner-id='<%= rbcsEvaluationOwnerId %>'
                 ></sakai-rubric-grading>
             <%}%>
 
             <sakai:button_bar>
                 <% if(isDialogBox){ %>
-                    <h:commandButton action="#{ForumTool.processDfGradeSubmitFromDialog}" value="#{msgs.cdfm_submit_grade}"
-                        accesskey="s" styleClass="active" disabled="#{!ForumTool.allowedToGradeItem}" onclick="SPNR.disableControlsAndSpin( this, null );" />
+                    <h:commandButton id="save" action="#{ForumTool.processDfGradeSubmitFromDialog}" value="#{msgs.cdfm_submit_grade}"
+                        accesskey="s" styleClass="active" disabled="#{!ForumTool.allowedToGradeItem}" onclick="SPNR.disableControlsAndSpin( this, null );MFR_RBC.saveRubric();" />
                     <h:commandButton action="#{ForumTool.processDfGradeCancelFromDialog}" value="#{msgs.cdfm_cancel}" accesskey="x"
                         onclick="SPNR.disableControlsAndSpin( this, null );closeDialogBoxIfExists();" />
                 <% }else {%>
                     <h:commandButton action="#{ForumTool.processDfGradeSubmit}" value="#{msgs.cdfm_submit_grade}"
                         accesskey="s" styleClass="active" disabled="#{!ForumTool.allowedToGradeItem}"
-                        onclick="SPNR.disableControlsAndSpin( this, null );" />
+                        onclick="SPNR.disableControlsAndSpin( this, null );MFR_RBC.saveRubric();" />
                     <h:commandButton action="#{ForumTool.processDfGradeCancel}" value="#{msgs.cdfm_cancel}" accesskey="x" onclick="SPNR.disableControlsAndSpin( this, null );closeDialogBoxIfExists();" />
                 <%}%>
 

@@ -1,39 +1,66 @@
 @import "base/compass";
 
 body{
-	color: 		 $text-color;
+	color: var(--sakai-text-color-1);
 	font-family: $font-family;
-	font-size: 	 $default-font-size !important; // Bootstrap Tool error
+	font-size: $default-font-size !important; // Bootstrap Tool error
 	font-weight: $default-font-weight;
 	line-height: $default-line-height;
+	scroll-behavior: $scroll-behavior;
 	&.#{$namespace}portalBody{
-		background-color: $body-background-color;
 		@media #{$phone}{
 			padding: $banner-height 0 0 0;
+		}
+	}
+	#maximised-indicator {
+		position: fixed;
+		overflow: hidden;
+		display: none;
+		left: 50%;
+		transform: translateX(-50%);
+		z-index: 100000;
+		div {
+			background-color: var(--sakai-background-color-2);
+			padding: 7px;
+			border: 1px solid var(--button-border-color);
+			border-width: 0 2px 2px 2px;
+			border-radius: 0 0 6px 6px;
+
+			a {
+				font-weight: bold;
+				margin-right: 5px;
+                text-decoration: none;
+			}
+		}
+	}
+	&.tool-maximised {
+		#maximised-indicator {
+			display: block;
 		}
 	}
 }
 
 a{
-	color: $text-color;
+	color: var(--sakai-text-color-1);
 	&:hover{  // This means a:hover
-		color: $text-color;
+		color: var(--sakai-text-color-1);
 		text-decoration: none;
 	}
 	&[href]{  // This means a[href]
-		color: $link-color;
+		color: var(--link-color);
 		&:focus{
 			outline: $sakai-focus-outline;
+			outline-color: var(--focus-outline-color);
 			outline-offset: $focus-outline-offset;
 		}
 		&:hover{
-			color: $link-hover-color;
-			background-color: $link-hover-background-color;
+			color: var(--link-hover-color);
+			background-color: var(--link-hover-background-color);
 			text-decoration:underline;
 		}
 		&:active{
-			color: $link-active-color;
-			background-color: $link-active-background-color;
+			color: var(--link-active-color);
+			background-color: var(--link-active-background-color);
 			outline: 0;		// no focus outline on click
 		}
 		&.btn{
@@ -56,7 +83,10 @@ a{
 }
 
 input, textarea{
-	color: $text-color;
+	color: var(--sakai-text-color-1);
+	background: var(--sakai-background-color-1);
+	border: 1px solid var(--sakai-border-color);
+	@include border-radius($button-radius);
 	font-family: $font-family;
 	font-size: 	 $default-font-size;
 	max-width: 100%;
@@ -110,8 +140,9 @@ input[type="submit"],input[type="button"],input[type="reset"] {
 }
 
 input[type="checkbox"], input[type="radio"]{
-	background-color: #FFF;
-	border: 1px solid #A0A0A0;
+	background-color: var(--sakai-background-color-1);
+	border: 1px solid var(--sakai-text-color-1);
+	color: var(--sakai-text-color-1);
 	display: inline-block;
 	height: 16px;
 	width: 16px;
@@ -119,7 +150,7 @@ input[type="checkbox"], input[type="radio"]{
 	@include appearance(none);
 	&:focus
 	{
-		box-shadow: 0px 0px $focus-outline-width $focus-outline-width $focus-outline-color;
+		box-shadow: 0px 0px $focus-outline-width $focus-outline-width var(--focus-outline-color);
 		outline: 0 none; // to override Bootstrap
 		outline-offset: 0; // to override Bootstrap
 	}
@@ -129,33 +160,40 @@ input[type="checkbox"], input[type="radio"]{
 		opacity: 0.5;
 		& + label{
 			cursor: not-allowed;
-			color: $text-color-disabled;
+			color: var(--sakai-text-color-disabled);
 		}
 	}
 }
 
 label.disabled{
 	cursor: not-allowed;
-	color: $text-color-disabled;
+	color: var(--sakai-text-color-disabled);
 }
 
 input[type="checkbox"]{
 	@include border-radius(3px);
 	&:checked{
-		background-image: url("images/check.png");
-		background-size: 16px;
+		background-image: url(#{$skin-path}images/check.svg);
+		background-size: 12px;
+		background-color: var(--button-primary-background);
+		background-repeat: no-repeat;
+		background-position: 1px 1px;
 	}
 }
 input[type="radio"]{
 	@include border-radius(24px);
 	&:checked{
-		background: $text-color;                // fallback support
-		background: radial-gradient(circle at center, $text-color 0%, $text-color 48%, $background-color 58%);
+		background: var(--button-primary-background); // fallback support
+		background: radial-gradient(circle at center, var(--button-primary-background) 0%, var(--button-primary-background) 48%, var(--sakai-background-color-1) 58%);
 	}
 }
 
 select{
 	@extend .select;
+}
+
+select.form-control {
+	background-image: url(#{$skin-path}images/icon-arrow-down.png);
 }
 
 .is-hidden{
@@ -197,11 +235,11 @@ legend {
 }
 
 .formButtonDisabled, .formButtonDisabled:hover, .formButtonDisabled:active {
-	color: $button-disabled-text-color;
+	color: var(--button-disabled-text-color);
 	text-decoration: none;
-	background: $button-disabled-background;
-	border: 1px solid $button-disabled-border-color;
-	box-shadow: $button-disabled-shadow;
+	background: var(--button-disabled-background);
+	border: 1px solid var(--button-disabled-border-color);
+	box-shadow: var(--button-disabled-shadow);
 	cursor: not-allowed;
 	white-space: nowrap;
 }
@@ -211,5 +249,26 @@ ul, ol {
 }
 
 span.marker {
-    background-color: yellow;
+    background-color: var(--sakai-color-gold--lighter-3);
+}
+
+.hide-input-arrows {
+  -moz-appearance: textfield;
+  &::-webkit-inner-spin-button,
+  &::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    margin: 0;
+  }
+}
+
+.sakai-user-photo {
+    min-width: 32px;
+    max-width: 32px;
+    height: 32px;
+    float: left;
+    background-position: 50%;
+    background-size: auto 100%;
+    border-radius: 50%;
 }

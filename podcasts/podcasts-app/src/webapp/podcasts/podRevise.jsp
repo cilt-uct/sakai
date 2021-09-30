@@ -1,6 +1,6 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <% response.setContentType("text/html; charset=UTF-8"); %>
 
 <jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
@@ -12,10 +12,10 @@
     <link href="/library/skin/default/tool.css" type="text/css" rel="stylesheet" media="all" />
 
   <sakai:view toolCssHref="./css/podcaster.css">
-      <script type="text/javascript">includeLatestJQuery("podRevise");</script>
-      <script type="text/javascript" src="/library/js/lang-datepicker/lang-datepicker.js"></script>
+      <script>includeLatestJQuery("podRevise");</script>
+      <script src="/library/js/lang-datepicker/lang-datepicker.js"></script>
 
-      <script type="text/javascript">
+      <script>
         $(document).ready(function() {
            localDatePicker({
               input: '#podRev\\:poddate',
@@ -25,11 +25,17 @@
               val: '<h:outputText value="#{podHomeBean.selectedPodcast.displayDateRevise}"><f:convertDateTime pattern="yyyy-MM-dd HH:mm:ss"/></h:outputText>',
               ashidden: { iso8601: 'podReviseISO8601' }
           });
+
+          var menuLink = $('#podcastMainMenuLink');
+          var menuLinkSpan = menuLink.closest('span');
+          menuLinkSpan.addClass('current');
+          menuLinkSpan.html(menuLink.text());
+
         });
       </script>
 
   <h:form id="podRev" enctype="multipart/form-data">
-
+    <%@ include file="/podcasts/podcastMenu.jsp" %>
     <div>  <!-- Page title and Instructions -->
       <div class="page-header">
         <h1><h:outputText value="#{msgs.revise_title}" /></h1>
@@ -93,9 +99,9 @@
     <br />
 --%>
     <sakai:button_bar>  <!-- Save Changes and Cancel buttons -->
-      <sakai:button_bar_item action="#{podHomeBean.processRevisePodcast}" value="#{msgs.change_submit}" 
+      <h:commandButton action="#{podHomeBean.processRevisePodcast}" value="#{msgs.change_submit}"
           accesskey="s" title="#{msgs.change_submit}" styleClass="active" />
-      <sakai:button_bar_item action="#{podHomeBean.processCancelRevise}" value="#{msgs.cancel}" 
+      <h:commandButton action="#{podHomeBean.processCancelRevise}" value="#{msgs.cancel}"
           accesskey="x" title="#{msgs.cancel}" />
     </sakai:button_bar>
    </h:form>

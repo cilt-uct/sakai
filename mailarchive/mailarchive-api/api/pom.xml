@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.sakaiproject.mailarchive</groupId>
         <artifactId>mailarchive</artifactId>
-        <version>21-SNAPSHOT</version>
+        <version>22-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
@@ -32,4 +32,15 @@
             <artifactId>sakai-message-api</artifactId>
         </dependency>
     </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>${basedir}/src/bundle</directory>
+                <includes>
+                    <include>**/*.properties</include>
+                </includes>
+            </resource>
+        </resources>
+    </build>
 </project>

@@ -107,23 +107,7 @@
 					$tlang.getString("gen.visible")
 				</th>
 				<td>
-					#set($count=1)
-					#set($for="")
-					#foreach ($group in $assignment.Groups)
-						#set($groupFound=false)
-						#set($groupFound=$!site.getGroup($group))
-						#if($!groupFound)
-							#if ($count>1)
-								#set($for=$for.concat(", "))
-							#end
-							#set($for= $for.concat($groupFound.Title))
-							#set($count=$count+1)
-						#end
-					#end
-					#if($count==1)
-						#set($for=$tlang.getString("gen.viewallgroupssections"))
-					#end
-					$formattedText.escapeHtml($!for)
+					$formattedText.escapeHtml($!asnGroupTitles)
 				</td>
 			</tr>
 			<tr> 
@@ -193,6 +177,17 @@
 					#end
 				</td>
 			</tr>
+			#if($assignment.TypeOfSubmission.ordinal() == 6)
+			<tr>
+				<th>
+					$tlang.getString("external.tool.label")
+				</th>
+				<td>
+					$value_ContentTitle <br/>
+					<a href="#toolLinkParam("$action" "doView_external_tool_launch")">$tlang.getString("external.tool.goto")</a>
+				</td>
+			</tr>
+			#end
 			<tr> 
 				<th>
 					$tlang.getString("gen.honple")

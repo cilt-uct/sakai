@@ -4,8 +4,7 @@
 <%@ taglib uri="http://www.sakaiproject.org/samigo" prefix="samigo" %>
 <%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <!DOCTYPE html
-     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+    PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <!--
 * $Id$
 <%--
@@ -33,6 +32,93 @@
       <head><%= request.getAttribute("html.head") %>
       <title><h:outputText value="#{authorMessages.item_display_author}"/></title>
       <script src="/samigo-app/js/authoring.js"></script>
+      <script type="text/javascript">
+          var defining_answers;
+          var mutually_exclusive;
+          var last_markers;
+          $(function () {
+              defining_answers = $("#defining_answers").html();
+              mutually_exclusive = $("#mutually_exclusive").html();
+              const markers = $("#itemForm\\:newmarkers").val();
+              if (markers == "{}") {
+                  $("#itemForm\\:customMarker\\:0").prop('checked', true);
+                  $("#customMarkerSettings").hide();
+              } else {
+                  $("#itemForm\\:customMarker\\:1").prop('checked', true);
+                  checkMarkers();
+                  $("#customMarkerSettings").show();
+              }
+              $("input[name='itemForm\\:customMarker']").change(function () {
+                  markerRadio();
+              });
+              $("#newmarkers").change(function () {
+                  checkMarkers();
+              });
+          });
+
+          function safe_tags(str) {
+              return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          }
+
+          function markerRadio() {
+              const markerState = $("input[name='itemForm\\:customMarker']:checked").val();
+              if (markerState == "true") {
+                  if (last_markers) {
+                      $("#itemForm\\:newmarkers").val(last_markers);
+                      checkMarkers();
+                  }
+                  $("#customMarkerSettings").slideDown();
+              } else {
+                  $("#customMarkerSettings").slideUp();
+                  last_markers = $("#itemForm\\:newmarkers").val();
+                  $("#itemForm\\:newmarkers").val("{}");
+                  checkMarkers();
+              }
+          }
+
+          function checkMarkers() {
+              var markerPair = $("#itemForm\\:newmarkers").val();
+              if (markerPair != '{}') {
+                  $("#customMarkerSettings").show();
+              }
+              const markerEl = document.getElementById('itemForm:newmarkers');
+              const pool_badmarkers_error_3 = <h:outputText value="'#{authorMessages.pool_badmarkers_error_3}'" escape="false"/>;
+              const pool_badmarkers_error_2 = <h:outputText value="'#{authorMessages.pool_badmarkers_error_2}'" escape="false"/>;
+              const pool_badmarkers_error_1 = <h:outputText value="'#{authorMessages.pool_badmarkers_error_1}'" escape="false"/>;
+
+              if (markerPair.match(/[\"\'.,&<>\ |*]/)) {
+                  setError(markerEl, pool_badmarkers_error_3);
+                  return;
+              }
+              if (markerPair.charAt(0) == markerPair.charAt(1)) {
+                  setError(markerEl, pool_badmarkers_error_2);
+                  return;
+              }
+              if (markerPair.length == 1 || markerPair.length > 2) {
+                  setError(markerEl, pool_badmarkers_error_1);
+                  return;
+              }
+              $("#defining_answers").html(defining_answers.replace(/{/g, safe_tags(markerPair.charAt(0))).replace(/}/g, safe_tags(markerPair.charAt(1))));
+              $("#mutually_exclusive").html(mutually_exclusive.replace(/{/g, safe_tags(markerPair.charAt(0))).replace(/}/g, safe_tags(markerPair.charAt(1))));
+
+              removeError(markerEl);
+          }
+
+          function setError(el, msg) {
+              el.parentNode.querySelector('#validationForbiddenCharacters').innerHTML = "Error:";
+              el.parentNode.classList.remove('has-success');
+              el.parentNode.classList.add('has-error');
+              el.parentNode.querySelector('label').innerHTML = msg;
+          }
+
+          function removeError (el) {
+              el.parentNode.querySelector('#validationForbiddenCharacters').innerHTML = "";
+              el.parentNode.classList.remove('has-error');
+              el.parentNode.classList.add('has-success');
+              el.parentNode.querySelector('label').innerHTML = "";
+          }
+
+        </script>
       </head>
       <body onload="<%= request.getAttribute("html.body.onload") %>">
 
@@ -88,9 +174,9 @@
     </div>
     
     <div class="form-group row">
-        <h:outputLabel value="#{authorMessages.answer_point_value_display}" styleClass="col-md-4 col-lg-2 form-control-label"/>
+        <h:outputLabel for="itemScore" value="#{authorMessages.answer_point_value_display}" styleClass="col-md-4 col-lg-2 form-control-label"/>
         <div class="col-md-5 samigo-inline-radio">
-            <h:selectOneRadio value="#{itemauthor.currentItem.itemScoreDisplayFlag}" >
+            <h:selectOneRadio value="#{itemauthor.currentItem.itemScoreDisplayFlag}" id="itemScore">
                 <f:selectItem itemValue="true" itemLabel="#{authorMessages.yes}" />
                 <f:selectItem itemValue="false" itemLabel="#{authorMessages.no}" />
             </h:selectOneRadio>
@@ -100,7 +186,7 @@
     <!-- 1.2 Min POINTS -->
     <f:subview id="minPoints" rendered="#{itemauthor.allowMinScore}">
         <div class="form-group row">   
-            <h:outputLabel value="#{authorMessages.answer_min_point_value}" styleClass="col-md-4 col-lg-2 form-control-label"/>
+            <h:outputLabel for="answerminptr" value="#{authorMessages.answer_min_point_value}" styleClass="col-md-4 col-lg-2 form-control-label"/>
             <div class="col-md-2">
                 <h:inputText id="answerminptr" value="#{itemauthor.currentItem.itemMinScore}" styleClass="form-control ConvertPoint">
                     <f:validateDoubleRange/>
@@ -114,12 +200,43 @@
     <!-- Extra Credit -->
     <%@ include file="/jsf/author/inc/extraCreditSetting.jspf" %>
 
+    <div class="form-group row">
+        <h:outputLabel value="#{authorMessages.fib_marker}" styleClass="col-md-4 col-lg-2 form-control-label" />
+        <div class="col-md-2 samigo-inline-radio">
+            <h:selectOneRadio value="customMarker" id="customMarker">
+                <f:selectItem itemValue="false" itemLabel="#{authorMessages.fib_marker_default}"
+                    id="default" />
+                <f:selectItem itemValue="true" itemLabel="#{authorMessages.fib_marker_custom}"
+                    id="custom" />
+            </h:selectOneRadio>
+            <h:outputText value="#{authorMessages.fib_note_5}" />
+            <h:message for="customMarker" styleClass="validate" />
+        </div>
+    </div>
+
+    <div class="form-group row" id="customMarkerSettings" style="display: none;">
+        <h:outputLabel value="#{authorMessages.fib_label_custom_markers}" styleClass="col-md-4 col-lg-2 form-control-label" />
+        <div class="col-md-6">
+            <div class="form-group">
+                <h:inputText id="newmarkers" style="width: 50px;" value="#{itemauthor.currentItem.markersPair}"
+	                required="false" styleClass="form-control" maxlength="2" onchange="checkMarkers()">
+                	<f:validateLength maximum="2" minimum="2" />
+                	<!--<p:passThroughAttribute name="aria-describedby" value="validationForbiddenCharacters" />-->
+                </h:inputText>
+                <label for="newmarkers" id="validationForbiddenCharacters" class="help-block" escape="false"></label>
+            </div>
+            <h:outputText value="#{authorMessages.fib_note_4}<br />" escape="false" />
+            <h:message for="newmarkers" styleClass="validate" />
+        </div>
+    </div>
+
     <%-- 2 QUESTION TEXT --%> 
-    <h:outputLabel value="#{authorMessages.q_text}" /><br/>
-    <h:outputText value="#{authorMessages.defining_answers}<br/>" escape="false"/>  
-    <h:outputText value="#{authorMessages.fib_note_1}<br /><br />" escape="false"/>
-    <h:outputText value="#{authorMessages.fib_note_2}<br /><br />" escape="false"/>
-    <h:outputText value="#{authorMessages.fib_note_3}<br /><br />" escape="false"/>
+    <div id="defining_answers">
+    	<h:outputText value="#{authorMessages.defining_answers}<br/>" escape="false"/>  
+    	<h:outputText value="#{authorMessages.fib_note_1}<br /><br />" escape="false"/>
+    	<h:outputText value="#{authorMessages.fib_note_2}<br /><br />" escape="false"/>
+    	<h:outputText value="#{authorMessages.fib_note_3}<br /><br />" escape="false"/>
+    </div>
 
     <div class="mathjax-warning" style="display: none;">
       <h:outputText value="#{authorMessages.accepted_characters}" escape="false"/>
@@ -128,9 +245,9 @@
       </div>
     </div>
 
+    <h:outputLabel for="questionItemText_textinput" value="#{authorMessages.q_text}" /><br/>
     <h:panelGrid>
-        <samigo:wysiwyg
-                 rows="140" value="#{itemauthor.currentItem.itemText}" hasToggle="yes" mode="author">
+        <samigo:wysiwyg identity="questionItemText" rows="140" value="#{itemauthor.currentItem.itemText}" hasToggle="yes" mode="author">
                 <f:validateLength maximum="60000"/>
         </samigo:wysiwyg>
     </h:panelGrid>
@@ -148,7 +265,7 @@
         </p>
     </div>
 
-    <div>
+    <div id="mutually_exclusive">
         <div class="samigo-checkbox">
             <h:selectBooleanCheckbox id="exclusive" value="#{itemauthor.currentItem.mutuallyExclusiveForFib}">
             </h:selectBooleanCheckbox>
@@ -164,7 +281,7 @@
         <div class="samigo-checkbox">
             <h:selectBooleanCheckbox id="spaces" value="#{itemauthor.currentItem.ignoreSpacesForFib}">
             </h:selectBooleanCheckbox>
-            <h:outputLabel for="espaces" value="#{authorMessages.ignore_spaces}" escape="false"/>
+            <h:outputLabel for="spaces" value="#{authorMessages.ignore_spaces}" escape="false"/>
         </div>
         <p>
             <h:outputText value="#{authorMessages.ignore_spaces_note}" escape="false"/><br/>
@@ -178,7 +295,7 @@
 
     <%-- 3 PART --%>
     <h:panelGroup styleClass="form-group row" layout="block" rendered="#{itemauthor.target == 'assessment'  && !author.isEditPoolFlow}">
-        <h:outputLabel value="#{authorMessages.assign_to_p}" styleClass="col-md-4 col-lg-2 form-control-label"/>
+        <h:outputLabel for="assignToPart" value="#{authorMessages.assign_to_p}" styleClass="col-md-4 col-lg-2 form-control-label"/>
         <div class="col-md-8">
             <h:selectOneMenu id="assignToPart" value="#{itemauthor.currentItem.selectedSection}">
                 <f:selectItems  value="#{itemauthor.sectionSelectList}" />
@@ -190,7 +307,7 @@
     <%-- 5 POOL --%>
     <h:panelGroup styleClass="form-group row" layout="block" 
                     rendered="#{itemauthor.target == 'assessment' && author.isEditPendingAssessmentFlow}">
-        <h:outputLabel value="#{authorMessages.assign_to_question_p}" styleClass="col-md-4 col-lg-2 form-control-label"/>
+        <h:outputLabel for="assignToPool" value="#{authorMessages.assign_to_question_p}" styleClass="col-md-4 col-lg-2 form-control-label"/>
         <div class="col-md-8">
             <h:selectOneMenu id="assignToPool" value="#{itemauthor.currentItem.selectedPool}">
                 <f:selectItem itemValue="" itemLabel="#{authorMessages.select_a_pool_name}" />
@@ -206,22 +323,22 @@
             <h:outputLabel value="#{authorMessages.correct_incorrect_an}" styleClass="col-md-12 form-control-label"/>
         </div>
         <div class="form-group row">
-            <h:outputLabel value="#{authorMessages.correct_answer_opti}" styleClass="col-md-4 col-lg-2 form-control-label"/>
+            <h:outputLabel for="questionFeedbackCorrect_textinput" value="#{authorMessages.correct_answer_opti}" styleClass="col-md-4 col-lg-2 form-control-label"/>
             <!-- WYSIWYG -->
             <div class="col-md-8">
                 <h:panelGrid>
-                    <samigo:wysiwyg rows="140" value="#{itemauthor.currentItem.corrFeedback}" hasToggle="yes" mode="author">
+                    <samigo:wysiwyg identity="questionFeedbackCorrect" rows="140" value="#{itemauthor.currentItem.corrFeedback}" hasToggle="yes" mode="author">
                         <f:validateLength maximum="60000"/>
                     </samigo:wysiwyg>
                 </h:panelGrid>
             </div>
        </div>
         <div class="form-group row">
-            <h:outputLabel value="#{authorMessages.incorrect_answer_op}" styleClass="col-md-4 col-lg-2 form-control-label"/>
+            <h:outputLabel for="questionFeedbackIncorrect_textinput" value="#{authorMessages.incorrect_answer_op}" styleClass="col-md-4 col-lg-2 form-control-label"/>
             <!-- WYSIWYG -->
             <div class="col-md-8"> 
                 <h:panelGrid>
-                    <samigo:wysiwyg rows="140" value="#{itemauthor.currentItem.incorrFeedback}" hasToggle="yes" mode="author">
+                    <samigo:wysiwyg identity="questionFeedbackIncorrect" rows="140" value="#{itemauthor.currentItem.incorrFeedback}" hasToggle="yes" mode="author">
                         <f:validateLength maximum="60000"/>
                     </samigo:wysiwyg>
                  </h:panelGrid>

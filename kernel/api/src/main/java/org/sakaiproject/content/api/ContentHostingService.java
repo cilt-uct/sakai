@@ -246,9 +246,27 @@ public interface ContentHostingService extends EntityProducer
 
 	static final String ID_LENGTH_EXCEPTION = "id_length_exception";
 
+	public static final String DOC_MIMETYPE = "application/msword";
 	public static final String DOCX_MIMETYPE
 		= "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 	public static final String ODT_MIMETYPE = "application/vnd.oasis.opendocument.text";
+	public static final String ODP_MIMETYPE = "application/vnd.oasis.opendocument.presentation";
+	public static final String PDF_MIMETYPE = "application/pdf";
+	public static final String PPT_MIMETYPE = "application/vnd.ms-powerpoint";
+	public static final String PPTX_MIMETYPE = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+
+	/** Used as a property key to indicate that a document has a preview copy. The value will be
+	 * the preview document's id
+	 */
+	public static final String PREVIEW = "PREVIEW";
+
+	public static final String SAK_PROP_MAX_UPLOAD_FILE_SIZE = "content.upload.max";
+
+	/**
+	 * The default names for the direct-upload folders.
+	 */
+	public static final String DEFAULT_INSTRUCTOR_FOLDER = "instructor-uploads";
+	public static final String DEFAULT_STUDENT_FOLDER = "student-uploads";
 
 	/**
     * For a given id, return its UUID (creating it if it does not already exist)
@@ -2087,4 +2105,22 @@ public interface ContentHostingService extends EntityProducer
 	public String expandMacros(String url);
 
 	public Optional<String> getHtmlForRef(String ref);
+
+	/**
+	 * Get the name of the "instructor" upload folder name for direct-upload.
+	 * This is the folder for users that have addCollection permission in the
+	 * site.
+	 *
+	 * @return String - The name of the folder.
+	 */
+	public String getInstructorUploadFolderName();
+
+	/**
+	 * Get the name of the "student" upload folder name for direct-upload.
+	 * This is the folder for users that do not have addCollection permission
+	 * in the site.
+	 *
+	 * @return String - The name of the folder.
+	 */
+	public String getStudentUploadFolderName();
 }

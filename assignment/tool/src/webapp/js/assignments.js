@@ -250,6 +250,10 @@ ASN.setupAssignNew = function(){
         if (this.checked) {
             $(this).parent('label').addClass('selectedItem');
             ($(this).parents('.groupCell').children('.countDisplay').text(thisCount + 1));
+            var usersCount = Number($(this).parents('.groupCell').find('input.selectedItem').length);
+            if (usersCount === thisCount+1) {
+                $(this).parents('.groupCell').find('.selectAllMembers').prop('checked', true);
+            }
         }
         else {
             ($(this).parents('.groupCell').children('.countDisplay').text(thisCount - 1));
@@ -273,7 +277,7 @@ ASN.setupAssignNew = function(){
     });
     $(".groupCell").each(function(){
         if ($(this).find('input.selectAllMembers:checked').length) {
-            $(this).children('.countDisplay').text($(this).find('input').prop('checked', 'checked').length);
+            $(this).children('.countDisplay').text($(this).find('input.selectedItem').prop('checked', 'checked').length);
         }
         else {
             $(this).children('.countDisplay').text($(this).find('.countHolder').text());
@@ -393,18 +397,12 @@ ASN.highlightSelectedAttachment = function()
 
 ASN.saveChanges = function(formName, textAreaId) {
     var _textArea = document.getElementById(textAreaId);
-    if (_textArea !== null) {
-        if (typeof FCKeditorAPI !== "undefined") {
-            var editor = FCKeditorAPI.GetInstance(textAreaId);
-            document[formName].savedText.value = editor.GetXHTML(false);
-        }
-    }
 };
 
 ASN.allowClick = function(object)
 {
     object.onclick='';
-    object.style.color='#000';
+    object.style.setProperty('color', '--link-active-color');
     var rv = linkFlag;
     // set the flag to be false
     linkFlag = false;
@@ -812,6 +810,15 @@ ASN.toggleSendFeedbackPanel = function()
     ASN.swapDisplay(expandImg, collapseImg);
 }
 
+ASN.toggleAssignamentInstructionPanel = function()
+{
+    var panel = document.getElementById("assignamentInstructionPanelContent");
+    $(panel).slideToggle(200);
+    var expandImg = document.getElementById("expandAssignamentInstruction");
+    var collapseImg = document.getElementById("collapseAssignamentInstruction");
+    ASN.swapDisplay(expandImg, collapseImg);
+}
+
 ASN.swapDisplay = function(elem1, elem2)
 {
     var tmpDisplay = elem1.style.display;
@@ -914,18 +921,16 @@ ASN.handleReportsTriangleDisclosure = function (header, icon, content, expandTex
 }
 
 // rubrics-specific code
-ASN.rubricsEventHandlers = function () {
+ASN.rubricsEventHandlers = () => {
 
-  $('body').on('total-points-updated', function (e) {
+  document.body && document.body.addEventListener("total-points-updated", e => {
 
     e.stopPropagation();
 
-    var gradeField = $('#grade');
-    if (gradeField.length) {
-      gradeField.val(e.detail.value);
-    }
+    const gradeField = document.getElementById("grade");
+    gradeField && (gradeField.value = e.detail.value);
   });
-}
+};
 
 ASN.changeVisibleDate = function() 
 {
@@ -947,4 +952,44 @@ ASN.changeVisibleDate = function()
 		$('#new_assignment_visiblemin').val('');
 		$('.visibleDatePanel').hide();
 	}
+}
+
+$(document).ready(() => {
+
+  $("#infoImg").popover({html : true});
+
+  const saveRubric = e => {
+    [...document.getElementsByTagName("sakai-rubric-grading")].forEach(r => r. save());
+  };
+  const saveButton = document.getElementById("save");
+  saveButton && saveButton.addEventListener("click", saveRubric);
+
+  const releaseRubric = e => {
+    [...document.getElementsByTagName("sakai-rubric-grading")].forEach(r => r. release());
+  };
+  const returnButton = document.getElementById("save-and-return");
+  returnButton && returnButton.addEventListener("click", releaseRubric);
+
+  const releaseGrades = document.getElementById("releaseGrades");
+  releaseGrades && releaseGrades.addEventListener("click", e => {
+
+    e.target.classList.add('noPointers');
+
+    let promises = [];
+    [...document.getElementsByTagName("sakai-rubric-student-button")].forEach(b => promises.push(b.releaseEvaluation()));
+    Promise.all(promises).then(() => ASN.submitForm('viewForm', 'releaseGrades', null, null));
+  });
+});
+
+// SAK-43911 (grab_cursor for reordering items)
+ASN.grabbing = function (selectedItem) {
+    li = $(selectedItem);
+    $(li).removeClass("grab_cursor");
+    $(li).addClass("grabbing_cursor");
+}
+
+ASN.grab = function (selectedItem) {
+    li = $(selectedItem);
+    $(li).removeClass("grabbing_cursor");
+    $(li).addClass("grab_cursor");
 }

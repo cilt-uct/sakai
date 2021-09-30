@@ -6,7 +6,7 @@
         </div>
 
         <script id="courseGradeHeaderTemplate" type="text/template">
-            <span class="colHeader hide">${col}</span>
+            <span class="colHeader hide" data-col-index="${col}">${col}</span>
             <div class="relative">
                 <a class="gb-title">
                     <wicket:message key="column.header.coursegrade"/>
@@ -64,7 +64,7 @@
             </div>
         </script>
         <script id="assignmentHeaderTemplate" type="text/template">
-            <span class="colHeader hide">${col}</span>
+            <span class="colHeader hide" data-col-index="${col}">${col}</span>
             <div class="relative">
                 {if extraCredit}
                     <span class="gb-flag-extra-credit" wicket:message="title:label.gradeitem.extracredit"></span>
@@ -78,7 +78,7 @@
                 <a class="gb-title" title="${tooltip}">
                     ${abbrevTitle}
                     {if hasAssociatedRubric}
-                        <span class="fa fa-fw fa-table" wicket:message="title:rubrics.question_use_rubric"></span>
+                        <span class="fa fa-fw icon-sakai--sakai-rubrics" wicket:message="title:rubrics.question_use_rubric"></span>
                     {/if}
                 </a>
                 {if settings.isCategoriesEnabled}
@@ -149,7 +149,7 @@
                         <li><a href="javascript:void(0);" class="gb-hide-column" role="menuitem" data-assignmentid="${assignmentId}"><wicket:message key="assignment.option.hide" /></a></li>
                         <li><a href="javascript:void(0);" class="gb-message-students" role="menuitem" data-assignment-id="${assignmentId}"><wicket:message key="label.submission-messager.title" /></a></li>
                         {if !externallyMaintained && settings.isUserAbleToEditAssessments}
-                            <li><a href="javascript:void(0);" class="gb-delete-item" role="menuitem"><span class="text-danger"><wicket:message key="delete.label" /></span></a></li>
+                            <li><a href="javascript:void(0);" class="gb-delete-item text-danger" role="menuitem"><wicket:message key="delete.label" /></a></li>
                         {/if}
                     </ul>
                     <div id="gb-messager-for-${assignmentId}" style="display: none;" wicket:message="title:label.submission-messager.title">
@@ -159,10 +159,13 @@
             </div>
         </script>
         <script id="categoryScoreHeaderTemplate" type="text/template">
-            <span class="colHeader hide">${col}</span>
+            <span class="colHeader hide" data-col-index="${col}">${col}</span>
             <div class="relative">
                 {if extraCredit}
                     <span class="gb-flag-extra-credit" wicket:message="title:label.gradeitem.extracreditcategory"></span>
+                {/if}
+                {if equalWeight}
+                    <span class="gb-flag-equal-weight" wicket:message="title:label.gradeitem.equalweightcategory"></span>
                 {/if}
                 {var tooltip = title.replace(/"/g, '&quot;')}
                 <a class="gb-title" title="${tooltip}">
@@ -206,7 +209,7 @@
         </script>
         <script id="studentHeaderTemplate" type="text/template">
             <div class="relative">
-                <div class="colHeader">
+                <div class="colHeader" data-col-index="${col}">
                     <a class="gb-title">
                         <wicket:message key="column.header.students"/>
                     </a>
@@ -231,7 +234,7 @@
         </script>
         <script id="studentNumberHeaderTemplate" type="text/template">
             <div class="relative">
-                <div class="colHeader">
+                <div class="colHeader" data-col-index="${col}">
                     <a class="gb-title">
                         <wicket:message key="column.header.studentNumber"/>
                     </a>
@@ -249,7 +252,7 @@
         </script>
         <script id="sectionsHeaderTemplate" type="text/template">
             <div class="relative">
-                <div class="colHeader">
+                <div class="colHeader" data-col-index="${col}">
                     <a class="gb-title">
                         <wicket:message key="column.header.sections"/>
                     </a>
@@ -491,6 +494,12 @@
         </script>
         <script id="newGradeItemPopoverMessage" type="text/template">
             <wicket:message key="label.addgradeitem.highlight.message"/>
+        </script>
+        <script id="chartStudentsGradeMessage" type="text/template">
+            <wicket:message key="chart.students.grade.message"/>
+        </script>
+        <script id="chartYourGradeMessage" type="text/template">
+            <wicket:message key="chart.yourgrade.message"/>
         </script>
         <script id="captionTemplate" type="text/template">
             <div id="gradeTableCaption">

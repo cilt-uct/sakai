@@ -26,22 +26,29 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.persistence.CascadeType;
+import javax.persistence.Column;
 import javax.persistence.Embedded;
 import javax.persistence.Entity;
 import javax.persistence.EntityListeners;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
 import javax.persistence.OneToMany;
 import javax.persistence.OrderColumn;
 import javax.persistence.PostLoad;
 import javax.persistence.PostUpdate;
+import javax.persistence.PrePersist;
+import javax.persistence.PreUpdate;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 
 import lombok.ToString;
+
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.sakaiproject.rubrics.logic.listener.MetadataListener;
 import org.sakaiproject.rubrics.logic.RubricsConstants;
 import org.springframework.data.rest.core.annotation.RestResource;
@@ -55,6 +62,7 @@ import lombok.NoArgsConstructor;
 
 @AllArgsConstructor
 @Data
+@Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
 @Entity
 @EntityListeners(MetadataListener.class)
 @JsonPropertyOrder({"id", "title", "description", "metadata"})
@@ -71,8 +79,13 @@ public class Rubric implements Modifiable, Serializable, Cloneable {
     private String title;
     private String description;
 
+    @Column(nullable = false)
+    private Boolean weighted = Boolean.FALSE;
+
     @ManyToMany(cascade = CascadeType.ALL)
-    @JoinTable(name = "rbc_rubric_criterions")
+    @JoinTable(name = "rbc_rubric_criterions",
+            joinColumns = @JoinColumn(name = "rbc_rubric_id", referencedColumnName = "id", nullable = false),
+            inverseJoinColumns = @JoinColumn(name = "criterions_id", referencedColumnName = "id", nullable = false))
     @OrderColumn(name = "order_index")
     private List<Criterion> criterions;
 
@@ -104,6 +117,7 @@ public class Rubric implements Modifiable, Serializable, Cloneable {
         Rubric clonedRubric = new Rubric();
         clonedRubric.setId(null);
         clonedRubric.setTitle(this.title);
+        clonedRubric.setWeighted(this.weighted);
         clonedRubric.setDescription(this.description);
         Metadata metadata = new Metadata();
         metadata.setLocked(false);
@@ -125,6 +139,7 @@ public class Rubric implements Modifiable, Serializable, Cloneable {
         Rubric clonedRubric = new Rubric();
         clonedRubric.setId(null);
         clonedRubric.setTitle(this.title);
+        clonedRubric.setWeighted(this.weighted);
         clonedRubric.setDescription(this.description);
         Metadata metadata = new Metadata();
         metadata.setLocked(false);
@@ -156,5 +171,19 @@ public class Rubric implements Modifiable, Serializable, Cloneable {
     @Override
     public void setModified(Metadata metadata) {
         this.metadata = metadata;
+    }
+
+    @PrePersist
+    public void prePersist() {
+        if (this.weighted == null) {
+            this.weighted = Boolean.FALSE;
+        }
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        if (this.weighted == null) {
+            this.weighted = Boolean.FALSE;
+        }
     }
 }

@@ -151,8 +151,13 @@
 
 			$(document).ready(function() {
 				$('.selAssignVal').val('<h:outputText value="#{mfStatisticsBean.selectedAssign}"/>');
+				var menuLink = $('#forumsStatisticsMenuLink');
+				var menuLinkSpan = menuLink.closest('span');
+				menuLinkSpan.addClass('current');
+				menuLinkSpan.html(menuLink.text());
 			});
 		</script>
+        <%@ include file="/jsp/discussionForum/menu/forumsMenu.jsp" %>
 		
 		<div id="dialogDiv" title="Grade Messages" style="display:none">
 			<h:commandButton type="button" styleClass="closeDialogFrame" onclick="dialogutil.closeDialog($(this).parent().attr('id'), $('#dialogFrame').attr('id'));" value="#{msgs.close_window}"/>
@@ -179,7 +184,7 @@
           	 <f:verbatim><h3></f:verbatim>
 			      <h:commandLink action="#{ForumTool.processActionHome}" value="#{msgs.cdfm_message_forums}" title=" #{msgs.cdfm_message_forums}"
 			      		rendered="#{ForumTool.messagesandForums}" />
-			      <h:commandLink action="#{ForumTool.processActionHome}" value="#{msgs.cdfm_discussion_forums}" title=" #{msgs.cdfm_discussion_forums}"
+			      <h:commandLink action="#{ForumTool.processActionHome}" value="#{msgs.cdfm_discussions}" title=" #{msgs.cdfm_discussions}"
 			      		rendered="#{ForumTool.forumsTool}" />
 			      <h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " />
 			      <h:commandLink action="#{mfStatisticsBean.processActionStatisticsByAllTopics}" value="#{msgs.stat_list}" title="#{msgs.stat_list}"/>
@@ -207,13 +212,11 @@
           </h:panelGroup>
           <h:panelGroup styleClass="itemNav" rendered="#{!empty mfStatisticsBean.cachedGroupsForStatisticsByTopic}">
 	      	<h:outputText value="#{msgs.filter_by_group}: "/>
-	  		<h:selectOneMenu id="grade" value="#{mfStatisticsBean.selectedGroup}" valueChangeListener="#{mfStatisticsBean.processGroupChange}"
-	          onchange="document.forms[0].submit();">
+			<h:selectOneMenu id="grade" value="#{mfStatisticsBean.selectedGroup}" valueChangeListener="#{mfStatisticsBean.processGroupChange}" onchange="document.forms[0].submit();">
 	           <f:selectItems value="#{mfStatisticsBean.cachedGroupsForStatisticsByTopic}" />
 	        </h:selectOneMenu>          
           </h:panelGroup>  
         </h:panelGrid>
-        
         
 	  	
 	  	<f:subview id="defaultValueView" rendered="#{mfStatisticsBean.selectedAssign != 'Default_0'}">
@@ -252,7 +255,7 @@
 			</h:column>
 			<h:column>
   				<f:facet name="header">
-  					
+					<h:outputText value="#{msgs.stat_forum_details}" />
   				</f:facet>
   				<h:commandLink action="#{mfStatisticsBean.processActionStatisticsUser}" immediate="true" styleClass="font-size: small">
   				    <f:param value="#{stat.siteUserId}" name="siteUserId"/>
@@ -303,6 +306,7 @@
   			</h:column>
   			<h:column rendered="#{mfStatisticsBean.selectedAssign == 'Default_0'}">
   				<f:facet name="header">
+					<h:outputText value="#{msgs.cdfm_button_bar_grade}" />
   				</f:facet>
   				<h:outputLink value="/tool/#{ForumTool.currentToolId}/discussionForum/message/dfMsgGrade" target="dialogFrame"
 						onclick="dialogLinkClick(this);">

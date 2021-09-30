@@ -87,6 +87,7 @@
 							<label for="birthdayinput" class="accessibility-label"><wicket:message key="accessibility.profile.birthday">Enter your birthday</wicket:message></label>
 							<input type="text" wicket:id="birthday" class="formInputField datePicker" />
 							<span wicket:id="birthdayToolTip">[birthdayToolTip]</span>
+							<input type="hidden" wicket:id="birthdayAltField"></input>
 						</td>
 					</tr>
 					
@@ -135,23 +136,17 @@
 					showOn: 'both', 
 					buttonImage: '',
 					buttonText: '<i class="fa fa-calendar" aria-hidden="true"></i>',
-					buttonImageOnly: false
+					buttonImageOnly: false,
+					altFormat: 'dd mm yy',
+					altField: '#birthdayAltField'
 				}); 
 			})
 			.fail(function( jqxhr, settings, exception ) {
 			    console.error(exception);
 			});		
 
-			$('.sakai-wicket-iconwithtooltip').cluetip({
-				local: true,
-				showTitle: false,
-				attribute: 'rel',
-				cursor: 'pointer',
-				cluetipClass: 'jtip',
-				arrows: true,
-				hoverIntent: true
-			});	
-			
+			//initialize tooltip
+			$('[data-toggle="tooltip"]').tooltip();
 		});
 
 	</script> 

@@ -1,5 +1,5 @@
 <!-- start: chef_assignments_student_view_submission.vm  -->
-#module("/rubrics-service/webcomponents/rubric-association-requirements.js")
+#rubricsRequirements
 <script>
 $(document).ready(function(){
     $('#submissionFileCount').val(1);
@@ -55,20 +55,15 @@ $(document).ready(function(){
 			## if there is a submitted submission
 			## get the properies
 			#if ($!allowAddAssignment)
-				<h3>$tlang.getString("viewexampleassign") </h3>
+				<h3>$tlang.getString("exampleassign") </h3>
+				<p class="sak-banner-info">$tlang.getString("exampleassign2")</p>
+				#if ($!assignment.isGroup) <p class="sak-banner-warn">$tlang.getString("exampleassign3")</p> #end
 			#else
 			<h3>
 				$formattedText.escapeHtml($assignment.Title)
-				#if(!$submitted)
-                    <span class="highlight">
-						 - $!service.getSubmissionStatus($!submission.Id)
-					</span>
-				#end
-				#if ($dateReturned && $dateSubmitted && $dateReturned.isAfter($dateSubmitted))
-					<span class="highlight">
-						 - $tlang.getString("resubmit")
-					</span>
-				#end	
+				<span class="highlight">
+					 - $!service.getSubmissionStatus($submission.Id)
+				</span>
 			</h3>
 			#end
 			#if ($returned)
@@ -94,7 +89,9 @@ $(document).ready(function(){
 			#end
 		#else
 			#if ($!allowAddAssignment)
-				<h3>$tlang.getString("subexampleassign")</h3>
+				<h3>$tlang.getString("exampleassign")</h3>
+				<p class="sak-banner-info">$tlang.getString("exampleassign2")</p>
+				#if ($!assignment.isGroup) <p class="sak-banner-warn">$tlang.getString("exampleassign3")</p> #end
 			#else 
 				<h3>$tlang.getString("gen.assig")
 					## no need to show status if this is for an non-electronic submission type of assignment
@@ -110,11 +107,16 @@ $(document).ready(function(){
 			## TEXT_AND_ATTACHMENT_ASSIGNMENT_SUBMISSION = 3;
 			## NON_ELECTRONIC_ASSIGNMENT_SUBMISSION = 4;
 			## SINGLE_ATTACHMENT_SUBMISSION = 5
+			## VIDEO_SUBMISSION = 7
 			<p class="instruction">
 				#if (($submissionType==1) || ($submissionType==3))
 					 $tlang.getString("stuviewsubm.asshasnot")
 				#elseif (($submissionType==2) || ($submissionType==5))
 				 	$tlang.getString("stuviewsubm.assattonly")
+				#elseif ($submissionType == 6)
+                    $tlang.getString("stuviewsubm.externaltool")
+				#elseif ($submissionType == 7)
+					<div class="sak-banner-warn">$tlang.getString("stuviewsubm.video")</div>
 				#end
 				#if($assignment.AllowPeerAssessment)
 					<div class="highlight">
@@ -162,6 +164,19 @@ $(document).ready(function(){
 					</div>
 				</div>
 			</div>
+			#if ($submissionType == 6)
+			<div class="row">
+				<div class="col-lg-4 col-sm-6 col-xs-12">
+					<div class="itemSummaryHeader">$tlang.getString("external.tool.header")</div>
+				</div>
+				<div class="col-lg-4 col-sm-6 col-xs-12">
+                    ## TODO: Make this be something other than the number
+					<div class="itemSummaryValue">
+						$assignment.ContentId
+					</div>
+				</div>
+			</div>
+            #end
 			##resubmit number
 			#if ($submissionType != 4)
 				<div class="row">
@@ -280,21 +295,23 @@ $(document).ready(function(){
 					</div>
 				</div>
 			#end
-##			TODO Submission Log
-##			#if ($!submission && $!submission.getSubmissionLog().size() > 0)
-##				<div class="row">
-##					<div class="col-lg-4 col-sm-6 col-xs-12">
-##						<div class="itemSummaryHeader">$tlang.getString("gen.history")</div>
-##					</div>
-##					<div class="col-lg-4 col-sm-6 col-xs-12">
-##						<div class="itemSummaryValue">
-##							#foreach ($entry in $submission.getSubmissionLog())
-##								$formattedText.escapeHtml($entry)<br>
-##							#end
-##						</div>
-##					</div>
-##				</div>
-##			#end
+
+			## Submission Log
+			#if ($!submissionLog && !$!submissionLog.isEmpty())
+				<div class="row">
+					<div class="col-lg-4 col-sm-6 col-xs-12">
+						<div class="itemSummaryHeader">$tlang.getString("gen.history")</div>
+					</div>
+					<div class="col-lg-4 col-sm-6 col-xs-12">
+						<div class="itemSummaryValue">
+							#foreach ($message in $submissionLog)
+								$message<br/>
+							#end
+						</div>
+					</div>
+				</div>
+			#end
+
 		</div>
 		<div class="clearfix"></div>
 		<h4>
@@ -303,6 +320,10 @@ $(document).ready(function(){
 		
 		#if (!$!assignment.Instructions.isEmpty())
 			<div class="textPanel">$formattedText.escapeHtmlFormattedText($!assignment.Instructions)</div>
+		#end
+
+		#if ($submissionType==6)
+		<a href="#toolLinkParam("$action" "doView_external_tool_launch" "assignmentId=$formattedText.escapeUrl($assignmentReference)")">$tlang.getString("external.tool.goto")</a>
 		#end
 
 		## Assignment Attachments
@@ -603,7 +624,7 @@ $(document).ready(function(){
 				#end
 			#end
 			#if (($submissionType==2) || ($submissionType==3) || ($submissionType==5 && $size < 2))
-				<div id="attachmentspanel" class="highlightPanel" style="background:#ffe">
+				<div id="attachmentspanel" class="highlightPanel">
 					<h3 style="margin-top:0;margin-bottom:.5em">
 						#if ($submissionType == 5)
 							$tlang.getString("gen.att.single")
@@ -650,7 +671,7 @@ $(document).ready(function(){
 						</table>
 					#end
 					#if (($submissionType==2) || ($submissionType==3))
-						<div class="highlightPanel specialLink" style="margin:0;padding-bottom:.5em;background:#fff">
+						<div class="highlightPanel specialLink" style="margin:0;padding-bottom:.5em;">
 							#if ($!deleted.equalsIgnoreCase("true")) 	 
 		    					##if the assignment has been deleted, disable the action button 	 
 		     					<input type="submit" name="eventSubmit_doAttachments" value="Attachment" accesskey="a" disabled="disabled" /> 	 
@@ -688,8 +709,7 @@ $(document).ready(function(){
 											<td></td>
 											<td id="clonedHolder"></td>
 											<td></td>
-											<td></td>										
-											</tr>
+										</tr>
 									</table>	
 									
 								#end
@@ -766,6 +786,10 @@ $(document).ready(function(){
 					</div>
 
 				</div>
+           #elseif ($submissionType == 7)
+               #parse ("/vm/assignment/assignments_display_video_submission.vm")
+               <br>
+               #parse ("/vm/assignment/assignments_record_video_submission.vm")
 			#else
 				## this is where we show any previous attachments when the submission type doesn't allow them
 				#if ($size != 0)
@@ -883,19 +907,14 @@ $(document).ready(function(){
 						<input type="button" name="cancel" accesskey="x" id="cancel" value="$tlang.getString("gen.don")" onclick="ASN_SVS.confirmDiscardOrSubmit( '$name_submission_text', $!new_attachments ); return false;" />
 					#else
 					 class="act">
-								#if ($submitted && $!dateSubmitted)
-									#set($name=$tlang.getString("resubmit"))
-								#else
-									#set($name=$tlang.getString("gen.subm3"))
-								#end
-								<input type="button" class="active" name="confirm" accesskey="s" id="confirm" value="$!name"
+								<input type="button" class="active" name="confirm" accesskey="s" id="confirm" value="$tlang.getString("gen.proceed")"
 									onclick="SPNR.disableControlsAndSpin( this, null ); ASN.submitForm( 'addSubmissionForm', 'confirm', null, null ); return false;" 
 								#if ($submitted && ($submissionType == 2 || $submissionType == 5) && !$!new_attachments && !$!newSingleUploadedFile && (!$!newSingleAttachmentList || $!newSingleAttachmentList.isEmpty()))
 									disabled="disabled"
 								#end
 							/>
-					## for single file upload case, no need for preview or save draft
-					#if ($submissionType!=5)
+					## for single file upload case and video submission, no need for preview or save draft
+					#if ($submissionType != 5 && $submissionType != 7)
 							<input class="disableme" type="button" name="preview" accesskey="v" id="preview" value="$tlang.getString("gen.pre")"
 								onclick="SPNR.disableControlsAndSpin( this, null ); ASN.submitForm( 'addSubmissionForm', 'preview', null, null ); return false;" />
 							<input class="disableme" type="button" name="save" accesskey="d" id="save" value="$tlang.getString("gen.savdra")"
@@ -910,6 +929,8 @@ $(document).ready(function(){
                                 <span class="sak-banner-info">$tlang.getString("stuviewsubm.modifytoresubmit")</span>
                             #elseif ($submissionType == 5)
                                 <span class="sak-banner-warn">$tlang.getString("stuviewsubm.reminder")</span>
+                            #elseif ($submissionType == 7)
+                                <span class="sak-banner-warn">$tlang.getString("stuviewsubm.submitvideoreminder")</span>
                             #else
                                 <span class="sak-banner-warn">$tlang.getString("stuviewsubm.submitreminder")</span>
                             #end

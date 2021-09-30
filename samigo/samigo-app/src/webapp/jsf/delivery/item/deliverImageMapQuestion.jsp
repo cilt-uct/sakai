@@ -26,7 +26,9 @@ should be included in file importing DeliveryMessages
 --%>
 -->
   <f:verbatim><br /></f:verbatim>
-  <h:outputText value="#{question.text}"  escape="false"/>
+  <h:outputText value="#{question.text}"  escape="false">
+    <f:converter converterId="org.sakaiproject.tool.assessment.jsf.convert.SecureContentWrapper" />
+  </h:outputText>
   <!-- ATTACHMENTS -->
   <%@ include file="/jsf/delivery/item/attachment.jsp" %>
 
@@ -74,7 +76,7 @@ should be included in file importing DeliveryMessages
 <!-- Donï¿½t needed KEY in this question type or key should be the image with some sqares on it -->
 <h:panelGroup rendered="#{delivery.feedback eq 'true'}">
   <h:panelGrid rendered="#{delivery.feedbackComponent.showCorrectResponse && !delivery.noFeedback=='true'}" >
-	<h:outputLabel for="answerKeyMC" styleClass="answerkeyFeedbackCommentLabel" value="#{deliveryMessages.ans_key}: " />
+	<h:outputLabel styleClass="answerkeyFeedbackCommentLabel" value="#{deliveryMessages.ans_key}: " />
 	
 	<h:dataTable value="#{question.matchingArray}" var="matching">
 		<h:column>

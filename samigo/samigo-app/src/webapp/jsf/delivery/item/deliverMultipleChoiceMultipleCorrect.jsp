@@ -24,7 +24,9 @@ should be included in file importing DeliveryMessages
 --%>
 -->
 <h:outputText value="<fieldset>" escape="false"/>
-<h:outputText value="#{question.text}" escape="false"/>
+<h:outputText value="#{question.text}" escape="false">
+  <f:converter converterId="org.sakaiproject.tool.assessment.jsf.convert.SecureContentWrapper" />
+</h:outputText>
   <!-- ATTACHMENTS -->
   <%@ include file="/jsf/delivery/item/attachment.jsp" %>
 
@@ -48,7 +50,9 @@ should be included in file importing DeliveryMessages
           <h:outputText value=" #{selection.answer.label}" escape="false" />
           <h:outputText value="#{deliveryMessages.dot} " rendered="#{selection.answer.label ne ''}" />
         </span>
-        <h:outputLabel for="samigo-mc-mc" value="#{selection.answer.text}" escape="false" />
+        <h:outputLabel for="samigo-mc-mc" value="#{selection.answer.text}" escape="false">
+          <f:converter converterId="org.sakaiproject.tool.assessment.jsf.convert.SecureContentWrapper" />
+        </h:outputLabel>
       </h:panelGroup>
     </t:column>
     <t:column>
@@ -63,18 +67,6 @@ should be included in file importing DeliveryMessages
     </t:column>
   </t:dataTable>
 
-  <h:panelGroup rendered="#{question.itemData.hasRationale}" >
-    <f:verbatim><br /></f:verbatim>
-    <h:outputLabel for="rationale" value="#{deliveryMessages.rationale}" />
-    <f:verbatim><br /></f:verbatim>
-    <h:inputTextarea id="rationale" value="#{question.rationale}" rows="5" cols="40" 
-        rendered="#{delivery.actionString!='reviewAssessment' 
-                 && delivery.actionString!='gradeAssessment'}" />
-    <h:outputText id="rationale2" value="#{question.rationaleForDisplay}" 
-        rendered="#{delivery.actionString=='reviewAssessment'
-                 || delivery.actionString=='gradeAssessment'}" escape="false"/>
-  </h:panelGroup>
-
 <f:verbatim><br /></f:verbatim>
 <h:panelGroup rendered="#{(delivery.actionString=='previewAssessment'
                 || delivery.actionString=='takeAssessment' 
@@ -86,6 +78,18 @@ should be included in file importing DeliveryMessages
 		<h:outputText  value=" #{assessmentSettingsMessages.whats_this_link}"/>
 	</h:outputLink>
 </h:panelGroup>
+
+  <h:panelGroup rendered="#{question.itemData.hasRationale}" >
+    <f:verbatim><br /><br /></f:verbatim>
+    <h:outputLabel for="rationale" value="#{deliveryMessages.rationale}" />
+    <f:verbatim><br /></f:verbatim>
+    <h:inputTextarea id="rationale" value="#{question.rationale}" rows="5" cols="40" 
+        rendered="#{delivery.actionString!='reviewAssessment' 
+                 && delivery.actionString!='gradeAssessment'}" />
+    <h:outputText id="rationale2" value="#{question.rationaleForDisplay}" 
+        rendered="#{delivery.actionString=='reviewAssessment'
+                 || delivery.actionString=='gradeAssessment'}" escape="false"/>
+  </h:panelGroup>
 
 <h:panelGroup rendered="#{delivery.feedback eq 'true'}">
   <h:panelGrid rendered="#{delivery.feedbackComponent.showCorrectResponse && !delivery.noFeedback=='true'}" >

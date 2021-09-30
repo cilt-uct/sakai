@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.sakaiproject.entity.api.Entity;
+import org.sakaiproject.rubrics.logic.model.Rubric;
 import org.sakaiproject.rubrics.logic.model.ToolItemRubricAssociation;
 
 /**
@@ -36,8 +37,11 @@ public interface RubricsService {
 
     public static final String REFERENCE_ROOT = Entity.SEPARATOR + "rubrics";
 
-    boolean hasAssociatedRubric(String toolId,
-                                String associatedToolItemId);
+    Optional<Rubric> getRubric(Long rubricId) throws Exception;
+
+    boolean hasAssociatedRubric(String toolId, String associatedToolItemId);
+
+    boolean hasAssociatedRubric(String toolId, String associatedToolItemId, String siteId);
 
     Optional<ToolItemRubricAssociation> getRubricAssociation(String toolId,
                                                              String associatedToolItemId) throws Exception;
@@ -48,14 +52,9 @@ public interface RubricsService {
                                String associatedToolItemId,
                                Map<String, String> params);
 
-    void saveRubricEvaluation(String toolId,
-                              String associatedToolItemId,
-                              String evaluatedItemId,
-                              String evaluatedItemOwnerId,
-                              String evaluatorId,
-                              Map<String, String> params);
-
     String generateJsonWebToken(String tool);
+
+    String generateJsonWebToken(String tool, String siteId);
 
     String getCurrentSessionId();
 
@@ -70,5 +69,7 @@ public interface RubricsService {
     void deleteRubricAssociationsByItemIdPrefix(String itemId, String toolId);
     void softDeleteRubricAssociationsByItemIdPrefix(String itemId, String toolId);
     void restoreRubricAssociationsByItemIdPrefix(String itemId, String toolId);
+
+    void deleteSiteRubrics(String siteId);
 
 }

@@ -16,13 +16,11 @@
 package org.sakaiproject.assignment.entityproviders;
 
 import java.time.Instant;
-import java.time.temporal.ChronoField;
 import java.util.*;
 import java.util.stream.Collectors;
 
 import javax.servlet.http.HttpServletResponse;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
@@ -32,7 +30,6 @@ import static org.sakaiproject.assignment.api.AssignmentConstants.*;
 import static org.sakaiproject.assignment.api.AssignmentServiceConstants.*;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.fileupload.FileItem;
 
 import org.sakaiproject.assignment.api.AssignmentReferenceReckoner;
@@ -48,6 +45,8 @@ import org.sakaiproject.content.api.ContentResource;
 import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.entity.api.EntityManager;
 import org.sakaiproject.entity.api.Reference;
+import org.sakaiproject.entity.api.ResourceProperties;
+import org.sakaiproject.entity.api.ResourcePropertiesEdit;
 import org.sakaiproject.entitybroker.EntityBroker;
 import org.sakaiproject.entitybroker.EntityReference;
 import org.sakaiproject.entitybroker.EntityView;
@@ -69,10 +68,12 @@ import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.site.api.ToolConfiguration;
+import org.sakaiproject.time.api.UserTimeService;
 import org.sakaiproject.tool.api.SessionManager;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserNotDefinedException;
+import org.sakaiproject.util.ResourceLoader;
 
 @Slf4j
 @Setter
@@ -81,6 +82,8 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
         AutoRegisterEntityProvider, PropertyProvideable, Outputable, Inputable {
 
     public final static String ENTITY_PREFIX = "assignment";
+
+    private static ResourceLoader rb = new ResourceLoader("assignment");
 
     private AssignmentService assignmentService;
     private AssignmentToolUtils assignmentToolUtils;
@@ -95,6 +98,7 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
     private GradebookExternalAssessmentService gradebookExternalService;
     private ServerConfigurationService serverConfigurationService;
     private UserDirectoryService userDirectoryService;
+    private UserTimeService userTimeService;
 
     // HTML is deliberately not handled here, so that it will be handled by RedirectingAssignmentEntityServlet
     public String[] getHandledOutputFormats() {
@@ -322,10 +326,12 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
                     .get("allowAddAssignment")).booleanValue() : false;
             boolean allowSubmitAssignment = params.get("allowSubmitAssignment") != null ? ((Boolean) params
                     .get("allowSubmitAssignment")).booleanValue() : false;
+            boolean allowGradeAssignment = params.get("allowGradeAssignment") != null ? ((Boolean) params
+                    .get("allowGradeAssignment")).booleanValue() : false;
 
             assignData.put("assignmentUrl"
                     , assignmentService.getDeepLinkWithPermissions(context, assignmentId
-                            , allowReadAssignment, allowAddAssignment, allowSubmitAssignment));
+                            , allowReadAssignment, allowAddAssignment, allowSubmitAssignment, allowGradeAssignment));
         } catch (IdUnusedException e) {
             throw new EntityNotFoundException("Assignment or site not found", assignmentId, e);
         } catch (PermissionException e) {
@@ -438,6 +444,7 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
     public class GraderUser {
 
         private String displayName;
+        private String sortName;
         private String id;
 
         public GraderUser(User sakaiUser) {
@@ -445,6 +452,7 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
             super();
 
             this.displayName = sakaiUser.getDisplayName();
+            this.sortName = sakaiUser.getSortName();
             this.id = sakaiUser.getId();
         }
     }
@@ -476,26 +484,28 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
             throw new EntityNotFoundException("No site found", siteId, e);
         }
 
-        Map<String, GraderUser> students = new HashMap<>();
-        try {
-            for (String studentId : site.getUsersIsAllowed(SECURE_ADD_ASSIGNMENT_SUBMISSION)) {
-                students.put(studentId, new GraderUser(userDirectoryService.getUser(studentId)));
-            }
-        } catch (UserNotDefinedException e) {
-            throw new EntityException("Failed to setup user", siteId);
-        }
+        SimpleAssignment simpleAssignment = new SimpleAssignment(assignment);
+
+        Set<String> activeSubmitters = site.getUsersIsAllowed(SECURE_ADD_ASSIGNMENT_SUBMISSION);
 
         // A list of mappings of submission id to student id list
         List<SimpleSubmission> submissions
-            = assignment.getSubmissions().stream().map(as -> new SimpleSubmission(as)).collect(Collectors.toList());
+            = assignment.getSubmissions().stream().map(as -> {
+                try {
+                    return new SimpleSubmission(as, simpleAssignment, activeSubmitters);
+                } catch (Exception e) {
+                    log.error("Exception while creating SimpleSubmission", e);
+                    // This can happen if there are no submitters.
+                    return null;
+                }
+
+                }).filter(Objects::nonNull).collect(Collectors.toList());
+
+        List<SimpleGroup> groups = site.getGroups().stream().map(SimpleGroup::new).collect(Collectors.toList());
 
         Map<String, Object> data = new HashMap<>();
-
-        List<SimpleGroup> groups = site.getGroups().stream().map(g -> new SimpleGroup(g)).collect(Collectors.toList());
-
-        data.put("gradable", new SimpleAssignment(assignment));
+        data.put("gradable", simpleAssignment);
         data.put("submissions", submissions);
-        data.put("students", students);
         data.put("groups", groups);
         data.put("showOfficialPhoto", serverConfigurationService.getBoolean("assignment.show.official.photo", true));
         String lOptions = serverConfigurationService.getString("assignment.letterGradeOptions", "A+,A,A-,B+,B,B-,C+,C,C-,D+,D,D-,E,F");
@@ -548,24 +558,17 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
             Set<AssignmentSubmissionSubmitter> submitters = s.getSubmitters();
 
             if (submitters.size() > 0) {
-                //String rawGrade = assignmentService.getGradeForSubmitter(s, submitters.iterator().next().getSubmitter());
-                return assignmentService.getGradeDisplay(s.getGrade(), assignment.getTypeOfGrade(), assignment.getScaleFactor());
+                if (assignment.getTypeOfGrade() == Assignment.GradeType.PASS_FAIL_GRADE_TYPE) {
+                    return s.getGrade() == null ? "ungraded" : s.getGrade();
+                } else {
+                    return assignmentService.getGradeDisplay(s.getGrade(), assignment.getTypeOfGrade(), assignment.getScaleFactor());
+                }
             } else {
                 return "";
             }
         }));
 
-        Map<String, GraderUser> students = new HashMap<>();
-        try {
-            for (String studentId : site.getUsersIsAllowed(SECURE_ADD_ASSIGNMENT_SUBMISSION)) {
-                students.put(studentId, new GraderUser(userDirectoryService.getUser(studentId)));
-            }
-        } catch (UserNotDefinedException e) {
-            throw new EntityException("Failed to setup user", courseId);
-        }
-
         Map<String, Object> data = new HashMap<>();
-        data.put("students", students);
         data.put("grades", grades);
 
         return new ActionReturn(data);
@@ -600,6 +603,12 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
             throw new EntityException("You don't have permissions read submission " + submissionId, "", HttpServletResponse.SC_FORBIDDEN);
         }
 
+        Site site = null;
+        try {
+            site = siteService.getSite(courseId);
+        } catch (IdUnusedException iue) {
+            throw new EntityException("The courseId (site id) you supplied is invalid", "", HttpServletResponse.SC_BAD_REQUEST);
+        }
 
         String privateNotes = (String) params.get("privateNotes");
         String feedbackText = (String) params.get("feedbackText");
@@ -617,6 +626,8 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
 
         if (assignment.getTypeOfGrade() == Assignment.GradeType.SCORE_GRADE_TYPE) {
             grade = assignmentToolUtils.scalePointGrade(grade, assignment.getScaleFactor(), alerts);
+        } else if (assignment.getTypeOfGrade() == Assignment.GradeType.PASS_FAIL_GRADE_TYPE && grade.equals("ungraded")) {
+            grade = null;
         }
 
         Map<String, Object> options = new HashMap<>();
@@ -637,9 +648,12 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
         final List<Reference> attachmentRefs = attachmentKeys.stream().map(k -> {
             FileItem item = (FileItem) params.get(k);
             try {
+                // make a set of properties to add for the new resource
+                ResourcePropertiesEdit props = contentHostingService.newResourceProperties();
+                props.addProperty(ResourceProperties.PROP_DISPLAY_NAME, item.getName());
+                props.addProperty(ResourceProperties.PROP_DESCRIPTION, item.getName());
                 ContentResource cr = contentHostingService.addAttachmentResource(item.getName(),
-                    courseId, "Assignments", item.getContentType(), item.getInputStream(), null);
-
+                    courseId, "Assignments", item.getContentType(), item.getInputStream(), props);
                 return entityManager.newReference(cr.getReference());
             } catch (Exception e) {
                 throw new EntityException("Error while storing attachments", "", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
@@ -657,8 +671,15 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
 
         submission = assignmentToolUtils.gradeSubmission(submission, gradeOption, options, alerts);
 
+        Set<String> activeSubmitters = site.getUsersIsAllowed(SECURE_ADD_ASSIGNMENT_SUBMISSION);
+
         if (submission != null) {
-            return new ActionReturn(new SimpleSubmission(submission));
+            boolean anonymousGrading = assignmentService.assignmentUsesAnonymousGrading(assignment);
+            try {
+                return new ActionReturn(new SimpleSubmission(submission, new SimpleAssignment(assignment), activeSubmitters));
+            } catch (Exception e) {
+                throw new EntityException("Failed to set grade on " + submissionId, "", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            }
         } else {
             throw new EntityException("Failed to set grade on " + submissionId, "", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
@@ -693,7 +714,7 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
         }
 
         try {
-            contentHostingService.removeResource(ref);
+            contentHostingService.removeResource(assignmentService.removeReferencePrefix(ref));
         } catch (Exception e) {
             log.warn("Exception caught while removing resource " + ref + ". It may have been removed previously.");
         }
@@ -908,13 +929,23 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
         }
     }
 
-    @AllArgsConstructor
+    @Getter
     public class DecoratedAttachment implements Comparable<Object> {
 
-        @Getter
         private String name;
-        @Getter
+        private String ref;
+        private long size;
+        private String type;
         private String url;
+
+        public DecoratedAttachment(ContentResource cr) {
+
+            this.url = cr.getUrl();
+            this.name = cr.getProperties().getPropertyFormatted(cr.getProperties().getNamePropDisplayName());
+            this.ref = cr.getReference();
+            this.type = cr.getContentType();
+            this.size = cr.getContentLength();
+        }
 
         public int compareTo(Object other) {
             return this.getUrl().compareTo(
@@ -1098,6 +1129,10 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
 
         private boolean anonymousGrading;
 
+        private Boolean allowPeerAssessment;
+
+        private String maxGradePoint;
+
         public SimpleAssignment() {
         }
 
@@ -1134,6 +1169,9 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
             this.groups = a.getGroups();
             this.access = a.getTypeOfAccess().toString();
             this.instructions = a.getInstructions();
+            if (a.getTypeOfGrade() == Assignment.GradeType.SCORE_GRADE_TYPE) {
+                this.maxGradePoint = assignmentService.getMaxPointGradeDisplay(a.getScaleFactor(), a.getMaxGradePoint());
+            }
 
             this.anonymousGrading = assignmentService.assignmentUsesAnonymousGrading(a);
 
@@ -1165,19 +1203,17 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
                 }
             }
 
-            this.attachments = new ArrayList<>();
-            Set<String> attachment_list = a.getAttachments();
-            for (String attachment : attachment_list) {
-                Entity entity = (Entity) entityBroker.fetchEntity(attachment);
-                if (entity != null) {
-                    String url = entity.getUrl();
-                    String name = entity.getProperties().getPropertyFormatted(entity.getProperties().getNamePropDisplayName());
-                    DecoratedAttachment decoratedAttachment = new DecoratedAttachment(name, url);
-                    this.attachments.add(decoratedAttachment);
-                } else {
-                    log.info("There was an attachment on assignment " + a.getId() + " that was invalid");
-                }
-            }
+            this.attachments = a.getAttachments().stream().map(att -> {
+
+                    String id = entityManager.newReference(att).getId();
+                    try {
+                        return new DecoratedAttachment(contentHostingService.getResource(id));
+                    } catch (Exception e) {
+                        log.info("There was an attachment on assignment " + a.getId() + " that was invalid");
+                        return null;
+                    }
+                }).collect(Collectors.toList());
+
             // Translate grade scale from its numeric value to its description.
             this.gradeScale = a.getTypeOfGrade().toString();
 
@@ -1206,6 +1242,8 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
             if (assignmentAllPurposeItem != null) {
                 this.allPurposeItemText = assignmentAllPurposeItem.getText();
             }
+
+            this.allowPeerAssessment = a.getAllowPeerAssessment();
         }
     }
 
@@ -1214,16 +1252,20 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
 
         private String id;
         private String displayName;
+        private String sortName;
 
-        public SimpleSubmitter(AssignmentSubmissionSubmitter ass) {
+        public SimpleSubmitter(AssignmentSubmissionSubmitter ass, boolean anonymousGrading) throws UserNotDefinedException {
 
             super();
 
             this.id = ass.getSubmitter();
-            try {
-                this.displayName = userDirectoryService.getUser(this.id).getDisplayName();
-            } catch (UserNotDefinedException e) {
-                this.displayName = this.id;
+            if (!anonymousGrading) {
+                User user = userDirectoryService.getUser(this.id);
+                this.displayName = user.getDisplayName();
+                this.sortName = user.getSortName();
+            } else {
+                this.displayName = ass.getSubmission().getId() + " " + rb.getString("grading.anonymous.title");
+                this.sortName = this.displayName;
             }
         }
     }
@@ -1234,9 +1276,10 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
         private String id;
         private String gradableId;
         private String submittedText;
-        private Instant dateSubmitted;
+        private String dateSubmitted;
         private Boolean submitted;
-        private Set<String> submittedAttachments;
+        private List<DecoratedAttachment> submittedAttachments;
+        private Map<String, DecoratedAttachment> previewableAttachments = new HashMap<>();
         private List<SimpleSubmitter> submitters;
         private Boolean userSubmission;
         private Boolean late;
@@ -1246,33 +1289,111 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
         private String feedbackComment;
         private String privateNotes;
         private String groupId;
-        private Set<String> feedbackAttachments;
+        private List<DecoratedAttachment> feedbackAttachments;
         private Map<String, String> properties = new HashMap<>();
+        private Instant assignmentCloseTime;
+        private boolean draft;
+        private boolean visible;
 
-        public SimpleSubmission(AssignmentSubmission as) {
+        public SimpleSubmission(AssignmentSubmission as, SimpleAssignment sa, Set<String> activeSubmitters) throws Exception {
 
             super();
 
             this.id = as.getId();
             this.gradableId = as.getAssignment().getId();
+            this.assignmentCloseTime = sa.getCloseTime();
+            this.draft = assignmentToolUtils.isDraftSubmission(as);
             this.submitted = as.getSubmitted();
-            if (this.submitted) {
+
+            Instant due = sa.getDueTime();
+            Instant close = sa.getCloseTime();
+            this.visible = Instant.now().isAfter(Optional.ofNullable(due).orElse(Instant.now()))
+                && Instant.now().isAfter(Optional.ofNullable(close).orElse(Instant.now()));
+            if (this.submitted || (this.draft && this.visible)) {
                 this.submittedText = as.getSubmittedText();
-                this.dateSubmitted = as.getDateSubmitted();
-                if (dateSubmitted != null) {
-                    this.late = dateSubmitted.compareTo(as.getAssignment().getDueDate()) > 0;
+                if (this.submitted) {
+                    this.dateSubmitted
+                        = userTimeService.dateTimeFormat(as.getDateSubmitted(), null, null);
                 }
-                this.submittedAttachments = as.getAttachments();
+                if (as.getDateSubmitted() != null) {
+                    this.late = as.getDateSubmitted().compareTo(as.getAssignment().getDueDate()) > 0;
+                }
+
+                this.submittedAttachments = as.getAttachments().stream().map(ref -> {
+
+                        String id = entityManager.newReference(ref).getId();
+                        try {
+                            return new DecoratedAttachment(contentHostingService.getResource(id));
+                        } catch (Exception e) {
+                            log.info("There was an attachment on submission {} that was invalid", as.getId());
+                            return null;
+                        }
+                    }).collect(Collectors.toList());
+
+                SecurityAdvisor securityAdvisor = (String userId, String function, String reference) -> {
+
+                    if (ContentHostingService.AUTH_RESOURCE_READ.equals(function)) {
+                        return SecurityAdvisor.SecurityAdvice.ALLOWED;
+                    } else {
+                        return SecurityAdvisor.SecurityAdvice.NOT_ALLOWED;
+                    }
+                };
+
+                try {
+                    securityService.pushAdvisor(securityAdvisor);
+                    this.submittedAttachments.forEach(da -> {
+
+                        try {
+                            ResourceProperties props = contentHostingService.getProperties(da.getRef().replaceFirst("\\/content", ""));
+                            String previewId = props.getProperty(ContentHostingService.PREVIEW);
+                            if (StringUtils.isNotEmpty(previewId)) {
+                                previewableAttachments.put(da.getRef(), new DecoratedAttachment(contentHostingService.getResource(previewId)));
+                            }
+                        } catch (Exception e) {
+                            log.warn("Could not access properties for resource {}, {}", da.getRef(), e.toString());
+                        }
+                    });
+                } finally {
+                    securityService.popAdvisor(securityAdvisor);
+                }
             }
+
             this.submitters
-                = as.getSubmitters().stream().map(ass -> new SimpleSubmitter(ass)).collect(Collectors.toList());
+                = as.getSubmitters().stream().map(ass -> {
+
+                    String userId = ass.getSubmitter();
+                    if (!activeSubmitters.contains(userId)) {
+                        return null;
+                    }
+
+                    try {
+                        return new SimpleSubmitter(ass, sa.isAnonymousGrading());
+                    } catch (UserNotDefinedException unde) {
+                        log.warn("One of the submitters on submission {} is not a valid user. Maybe"
+                            + " they have been removed from your SAKAI_USER table?", ass.getId());
+                        return null;
+                    }
+                }).filter(Objects::nonNull).collect(Collectors.toList());
+
+            if (this.submitters.isEmpty()) {
+                throw new Exception("No submitters for this submission");
+            }
             this.groupId = as.getGroupId();
             this.userSubmission = as.getUserSubmission();
             this.returned = as.getReturned();
             this.feedbackText = as.getFeedbackText();
             this.feedbackComment = as.getFeedbackComment();
             this.privateNotes = as.getPrivateNotes();
-            this.feedbackAttachments = as.getFeedbackAttachments();
+            this.feedbackAttachments = as.getFeedbackAttachments().stream().map(ref -> {
+
+                    String id = entityManager.newReference(ref).getId();
+                    try {
+                        return new DecoratedAttachment(contentHostingService.getResource(id));
+                    } catch (Exception e) {
+                        log.info("There was a feeback attachment on submission {} that was invalid", as.getId());
+                        return null;
+                    }
+                }).collect(Collectors.toList());
             this.graded = as.getGraded();
             this.properties = as.getProperties();
         }
@@ -1282,6 +1403,7 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
     public class SimpleGroup {
 
         private String id;
+        private String reference;
         private String title;
         private Set<String> users;
 
@@ -1290,6 +1412,7 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
             super();
 
             this.id = g.getId();
+            this.reference = g.getReference();
             this.title = g.getTitle();
             this.users = g.getUsers();
         }

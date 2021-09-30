@@ -37,37 +37,39 @@ should be included in file importing DeliveryMessages
 <h:outputText value="</script>" escape="false" />
 
 <h:outputText value="<fieldset>" escape="false"/>
-<h:outputText value="#{question.text}" escape="false"/>
+<h:outputText value="#{question.text}" escape="false">
+  <f:converter converterId="org.sakaiproject.tool.assessment.jsf.convert.SecureContentWrapper" />
+</h:outputText>
 
   <!-- ATTACHMENTS -->
   <%@ include file="/jsf/delivery/item/attachment.jsp" %>
 
 
-  <f:verbatim><div class="mcscFixUp"></f:verbatim>
-  <f:verbatim><div class="mcscFixUpSource"></f:verbatim>
+  <h:panelGroup layout="block" styleClass="mcscFixUp mcscFixUpClassForSelector-#{question.itemData.itemId}">
+  <h:panelGroup layout="block" styleClass="mcscFixUpSource">
   <h:selectOneRadio id="samigo-mc-select-one" required="false" value="#{question.responseId}" layout="pagedirection"
                     disabled="#{delivery.actionString=='reviewAssessment' || delivery.actionString=='gradeAssessment'}" >
        <f:selectItems value="#{question.selectItemPartsMC}" />
   </h:selectOneRadio>
-  <f:verbatim></div></f:verbatim>
+  </h:panelGroup>
 
 
   <t:dataList layout="unorderedList" styleClass="samigo-question" itemStyleClass="samigo-question-answer" value="#{question.selectionArray}" var="selection">
-    <h:panelGroup rendered="#{delivery.feedback eq 'true' && delivery.feedbackComponent.showCorrectResponse && !delivery.noFeedback=='true'}">
+    <h:panelGroup rendered="#{delivery.feedback eq 'true' && delivery.feedbackComponent.showCorrectResponse && !delivery.noFeedback=='true' && question.itemData.typeId != 3}">
       <h:panelGroup id="image"
         rendered="#{(selection.answer.isCorrect eq 'true' || (question.itemData.partialCreditFlag && selection.answer.partialCredit gt 0)) && selection.response}"
-        styleClass="icon-sakai--check feedBackCheck">
+        styleClass="icon-sakai--check feedBackCheck imageClassForSelector">
       </h:panelGroup>
       <h:panelGroup id="image2"
         rendered="#{((question.itemData.partialCreditFlag && (selection.answer.partialCredit le 0 || selection.answer.partialCredit == null)) || (selection.answer.isCorrect != null && !selection.answer.isCorrect)) && selection.response}"
-        styleClass="icon-sakai--delete feedBackCross">
+        styleClass="icon-sakai--delete feedBackCross imageClassForSelector">
       </h:panelGroup>
       <h:panelGroup id="noimage"
         rendered="#{!selection.response}"
-        styleClass="icon-sakai--check feedBackNone">
+        styleClass="icon-sakai--check feedBackNone imageClassForSelector">
       </h:panelGroup>
     </h:panelGroup>
-    <div class="mcscFixUpTarget"></div>
+    <h:panelGroup layout="block" styleClass="mcscFixUpTarget"></h:panelGroup>
     <h:panelGroup styleClass="mcAnswerText">
       <span class="samigo-answer-label strong" aria-hidden="true">
         <h:outputText value=" #{selection.answer.label}" escape="false" />
@@ -75,6 +77,7 @@ should be included in file importing DeliveryMessages
       </span>
       <h:outputText styleClass="samigo-answer-text" value="#{selection.answer.text}" escape="false">
         <f:converter converterId="org.sakaiproject.tool.assessment.jsf.convert.AnswerSurveyConverter" />
+        <f:converter converterId="org.sakaiproject.tool.assessment.jsf.convert.SecureContentWrapper" />
       </h:outputText>
     </h:panelGroup>
 
@@ -88,9 +91,9 @@ should be included in file importing DeliveryMessages
     </h:panelGroup>
   </t:dataList>
 
-  <f:verbatim></div></f:verbatim>
-  <f:verbatim><script>
-    $('div.mcscFixUp').each(function(index1,elBlockToFix) {
+  </h:panelGroup>
+  <script>
+      <h:outputText value="var elBlockToFix = $('.mcscFixUpClassForSelector-#{question.itemData.itemId}');" escape="false" />
       $(elBlockToFix).find('div.mcscFixUpSource td').each(function(index,elLabelAndInputToMove) {
         var contentsToMove = $(elLabelAndInputToMove).contents();
         if (typeof contentsToMove !== 'undefined') {
@@ -98,18 +101,32 @@ should be included in file importing DeliveryMessages
         }
       });
       $(elBlockToFix).find('li.samigo-question-answer label').each(function(index2, answerLabel) {
+        var properImage = $(answerLabel).parent('li').find('span.imageClassForSelector')[0];
+        if (typeof properImage !== 'undefined') {
+          answerLabel.append(properImage);
+        }
+        var properRadio = $(answerLabel).parent('li').find(':radio')[0];
+        if (typeof properRadio !== 'undefined') {
+          answerLabel.append(properRadio);
+        }
         var properLabel = $(answerLabel).parent('li').children('span.mcAnswerText')[0];
         if (typeof properLabel !== 'undefined') {
           answerLabel.append(properLabel);
         }
       });
       $(elBlockToFix).find('div.mcscFixUpSource').remove();
-    });
-  </script></f:verbatim>
+  </script>
+
+  <h:commandLink id="cmdclean" value="#{deliveryMessages.reset_selection}" action="#{delivery.cleanRadioButton}" onclick="saveTime(); serializeImagePoints();" 
+	rendered="#{(delivery.actionString=='previewAssessment' || delivery.actionString=='previewAssessmentPublished'
+                || delivery.actionString=='takeAssessment'
+                || delivery.actionString=='takeAssessmentViaUrl')}">
+	<f:param name="radioId" value="#{question.itemData.itemId}" />
+  </h:commandLink>
 
   <h:panelGroup
     rendered="#{question.itemData.hasRationale && question.itemData.typeId != 3}" >
-    <f:verbatim><br /></f:verbatim>
+    <f:verbatim><br /><br /></f:verbatim>
     <h:outputLabel for="rationale" value="#{deliveryMessages.rationale}" />
     <f:verbatim><br /></f:verbatim>
     <h:inputTextarea id="rationale" value="#{question.rationale}" rows="5" cols="40" 
@@ -119,13 +136,6 @@ should be included in file importing DeliveryMessages
         rendered="#{delivery.actionString=='reviewAssessment'
                  || delivery.actionString=='gradeAssessment'}" escape="false"/>
   </h:panelGroup>
-
-<h:commandLink id="cmdclean" value="#{deliveryMessages.reset_selection}" action="#{delivery.cleanRadioButton}" onclick="saveTime(); serializeImagePoints();" 
-	rendered="#{(delivery.actionString=='previewAssessment' || delivery.actionString=='previewAssessmentPublished'
-                || delivery.actionString=='takeAssessment'
-                || delivery.actionString=='takeAssessmentViaUrl')}">
-	<f:param name="radioId" value="#{question.itemData.itemId}" />
-</h:commandLink>
 
 <f:verbatim><br /></f:verbatim>
 <f:verbatim><br /></f:verbatim>

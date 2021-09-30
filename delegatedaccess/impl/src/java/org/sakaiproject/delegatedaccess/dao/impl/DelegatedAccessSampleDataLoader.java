@@ -16,20 +16,17 @@
 
 package org.sakaiproject.delegatedaccess.dao.impl;
 
+import java.time.Year;
 import java.util.Arrays;
 import java.util.List;
 
-import lombok.extern.slf4j.Slf4j;
-
-import org.joda.time.DateTime;
-
 import org.quartz.JobExecutionException;
-
 import org.sakaiproject.authz.api.AuthzGroup;
 import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.authz.api.Role;
 import org.sakaiproject.authz.api.SecurityAdvisor;
 import org.sakaiproject.authz.api.SecurityService;
+import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.delegatedaccess.jobs.DelegatedAccessSiteHierarchyJob;
 import org.sakaiproject.entity.api.ResourcePropertiesEdit;
 import org.sakaiproject.event.api.EventTrackingService;
@@ -49,16 +46,20 @@ import org.sakaiproject.user.api.UserIdInvalidException;
 import org.sakaiproject.user.api.UserNotDefinedException;
 import org.sakaiproject.user.api.UserPermissionException;
 
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+
 @Slf4j
 public class DelegatedAccessSampleDataLoader {
-	private SiteService siteService;
-	private DelegatedAccessSiteHierarchyJob delegatedAccessSiteHierarchyJob;
-	private SecurityService securityService;
-	private AuthzGroupService authzGroupService;
-	private EventTrackingService eventTrackingService;
-	private UsageSessionService usageSessionService;
-	private SessionManager sessionManager;
-	private UserDirectoryService userDirectoryService;
+	@Setter private SiteService siteService;
+	@Setter private DelegatedAccessSiteHierarchyJob delegatedAccessSiteHierarchyJob;
+	@Setter private SecurityService securityService;
+	@Setter private AuthzGroupService authzGroupService;
+	@Setter private EventTrackingService eventTrackingService;
+	@Setter private UsageSessionService usageSessionService;
+	@Setter private ServerConfigurationService serverConfigurationService;
+	@Setter private SessionManager sessionManager;
+	@Setter private UserDirectoryService userDirectoryService;
 
 	private List<String> schools = Arrays.asList("MUSIC", "MEDICINE", "EDUCATION");
 	private List<String> depts = Arrays.asList("DEPT1", "DEPT2", "DEPT3");
@@ -82,8 +83,8 @@ public class DelegatedAccessSampleDataLoader {
 			securityService.pushAdvisor(yesMan);
 			AuthzGroup templateGroup = authzGroupService.getAuthzGroup("!site.template.course");
 		
-			DateTime date = new DateTime();
-			String term = "Spring " + date.getYear();
+			Year date = Year.now();
+			String term = "Spring " + date.toString();
 			for(String school : schools){
 				for(String dept : depts){
 					for(String subject : subjs){
@@ -220,9 +221,10 @@ public class DelegatedAccessSampleDataLoader {
 			user = userDirectoryService.getUserByEid("datest");
 		} catch (UserNotDefinedException e) {
 			//user doesn't exist, lets make it:
+			String emailDomain = serverConfigurationService.getString("site.seed.email.domain", "mailinator.com");
 			try {
 				//String id, String eid, String firstName, String lastName, String email, String pw, String type, ResourceProperties properties
-				user = userDirectoryService.addUser("datest", "datest", "DA", "Test", "", "datest", "", null);
+				user = userDirectoryService.addUser("datest", "datest", "DA", "Test", "datest@" + emailDomain, "datest", "", null);
 			} catch (UserIdInvalidException e1) {
 				log.error(e1.getMessage(), e1);
 			} catch (UserAlreadyDefinedException e1) {
@@ -253,70 +255,5 @@ public class DelegatedAccessSampleDataLoader {
 
 		// post the logout event
 		eventTrackingService.post(eventTrackingService.newEvent(UsageSessionService.EVENT_LOGOUT, null, true));
-	}
-	
-	public void setSiteService(SiteService siteService) {
-		this.siteService = siteService;
-	}
-
-	public SiteService getSiteService() {
-		return siteService;
-	}
-
-	public DelegatedAccessSiteHierarchyJob getDelegatedAccessSiteHierarchyJob() {
-		return delegatedAccessSiteHierarchyJob;
-	}
-
-	public void setDelegatedAccessSiteHierarchyJob(
-			DelegatedAccessSiteHierarchyJob delegatedAccessSiteHierarchyJob) {
-		this.delegatedAccessSiteHierarchyJob = delegatedAccessSiteHierarchyJob;
-	}
-
-	public SecurityService getSecurityService() {
-		return securityService;
-	}
-
-	public void setSecurityService(SecurityService securityService) {
-		this.securityService = securityService;
-	}
-
-	public AuthzGroupService getAuthzGroupService() {
-		return authzGroupService;
-	}
-
-	public void setAuthzGroupService(AuthzGroupService authzGroupService) {
-		this.authzGroupService = authzGroupService;
-	}
-
-	public EventTrackingService getEventTrackingService() {
-		return eventTrackingService;
-	}
-
-	public void setEventTrackingService(EventTrackingService eventTrackingService) {
-		this.eventTrackingService = eventTrackingService;
-	}
-
-	public UsageSessionService getUsageSessionService() {
-		return usageSessionService;
-	}
-
-	public void setUsageSessionService(UsageSessionService usageSessionService) {
-		this.usageSessionService = usageSessionService;
-	}
-
-	public SessionManager getSessionManager() {
-		return sessionManager;
-	}
-
-	public void setSessionManager(SessionManager sessionManager) {
-		this.sessionManager = sessionManager;
-	}
-
-	public UserDirectoryService getUserDirectoryService() {
-		return userDirectoryService;
-	}
-
-	public void setUserDirectoryService(UserDirectoryService userDirectoryService) {
-		this.userDirectoryService = userDirectoryService;
 	}
 }

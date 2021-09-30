@@ -1,6 +1,6 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://sakaiproject.org/jsf/syllabus" prefix="syllabus" %>
 <% response.setContentType("text/html; charset=UTF-8"); %>
 <f:view>
@@ -94,8 +94,7 @@
 							<f:verbatim></h4></f:verbatim>
 							<f:verbatim><div class="itemAction"></f:verbatim>
 							
-							<h:commandLink action="#{SyllabusTool.processDeleteAttach}" 
-								onfocus="document.forms[0].onsubmit();" title="#{msgs.removeAttachmentLink} #{eachAttach.name}">
+							<h:commandLink action="#{SyllabusTool.processDeleteAttach}" title="#{msgs.removeAttachmentLink} #{eachAttach.name}">
 									<h:outputText value="#{msgs.mainEditHeaderRemove}"/>
 									<f:param value="#{eachAttach.syllabusAttachId}" name="syllabus_current_attach"/>
 							</h:commandLink>

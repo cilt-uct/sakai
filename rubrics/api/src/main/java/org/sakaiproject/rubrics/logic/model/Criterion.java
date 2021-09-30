@@ -26,6 +26,7 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.persistence.CascadeType;
+import javax.persistence.Column;
 import javax.persistence.Embedded;
 import javax.persistence.Entity;
 import javax.persistence.EntityListeners;
@@ -33,6 +34,7 @@ import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
 import javax.persistence.Lob;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToOne;
@@ -44,6 +46,9 @@ import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 
 import lombok.ToString;
+
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.sakaiproject.rubrics.logic.listener.MetadataListener;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -54,6 +59,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @AllArgsConstructor
+@Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
 @Data
 @Entity
 @EntityListeners(MetadataListener.class)
@@ -73,8 +79,13 @@ public class Criterion implements Modifiable, Serializable, Cloneable {
     @Lob
     private String description;
 
+    @Column(columnDefinition="float default 0")
+    private Float weight = 0F;
+
     @OneToMany(cascade = CascadeType.ALL)
-    @JoinTable(name = "rbc_criterion_ratings")
+    @JoinTable(name = "rbc_criterion_ratings",
+            joinColumns = @JoinColumn(name = "rbc_criterion_id", referencedColumnName = "id", nullable = false),
+            inverseJoinColumns = @JoinColumn(name = "ratings_id", referencedColumnName = "id", nullable = false))
     @OrderColumn(name = "order_index")
     private List<Rating> ratings;
 

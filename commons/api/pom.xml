@@ -10,7 +10,7 @@
     <parent>
         <artifactId>commons</artifactId>
         <groupId>org.sakaiproject.commons</groupId>
-        <version>21-SNAPSHOT</version>
+        <version>22-SNAPSHOT</version>
     </parent>
     
     <packaging>jar</packaging>
@@ -33,12 +33,12 @@
             <artifactId>sakai-kernel-util</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.sakaiproject.profile2</groupId>
-            <artifactId>profile2-api</artifactId>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
         </dependency>
         <dependency>
-            <groupId>log4j</groupId>
-            <artifactId>log4j</artifactId>
+            <groupId>org.sakaiproject.profile2</groupId>
+            <artifactId>profile2-api</artifactId>
         </dependency>
         <dependency>
             <groupId>commons-fileupload</groupId>
