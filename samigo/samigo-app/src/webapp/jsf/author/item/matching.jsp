@@ -35,7 +35,8 @@
       <title><h:outputText value="#{authorMessages.item_display_author}"/></title>
       
       <!-- AUTHORING -->
-      <script type="text/javascript" src="/samigo-app/js/authoring.js"></script>
+      <script src="/samigo-app/js/authoring.js"></script>
+      <script src="/library/js/spinner.js"></script>
 <%--
 <script type="text/JavaScript">
 <!--
@@ -251,7 +252,7 @@
 
     <f:verbatim><br/></f:verbatim>
     <div class="tier2">
-        <h:commandButton value="#{commonMessages.action_save_pair}" action="#{itemauthor.currentItem.addMatchPair}"></h:commandButton>
+        <h:commandButton value="#{commonMessages.action_save_pair}" action="#{itemauthor.currentItem.addMatchPair}" onclick="SPNR.disableControlsAndSpin( this, null );"></h:commandButton>
     </div>
     <f:verbatim><br/></f:verbatim>
 
