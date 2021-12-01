@@ -53,6 +53,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.Stack;
 import java.util.StringTokenizer;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -60,6 +61,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.annotation.Resource;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -89,6 +91,7 @@ import org.sakaiproject.assignment.api.model.AssignmentSubmission;
 import org.sakaiproject.assignment.api.model.AssignmentSubmissionSubmitter;
 import org.sakaiproject.assignment.api.model.AssignmentSupplementItemAttachment;
 import org.sakaiproject.assignment.api.model.AssignmentSupplementItemService;
+import org.sakaiproject.assignment.api.model.TimeSheetEntry;
 import org.sakaiproject.assignment.api.persistence.AssignmentRepository;
 import org.sakaiproject.assignment.api.reminder.AssignmentDueReminderService;
 import org.sakaiproject.assignment.api.taggable.AssignmentActivityProducer;
@@ -115,8 +118,6 @@ import org.sakaiproject.contentreview.dao.ContentReviewConstants;
 import org.sakaiproject.contentreview.dao.ContentReviewItem;
 import org.sakaiproject.contentreview.exception.QueueException;
 import org.sakaiproject.contentreview.service.ContentReviewService;
-import org.sakaiproject.email.api.DigestService;
-import org.sakaiproject.email.api.EmailService;
 import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.entity.api.EntityManager;
 import org.sakaiproject.entity.api.EntityTransferrer;
@@ -141,6 +142,9 @@ import org.sakaiproject.exception.InUseException;
 import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.exception.ServerOverloadException;
 import org.sakaiproject.exception.TypeException;
+import org.sakaiproject.messaging.api.Message;
+import org.sakaiproject.messaging.api.MessageMedium;
+import org.sakaiproject.messaging.api.UserMessagingService;
 import org.sakaiproject.rubrics.logic.RubricsConstants;
 import org.sakaiproject.rubrics.logic.RubricsService;
 import org.sakaiproject.rubrics.logic.model.ToolItemRubricAssociation;
@@ -215,8 +219,6 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
     @Setter private CandidateDetailProvider candidateDetailProvider;
     @Setter private ContentHostingService contentHostingService;
     @Setter private ContentReviewService contentReviewService;
-    @Setter private DigestService digestService;
-    @Setter private EmailService emailService;
     @Setter private EmailUtil emailUtil;
     @Setter private EntityManager entityManager;
     @Setter private EventTrackingService eventTrackingService;
@@ -241,11 +243,14 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
     @Setter private TimeService timeService;
     @Setter private ToolManager toolManager;
     @Setter private UserDirectoryService userDirectoryService;
+    @Resource private UserMessagingService userMessagingService;
     @Setter private UserTimeService userTimeService;
 
     private boolean allowSubmitByInstructor;
     private boolean exposeContentReviewErrorsToUI;
     private boolean createGroupsOnImport;
+
+    private Pattern timesheetTimePattern;
 
     private static ResourceLoader rb = new ResourceLoader("assignment");
 
@@ -276,6 +281,21 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
 
         // this is needed to avoid a circular dependency, notice we set the AssignmentService proxy and not this
         assignmentSupplementItemService.setAssignmentService(applicationContext.getBean(AssignmentService.class));
+
+        userMessagingService.importTemplateFromResourceXmlFile("templates/releaseGrade.xml", AssignmentConstants.TOOL_ID + ".releasegrade");
+        userMessagingService.importTemplateFromResourceXmlFile("templates/releaseResubmission.xml", AssignmentConstants.TOOL_ID + ".releaseresubmission");
+        userMessagingService.importTemplateFromResourceXmlFile("templates/submission.xml", AssignmentConstants.TOOL_ID + ".submission");
+        userMessagingService.importTemplateFromResourceXmlFile("templates/dueReminder.xml", AssignmentConstants.TOOL_ID + ".duereminder");
+
+        timesheetTimePattern = Pattern.compile(serverConfigurationService.getString("assignment.timesheet.timePattern", SAK_PROP_ASSIGNMENT_TIMESHEET_TIME_PATTERN_DEFAULT));
+    }
+
+    @Override
+    public boolean isTimeSheetEnabled(String siteId) {
+        List<String> timesheetConfig = serverConfigurationService.getStringList(SAK_PROP_ASSIGNMENT_TIMESHEET_SITES_ALLOWED, Collections.singletonList("none"));
+
+        // TODO logic for determining whether this feature is enabled in the current site
+        return Stream.of("all", siteId).filter(Objects::nonNull).anyMatch(timesheetConfig::contains);
     }
 
     @Override
@@ -565,8 +585,12 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
                                 String filename = "bulk_download_" + date;
                                 // if subtype is assignment and there is no assignmentId then were downloading grades
                                 res.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-                                res.setHeader("Content-Disposition", "attachment; filename = \"export_grades_" + filename + ".xlsx\"");
 
+                                if (queryString.contains("estimate")) {
+                                    res.setHeader("Content-Disposition", "attachment; filename = \"export_worklog_" + filename + ".xlsx\"");
+                                } else {
+                                    res.setHeader("Content-Disposition", "attachment; filename = \"export_grades_" + filename + ".xlsx\"");
+                                }
                                 try (OutputStream out = res.getOutputStream()) {
                                     gradeSheetExporter.writeGradesSpreadsheet(out, queryString);
                                 } catch (Exception e) {
@@ -832,6 +856,40 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
         return assignment;
     }
 
+    @Override
+    @Transactional
+    public void newTimeSheetEntry(AssignmentSubmissionSubmitter submissionSubmitter, TimeSheetEntry timeSheetEntry) throws PermissionException {
+        if (submissionSubmitter != null && timeSheetEntry != null) {
+            AssignmentSubmission submission = submissionSubmitter.getSubmission();
+            String siteId = AssignmentReferenceReckoner.reckoner().submission(submission).reckon().getContext();
+            if (!allowAddSubmission(siteId)) {
+                throw new PermissionException(sessionManager.getCurrentSessionUserId(), SECURE_ADD_ASSIGNMENT_SUBMISSION, null);
+            }
+            assignmentRepository.newTimeSheetEntry(submissionSubmitter, timeSheetEntry);
+            log.debug("Add time sheet entry for submitter: {}", submissionSubmitter);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void deleteTimeSheetEntry(Long timeSheetEntryId) throws PermissionException {
+        TimeSheetEntry timeSheetEntry = getTimeSheetEntry(timeSheetEntryId);
+        if (timeSheetEntry != null) {
+            String siteId = AssignmentReferenceReckoner.reckoner().submission(timeSheetEntry.getAssignmentSubmissionSubmitter().getSubmission()).reckon().getContext();
+            if (!allowAddSubmission(siteId)) {
+                throw new PermissionException(sessionManager.getCurrentSessionUserId(), SECURE_UPDATE_ASSIGNMENT_SUBMISSION, null);
+            }
+            assignmentRepository.deleteTimeSheetEntry(timeSheetEntryId);
+            log.debug("Deleting time sheet entry: {}", timeSheetEntryId);
+        } else {
+            log.warn("Attempted to delete time sheet entry: {} however it does not exist.", timeSheetEntryId);
+        }
+    }
+
+    public String getTimeSpent(AssignmentSubmission submission) {
+        return submission.getSubmitters().stream().findAny().get().getTimeSpent();
+    }
+
     private Assignment mergeAssignment(final String siteId, final Element element, final StringBuilder results) throws PermissionException {
 
         if (!allowAddAssignment(siteId)) {
@@ -937,6 +995,9 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
                 assignment.setAllowAttachments(existingAssignment.getAllowAttachments());
                 // for ContentReview service
                 assignment.setContentReview(existingAssignment.getContentReview());
+
+                assignment.setEstimateRequired(existingAssignment.getEstimateRequired());
+                assignment.setEstimate(existingAssignment.getEstimate());
 
                 //duplicating attachments
                 Set<String> tempAttach = existingAssignment.getAttachments();
@@ -1654,6 +1715,25 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
     }
 
     @Override
+    public TimeSheetEntry getTimeSheetEntry(Long timeSheetId) throws PermissionException {
+        if (timeSheetId != null) {
+            TimeSheetEntry timeSheet = assignmentRepository.findTimeSheetEntry(timeSheetId);
+            if (timeSheet != null) {
+                String reference = AssignmentReferenceReckoner.reckoner().submission(timeSheet.getAssignmentSubmissionSubmitter().getSubmission()).reckon().getReference();
+                if (allowGetSubmission(reference)) {
+                    return timeSheet;
+                } else {
+                    throw new PermissionException(sessionManager.getCurrentSessionUserId(), SECURE_ACCESS_ASSIGNMENT_SUBMISSION, reference);
+                }
+            } else {
+                // timesheet not found
+                log.debug("TimeSheet does not exist {}", timeSheetId);
+            }
+        }
+        return null;
+    }
+
+    @Override
     @Transactional
     public AssignmentSubmission getSubmission(String assignmentId, User person) throws PermissionException {
         return getSubmission(assignmentId, person.getId());
@@ -1936,8 +2016,10 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
         } else {
             statusMap.put(getFormattedStatus(AssignmentConstants.SubmissionStatus.IN_PROGRESS, ""), false);
         }
+        // If it is submitted, "in progress" is assumed (i.e. for LTI Assignments)
         if (submission.getSubmitted() && submission.getUserSubmission()) {
             statusMap.put(getFormattedStatus(AssignmentConstants.SubmissionStatus.SUBMITTED, ""), true);
+            statusMap.put(getFormattedStatus(AssignmentConstants.SubmissionStatus.IN_PROGRESS, ""), true);
         } else {
             statusMap.put(getFormattedStatus(AssignmentConstants.SubmissionStatus.SUBMITTED, ""), false);
         }
@@ -2141,7 +2223,6 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
                 }
             } else {
 
-                //List<String> submitterIds = getSubmitterIdList(searchFilterOnly, viewString.length() == 0 ? AssignmentConstants.ALL:viewString, searchString, aRef, contextString == null? a.getContext():contextString);
                 Map<User, AssignmentSubmission> submitters = getSubmitterMap(searchFilterOnly,
                         viewString.length() == 0 ? AssignmentConstants.ALL : viewString,
                         searchString,
@@ -2243,6 +2324,13 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
 
             if (submission != null) {
 
+                // check for allow resubmission or not
+                //if an Extension exists for the user, we switch out the assignment's overall Close date for the extension deadline. We do this if the grade has been actually released, or if the submission object has not actually been submitted yet. Additionally, we make sure that a Resubmission date is not set [make sure it's null], so that this date-switching happens ONLY under Extension-related circumstances.
+                if (submission.getProperties().get(AssignmentConstants.ALLOW_EXTENSION_CLOSETIME) != null && (BooleanUtils.toBoolean(submission.getGradeReleased()) || !BooleanUtils.toBoolean(submission.getSubmitted()))){
+                    Instant extensionCloseTime = Instant.ofEpochMilli(Long.parseLong(submission.getProperties().get(AssignmentConstants.ALLOW_EXTENSION_CLOSETIME)));
+                    isBeforeAssignmentCloseDate = !currentTime.isAfter(extensionCloseTime);
+                }
+
                 if (isBeforeAssignmentCloseDate && (submission.getDateSubmitted() == null || !submission.getSubmitted())) {
                     // before the assignment close date
                     // and if no date then a submission was never never submitted
@@ -2250,7 +2338,7 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
                     return true;
                 }
 
-                // check for allow resubmission or not
+                // check for allow resubmission or not first
                 // return true if resubmission is allowed and current time is before resubmission close time
                 // get the resubmit settings from submission object first
                 String allowResubmitNumString = submission.getProperties().get(AssignmentConstants.ALLOW_RESUBMIT_NUMBER);
@@ -2543,6 +2631,8 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
                             } else {
                                 submitter = user.getId();
                             }
+                        } else if (groupIdsMatchingAssignmentForUser.size() > 1 && !assignment.getIsGroup()) {
+                            submitter = user.getId();
                         } else {
                             log.warn("User {} is on more than one group for this assignment {}, please remove the user from a group so that they are only a member of a single group", user.getId(), assignment.getId());
                         }
@@ -2807,16 +2897,17 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
                         }
                     }
                     // get localized number format
-                    NumberFormat nbFormat = formattedText.getNumberFormat(dec, dec, false);
-                    DecimalFormat dcformat = (DecimalFormat) nbFormat;
+                    NumberFormat numberFormat = formattedText.getNumberFormat(dec, dec, false);
+                    DecimalFormat decimalFormat = (DecimalFormat) numberFormat;
                     // show grade in localized number format
+                    Double aDouble = 0D;
                     try {
-                        Double dblGrade = dcformat.parse(decimalGradePoint).doubleValue();
-                        decimalGradePoint = nbFormat.format(dblGrade);
-                        returnGrade = decimalGradePoint;
+                        aDouble = decimalFormat.parse(decimalGradePoint).doubleValue();
                     } catch (Exception e) {
-                        log.warn("Could not parse grade [{}], {}", returnGrade, e.getMessage());
+                        log.warn("Parsing the grade [{}] as a SCORE_TYPE failed, {}, returning grade as a 0", returnGrade, e.toString());
                     }
+                    decimalGradePoint = numberFormat.format(aDouble);
+                    returnGrade = decimalGradePoint;
                 }
                 break;
             case UNGRADED_GRADE_TYPE:
@@ -3441,15 +3532,24 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
                 	final ZipEntry additionalEntry = new ZipEntry(root + resourceLoader.getString("assignment.additional.notes.file.title") + ".html");
                     out.putNextEntry(additionalEntry);
 
-                    String htmlString = emailUtil.htmlPreamble("additionalnotes");
-                    htmlString += "<h1>" + resourceLoader.getString("assignment.additional.notes.export.title") + "</h1>";
-                    htmlString += "<div>" + resourceLoader.getString("assignment.additional.notes.export.header") + "</div><br/>";
-                    htmlString += "<table border=\"1\"  style=\"border-collapse:collapse;\"><tr><th>" + resourceLoader.getString("gen.student") + "</th><th>" + resourceLoader.getString("gen.notes") + "</th>" + submittersAdditionalNotesHtml + "</table>";
-                    htmlString += "<br/><div>" + resourceLoader.getString("assignment.additional.notes.export.footer") + "</div>";
-                    htmlString += emailUtil.htmlEnd();
-                    log.debug("Additional information html: " + htmlString);
+                    StringBuilder htmlString = new StringBuilder();
+                    htmlString.append("<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\"\n")
+                    .append("    \"http://www.w3.org/TR/html4/loose.dtd\">\n")
+                    .append("<html>\n")
+                    .append("  <head><title>additionalnotes</title></head>\n")
+                    .append("  <body>\n")
+                    .append("<h1>").append(resourceLoader.getString("assignment.additional.notes.export.title")).append("</h1>")
+                    .append("<div>").append(resourceLoader.getString("assignment.additional.notes.export.header")).append("</div><br/>")
+                    .append("<table border=\"1\"  style=\"border-collapse:collapse;\"><tr><th>")
+                    .append(resourceLoader.getString("gen.student")).append("</th><th>")
+                    .append(resourceLoader.getString("gen.notes")).append("</th>").append(submittersAdditionalNotesHtml)
+                    .append("</table>")
+                    .append("<br/><div>").append(resourceLoader.getString("assignment.additional.notes.export.footer")).append("</div>")
+                    .append("\n  </body>\n</html>\n");
 
-                    final byte[] wes = htmlString.getBytes();
+                    log.debug("Additional information html: {}", htmlString.toString());
+
+                    final byte[] wes = htmlString.toString().getBytes();
                     out.write(wes);
                     additionalEntry.setSize(wes.length);
                     out.closeEntry();
@@ -4000,6 +4100,8 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
                     nAssignment.setMaxGradePoint(oAssignment.getMaxGradePoint());
                     nAssignment.setScaleFactor(oAssignment.getScaleFactor());
                     nAssignment.setReleaseGrades(oAssignment.getReleaseGrades());
+                    nAssignment.setEstimateRequired(oAssignment.getEstimateRequired());
+                    nAssignment.setEstimate(oAssignment.getEstimate());
 
                     // If there is a LTI launch associated with this copy it over
                     if ( oAssignment.getContentId() != null ) {
@@ -4456,10 +4558,11 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
         String resubmitNumber = submission.getProperties().get(AssignmentConstants.ALLOW_RESUBMIT_NUMBER);
 
         boolean released = BooleanUtils.toBoolean(submission.getGradeReleased());
-        Set<String> submitterIds = submission.getSubmitters().stream().map(AssignmentSubmissionSubmitter::getSubmitter).collect(Collectors.toSet());
+        Set<String> submitterIds = new HashSet<>();
         try {
             Set<String> siteUsers = siteService.getSite(siteId).getUsers();
-            filteredUsers = submitterIds.stream().filter(siteUsers::contains).map(id -> {
+            submitterIds = submission.getSubmitters().stream().map(AssignmentSubmissionSubmitter::getSubmitter).filter(siteUsers::contains).collect(Collectors.toSet());
+            filteredUsers = submitterIds.stream().map(id -> {
                 try {
                     return userDirectoryService.getUser(id);
                 } catch (UserNotDefinedException e) {
@@ -4475,15 +4578,19 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
         if (released && StringUtils.equals(AssignmentConstants.ASSIGNMENT_RELEASEGRADE_NOTIFICATION_EACH, assignmentProperties.get(AssignmentConstants.ASSIGNMENT_RELEASEGRADE_NOTIFICATION_VALUE))) {
             // send email to every submitters
             if (!filteredUsers.isEmpty()) {
-                // send the message immidiately
-                emailService.sendToUsers(filteredUsers, emailUtil.getHeaders(null, "releasegrade"), emailUtil.getNotificationMessage(submission, "releasegrade"));
+                // send the message immediately
+                userMessagingService.message(filteredUsers,
+                        Message.builder().tool(AssignmentConstants.TOOL_ID).type("releasegrade").build(),
+                        Arrays.asList(new MessageMedium[] {MessageMedium.EMAIL}), emailUtil.getReleaseGradeReplacements(assignment, siteId), NotificationService.NOTI_REQUIRED);
             }
         }
         if (StringUtils.isNotBlank(resubmitNumber) && StringUtils.equals(AssignmentConstants.ASSIGNMENT_RELEASERESUBMISSION_NOTIFICATION_EACH, assignmentProperties.get(AssignmentConstants.ASSIGNMENT_RELEASERESUBMISSION_NOTIFICATION_VALUE))) {
             // send email to every submitters
             if (!filteredUsers.isEmpty()) {
                 // send the message immidiately
-                emailService.sendToUsers(filteredUsers, emailUtil.getHeaders(null, "releaseresumbission"), emailUtil.getNotificationMessage(submission, "releaseresumbission"));
+                userMessagingService.message(filteredUsers,
+                        Message.builder().tool(AssignmentConstants.TOOL_ID).type("releaseresubmission").build(),
+                        Arrays.asList(new MessageMedium[] {MessageMedium.EMAIL}), emailUtil.getReleaseResubmissionReplacements(submission), NotificationService.NOTI_REQUIRED);
             }
         }
     }
@@ -4500,19 +4607,17 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
             List allowGradeAssignmentUsers = allowGradeAssignmentUsers(assignmentReference);
             receivers.retainAll(allowGradeAssignmentUsers);
 
-            String messageBody = emailUtil.getNotificationMessage(submission, "submission");
-
+            Map<String, Object> replacements = emailUtil.getSubmissionReplacements(submission);
             if (notiOption.equals(AssignmentConstants.ASSIGNMENT_INSTRUCTOR_NOTIFICATIONS_EACH)) {
                 // send the message immediately
-                emailService.sendToUsers(receivers, emailUtil.getHeaders(null, "submission"), messageBody);
+                userMessagingService.message(new HashSet<>(receivers),
+                    Message.builder().tool(AssignmentConstants.TOOL_ID).type("submission").build(),
+                    Arrays.asList(new MessageMedium[] {MessageMedium.EMAIL}), replacements, NotificationService.NOTI_REQUIRED);
             } else if (notiOption.equals(AssignmentConstants.ASSIGNMENT_INSTRUCTOR_NOTIFICATIONS_DIGEST)) {
-                // just send plain/text version for now
-                String digestMsgBody = emailUtil.getPlainTextNotificationMessage(submission, "submission");
-
                 // digest the message to each user
-                for (User user : receivers) {
-                    digestService.digest(user.getId(), emailUtil.getSubject("submission"), digestMsgBody);
-                }
+                userMessagingService.message(new HashSet<>(receivers),
+                    Message.builder().tool(AssignmentConstants.TOOL_ID).type("submission").build(),
+                    Arrays.asList(new MessageMedium[] {MessageMedium.DIGEST}), replacements, NotificationService.NOTI_REQUIRED);
             }
         }
     }
@@ -4528,13 +4633,25 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
                 }
                 return null;
             }).filter(Objects::nonNull).collect(Collectors.toSet());
-            emailService.sendToUsers(users, emailUtil.getHeaders(null, "submission"), emailUtil.getNotificationMessage(submission, "submission"));
+
+            userMessagingService.message(users,
+                Message.builder().tool(AssignmentConstants.TOOL_ID).type("submission").build(),
+                Arrays.asList(new MessageMedium[] {MessageMedium.EMAIL}), emailUtil.getSubmissionReplacements(submission), NotificationService.NOTI_REQUIRED);
         }
     }
 
     @Override
     public String getUsersLocalDateTimeString(Instant date) {
         return userTimeService.dateTimeFormat(date, null, null);
+    }
+
+    @Override
+    public String getUsersLocalDateTimeStringFromProperties(String date){
+        if (date == null){
+            return null;
+        }
+        Long dateLong = Long.parseLong(date);
+        return getUsersLocalDateTimeString(Instant.ofEpochMilli(dateLong));
     }
 
     @Override
@@ -4858,5 +4975,9 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
 
         dupes.sort(Comparator.comparing(r -> r.user.getDisplayName()));
         return dupes;
+    }
+
+    public boolean isValidTimesheetTime(String time) {
+        return timesheetTimePattern.matcher(time).matches();
     }
 }

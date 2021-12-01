@@ -1176,6 +1176,11 @@ $(document).ready(function() {
 				$("#student-max").val("");
 			}
 			
+			$("#gradebook-title").val(row.find(".studentGradebookTitle").text());
+			if($("#gradebook-title").val() === "null") {
+				$("#gradebook-title").val("");
+			}
+
 			grade = row.find(".studentGrade2").text();
 			if(grade === "true") {
 				$("#student-comments-graded").prop("checked", true);
@@ -1435,7 +1440,8 @@ $(document).ready(function() {
 				
 				row.find(".questionMultipleChoiceAnswer").each(function(index, el) {
 					var id = $(el).find(".questionMultipleChoiceAnswerId").text();
-					var text = $(el).find(".questionMultipleChoiceAnswerText").text();
+					//SAK-46296
+					var text = $(el).find(".raw-questionAnswer-text").val();
 					var correct = $(el).find(".questionMultipleChoiceAnswerCorrect").text();
 					
 					var answerSlot;
@@ -3980,4 +3986,76 @@ function fixStatus(here,itemId) {
 	    });
 	return;
     };
+}
+
+function pageLayoutSelectChange(){
+	$(".templateTypeDescription").hide();  //hide all the descriptions in case one is already showing
+	$("#simplepage-layout-example").hide();
+	var value = document.getElementById('page-dropdown-selection').value;
+	switch(value){
+		case 'addSubpageList':	//show only the description we've selected.
+			document.getElementById('type1description').removeAttribute('style');
+			document.getElementById('simplepage-layout-example').removeAttribute('style');
+			break;
+		case 'interiorResources':
+			document.getElementById('type2description').removeAttribute('style');
+			document.getElementById('simplepage-layout-example').removeAttribute('style');
+			break;
+		case 'interiorTask':
+			document.getElementById('type3description').removeAttribute('style');
+			document.getElementById('simplepage-layout-example').removeAttribute('style');
+			break;
+		default:
+			document.getElementById('page-preview-blank').removeAttribute('style');
+	}
+}
+function collapsibleChange(){
+	if(document.getElementById('page-option-task-collapsible').checked){
+		document.getElementById('pageCloseDiv').removeAttribute('style');
+	} else {
+		document.getElementById('pageCloseDiv').setAttribute('style', 'display:none');
+	}
+}
+
+function buttonLinkChange(){
+	if(document.getElementById('page-subpage-button').checked){
+		document.getElementById('page-color-div').removeAttribute('style');
+	} else {
+		document.getElementById('page-color-div').setAttribute('style','display:none');
+	}
+}
+
+function showIframe(title, doreload) {
+	$("#modal-iframe-div-blti").dialog({
+		title: title,
+		width: modalDialogWidth(),
+		height: modalDialogHeight(),
+		modal: true,
+		draggable: false,
+		open: function() {
+			$("#modal-iframe-div-blti").dialog("option", "width", modalDialogWidth());
+			$("#modal-iframe-div-blti").dialog("option", "height", modalDialogHeight());
+			$('#sakai-basiclti-admin-iframe').attr('width', '100%');
+			$('#sakai-basiclti-admin-iframe').attr('height', '100%');
+			// https://stackoverflow.com/questions/1202079/prevent-jquery-ui-dialog-from-setting-focus-to-first-textbox
+			$(this).parent().focus();
+		},
+		close: function() {
+			if ( doreload ) {
+				location.reload();
+			} else {
+				$('#sakai-basiclti-admin-iframe').attr('src','/library/image/sakai/spinner.gif');
+			}
+		}
+	});
+	$(window).resize(function() {
+		$("#modal-iframe-div-blti").dialog("option", "width", modalDialogWidth());
+		$("#modal-iframe-div-blti").dialog("option", "height", modalDialogHeight());
+		$('#sakai-basiclti-admin-iframe').attr('width', '100%');
+		$('#sakai-basiclti-admin-iframe').attr('height', '100%');
+	});
+}
+function fixAddBeforeLTI(el) {
+	$(el).attr('href', $(el).attr('href').replace('addBefore=', 'addBefore=' + (addAboveItem === null ? "" : addAboveItem)));
+	return true;
 }

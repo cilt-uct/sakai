@@ -6,6 +6,7 @@ import "./sakai-grader-file-picker.js";
 import "../sakai-date-picker.js";
 import "../sakai-group-picker.js";
 import "../sakai-document-viewer.js";
+import "../sakai-lti-iframe.js";
 import { gradableDataMixin } from "./sakai-gradable-data-mixin.js";
 import { Submission } from "./submission.js";
 import "/webcomponents/rubrics/rubric-association-requirements.js";
@@ -67,6 +68,7 @@ export class SakaiGrader extends gradableDataMixin(SakaiElement) {
       rubric: { type: Object },
       assignmentsI18n: Object,
       showingHistory: Boolean,
+      ltiGradebleLaunch: { attribute: "lti-gradable-launch", type: String },
     };
   }
 
@@ -186,6 +188,22 @@ export class SakaiGrader extends gradableDataMixin(SakaiElement) {
 
     return html`
       <div class="gradable">
+        ${this.submission.ltiSubmissionLaunch ? html`
+          <div class="sak-banner-info">${unsafeHTML(this.i18n.lti_grade_launch_instructions)}</div>
+          <sakai-lti-iframe
+            allow-resize="yes"
+            new-window-text="${this.i18n.lti_grade_launch_button}"
+            launch-url="${this.submission.ltiSubmissionLaunch}"
+         />
+        ` : "" }
+        ${(this.ltiGradableLaunch && ! this.submission.ltiSubmissionLaunch )  ? html`
+          <div class="sak-banner-info">${unsafeHTML(this.i18n.lti_grade_launch_instructions)}</div>
+          <sakai-lti-iframe
+            allow-resize="yes"
+            new-window-text="${this.i18n.lti_grade_launch_button}"
+            launch-url="${this.ltiGradableLaunch}"
+         />
+        ` : "" }
         ${this.submission.submittedTime || (this.submission.draft && this.submission.visible) ? html`
           ${this.submittedTextMode ? html`
             <div class="sak-banner-info">${unsafeHTML(this.i18n.inline_feedback_instruction)}</div>
@@ -218,6 +236,9 @@ export class SakaiGrader extends gradableDataMixin(SakaiElement) {
   }
 
   renderGrader() {
+
+    // Hide the right UI until we have push notifications for grade changes
+    if ( this.submission.ltiSubmissionLaunch ) return "";
 
     return html`
       ${this.submission.id !== "dummy" ? html`
@@ -820,7 +841,8 @@ export class SakaiGrader extends gradableDataMixin(SakaiElement) {
   }
 
   canNavigate() {
-    const nFiles = this.querySelector("sakai-grader-file-picker").files.length;
+    // Deal with the right pane not present
+    const nFiles = this.querySelector("sakai-grader-file-picker") ? this.querySelector("sakai-grader-file-picker").files.length : 0;
     return this.modified || nFiles > 0 ?
       confirm(this.i18n.confirm_discard_changes) ?
         this.clearSubmission() : false

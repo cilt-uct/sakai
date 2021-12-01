@@ -28,6 +28,8 @@ package org.sakaiproject.assignment.api;
  */
 public final class AssignmentConstants {
 
+    public static final String TOOL_ID = "sakai.assignment.grades";
+
     public final static String MODEL_ANSWER_SHOW_TO_STUDENT = "show_to_student";
     public final static int MODEL_ANSWER_SHOW_TO_STUDENT_BEFORE_STARTS = 1;
     public final static int MODEL_ANSWER_SHOW_TO_STUDENT_AFTER_SUBMIT = 2;
@@ -207,6 +209,7 @@ public final class AssignmentConstants {
      * submission level of close time
      */
     public static final String ALLOW_RESUBMIT_CLOSETIME = "allow_resubmit_closeTime";
+    public static final String ALLOW_EXTENSION_CLOSETIME = "allow_extension_closeTime"; //constant for Extension, very similar to Resubmission
     /**
      * submission by different user
      */
@@ -281,6 +284,35 @@ public final class AssignmentConstants {
         GRADED
     }
 
+	// IMS Score Publishing Service - states
+	// https://www.imsglobal.org/spec/lti-ags/v2p0/#score-publish-service
+	// 2.4.6. activityProgress
+	// activityProgress MUST be used to indicate to the tool platform the status of the user towards the activity's completion.
+
+	// Please leave the capitalization as is on this as we use Enum.name() to match incoming JSON values
+	public enum IMSActivityProgress {
+		Initialized,     // the user has not started the activity, or the activity has been reset for that student.
+		Started,         // the activity associated with the line item has been started by the user to which the result relates.
+		InProgress,      // the activity is being drafted and is available for comment.
+		Submitted,       // the activity has been submitted at least once by the user but the user is still able make further submissions.
+		Completed        // the user has completed the activity associated with the line item.
+	}
+
+	// 2.4.7 gradingProgress
+	// gradingProgress MUST be used to indicate to the platform the status of the grading process, including allowing
+	// to inform when human intervention is needed.
+
+	// Please leave the capitalization as is on this as we use Enum.name() to match incoming JSON values
+	public enum IMSGradingProgress {
+		FullyGraded,    // The grading process is completed; the score value, if any, represents the current Final Grade;
+		Pending,        // Final Grade is pending, but does not require manual intervention; if a Score value is present,
+						// it indicates the current value is partial and may be updated.
+		PendingManual,  // Final Grade is pending, and it does require human intervention; if a Score value is present,
+						// it indicates the current value is partial and may be updated during the manual grading.
+		Failed,         // The grading could not complete.
+		NotReady        // There is no grading process occurring; for example, the student has not yet made any submission.
+	}
+
     public static final String SUBMISSION_OPTION_RELEASE = "release";
     public static final String SUBMISSION_OPTION_RETURN = "return";
     public static final String SUBMISSION_OPTION_SAVE = "save";
@@ -306,6 +338,11 @@ public final class AssignmentConstants {
     public static final String ALLOW_RESUBMIT_CLOSEHOUR = "allow_resubmit_closeHour";
     public static final String ALLOW_RESUBMIT_CLOSEMIN = "allow_resubmit_closeMin";
     public static final String ALLOW_RESUBMIT_CLOSE_EPOCH_MILLIS = "allow_resubmit_close_epoch_millis";
+    public static final String ALLOW_EXTENSION_CLOSEMONTH = "allow_extension_closeMonth";
+    public static final String ALLOW_EXTENSION_CLOSEDAY = "allow_extension_closeDay";
+    public static final String ALLOW_EXTENSION_CLOSEYEAR = "allow_extension_closeYear";
+    public static final String ALLOW_EXTENSION_CLOSEHOUR = "allow_extension_closeHour";
+    public static final String ALLOW_EXTENSION_CLOSEMIN = "allow_extension_closeMin";
 
     public static final String GRADE_SUBMISSION_DONT_CLEAR_CURRENT_ATTACHMENTS = "grade_submission_dont_clear_current_attachments";
 
@@ -336,4 +373,6 @@ public final class AssignmentConstants {
 	 */
 	public static final String SAK_PROP_ALLOW_LINK_TO_EXISTING_GB_ITEM = "assignment.allowLinkToExistingGBItem";
 	public static final boolean SAK_PROP_ALLOW_LINK_TO_EXISTING_GB_ITEM_DFLT = true;
+
+    public static final String ASSIGNMENT_INPUT_ADD_SUBMISSION_TIME_SPENT = "value_ASSIGNMENT_INPUT_ADD_SUBMISSION_TIME_SPENT";
 }

@@ -5,7 +5,7 @@
     <parent>
         <artifactId>search</artifactId>
         <groupId>org.sakaiproject.search</groupId>
-        <version>22-SNAPSHOT</version><!-- ProjectVersion -->
+        <version>23-SNAPSHOT</version><!-- ProjectVersion -->
         <relativePath>../pom.xml</relativePath>
     </parent>
     <groupId>org.sakaiproject.search.elasticsearch</groupId>
@@ -15,13 +15,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-
-        <!-- maven-compiler-plugin config -->
-        <maven.compiler.source>${sakai.jdk.version}</maven.compiler.source>
-        <maven.compiler.target>${sakai.jdk.version}</maven.compiler.target>
     </properties>
-
-
 
     <modules>
         <module>api</module>

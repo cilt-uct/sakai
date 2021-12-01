@@ -1698,15 +1698,14 @@ public void setFeedbackComponentOption(String feedbackComponentOption) {
 		SecureDeliveryServiceAPI secureDeliveryService = SamigoApiFactory.getInstance().getSecureDeliveryServiceAPI(); 
 		Set<RegisteredSecureDeliveryModuleIfc> modules = secureDeliveryService.getSecureDeliveryModules( new ResourceLoader().getLocale() );
  		  
-		SelectItem[] selections = new SelectItem[ modules.size() ];
-		int index = 0;
+		List<SelectItem> selections = new ArrayList<>();
 		for ( RegisteredSecureDeliveryModuleIfc module : modules ) {
+			if (!SecureDeliveryServiceAPI.NONE_ID.equals(module.getId()) && !module.isEnabled()) continue;
  
-			selections[index] = new SelectItem( module.getId(), module.getName() );
-			++index;
+			selections.add(new SelectItem( module.getId(), module.getName() ));
 		}
  		  
-		return selections;
+		return selections.toArray(new SelectItem[selections.size()]);
 	}
 
 	public void setExtendedTimes(List<ExtendedTime> extendedTimes) {
@@ -1772,11 +1771,19 @@ public void setFeedbackComponentOption(String feedbackComponentOption) {
     return tu.getDateTimeWithTimezoneConversion(this.extendedTime.getStartDate());
   }
 
+  public Date getExtendedTimeStart() {
+    return this.extendedTime.getStartDate();
+  }
+
   public void setExtendedTimeStartString(String exTimeStartString) {
     Date tempDate = tu.parseISO8601String(ContextUtil.lookupParam("newEntry-start_date-iso8601"));
     if(tempDate != null) {
       this.extendedTime.setStartDate(tempDate);
     }
+  }
+
+  public Date getExtendedTimeDue() {
+    return this.extendedTime.getDueDate();
   }
 
   public String getExtendedTimeDueString() {
@@ -1788,6 +1795,10 @@ public void setFeedbackComponentOption(String feedbackComponentOption) {
     if(tempDate != null) {
       this.extendedTime.setDueDate(tempDate);
     }
+  }
+
+  public Date getExtendedTimeRetract() {
+    return this.extendedTime.getRetractDate();
   }
 
   public String getExtendedTimeRetractString() {

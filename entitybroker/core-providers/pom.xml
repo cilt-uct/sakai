@@ -10,7 +10,7 @@
     <parent>
         <artifactId>entitybroker</artifactId>
         <groupId>org.sakaiproject</groupId>
-        <version>22-SNAPSHOT</version><!--entitybroker.version-->
+        <version>23-SNAPSHOT</version><!--entitybroker.version-->
     </parent>
     <dependencies>
         <dependency>
@@ -84,6 +84,10 @@
         <dependency>
             <groupId>org.sakaiproject.userauditservice</groupId>
             <artifactId>userauditservice-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.ignite</groupId>
+            <artifactId>ignite-spring</artifactId>
         </dependency>
     </dependencies>
     <build>

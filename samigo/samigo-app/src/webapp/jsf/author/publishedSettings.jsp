@@ -44,7 +44,7 @@
       <script>
         $(document).ready(function() {
           // set up the accordion for settings
-          var accordionPanel = 1;
+          var accordionPanel = 2;
           var itemName = "samigo_publishedsettings_" + <h:outputText value="#{publishedSettings.assessmentId}"/>;
           if (window.sessionStorage && window.sessionStorage.getItem(itemName)) {
               accordionPanel = parseInt(window.sessionStorage.getItem(itemName));
@@ -136,7 +136,7 @@
               useTime: 1,
               parseFormat: 'YYYY-MM-DD HH:mm:ss',
               allowEmptyDate: true,
-              val: '<h:outputText value="#{publishedSettings.extendedTimeStartString}"/>',
+              val: '<h:outputText value="#{publishedSettings.extendedTimeStart}"><f:convertDateTime pattern="yyyy-MM-dd HH:mm:ss" timeZone="#{author.userTimeZone}"/></h:outputText>',
               ashidden: { iso8601: 'newEntry-start_date-iso8601' }
           });
           localDatePicker({
@@ -144,7 +144,7 @@
               useTime: 1,
               parseFormat: 'YYYY-MM-DD HH:mm:ss',
               allowEmptyDate: true,
-              val: '<h:outputText value="#{publishedSettings.extendedTimeDueString}"/>',
+              val: '<h:outputText value="#{publishedSettings.extendedTimeDue}"><f:convertDateTime pattern="yyyy-MM-dd HH:mm:ss" timeZone="#{author.userTimeZone}"/></h:outputText>',
               ashidden: { iso8601: 'newEntry-due_date-iso8601' }
           });
           localDatePicker({
@@ -152,7 +152,7 @@
               useTime: 1,
               parseFormat: 'YYYY-MM-DD HH:mm:ss',
               allowEmptyDate: true,
-              val: '<h:outputText value="#{publishedSettings.extendedTimeRetractString}"/>',
+              val: '<h:outputText value="#{publishedSettings.extendedTimeRetract}"><f:convertDateTime pattern="yyyy-MM-dd HH:mm:ss" timeZone="#{author.userTimeZone}"/></h:outputText>',
               ashidden: { iso8601: 'newEntry-retract_date-iso8601' }
           });
           
@@ -162,7 +162,6 @@
               lockdownGradebook(releaseToVal);
           }
           showHideReleaseGroups();
-          showHideSurveyHelp();
           checkTimedRadio();
           checkLastHandling();
           initTimedRadio();
@@ -170,6 +169,7 @@
           setAccessibilityAttributes();
           setExceptionDefault();
           setSubmissionLimit();
+          disableAllFeedbackCheck();
           <!--Initialize bootstrap multiselect-->
           $("#assessmentSettingsAction\\:groupsForSite").attr("multiple", "multiple");
 
@@ -209,6 +209,8 @@
 
 <!-- content... -->
 <h:form id="assessmentSettingsAction" onsubmit="return editorCheck();">
+  <f:verbatim><input type="hidden" id="ckeditor-autosave-context" name="ckeditor-autosave-context" value="samigo_publishedSettings" /></f:verbatim>
+  <h:panelGroup rendered="#{publishedSettings.assessmentId!=null}"><f:verbatim><input type="hidden" id="ckeditor-autosave-entity-id" name="ckeditor-autosave-entity-id" value="</f:verbatim><h:outputText value="#{publishedSettings.assessmentId}"/><f:verbatim>"/></f:verbatim></h:panelGroup>
   <h:inputHidden id="assessmentId" value="#{publishedSettings.assessmentId}"/>
   <h:inputHidden id="blockDivs" value="#{publishedSettings.blockDivs}"/>
   <h:inputHidden id="itemNavigationUpdated" value="false" />
@@ -329,7 +331,7 @@
             value="#{publishedSettings.valueMap.hasMetaDataForQuestions}"/>
          <h:outputLabel for="metadataQuestions" value="#{assessmentSettingsMessages.metadata_questions}" rendered="#{publishedSettings.valueMap.metadataQuestions_isInstructorEditable==true}" />
         </div>
-        <h:outputLabel id="metadataQuestionsHelpBlock" styleClass="help-block info-text small" value="#{assessmentSettingsMessages.metadata_questions_info}}" />
+        <h:outputLabel id="metadataQuestionsHelpBlock" styleClass="help-block info-text small" value="#{assessmentSettingsMessages.metadata_questions_info}" />
     </h:panelGroup>
 
 </samigo:hideDivision><!-- End the About this Assessment category -->
@@ -449,6 +451,7 @@
           </li>
         </ul>
         <h:outputLabel id="lateHandlingHelpBlock" styleClass="help-block info-text small" value="#{assessmentSettingsMessages.late_accept_help}" />
+        <h:commandButton type="submit" value="#{assessmentSettingsMessages.button_stop_accepting_now}" action="confirmAssessmentRetract" />
       </div>
     </div>
   </h:panelGroup>
@@ -601,7 +604,7 @@
     <h:panelGroup styleClass="form-group row" layout="block" rendered="#{publishedSettings.valueMap.feedbackType_isInstructorEditable==true}">
       <h:outputLabel styleClass="col-md-2" for="feedbackDelivery" value="#{assessmentSettingsMessages.feedback_type}"/>
       <div class="col-md-10">
-        <t:selectOneRadio id="feedbackDelivery" value="#{publishedSettings.feedbackDelivery}" onclick="setBlockDivs();disableAllFeedbackCheck(this.value);" layout="spread">
+        <t:selectOneRadio id="feedbackDelivery" value="#{publishedSettings.feedbackDelivery}" onclick="setBlockDivs();disableAllFeedbackCheck();" layout="spread">
           <f:selectItem itemValue="3" itemLabel="#{assessmentSettingsMessages.no_feedback}"/>
           <f:selectItem itemValue="1" itemLabel="#{assessmentSettingsMessages.immediate_feedback}"/>
           <f:selectItem itemValue="4" itemLabel="#{assessmentSettingsMessages.on_submission_feedback}"/>

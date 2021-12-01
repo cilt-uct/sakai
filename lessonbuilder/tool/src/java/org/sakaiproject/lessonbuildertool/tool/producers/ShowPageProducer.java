@@ -1233,8 +1233,12 @@ public class ShowPageProducer implements ViewComponentProducer, DefaultView, Nav
 		UIOutput.make(tofill, "lessonsSubnavItemId")
 			.decorate(new UIFreeAttributeDecorator("value", String.valueOf(pageItem.getId())));
 
+		String currentPageId = String.valueOf(simplePageBean.getCurrentPage().getPageId());
 		UIOutput.make(tofill, "lessonsCurrentPageId")
-			.decorate(new UIFreeAttributeDecorator("value", String.valueOf(simplePageBean.getCurrentPage().getPageId())));
+		    .decorate(new UIFreeAttributeDecorator("value", currentPageId));
+		UIOutput.make(tofill, "ckeditor-autosave-entity-id")
+		    .decorate(new UIFreeAttributeDecorator("name", "ckeditor-autosave-entity-id"))
+		    .decorate(new UIFreeAttributeDecorator("value", currentPageId));
 	}
 
 	public void printSubpage(List<SimplePageItem> itemList, boolean first, UIBranchContainer sectionWrapper, UIBranchContainer sectionContainer, UIBranchContainer columnContainer, UIBranchContainer tableContainer, 
@@ -2934,6 +2938,7 @@ public class ShowPageProducer implements ViewComponentProducer, DefaultView, Nav
 							UIOutput.make(tableRow, "forcedAnon", String.valueOf(i.getForcedCommentsAnonymous()));
 							UIOutput.make(tableRow, "studentGrade", String.valueOf(i.getGradebookId() != null));
 							UIOutput.make(tableRow, "studentMaxPoints", String.valueOf(i.getGradebookPoints()));
+							UIOutput.make(tableRow, "studentGradebookTitle", String.valueOf(i.getGradebookTitle()));
 							UIOutput.make(tableRow, "studentGrade2", String.valueOf(i.getAltGradebook() != null));
 							UIOutput.make(tableRow, "studentMaxPoints2", String.valueOf(i.getAltPoints()));
 							UIOutput.make(tableRow, "studentitem-required", String.valueOf(i.isRequired()));
@@ -3351,6 +3356,8 @@ public class ShowPageProducer implements ViewComponentProducer, DefaultView, Nav
 								UIOutput.make(answerContainer, "questionMultipleChoiceAnswerId", String.valueOf(answers.get(j).getId()));
 								UIOutput.make(answerContainer, "questionMultipleChoiceAnswerText", answers.get(j).getText());
 								UIOutput.make(answerContainer, "questionMultipleChoiceAnswerCorrect", String.valueOf(answers.get(j).isCorrect()));
+								//SAK-46296
+								UIInput.make(answerContainer, "raw-questionAnswer-text",  null, answers.get(j).getText());
 							}
 							
 							UIOutput.make(tableRow, "questionShowPoll", String.valueOf(i.getAttribute("questionShowPoll")));
@@ -4453,7 +4460,7 @@ public class ShowPageProducer implements ViewComponentProducer, DefaultView, Nav
 		UIBoundBoolean.make(form, "subpage-next", "#{simplePageBean.subpageNext}", false);
 		UIBoundBoolean.make(form, "subpage-button", "#{simplePageBean.subpageButton}", false);
 
-		UISelect buttonColors = UISelect.make(form, "subpage-btncolor", SimplePageBean.NewColors, SimplePageBean.NewColorLabels, "#{simplePageBean.buttonColor}", SimplePageBean.NewColors[0]);
+		UISelect buttonColors = UISelect.make(form, "subpage-btncolor", SimplePageBean.NewColors, simplePageBean.getNewColorLabelsI18n(), "#{simplePageBean.buttonColor}", SimplePageBean.NewColors[0]);
 
 		UIInput.make(form, "subpage-add-before", "#{simplePageBean.addBefore}");
 		UICommand.make(form, "create-subpage", messageLocator.getMessage("simplepage.create"), "#{simplePageBean.createSubpage}");
@@ -4571,7 +4578,7 @@ public class ShowPageProducer implements ViewComponentProducer, DefaultView, Nav
 		UIInput customCssClass = UIInput.make(form, "customCssClass", "#{simplePageBean.customCssClass}");
 		UIOutput.make(form, "custom-css-label", messageLocator.getMessage("simplepage.custom.css.class"));
 
-		UISelect buttonColors = UISelect.make(form, "btncolor", SimplePageBean.NewColors, SimplePageBean.NewColorLabels, "#{simplePageBean.buttonColor}", SimplePageBean.NewColors[0]);
+		UISelect buttonColors = UISelect.make(form, "btncolor", SimplePageBean.NewColors, simplePageBean.getNewColorLabelsI18n(), "#{simplePageBean.buttonColor}", SimplePageBean.NewColors[0]);
 
 		UIBoundBoolean.make(form, "hide2", "#{simplePageBean.hidePage}", (currentPage.isHidden()));
 		UIBoundBoolean.make(form, "page-releasedate2", "#{simplePageBean.hasReleaseDate}", Boolean.FALSE);
@@ -5220,6 +5227,8 @@ public class ShowPageProducer implements ViewComponentProducer, DefaultView, Nav
         
 		UIBoundBoolean.make(form, "peer-eval-allow-selfgrade", "#{simplePageBean.peerEvalAllowSelfGrade}");
 
+		UIInput.make(form, "gradebook-title", "#{simplePageBean.gradebookTitle}");
+
 		UIBoundBoolean.make(form, "student-graded", "#{simplePageBean.graded}");
 		UIInput.make(form, "student-max", "#{simplePageBean.maxPoints}");
 
@@ -5296,7 +5305,7 @@ public class ShowPageProducer implements ViewComponentProducer, DefaultView, Nav
 
 		UIInput.make(form, "layout-section-title", "#{simplePageBean.layoutSectionTitle}");
 
-		UISelect colorSchemes = UISelect.make(form, "layout-color-scheme", SimplePageBean.NewColors, SimplePageBean.NewColorLabels, "#{simplePageBean.layoutColorScheme}", SimplePageBean.NewColors[0]);
+		UISelect colorSchemes = UISelect.make(form, "layout-color-scheme", SimplePageBean.NewColors, simplePageBean.getNewColorLabelsI18n(), "#{simplePageBean.layoutColorScheme}", SimplePageBean.NewColors[0]);
 
 		UIBoundBoolean.make(form, "layout-section-collapsible", "#{simplePageBean.layoutSectionCollapsible}", false);
 		UIBoundBoolean.make(form, "layout-section-start-collapsed", "#{simplePageBean.layoutSectionStartCollapsed}", false);
@@ -5314,6 +5323,34 @@ public class ShowPageProducer implements ViewComponentProducer, DefaultView, Nav
 
 		UICommand.make(form, "layout-submit", messageLocator.getMessage("simplepage.add_layout"), "#{simplePageBean.addLayout}");
 		UICommand.make(form, "layout-cancel", messageLocator.getMessage("simplepage.cancel"), "#{simplePageBean.cancel}");
+		createPageLayoutTab(tofill);
+	}
+
+	private void createPageLayoutTab(UIContainer tofill){
+		String pageLayoutLabels[] = {"", messageLocator.getMessage("simplepage.layout.page.menuSubpage"), messageLocator.getMessage("simplepage.layout.page.menuResources"), messageLocator.getMessage("simplepage.layout.page.menuTasks")};	//populate dropdown labels from properties
+		UIForm form2 = UIForm.make(tofill, "page-form");
+		makeCsrf(form2, "page-csrf28");
+		String subpageCountValues[] = new String[20];
+		for (int count=0; count<20; count++){	//make array of Strings for the number of subpages/tasks to create
+			subpageCountValues[count] = String.valueOf(count+1);
+		}
+		UIOutput.make(form2,"page-preview-subpage-image").decorate(new UIFreeAttributeDecorator("src",ServerConfigurationService.getServerUrl() + "/library/image/lessons/preview-subpage-layout.png"));
+		UIOutput.make(form2,"page-preview-subpage").decorate(new UIFreeAttributeDecorator("href",ServerConfigurationService.getServerUrl() + "/library/image/lessons/preview-subpage-layout.png")).decorate(new UIFreeAttributeDecorator("target","_blank"));
+		UIOutput.make(form2,"page-preview-resource-image").decorate(new UIFreeAttributeDecorator("src",ServerConfigurationService.getServerUrl() + "/library/image/lessons/preview-resource-layout.png"));
+		UIOutput.make(form2,"page-preview-resource").decorate(new UIFreeAttributeDecorator("href",ServerConfigurationService.getServerUrl() + "/library/image/lessons/preview-resource-layout.png")).decorate(new UIFreeAttributeDecorator("target","_blank"));
+		UIOutput.make(form2,"page-preview-task-image").decorate(new UIFreeAttributeDecorator("src",ServerConfigurationService.getServerUrl() + "/library/image/lessons/preview-task-layout.png"));
+		UIOutput.make(form2,"page-preview-task").decorate(new UIFreeAttributeDecorator("href",ServerConfigurationService.getServerUrl() + "/library/image/lessons/preview-task-layout.png")).decorate(new UIFreeAttributeDecorator("target","_blank"));
+		UISelect.make(form2, "page-dropdown", SimplePageBean.pageLayoutValues, pageLayoutLabels, "#{simplePageBean.pageLayoutSelect}", SimplePageBean.pageLayoutValues[0]);
+		UISelect.make(form2, "page-color-scheme", SimplePageBean.NewColors, simplePageBean.getNewColorLabelsI18n(), "#{simplePageBean.pageButtonColorScheme}", SimplePageBean.NewColors[0]);
+		UISelect.make(form2, "page-color-scheme-3", SimplePageBean.NewColors, simplePageBean.getNewColorLabelsI18n(), "#{simplePageBean.pageColorScheme}", SimplePageBean.NewColors[0]);
+		UIBoundBoolean.make(form2,"page-subpage-button","#{simplePageBean.pageSubpageButton}",true);
+		UIInput.make(form2, "page-option-subpage-title", "#{simplePageBean.pageSubpageTitle}");
+		UISelect.make(form2, "page-option-subpage-count", subpageCountValues,subpageCountValues, "#{simplePageBean.pageSubpageCount}", subpageCountValues[1]);
+		UISelect.make(form2, "page-option-task-count", subpageCountValues, subpageCountValues, "#{simplePageBean.pageTaskCount}", subpageCountValues[1]);
+		UIBoundBoolean.make(form2, "page-option-task-collapsible", "#{simplePageBean.pageTaskCollapsible}",false);
+		UIBoundBoolean.make(form2, "page-option-task-closed", "#{simplePageBean.pageTaskClosed}",false);
+		UICommand.make(form2, "page-submit", messageLocator.getMessage("simplepage.add_layout"), "#{simplePageBean.addPageLayout}");
+		UICommand.make(form2, "page-cancel", messageLocator.getMessage("simplepage.cancel"), "#{simplePageBean.cancel}");
 	}
 
 	private void createDeleteItemDialog(UIContainer tofill, SimplePage currentPage) {

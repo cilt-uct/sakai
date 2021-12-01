@@ -20,7 +20,7 @@
 
 		<div class="instruction">
 				$tlang.getString('reorder.instruction.general')
-				<span id="inputFieldMessage" style="display:none">$tlang.getString('reorder.instruction.input')</span>
+				<span id="inputFieldMessage">$tlang.getString('reorder.instruction.input')</span>
 				<span id="inputKbdMessage" class="skip">$tlang.getString('reorder.instruction.general.hidden')</span>
 		</div>
 		<ul class="itemAction noPrint">
@@ -32,11 +32,8 @@
 				<span id="undo-all-inact"  style="padding:0 .3em 0 0;border:none">$tlang.getString("reorder.undo.all.label")</span>
 					<a id="undo-all" href="javascript:void(0)"  style="display:none">$tlang.getString("reorder.undo.all.label")</a>
 			</li>
-			<li style="display:inline;color:#000">
-				<span id="failedValidMessage" style="display:none">$tlang.getString('reorder.fail.valid.message')</span>
-				<span id="messageHolder" class="sak-banner-success" style="display:none">$tlang.getString("reorder.fail.valid.message")</span>
-			</li>
 		</ul>
+		<span id="messageHolder" class="sak-banner-error" style="display:none">$tlang.getString("reorder.fail.valid.message")</span>
 		<span id="lastMoveArray" style="display:none"></span>
 		<span id="lastMoveArrayInit" style="display:none"></span>
 		<span id="lastItemMoved"  style="display:none"></span>
@@ -47,9 +44,9 @@
 						$tlang.getString("listassig.sorbytit")
 						#if ($sortedBy.equals("title"))
 							#if ($sortedAsc.equals("true"))
-								<img id="sortascendingtitle" src = "#imageLink("sakai/sortascending.gif")" border="0" alt="$tlang.getString("gen.sorasc")" />
+								<i id="sortascendingtitle" class="fa fa-sort-asc" aria-hidden="true" tittle="$tlang.getString("gen.sorasc")"></i>
 							#else
-								<img id="sortdescendingtitle" src = "#imageLink("sakai/sortdescending.gif")" border="0" alt="$tlang.getString("gen.sordes")" />
+								<i id="sortdescendingtitle" class="fa fa-sort-desc" aria-hidden="true" tittle="$tlang.getString("gen.sordes")"></i>
 							#end
 						#end
 				</a>
@@ -59,9 +56,9 @@
 						$tlang.getString("listassig.sorbyope")
 						#if ($sortedBy.equals("opendate"))
 							#if ($sortedAsc.equals("true"))
-								<img id="sortascendingopendate" src = "#imageLink("sakai/sortascending.gif")" border="0" alt="$tlang.getString("gen.sorasc")" />
+								<i id="sortascendingopendate" class="fa fa-sort-asc" aria-hidden="true" tittle="$tlang.getString("gen.sorasc")"></i>
 							#else
-								<img id="sortdescendingopendate" src = "#imageLink("sakai/sortdescending.gif")" border="0" alt="$tlang.getString("gen.sordes")" />
+								<i id="sortdescendingopendate" class="fa fa-sort-desc" aria-hidden="true" tittle="$tlang.getString("gen.sordes")"></i>
 							#end
 						#end
 					</a>
@@ -71,9 +68,9 @@
 						$tlang.getString("gen.sorbydue") ##$tlang.getString("gen.due1")
 						#if ($sortedBy.equals("duedate"))
 							#if ($sortedAsc.equals("true"))
-								<img id="sortascendingduedate" src = "#imageLink("sakai/sortascending.gif")" border="0" alt="$tlang.getString("gen.sorasc")" />
+								<i id="sortascendingduedate" class="fa fa-sort-asc" aria-hidden="true" tittle="$tlang.getString("gen.sorasc")"></i>
 							#else
-								<img id="sortdescendingduedate" src = "#imageLink("sakai/sortdescending.gif")" border="0" alt="$tlang.getString("gen.sordes")" />
+								<i id="sortdescendingduedate" class="fa fa-sort-desc" aria-hidden="true" tittle="$tlang.getString("gen.sordes")"></i>
 							#end
 						#end
 					</a>
@@ -87,7 +84,7 @@
 
 			<li class="sortable row reorder-element grab_cursor" tabindex="0" id="listitem.orderable$count" onmousedown="ASN.grabbing(this)" onmouseup="ASN.grab(this)">
 				<span class="col-md-6 col-sm-6 col-xs-12" title="$formattedText.escapeHtml($!assignment.Title)">
-					<span style="display:none" class="grabHandle">
+					<span class="grabHandle">
 						<input type="text" size="3" value="$count" id="index$count"/>
 						<input type="hidden"  size="3" id="holder$count"  value="$count" tabindex="-2"/>
 					</span>

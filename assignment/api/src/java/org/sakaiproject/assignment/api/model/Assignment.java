@@ -180,7 +180,7 @@ public class Assignment {
     @ElementCollection
     @MapKeyColumn(name = "NAME")
     @Column(name = "VALUE", length = 4000)
-    @CollectionTable(name = "ASN_ASSIGNMENT_PROPERTIES", joinColumns = @JoinColumn(name = "ASSIGNMENT_ID"))
+    @CollectionTable(name = "ASN_ASSIGNMENT_PROPERTIES", joinColumns = @JoinColumn(name = "ASSIGNMENT_ID"), indexes = @Index(name="FK_ASN_ASSIGMENTS_PROP_I", columnList = "ASSIGNMENT_ID"))
     @Fetch(FetchMode.SUBSELECT)
     private Map<String, String> properties = new HashMap<>();
 
@@ -250,6 +250,12 @@ public class Assignment {
 
     @Column(name = "CONTENT_REVIEW")
     private Boolean contentReview = Boolean.FALSE;
+
+    @Column(name = "ESTIMATE_REQUIRED", length = 1, nullable = false)
+    private Boolean estimateRequired = Boolean.FALSE;
+
+    @Column(name = "ESTIMATE", length = 255)
+    private String estimate;
 
     @Column(name = "CONTENT_ID")
     private Integer contentId = null;

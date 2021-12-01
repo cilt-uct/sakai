@@ -3,7 +3,7 @@
   <parent>
     <groupId>org.sakaiproject</groupId>
     <artifactId>master</artifactId>
-    <version>22-SNAPSHOT</version>
+    <version>23-SNAPSHOT</version>
     <relativePath>../master/pom.xml</relativePath>
   </parent>
 
@@ -22,25 +22,7 @@
   </properties>
 
   <modules>
-    <module>api</module>
-    <module>impl/logic</module>
     <module>tool</module>
   </modules>
-
-  <dependencyManagement>
-    <dependencies>
-      <dependency>
-        <groupId>${project.groupId}</groupId>
-        <artifactId>emailtemplateservice-api</artifactId>
-        <version>${project.version}</version>
-        <scope>provided</scope>
-      </dependency>
-      <dependency>
-        <groupId>${project.groupId}</groupId>
-        <artifactId>emailtemplateservice-impl</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-    </dependencies>
-  </dependencyManagement>
 
 </project>

@@ -4,7 +4,7 @@
   <parent>
     <artifactId>providers-base</artifactId>
     <groupId>org.sakaiproject</groupId>
-    <version>22-SNAPSHOT</version>
+    <version>23-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
   <name>sakai-unboundid-provider</name>
@@ -12,7 +12,7 @@
   <artifactId>sakai-unboundid-provider</artifactId>
   <packaging>jar</packaging>
   <properties>
-    <sakai.unboundid.version>6.0.1</sakai.unboundid.version>
+    <sakai.unboundid.version>6.0.2</sakai.unboundid.version>
     <deploy.target />
   </properties>
   <dependencies>

@@ -262,6 +262,11 @@
                 #if (($submission.Submitted || !$alertGradeDraft) && $!value_feedback_text && !$!value_feedback_text.isEmpty())
                     <p class="text-info">$tlang.getString("gradingsub.belisthe")</p>
                     <div class="textarea-holder">
+                        #set($contextkey = "ckeditor-autosave-context")
+                        #set($entitykey = "ckeditor-autosave-entity-id")
+                        #set($entityval = "$submission.id")
+                        <input type="hidden" id="$contextkey" name="$contextkey" value="asn_instructor_grade">
+                        <input type="hidden" id="$entitykey" name="$entitykey" value="$entityval">
                         <textarea name="$name_feedback_text" id="$name_feedback_text" rows="30" wrap="virtual" cols="80">
                             $formattedText.escapeHtmlFormattedTextarea($!value_feedback_text)
                         </textarea>
@@ -286,7 +291,15 @@
                     $cheffeedbackhelper.escapeAssignmentFeedback($!prevFeedbackText)
                 </div>
             #end
-
+            ## Submitted time spent
+            #if ($assignment.Estimate && !$assignment.Estimate.equals(""))
+                <h3>
+                    $tlang.getString("gen.totaltimespent")
+                </h3>
+                <p>
+                    $!submitterTimeSpent
+                </p>
+            #end
             ## Submitted Attachment
             #set ($attachAllowed = $submissionType != 1 && $submissionType != 4)
             #if ($attachAllowed || $size != 0) ##do not show attach messages if no attach are allowed unless an attach is present anyway.
@@ -367,11 +380,11 @@
                         <p class="shorttext">
                             <label for="grade">$tlang.getString("gen.gra2")</label>
                             <select name="$name_grade" id="grade">
-                                <option value="" #if($!value_grade.equals(""))selected="selected"#end>
+                                <option value="" #if($!grade_submission_grade.equals(""))selected="selected"#end>
                                     $tlang.getString("non.submission.grade.select")
                                 </option>
                                 #foreach ($i in $letterGradeOptions)
-                                    <option value="$i" #if ($!value_grade.equals($i))selected="selected"#end>$i</option>
+                                    <option value="$i" #if ($!grade_submission_grade.equals($i))selected="selected"#end>$i</option>
                                 #end
                             </select>
                         </p>
@@ -410,7 +423,7 @@
                         <p class="form-group">
                             <label for="gradeChecked">
                                 <input name="$name_grade" type="checkbox" value="Checked"
-                                    #if ($!value_grade.equals($tlang.getString("gen.checked")))
+                                    #if ($!grade_submission_grade.equals($tlang.getString("gen.checked")))
                                        checked="checked"
                                     #end
                                     id="gradeChecked"/>
@@ -666,7 +679,55 @@
             #else
                 #set($resubmitStyle="display:none")
             #end
-            <div class="form-group" id="tempAllowRes" #if ($submissionType == 4) style="display:none"#end>
+  ##decide whether to show the Extension options
+            #if($!displayExtensionOptions && $submissionType != 4)
+                #set($extensionStyle="display:block")
+                #set($resubmitVisibility="display:none")
+            #else
+                #set($extensionStyle="display:none")
+                #if($submissionType != 4)
+                    #set($resubmitVisibility="display:block")
+                #else
+                    #set($resubmitVisibility="display:none")
+                #end
+            #end
+
+            <div class="form-group" id="allowExtensionForm" style="$extensionStyle">
+                <input type="checkbox" id="allowExtensionToggle" name="allowExtensionToggle"
+                    #if($extensionCloseTime && $submissionType != 4)
+                       checked="checked"
+                    #end
+                    onclick="if(checked){document.getElementById('allowExtensionTime').style.display = 'block';ASN.resizeFrame();}else{document.getElementById('allowExtensionTime').style.display = 'none';}"
+                />
+                <label for="allowExtensionToggle" >$tlang.getString("allowExtension")</label>
+                <label class="text-warning" >$tlang.getString("allowExtensionCaption")</label>
+                <div id="allowExtensionTime"
+                    #if($extensionCloseTime && $submissionType != 4)
+                        style="display: block"
+                    #else
+                        style="display: none"
+                    #end
+                >
+                    <label for="allowExtensionDate">$tlang.getString("gen.acesubunt")</label>
+                    <input type="text" id="allowExtensionDate" name="allowExtensionDate" class="datepicker" value=""/>
+                    <script type="text/javascript">
+                        localDatePicker({
+                            input: '#allowExtensionDate',
+                            useTime: 1,
+                            val: "$value_ExtensionYear$H$value_ExtensionMonth$H$value_ExtensionDay $value_ExtensionHour:$value_ExtensionMin",
+                            parseFormat: 'YYYY-MM-DD HH:mm',
+                            ashidden: {
+                                month: "allow_extension_closeMonth",
+                                day: "allow_extension_closeDay",
+                                year: "allow_extension_closeYear",
+                                hour: "allow_extension_closeHour",
+                                minute: "allow_extension_closeMin"
+                            }
+                        });
+                    </script>
+                </div>
+            </div>
+            <div class="form-group" id="tempAllowRes" style="$resubmitVisibility">
                 <input type="checkbox" id="allowResToggle" name="allowResToggle"
                     #if($!value_allowResubmitNumber && $submissionType != 4)
                         checked="checked"

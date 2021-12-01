@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.sakaiproject.assignment</groupId>
         <artifactId>assignment</artifactId>
-        <version>22-SNAPSHOT</version>
+        <version>23-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -72,6 +72,7 @@
                 <includes>
                     <include>**/*.properties</include>
                     <include>**/*.metaprops</include>
+                    <include>**/*.xml</include>
                 </includes>
             </resource>
             <resource>

@@ -46,6 +46,16 @@
                 },
                 "span-desc": function (a, b) {
                     return naturalSort($(a).find(".spanValue").text().toLowerCase(), $(b).find(".spanValue").text().toLowerCase(), false) * -1;
+                },
+                "numeric-asc": function (a, b) {
+                    var numA = parseInt($(a).text()) || 0;
+                    var numB = parseInt($(b).text()) || 0;
+                    return ((numB < numA) ? 1 : ((numB > numA) ? -1 : 0));
+                },
+                "numeric-desc": function (a, b) {
+                    var numA = parseInt($(a).text()) || 0;
+                    var numB = parseInt($(b).text()) || 0;
+                    return ((numA < numB) ? 1 : ((numA > numB) ? -1 : 0));
                 }
             });
 
@@ -72,7 +82,7 @@
                     "columns": [
                         {"bSortable": true, "bSearchable": true, "type": "span"},
                         {"bSortable": true, "bSearchable": false},
-                        {"bSortable": true, "bSearchable": true},
+                        {"bSortable": true, "bSearchable": true, "type": "numeric"},
                     ],
                     "language": {
                         "search": searchText,
@@ -201,7 +211,14 @@
                             </h:panelGroup>
                         </f:facet>
 
-                        <h:commandLink title="#{selectIndexMessages.t_takeAssessment}" id="takeAssessment" action="beginAssessment">
+                        <h:panelGroup rendered="#{not empty takeable.alternativeDeliveryUrl}">
+                            <a href="<h:outputText value="#{takeable.alternativeDeliveryUrl}" escape="false" />" title="Proctored Assessment Link">
+                              <span class="fa fa-user-circle-o" title="Proctored Assessment Link"></span>
+                              <h:outputText value="#{takeable.assessmentTitle}" escape="false" />
+                            </a>
+                        </h:panelGroup>
+
+                        <h:commandLink title="#{selectIndexMessages.t_takeAssessment}" id="takeAssessment" action="beginAssessment" rendered="#{empty takeable.alternativeDeliveryUrl}">
                             <f:param name="publishedId" value="#{takeable.assessmentId}" />
                             <f:param name="actionString" value="takeAssessment"/>
                             <f:actionListener
@@ -242,6 +259,9 @@
                         <h:outputText value=" #{selectIndexMessages.late} " styleClass="text-danger" rendered="#{takeable.pastDue}" />
                         <h:outputText value="#{takeable.dueDate}" rendered="#{!takeable.pastDue}">
                             <f:convertDateTime dateStyle="medium" timeStyle="short" timeZone="#{author.userTimeZone}" />
+                        </h:outputText>
+                        <h:outputText value="#{takeable.dueDate}" styleClass="hidden spanValue">
+                            <f:convertDateTime pattern="yyyyMMddHHmmss" />
                         </h:outputText>
                     </t:column>
                 </t:dataTable>

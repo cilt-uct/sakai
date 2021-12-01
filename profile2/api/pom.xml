@@ -14,7 +14,7 @@
 	<parent>
 		<groupId>org.sakaiproject.profile2</groupId>
 		<artifactId>profile2</artifactId>
-	    <version>22-SNAPSHOT</version>
+	    <version>23-SNAPSHOT</version>
 	</parent>
 
   	<dependencies>
@@ -56,20 +56,27 @@
             <groupId>org.hibernate</groupId>
             <artifactId>hibernate-core</artifactId>
         </dependency>
-	    
+
 	</dependencies>
 	
-	<!-- include email templates -->
 	<build>
 		<resources>
-            <resource>
-                <directory>${basedir}/src/java</directory>
-                <includes>
-                    <include>**/*.xml</include>
-                </includes>
-                <filtering>false</filtering>
-            </resource>
-        </resources>
+			<resource>
+				<directory>${basedir}/src/resources</directory>
+				<includes>
+					<include>**/*.properties</include>
+					<include>**/*.xml</include>
+				</includes>
+				<filtering>false</filtering>
+			</resource>
+			<resource>
+				<directory>${basedir}/src/java</directory>
+				<includes>
+					<include>**/*.xml</include>
+				</includes>
+				<filtering>false</filtering>
+			</resource>
+		</resources>
 	</build>
 	 
 </project>

@@ -19,8 +19,10 @@
 	
     #progressBar($!service.getProgressBarStatus($!submission))
 
-	<div class="sak-banner-warn">  <strong>$tlang.getString("gen.alert")</strong> $!submissionConfirmAlert</div>
-	
+    #if ($!canSubmit)
+        <div class="sak-banner-warn"><strong>$tlang.getString("gen.alert")</strong> $!submissionConfirmAlert</div>
+    #end
+
     #set($allowUpdateAssignment = $!service.allowUpdateAssignment($assignmentReference))
     #if ($alertMessage)
         <div class="sak-banner-error"><strong>$tlang.getString("gen.alert")</strong> $alertMessage</div>
@@ -101,6 +103,16 @@
                 </td>
             </tr>
         #end
+        #if ($assignment.Estimate && !$assignment.Estimate.equals(""))
+            <tr>
+                <th>
+                    $tlang.getString("gen.estimatedselfempl")
+                </th>
+                <td>
+                    $formattedText.escapeHtml($!assignment.Estimate)
+                </td>
+            </tr>
+        #end
         ## show alert when assignment is modified and the modified date is after its open date
         #set($newAssignment="false")
         #set($newAssignment=$assignment.getProperties().get("newAssignment"))
@@ -121,6 +133,15 @@
     #if ($text && $!text.length() > 0)
         <div class="textPanel">
             $formattedText.escapeHtmlFormattedText($text)
+        </div>
+    #end
+    
+    #if ($assignment.Estimate && !$assignment.Estimate.equals(""))
+        <div>
+            <h4>
+                $tlang.getString("gen.totaltimespent")
+            </h4>
+                $formattedText.escapeHtml($!value_ASSIGNMENT_INPUT_ADD_TIME_SPENT)
         </div>
     #end
 

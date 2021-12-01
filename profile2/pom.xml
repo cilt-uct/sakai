@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>org.sakaiproject</groupId>
 		<artifactId>master</artifactId>
-		<version>22-SNAPSHOT</version>
+		<version>23-SNAPSHOT</version>
 		<relativePath>../master/pom.xml</relativePath>
 	</parent>
 	<name>Profile2</name>
@@ -21,7 +21,6 @@
 		<module>impl</module>
 		<module>util</module>
 		<module>tool</module>
-		<module>bundle</module>
 	</modules>
 	<dependencyManagement>
 		<dependencies>

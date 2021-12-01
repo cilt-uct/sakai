@@ -279,6 +279,8 @@
 
 					<%--Description --%>
 					<div class="form-group row">
+						<f:verbatim><input type="hidden" id="ckeditor-autosave-context" name="ckeditor-autosave-context" value="signup_copy" /></f:verbatim>
+						<h:panelGroup rendered="#{CopyMeetingSignupMBean.signupMeetingId!=null}"><f:verbatim><input type="hidden" id="ckeditor-autosave-entity-id" name="ckeditor-autosave-entity-id" value="</f:verbatim><h:outputText value="#{CopyMeetingSignupMBean.signupMeetingId}"/><f:verbatim>"/></f:verbatim></h:panelGroup>
 						<h:outputLabel value="#{msgs.event_description}" styleClass="col-lg-12" escape="false"/>
 						<div class="col-lg-12">
 							<sakai:inputRichText value="#{CopyMeetingSignupMBean.signupMeeting.description}"
@@ -544,14 +546,14 @@
 									<div class="form-group row">
 										<h:outputLabel value="#{msgs.event_num_slot_avail_for_signup}" for="numberOfSlot" styleClass="col-lg-4" />
 										<h:panelGroup styleClass="col-lg-8" layout="block">
-											<h:inputText id="numberOfSlot" value="#{CopyMeetingSignupMBean.numberOfSlots}" size="2" styleClass="editText" onkeyup="getSignupDuration();return false;" />
+											<h:inputText id="numberOfSlot" value="#{CopyMeetingSignupMBean.numberOfSlots}" size="2" styleClass="editText" onkeyup="getSignupDuration();return false;" onblur="noEmptyNumberOnBlurSlotsNumber();return false;"/>
 										</h:panelGroup>
 									</div>
 
 									<div class="form-group row">
 										<h:outputLabel value="#{msgs.event_num_participant_per_timeslot}" for="numberOfAttendees" styleClass="col-lg-4 titleText" escape="false" />
 										<h:panelGroup styleClass="col-lg-8" layout="block">
-											<h:inputText id="numberOfAttendees" value="#{CopyMeetingSignupMBean.maxNumOfAttendees}" styleClass="editText" size="2" onkeyup="validateAttendee();return false;" />
+											<h:inputText id="numberOfAttendees" value="#{CopyMeetingSignupMBean.maxNumOfAttendees}" styleClass="editText" size="2" onkeyup="validateAttendee();return false;" onblur="noEmptyNumberOnBlurAttendeeNum();return false;"/>
 										</h:panelGroup>
 									</div>
 

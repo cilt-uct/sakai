@@ -225,6 +225,8 @@
 					<div class="form-group row">
 						<h:outputLabel value="#{msgs.event_description}" styleClass="col-lg-12" escape="false"/>
 					</div>
+					<f:verbatim><input type="hidden" id="ckeditor-autosave-context" name="ckeditor-autosave-context" value="signup_modify" /></f:verbatim>
+					<h:panelGroup rendered="#{EditMeetingSignupMBean.signupMeetingId!=null}"><f:verbatim><input type="hidden" id="ckeditor-autosave-entity-id" name="ckeditor-autosave-entity-id" value="</f:verbatim><h:outputText value="#{EditMeetingSignupMBean.signupMeetingId}"/><f:verbatim>"/></f:verbatim></h:panelGroup>
 					<sakai:inputRichText value="#{EditMeetingSignupMBean.signupMeeting.description}" rows="5"  />
 					
 					<%-- Attachments --%>
@@ -357,14 +359,16 @@
 								<div class="form-group row">
 									<h:outputLabel value="#{msgs.event_num_slot_avail_for_signup}" for="numberOfSlot" styleClass="col-lg-4" />
 									<h:panelGroup styleClass="col-lg-8" layout="block">
-										<h:inputText id="numberOfSlot" value="#{EditMeetingSignupMBean.numberOfSlots}" size="2" styleClass="editText" onfocus="showRescheduleWarning();" onkeyup="getSignupDuration(); delayedValidMimimunTs('#{EditMeetingSignupMBean.numberOfSlots}','#{msgs.event_warning_no_lower_than_cur_ts_num}'); return false;" />
+									<h:inputText id="numberOfSlot" value="#{EditMeetingSignupMBean.numberOfSlots}" size="2" styleClass="editText" onfocus="showRescheduleWarning();"
+											onkeyup="getSignupDuration(); delayedValidMimimunTs('#{EditMeetingSignupMBean.numberOfSlots}','#{msgs.event_warning_no_lower_than_cur_ts_num}'); return false;"
+											onblur="noEmptyNumberOnBlurSlotsNumber(); return false;"/>
 									</h:panelGroup>
 								</div>
 
 								<div class="form-group row">
 									<h:outputLabel value="#{msgs.event_num_participant_per_timeslot}" for="numberOfAttendees" styleClass="col-lg-4 titleText" escape="false" />
 									<h:panelGroup styleClass="col-lg-8" layout="block">
-										<h:inputText id="numberOfAttendees" value="#{EditMeetingSignupMBean.maxNumOfAttendees}" styleClass="editText" size="2" onkeyup="validateAttendee();return false;" />
+										<h:inputText id="numberOfAttendees" value="#{EditMeetingSignupMBean.maxNumOfAttendees}" styleClass="editText" size="2" onkeyup="validateAttendee();return false;" onblur="noEmptyNumberOnBlurAttendeeNum();return false;"/>
 									</h:panelGroup>
 								</div>
 

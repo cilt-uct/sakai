@@ -33,6 +33,7 @@ import org.sakaiproject.announcement.api.AnnouncementService;
 import org.sakaiproject.api.app.scheduler.ScheduledInvocationManager;
 import org.sakaiproject.api.app.scheduler.SchedulerManager;
 import org.sakaiproject.assignment.api.AssignmentConstants;
+import org.sakaiproject.assignment.api.AssignmentServiceConstants;
 import org.sakaiproject.assignment.api.taggable.AssignmentActivityProducer;
 import org.sakaiproject.assignment.impl.reminder.prefs.AssignmentUserNotificationPreferencesRegistrationImpl;
 import org.sakaiproject.authz.api.AuthzGroupService;
@@ -44,13 +45,13 @@ import org.sakaiproject.content.api.ContentHostingService;
 import org.sakaiproject.contentreview.service.ContentReviewService;
 import org.sakaiproject.elfinder.SakaiFsService;
 import org.sakaiproject.email.api.DigestService;
-import org.sakaiproject.email.api.EmailService;
 import org.sakaiproject.entity.api.EntityManager;
 import org.sakaiproject.entitybroker.DeveloperHelperService;
 import org.sakaiproject.event.api.EventTrackingService;
 import org.sakaiproject.event.api.LearningResourceStoreService;
 import org.sakaiproject.hibernate.AssignableUUIDGenerator;
 import org.sakaiproject.messaging.api.MessagingService;
+import org.sakaiproject.messaging.api.UserMessagingService;
 import org.sakaiproject.rubrics.logic.RubricsService;
 import org.sakaiproject.search.api.SearchIndexBuilder;
 import org.sakaiproject.search.api.SearchService;
@@ -196,11 +197,6 @@ public class AssignmentTestConfiguration {
         return mock(DigestService.class);
     }
 
-    @Bean(name = "org.sakaiproject.email.api.EmailService")
-    public EmailService emailService() {
-        return mock(EmailService.class);
-    }
-
     @Bean(name = "org.sakaiproject.util.api.FormattedText")
     public FormattedText formattedText() {
         return mock(FormattedText.class);
@@ -241,6 +237,7 @@ public class AssignmentTestConfiguration {
         ServerConfigurationService scs = mock(ServerConfigurationService.class);
         Mockito.when(scs.getBoolean("content.cleaner.filter.utf8", true)).thenReturn(Boolean.TRUE);
         Mockito.when(scs.getString("content.cleaner.filter.utf8.replacement", "")).thenReturn("");
+        Mockito.when(scs.getString("assignment.timesheet.timePattern", AssignmentServiceConstants.SAK_PROP_ASSIGNMENT_TIMESHEET_TIME_PATTERN_DEFAULT)).thenReturn(AssignmentServiceConstants.SAK_PROP_ASSIGNMENT_TIMESHEET_TIME_PATTERN_DEFAULT);
         Mockito.when(scs.getInt("assignment.grading.decimals", AssignmentConstants.DEFAULT_DECIMAL_POINT)).thenReturn(2);
         return scs;
     }
@@ -338,5 +335,10 @@ public class AssignmentTestConfiguration {
     @Bean(name = "org.sakaiproject.messaging.api.MessagingService")
     public MessagingService messagingService() {
         return mock(MessagingService.class);
+    }
+
+    @Bean(name = "org.sakaiproject.messaging.api.UserMessagingService")
+    public UserMessagingService userMessagingService() {
+        return mock(UserMessagingService.class);
     }
 }

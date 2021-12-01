@@ -23,6 +23,7 @@
         <value>org/sakaiproject/tool/assessment/data/dao/assessment/PublishedItemData.hbm.xml</value>
         <value>org/sakaiproject/tool/assessment/data/dao/grading/GradingData.hbm.xml</value>
         <value>org/sakaiproject/tool/assessment/data/dao/grading/MediaData.hbm.xml</value>
+        <value>org/sakaiproject/tool/assessment/data/dao/grading/SecureDelivery.hbm.xml</value>
         <value>org/sakaiproject/tool/assessment/data/dao/authz/AuthorizationData.hbm.xml</value>
         <value>org/sakaiproject/tool/assessment/data/dao/assessment/FavoriteColChoices.hbm.xml</value>
         <value>org/sakaiproject/tool/assessment/data/dao/assessment/ExtendedTime.hbm.xml</value>
@@ -55,6 +56,7 @@
      <property name="sectionAwareness" ><ref bean="org.sakaiproject.section.api.SectionAwareness"/></property>
      <property name="eventLogFacadeQueries" ><ref bean="EventLogFacadeQueries"/></property>
      <property name="extendedTimeFacade" ref="org.sakaiproject.tool.assessment.facade.ExtendedTimeFacade" />
+     <property name="secureDeliveryFacadeQueries" ><ref bean="SecureDeliveryFacadeQueries"/></property>
    </bean>
     
    <bean id="TypeFacadeQueries"
@@ -151,6 +153,20 @@
         </props>
       </property>
     </bean>
+
+      <bean id="SecureDeliveryFacadeQueries" class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
+        <property name="transactionManager"><ref bean="org.sakaiproject.springframework.orm.hibernate.GlobalTransactionManager"/></property>
+        <property name="target">
+        <bean class="org.sakaiproject.tool.assessment.facade.SecureDeliveryFacadeQueries">
+          <property name="sessionFactory"><ref bean="org.sakaiproject.springframework.orm.hibernate.GlobalSessionFactory"/></property>
+        </bean> 
+        </property>
+        <property name="transactionAttributes">
+          <props>
+            <prop key="*">PROPAGATION_REQUIRED</prop>
+          </props>
+        </property>
+      </bean>
 
     <bean id="PublishedAssessmentFacadeQueries"
           class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
@@ -440,7 +456,7 @@
           init-method="init">
         <property name="userDirectoryService" ref="org.sakaiproject.user.api.UserDirectoryService"/>
         <property name="serverConfigurationService" ref="org.sakaiproject.component.api.ServerConfigurationService"/>
-        <property name="emailTemplateService" ref="org.sakaiproject.emailtemplateservice.service.EmailTemplateService"/>
+        <property name="emailTemplateService" ref="org.sakaiproject.emailtemplateservice.api.EmailTemplateService"/>
         <property name="emailService" ref="org.sakaiproject.email.api.EmailService"/>
         <property name="digestService" ref="org.sakaiproject.email.api.DigestService"/>
         <property name="preferencesService" ref="org.sakaiproject.user.api.PreferencesService"/>

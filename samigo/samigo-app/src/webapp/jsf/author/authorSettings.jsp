@@ -44,7 +44,7 @@
       <script>
         $(document).ready(function() {
           // set up the accordion for settings
-          var accordionPanel = 1;
+          var accordionPanel = 2;
           var itemName = "samigo_assessmentsettings_" + <h:outputText value="#{assessmentSettings.assessmentId}"/>;
           if (window.sessionStorage && window.sessionStorage.getItem(itemName)) {
               accordionPanel = parseInt(window.sessionStorage.getItem(itemName));
@@ -131,7 +131,7 @@
               useTime: 1,
               parseFormat: 'YYYY-MM-DD HH:mm:ss',
               allowEmptyDate: true,
-              val: '<h:outputText value="#{assessmentSettings.extendedTimeStartString}"/>',
+              val: '<h:outputText value="#{assessmentSettings.extendedTimeStart}"><f:convertDateTime pattern="yyyy-MM-dd HH:mm:ss" timeZone="#{author.userTimeZone}"/></h:outputText>',
               ashidden: { iso8601: 'newEntry-start_date-iso8601' }
           });
           localDatePicker({
@@ -139,7 +139,7 @@
               useTime: 1,
               parseFormat: 'YYYY-MM-DD HH:mm:ss',
               allowEmptyDate: true,
-              val: '<h:outputText value="#{assessmentSettings.extendedTimeDueString}"/>',
+              val: '<h:outputText value="#{assessmentSettings.extendedTimeDue}"><f:convertDateTime pattern="yyyy-MM-dd HH:mm:ss" timeZone="#{author.userTimeZone}"/></h:outputText>',
               ashidden: { iso8601: 'newEntry-due_date-iso8601' }
           });
           localDatePicker({
@@ -147,22 +147,17 @@
               useTime: 1,
               parseFormat: 'YYYY-MM-DD HH:mm:ss',
               allowEmptyDate: true,
-              val: '<h:outputText value="#{assessmentSettings.extendedTimeRetractString}"/>',
+              val: '<h:outputText value="#{assessmentSettings.extendedTimeRetract}"><f:convertDateTime pattern="yyyy-MM-dd HH:mm:ss" timeZone="#{author.userTimeZone}"/></h:outputText>',
               ashidden: { iso8601: 'newEntry-retract_date-iso8601' }
           });
-          
-var releaseToVal = $('#assessmentSettingsAction\\:releaseTo').val();
-if (releaseToVal === 'Anonymous Users') {
-  handleAnonymousUsers(releaseToVal, "");
-}
           showHideReleaseGroups();
-          showHideSurveyHelp();
           checkTimedRadio();
           checkLastHandling();
           initTimedRadio();
           initAnononymousUsers();
           setAccessibilityAttributes();
           setExceptionDefault();
+          disableAllFeedbackCheck();
 
           <!--Initialize bootstrap multiselect-->
           $("#assessmentSettingsAction\\:groupsForSite").attr("multiple", "multiple");
@@ -203,6 +198,8 @@ if (releaseToVal === 'Anonymous Users') {
 
 <!-- content... -->
 <h:form id="assessmentSettingsAction" onsubmit="return editorCheck();">
+  <f:verbatim><input type="hidden" id="ckeditor-autosave-context" name="ckeditor-autosave-context" value="samigo_authorSettings" /></f:verbatim>
+  <h:panelGroup rendered="#{assessmentSettings.assessmentId!=null}"><f:verbatim><input type="hidden" id="ckeditor-autosave-entity-id" name="ckeditor-autosave-entity-id" value="</f:verbatim><h:outputText value="#{assessmentSettings.assessmentId}"/><f:verbatim>"/></f:verbatim></h:panelGroup>
   <h:inputHidden id="assessmentId" value="#{assessmentSettings.assessmentId}"/>
   <h:inputHidden id="blockDivs" value="#{assessmentSettings.blockDivs}"/>
   <h:inputHidden id="itemNavigationUpdated" value="false" />
@@ -318,7 +315,7 @@ if (releaseToVal === 'Anonymous Users') {
             value="#{assessmentSettings.valueMap.hasMetaDataForQuestions}"/>
          <h:outputLabel for="metadataQuestions" value="#{assessmentSettingsMessages.metadata_questions}" rendered="#{assessmentSettings.valueMap.metadataQuestions_isInstructorEditable==true}" />
         </div>
-        <h:outputLabel id="metadataQuestionsHelpBlock" styleClass="help-block info-text small" value="#{assessmentSettingsMessages.metadata_questions_info}}" />
+        <h:outputLabel id="metadataQuestionsHelpBlock" styleClass="help-block info-text small" value="#{assessmentSettingsMessages.metadata_questions_info}" />
     </h:panelGroup>
 
 </samigo:hideDivision><!-- End the About this Assessment category -->
@@ -590,7 +587,7 @@ if (releaseToVal === 'Anonymous Users') {
     <h:panelGroup styleClass="form-group row" layout="block" rendered="#{assessmentSettings.valueMap.feedbackType_isInstructorEditable==true}">
       <h:outputLabel styleClass="col-md-2" for="feedbackDelivery" value="#{assessmentSettingsMessages.feedback_type}"/>
       <div class="col-md-10">
-        <t:selectOneRadio id="feedbackDelivery" value="#{assessmentSettings.feedbackDelivery}" onclick="setBlockDivs();disableAllFeedbackCheck(this.value);" layout="spread">
+        <t:selectOneRadio id="feedbackDelivery" value="#{assessmentSettings.feedbackDelivery}" onclick="setBlockDivs();disableAllFeedbackCheck();" layout="spread">
           <f:selectItem itemValue="3" itemLabel="#{assessmentSettingsMessages.no_feedback}"/>
           <f:selectItem itemValue="1" itemLabel="#{assessmentSettingsMessages.immediate_feedback}"/>
           <f:selectItem itemValue="4" itemLabel="#{assessmentSettingsMessages.on_submission_feedback}"/>

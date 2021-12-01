@@ -1786,15 +1786,14 @@ public class AssessmentSettingsBean extends SpringBeanAutowiringSupport implemen
 	  SecureDeliveryServiceAPI secureDeliveryService = SamigoApiFactory.getInstance().getSecureDeliveryServiceAPI(); 
 	  Set<RegisteredSecureDeliveryModuleIfc> modules = secureDeliveryService.getSecureDeliveryModules( new ResourceLoader().getLocale() );
  
-	  SelectItem[] selections = new SelectItem[ modules.size() ];
-	  int index = 0;
+	  List<SelectItem> selections = new ArrayList<>();
 	  for ( RegisteredSecureDeliveryModuleIfc module : modules ) {
+		  if (!SecureDeliveryServiceAPI.NONE_ID.equals(module.getId()) && !module.isEnabled()) continue;
 		  
-		  selections[index] = new SelectItem( module.getId(), module.getName() );
-		  ++index;
+		  selections.add(new SelectItem( module.getId(), module.getName() ));
 	  }
 	  
-	  return selections;
+	  return selections.toArray(new SelectItem[selections.size()]);
   }
 
     public void setCategoriesEnabled(boolean categoriesEnabled) {
@@ -1895,6 +1894,10 @@ public class AssessmentSettingsBean extends SpringBeanAutowiringSupport implemen
         return tu.getDateTimeWithTimezoneConversion(this.extendedTime.getStartDate());
     }
 
+    public Date getExtendedTimeStart() {
+        return this.extendedTime.getStartDate();
+    }
+
     public void setExtendedTimeStartString(String exTimeStartString) {
         Date tempDate = tu.parseISO8601String(ContextUtil.lookupParam("newEntry-start_date-iso8601"));
         if(tempDate != null) {
@@ -1906,6 +1909,10 @@ public class AssessmentSettingsBean extends SpringBeanAutowiringSupport implemen
         return tu.getDateTimeWithTimezoneConversion(this.extendedTime.getDueDate());
     }
 
+    public Date getExtendedTimeDue() {
+        return this.extendedTime.getDueDate();
+    }
+
     public void setExtendedTimeDueString(String exTimeDueString) {
         Date tempDate = tu.parseISO8601String(ContextUtil.lookupParam("newEntry-due_date-iso8601"));
         if(tempDate != null) {
@@ -1915,6 +1922,10 @@ public class AssessmentSettingsBean extends SpringBeanAutowiringSupport implemen
 
     public String getExtendedTimeRetractString() {
         return tu.getDateTimeWithTimezoneConversion(this.extendedTime.getRetractDate());
+    }
+
+    public Date getExtendedTimeRetract() {
+        return this.extendedTime.getRetractDate();
     }
 
     public void setExtendedTimeRetractString(String exTimeRetractString) {
