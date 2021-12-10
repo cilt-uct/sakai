@@ -55,7 +55,7 @@ import java.time.Instant;
 @Table(name = "ASN_SUBMITTER_TIMESHEET")
 @Data
 @NoArgsConstructor
-@ToString(exclude = {"submitter"})
+@ToString(exclude = {"assignmentSubmissionSubmitter"})
 @EqualsAndHashCode(of = "id")
 @JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "id")
 public class TimeSheetEntry {
@@ -79,6 +79,6 @@ public class TimeSheetEntry {
     @Column(name = "DURATION", length = 255)
     private String duration;
 
-    @Column(name = "COMMENT", length = 4096)
+    @Column(name = "COMMENT", length = 4000)
     private String comment;
 }
