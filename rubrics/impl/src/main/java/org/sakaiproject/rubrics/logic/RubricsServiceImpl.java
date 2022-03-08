@@ -60,6 +60,7 @@ import org.sakaiproject.entity.api.HttpAccess;
 import org.sakaiproject.entity.api.Reference;
 import org.sakaiproject.entity.api.ResourceProperties;
 import org.sakaiproject.event.api.EventTrackingService;
+import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.memory.api.Cache;
 import org.sakaiproject.memory.api.MemoryService;
 import org.sakaiproject.rubrics.logic.model.Criterion;
@@ -122,6 +123,7 @@ public class RubricsServiceImpl implements RubricsService, EntityProducer, Entit
     private static final String JWT_CUSTOM_CLAIM_TOOL_ID = "toolId";
     private static final String JWT_CUSTOM_CLAIM_SESSION_ID = "sessionId";
     private static final String JWT_CUSTOM_CLAIM_ROLES = "roles";
+    private static final String JWT_CUSTOM_CLAIM_GROUPS = "groups";
     private static final String JWT_CUSTOM_CLAIM_CONTEXT_ID = "contextId";
     private static final String JWT_CUSTOM_CLAIM_CONTEXT_TYPE = "contextType";
 
@@ -232,6 +234,16 @@ public class RubricsServiceImpl implements RubricsService, EntityProducer, Entit
                     roles.add(RBCS_PERMISSIONS_EVALUEE);
                 }
                 jwtBuilder.withArrayClaim(JWT_CUSTOM_CLAIM_ROLES, roles.toArray(new String[]{}));
+
+                try {
+                    String[] groupRefs = siteService.getSite(siteId).getGroupsWithMember(userId).stream()
+                            .map(g -> g.getReference()).toArray(String[]::new);
+                    if (groupRefs.length > 0) {
+                        jwtBuilder.withArrayClaim(JWT_CUSTOM_CLAIM_GROUPS, groupRefs);
+                    }
+                } catch (IdUnusedException e) {
+                    log.error("No site for id {}. No groups were added to the JWT token.", siteId);
+                }
             }
             jwtBuilder.withClaim(JWT_CUSTOM_CLAIM_CONTEXT_ID, siteId);
             jwtBuilder.withClaim(JWT_CUSTOM_CLAIM_CONTEXT_TYPE, SITE_CONTEXT_TYPE);
@@ -1115,6 +1127,7 @@ public class RubricsServiceImpl implements RubricsService, EntityProducer, Entit
                             String newRubricId = entry.getValue().substring(RubricsConstants.RBCS_PREFIX.length());
                             String tool = association.getToolId();
                             String itemId = association.getItemId();
+                            Boolean active = association.getActive();
                             String newItemId = null;
                             //3 association type
                             if(RubricsConstants.RBCS_TOOL_ASSIGNMENT.equals(tool)){
@@ -1157,7 +1170,7 @@ public class RubricsServiceImpl implements RubricsService, EntityProducer, Entit
                             //4 save new association
                             if(newItemId != null){
                                 try {
-                                    String input = "{\"toolId\" : \""+tool+"\",\"itemId\" : \"" + newItemId + "\",\"rubricId\" : " + newRubricId + ",\"parameters\" : {" + setConfigurationParametersForDuplication(originalParams) + "}}";
+                                    String input = "{\"toolId\" : \""+tool+"\",\"itemId\" : \"" + newItemId + "\",\"active\" : " + String.valueOf(active) + ",\"rubricId\" : " + newRubricId + ",\"parameters\" : {" + setConfigurationParametersForDuplication(originalParams) + "}}";
                                     log.debug("New association " + input);
                                     String query = serverConfigurationService.getServerUrl() + RBCS_SERVICE_URL_PREFIX + "rubric-associations/";
                                     String resultPost = postRubricResource(query, input, tool, toContext);
