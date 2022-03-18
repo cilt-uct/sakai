@@ -2,7 +2,7 @@
 [external "evaluation"]
 	path = evaluation
 	url = https://github.com/cilt-uct/evaluation.git
-	branch = 21.x
+	branch = 21.x-java-11
 [external "qna"]
 	path = qna
 	url = https://github.com/cilt-uct/QnA.git
@@ -18,7 +18,7 @@
 [external "sms"]
 	path = sms
 	url = https://github.com/cilt-uct/sms.git
-	branch = 21.x
+	branch = 21.x-java-11
 
 # No longer in 11.x but still in use at UCT
 [external "linktool"]
