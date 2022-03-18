@@ -23,7 +23,6 @@ package org.sakaiproject.portal.charon.site;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -34,8 +33,7 @@ import java.util.TreeMap;
 
 import javax.servlet.http.HttpServletRequest;
 
-import org.apache.commons.lang.StringEscapeUtils;
-
+import org.apache.commons.text.StringEscapeUtils;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.entity.api.ResourceProperties;
 import org.sakaiproject.exception.IdUnusedException;
@@ -43,16 +41,14 @@ import org.sakaiproject.portal.api.Portal;
 import org.sakaiproject.portal.api.SiteNeighbourhoodService;
 import org.sakaiproject.portal.util.PortalUtils;
 import org.sakaiproject.site.api.Site;
+import org.sakaiproject.site.api.SitePage;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.site.api.ToolConfiguration;
-import org.sakaiproject.site.api.SitePage;
 import org.sakaiproject.tool.api.Session;
-import org.sakaiproject.user.api.Preferences;
 import org.sakaiproject.user.api.PreferencesService;
-
 import org.sakaiproject.util.ResourceLoader;
-
 import org.sakaiproject.util.Web;
+
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -172,11 +168,6 @@ public class MoreSiteViewImpl extends AbstractSiteViewImpl
 		if ( calendarToolUrl != null ) {
 			renderContextMap.put("calendarToolUrl", calendarToolUrl);
 		}
-
-		if (session.getAttribute("my-connections-widget-activated") != null) {
-		    renderContextMap.put("showMyConnections", "true");
-		}
-
 		if ( prefsToolUrl != null ) {
 			renderContextMap.put("prefsToolUrl", prefsToolUrl);
 			renderContextMap.put("mrphs_prefsToolUrl", mrphs_prefsToolUrl);
@@ -190,6 +181,9 @@ public class MoreSiteViewImpl extends AbstractSiteViewImpl
 		} else {
 			renderContextMap.put("tutorial", false);
 		}
+
+		renderContextMap.put("themeSwitcher", serverConfigurationService.getBoolean("portal.themes.switcher", false));
+
 		List<Map> l = siteHelper.convertSitesToMaps(request, mySites, prefix,
 				currentSiteId, myWorkspaceSiteId,
 				/* includeSummary */false, /* expandSite */false,
@@ -346,7 +340,7 @@ public class MoreSiteViewImpl extends AbstractSiteViewImpl
 				String secondTitle = (String) second.get("siteTitle");
 
 				if (firstTitle != null)
-					return StringEscapeUtils.unescapeHtml(firstTitle).compareToIgnoreCase(StringEscapeUtils.unescapeHtml(secondTitle));
+					return StringEscapeUtils.unescapeHtml4(firstTitle).compareToIgnoreCase(StringEscapeUtils.unescapeHtml4(secondTitle));
 
 				return 0;
 

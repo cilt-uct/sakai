@@ -19,7 +19,7 @@ import java.util.Optional;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.assignment.api.AssignmentReferenceReckoner;
 import org.sakaiproject.assignment.api.AssignmentService;
 import org.sakaiproject.assignment.api.AssignmentServiceConstants;
@@ -72,7 +72,7 @@ public class MainController {
 	}
 	
 	@RequestMapping(value = "/viewreport", method = RequestMethod.GET)
-	public String viewReport(Model model, @RequestParam String contentId, @RequestParam String assignmentRef) {
+	public String viewReport(Model model, @RequestParam String contentId, @RequestParam String assignmentRef, @RequestParam String contextId) {
 		log.info("viewReport(): contentId: " + contentId + ", assignmentRef: " + assignmentRef);
 		if(sessionManager != null && sessionManager.getCurrentSession() != null
 				&& StringUtils.isNotEmpty(sessionManager.getCurrentSessionUserId())) {
@@ -81,7 +81,7 @@ public class MainController {
 				//this user doesn't have access to view this item
 				throw new SecurityException("A valid session ID with access to the content item is required");
 			}
-			return "redirect:" + contentReviewService.getReviewReportRedirectUrl(contentId, assignmentRef, sessionManager.getCurrentSessionUserId(), isInstructor);
+			return "redirect:" + contentReviewService.getReviewReportRedirectUrl(contentId, assignmentRef, sessionManager.getCurrentSessionUserId(), contextId, isInstructor);
 		}
 		throw new SecurityException("A valid session ID with access to the content item is required");			
 	}
@@ -112,20 +112,27 @@ public class MainController {
 	 */
 	private boolean hasStudentPermission(String assignmentRef, String contentId) {
 		ContentReviewItem item = contentReviewService.getContentReviewItemByContentId(contentId);
-		if(item != null && sessionManager.getCurrentSessionUserId().equals(item.getUserId())) {
-			return true;
-		}else {
-			if(assignmentRef.startsWith(AssignmentServiceConstants.REFERENCE_ROOT)) {
-				//If assignment, check the current user's submission for this assignment
-				try {
-					AssignmentReferenceReckoner.AssignmentReference refReckoner = AssignmentReferenceReckoner.reckoner().reference(assignmentRef).reckon();
-					if("a".equals(refReckoner.getSubtype())) {
-						AssignmentSubmission submission = assignmentService.getSubmission(refReckoner.getId(), sessionManager.getCurrentSessionUserId());
-						return submission != null && submission.getAttachments().contains(AssignmentServiceConstants.REF_PREFIX + contentId);
+		if (item == null)
+		{
+			return false;
+		}
+		if(assignmentRef.startsWith(AssignmentServiceConstants.REFERENCE_ROOT)) {
+			//If assignment, check the current user's submission for this assignment
+			try {
+				AssignmentReferenceReckoner.AssignmentReference refReckoner = AssignmentReferenceReckoner.reckoner().reference(assignmentRef).reckon();
+				if("a".equals(refReckoner.getSubtype())) {
+					AssignmentSubmission submission = assignmentService.getSubmission(refReckoner.getId(), sessionManager.getCurrentSessionUserId());
+					if (submission == null || !submission.getAttachments().contains(AssignmentServiceConstants.REF_PREFIX + contentId))
+					{
+						// Submission doesn't exist, or the user's submission doesn't contain an attachment with the specified contentId
+						return false;
 					}
-				} catch (Exception e) {
-					log.error(e.getMessage(), e);
+					// It is in fact associated with the user's submission to this assignment.
+					// Return true if the assignment is configured to allow students to view originality reports
+					return Boolean.valueOf(submission.getAssignment().getProperties().get("s_view_report"));
 				}
+			} catch (Exception e) {
+				log.error(e.getMessage(), e);
 			}
 		}
 		return false;

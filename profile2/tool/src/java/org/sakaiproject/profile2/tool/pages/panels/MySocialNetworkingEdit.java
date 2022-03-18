@@ -15,8 +15,7 @@
  */
 package org.sakaiproject.profile2.tool.pages.panels;
 
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.Component;
 import org.apache.wicket.ajax.AjaxRequestTarget;
@@ -41,13 +40,11 @@ import org.sakaiproject.profile2.model.SocialNetworkingInfo;
 import org.sakaiproject.profile2.model.UserProfile;
 import org.sakaiproject.profile2.tool.components.ComponentVisualErrorBehaviour;
 import org.sakaiproject.profile2.tool.components.FeedbackLabel;
-import org.sakaiproject.profile2.tool.components.IconWithClueTip;
+import org.sakaiproject.profile2.tool.components.IconWithToolTip;
 import org.sakaiproject.profile2.util.ProfileConstants;
 import org.sakaiproject.profile2.util.ProfileUtils;
 
-import org.sakaiproject.profile2.model.TypeInputEntry;
-import java.util.Arrays;
-import java.util.ArrayList;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Panel for editing social networking profile data.
@@ -111,7 +108,7 @@ public class MySocialNetworkingEdit extends Panel {
 		facebookUrl.setOutputMarkupId(true);
 		facebookUrl.add(new UrlValidator());
 		facebookContainer.add(facebookUrl);
-		facebookContainer.add(new IconWithClueTip("facebookToolTip", ProfileConstants.INFO_IMAGE, new ResourceModel("text.profile.facebook.tooltip")));
+		facebookContainer.add(new IconWithToolTip("facebookToolTip", ProfileConstants.INFO_ICON, new ResourceModel("text.profile.facebook.tooltip")));
 		
 		//feedback
         final FeedbackLabel facebookUrlFeedback = new FeedbackLabel("facebookUrlFeedback", facebookUrl);
@@ -141,7 +138,7 @@ public class MySocialNetworkingEdit extends Panel {
 		linkedinUrl.setOutputMarkupId(true);
 		linkedinUrl.add(new UrlValidator());
 		linkedinContainer.add(linkedinUrl);
-		linkedinContainer.add(new IconWithClueTip("linkedinToolTip", ProfileConstants.INFO_IMAGE, new ResourceModel("text.profile.linkedin.tooltip")));
+		linkedinContainer.add(new IconWithToolTip("linkedinToolTip", ProfileConstants.INFO_ICON, new ResourceModel("text.profile.linkedin.tooltip")));
 		
 		//feedback
 		final FeedbackLabel linkedinUrlFeedback = new FeedbackLabel("linkedinUrlFeedback", linkedinUrl);
@@ -170,7 +167,7 @@ public class MySocialNetworkingEdit extends Panel {
 		myspaceUrl.setOutputMarkupId(true);
 		myspaceUrl.add(new UrlValidator());
 		myspaceContainer.add(myspaceUrl);
-		myspaceContainer.add(new IconWithClueTip("myspaceToolTip", ProfileConstants.INFO_IMAGE, new ResourceModel("text.profile.myspace.tooltip")));
+		myspaceContainer.add(new IconWithToolTip("myspaceToolTip", ProfileConstants.INFO_ICON, new ResourceModel("text.profile.myspace.tooltip")));
 		
 		//feedback
 		final FeedbackLabel myspaceUrlFeedback = new FeedbackLabel("myspaceUrlFeedback", myspaceUrl);
@@ -201,7 +198,7 @@ public class MySocialNetworkingEdit extends Panel {
 		twitterUrl.setOutputMarkupId(true);
 		twitterUrl.add(new UrlValidator());
 		twitterContainer.add(twitterUrl);
-		twitterContainer.add(new IconWithClueTip("twitterToolTip", ProfileConstants.INFO_IMAGE, new ResourceModel("text.profile.twitter.tooltip")));
+		twitterContainer.add(new IconWithToolTip("twitterToolTip", ProfileConstants.INFO_ICON, new ResourceModel("text.profile.twitter.tooltip")));
 		
 		//feedback
 		final FeedbackLabel twitterUrlFeedback = new FeedbackLabel("twitterUrlFeedback", twitterUrl);

@@ -5,18 +5,13 @@
     <parent>
         <groupId>org.sakaiproject.velocity</groupId>
         <artifactId>velocity</artifactId>
-        <version>12.5</version>
+        <version>21-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
     <name>sakai-velocity-tool</name>
     <groupId>org.sakaiproject.velocity</groupId>
     <artifactId>sakai-velocity-tool</artifactId>
-    <organization>
-        <name>The Sakai Foundation</name>
-        <url>http://sakaiproject.org/</url>
-    </organization>
-    <inceptionYear>2003</inceptionYear>
     <packaging>jar</packaging>
 
     <dependencies>
@@ -41,17 +36,13 @@
             <artifactId>sakai-portal-util</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.sakaiproject.courier</groupId>
-            <artifactId>sakai-courier-api</artifactId>
-        </dependency>
-        <dependency>
             <groupId>commons-fileupload</groupId>
             <artifactId>commons-fileupload</artifactId>
         </dependency>
 	
         <dependency>
             <groupId>javax.servlet</groupId>
-            <artifactId>servlet-api</artifactId>
+            <artifactId>javax.servlet-api</artifactId>
         </dependency>
         <dependency>
             <groupId>org.sakaiproject.velocity</groupId>
@@ -68,10 +59,6 @@
             <version>1.4</version>
         </dependency>
         <!-- Required for velocity -->
-        <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
-        </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>

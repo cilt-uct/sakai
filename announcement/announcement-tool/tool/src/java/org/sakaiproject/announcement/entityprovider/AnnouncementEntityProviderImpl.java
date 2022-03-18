@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -35,14 +36,19 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.math.NumberUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 
 import org.sakaiproject.announcement.api.AnnouncementChannel;
 import org.sakaiproject.announcement.api.AnnouncementMessage;
 import org.sakaiproject.announcement.api.AnnouncementMessageHeader;
 import org.sakaiproject.announcement.api.AnnouncementService;
+import org.sakaiproject.announcement.tool.AnnouncementAction;
+import org.sakaiproject.announcement.tool.AnnouncementWrapper;
+import org.sakaiproject.announcement.tool.AnnouncementWrapperComparator;
 import org.sakaiproject.authz.api.SecurityService;
+import org.sakaiproject.component.api.ServerConfigurationService;
+import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.entity.api.EntityManager;
 import org.sakaiproject.entity.api.EntityPermissionException;
 import org.sakaiproject.entity.api.Reference;
@@ -75,7 +81,7 @@ import org.sakaiproject.tool.api.ToolManager;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.util.MergedList;
 import org.sakaiproject.util.ResourceLoader;
-import org.sakaiproject.util.Validator;
+import org.sakaiproject.util.api.FormattedText;
 
 /**
  * Allows some basic functions on announcements.
@@ -97,7 +103,10 @@ public class AnnouncementEntityProviderImpl extends AbstractEntityProvider imple
 	public static int DEFAULT_DAYS_IN_PAST = 10;
 	private static final long MILLISECONDS_IN_DAY = (24 * 60 * 60 * 1000);
 	private static ResourceLoader rb = new ResourceLoader("announcement");
-    
+
+	@Setter
+	private ServerConfigurationService serverConfigurationService;
+
 	/**
 	 * Prefix for this provider
 	 */
@@ -129,6 +138,7 @@ public class AnnouncementEntityProviderImpl extends AbstractEntityProvider imple
 		//we use this zero value to determine if we need to look up from the tool config, or use the defaults if still not set.
 		int numberOfAnnouncements = NumberUtils.toInt((String)params.get("n"), 0);
 		int numberOfDaysInThePast = NumberUtils.toInt((String)params.get("d"), 0);
+		boolean announcementSortAsc = NumberUtils.toInt((String)params.get("a"), 0) == 1 ? true:false;
 		
 		//get currentUserId for permissions checks, although unused for motdView and onlyPublic
 		String currentUserId = sessionManager.getCurrentSessionUserId();
@@ -212,6 +222,7 @@ public class AnnouncementEntityProviderImpl extends AbstractEntityProvider imple
 
 		log.debug("numberOfAnnouncements: {}", numberOfAnnouncements);
 		log.debug("numberOfDaysInThePast: {}", numberOfDaysInThePast);
+		log.debug("announcementSortAsc: {}", announcementSortAsc);
 		
 		//get the Sakai Time for the given java Date
 		Time t = timeService.newTime(getTimeForDaysInPast(numberOfDaysInThePast).getTime());
@@ -219,30 +230,48 @@ public class AnnouncementEntityProviderImpl extends AbstractEntityProvider imple
 		//get the announcements for each channel
 		List<Message> announcements = new ArrayList<Message>();
 		
+		boolean enableReorder = serverConfigurationService.getBoolean(AnnouncementAction.SAK_PROP_ANNC_REORDER, AnnouncementAction.SAK_PROP_ANNC_REORDER_DEFAULT);
+		final String sortCurrentOrder = enableReorder ? AnnouncementAction.SORT_MESSAGE_ORDER : AnnouncementAction.SORT_DATE;
+		
 		//for each channel
-		for(String channel: channels) {
+		for (String channel : channels) {
 			try {
-				announcements.addAll(announcementService.getMessages(channel, new ViewableFilter(null, t, numberOfAnnouncements), true, false));
+				announcements.addAll(announcementService.getMessages(channel, new ViewableFilter(null, t, numberOfAnnouncements), announcementSortAsc, false));
 			} catch (PermissionException | IdUnusedException | NullPointerException ex) {
-				log.warn("User: {} does not have access to view the announcement channel: {}. Skipping...", currentUserId, channel);
 				//user may not have access to view the channel but get all public messages in this channel
-				AnnouncementChannel announcementChannel = (AnnouncementChannel)announcementService.getChannelPublic(channel);
-				if(announcementChannel != null){
+				AnnouncementChannel announcementChannel = (AnnouncementChannel) announcementService.getChannelPublic(channel);
+				if (announcementChannel != null) {
 					List<Message> publicMessages = announcementChannel.getMessagesPublic(null, true);
-					for(Message message : publicMessages){
+					for (Message message : publicMessages) {
 						//Add message only if it is within the time range
-						if(isMessageWithinPastNDays(message, numberOfDaysInThePast) && announcementService.isMessageViewable((AnnouncementMessage) message)){
+						if (isMessageWithinPastNDays(message, numberOfDaysInThePast) && announcementService.isMessageViewable((AnnouncementMessage) message)) {
 							announcements.add(message);
 						}
 					}
 				}
 			}
 		}
-		
-		if(log.isDebugEnabled()) {
-			log.debug("announcements.size(): {}", announcements.size());
+
+		if (AnnouncementAction.SORT_MESSAGE_ORDER.equals(sortCurrentOrder)) {
+			try {
+				List<AnnouncementWrapper> messageList = new ArrayList<>();
+				final AnnouncementChannel defaultChannel = (AnnouncementChannel) announcementService.getChannel("/announcement/channel/" + siteId + "/main");
+				for (Message msg : announcements) {
+					AnnouncementChannel curChannel = (AnnouncementChannel) announcementService.getChannel(msg.getReference().replace("msg", "channel").replaceAll("main/(.*)", "main"));
+					messageList.add(new AnnouncementWrapper((AnnouncementMessage) msg, curChannel, defaultChannel, null, null));
+				}
+				Comparator<AnnouncementWrapper> sortedAnnouncements = new AnnouncementWrapperComparator(sortCurrentOrder, announcementSortAsc);
+				messageList.sort(sortedAnnouncements);
+				announcements.clear();
+				announcements.addAll(messageList);
+			} catch (Exception e) {
+				log.warn("Error sorting announcements by {}, {}", AnnouncementAction.SORT_MESSAGE_ORDER, e.toString());
+			}
 		}
-		
+
+		log.debug("announcements.size(): {}", announcements.size());
+
+
 		//convert raw announcements into decorated announcements
 		List<DecoratedAnnouncement> decoratedAnnouncements = new ArrayList<DecoratedAnnouncement>();
 	
@@ -257,11 +286,15 @@ public class AnnouncementEntityProviderImpl extends AbstractEntityProvider imple
 			}
 		}
 		
-		//sort
-		Collections.sort(decoratedAnnouncements);
-		
-		//reverse so it is date descending. This could be dependent on a parameter that specifies the sort order
-		Collections.reverse(decoratedAnnouncements);
+		if (!AnnouncementAction.SORT_MESSAGE_ORDER.equals(sortCurrentOrder) || channels.size() > 1) {
+			//sort
+			Collections.sort(decoratedAnnouncements);
+			
+			if (!announcementSortAsc) {
+				//reverse so it is date descending. This could be dependent on a parameter that specifies the sort order
+				Collections.reverse(decoratedAnnouncements);
+			}
+		}
 		
 		//trim to final number, within bounds of list size.
 		if(numberOfAnnouncements > decoratedAnnouncements.size()) {
@@ -324,10 +357,11 @@ public class AnnouncementEntityProviderImpl extends AbstractEntityProvider imple
 	*/
 	private List<DecoratedAttachment> decorateAttachments(List<Reference> attachments) {
 	      List<DecoratedAttachment> decoAttachments = new ArrayList<DecoratedAttachment>();
+	      FormattedText FormattedText = ComponentManager.get(FormattedText.class);
 	      for(Reference attachment : attachments){
 	         DecoratedAttachment da = new DecoratedAttachment();
-	         da.setId(Validator.escapeHtml(attachment.getId()));
-	         da.setName(Validator.escapeHtml(attachment.getProperties().getPropertyFormatted(attachment.getProperties().getNamePropDisplayName())));
+	         da.setId(FormattedText.escapeHtml(attachment.getId()));
+	         da.setName(FormattedText.escapeHtml(attachment.getProperties().getPropertyFormatted(attachment.getProperties().getNamePropDisplayName())));
 	         da.setType(attachment.getProperties().getProperty(attachment.getProperties().getNamePropContentType()));
 	         
 	         da.setUrl(attachment.getUrl());
@@ -772,7 +806,7 @@ public class AnnouncementEntityProviderImpl extends AbstractEntityProvider imple
 					}
 				}
 
-				if(!announcementService.isMessageViewable(msg)) {
+				if (msg.getHeader().getDraft() || !announcementService.isMessageViewable(msg)) {
 					return false;
 				}
 			}

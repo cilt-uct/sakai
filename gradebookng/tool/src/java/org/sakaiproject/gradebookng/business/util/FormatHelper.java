@@ -20,6 +20,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.text.ParseException;
@@ -30,8 +31,9 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.routines.DoubleValidator;
+import org.springframework.web.util.HtmlUtils;
 import org.sakaiproject.util.ResourceLoader;
 
 import lombok.extern.slf4j.Slf4j;
@@ -89,6 +91,13 @@ public class FormatHelper {
 				.setScale(decimalPlaces, RoundingMode.HALF_UP);
 	}
 
+	// Helper method to consistently round numbers as above with doubles
+	private static BigDecimal convertStringToBigDecimal(final String score, final int decimalPlaces) {
+		return new BigDecimal(score)
+				.setScale(10, RoundingMode.HALF_UP)
+				.setScale(decimalPlaces, RoundingMode.HALF_UP);
+	}
+
 	/**
 	 * Convert a double score to match the number of decimal places exhibited in the toMatch string representation of a number
 	 *
@@ -131,7 +140,7 @@ public class FormatHelper {
 			return null;
 		}
 
-		final BigDecimal decimal = new BigDecimal(string).setScale(2, RoundingMode.HALF_UP);
+		final BigDecimal decimal = convertStringToBigDecimal(string, 2);
 
 		return formatDoubleAsPercentage(decimal.doubleValue());
 	}
@@ -179,21 +188,29 @@ public class FormatHelper {
 
 		String s;
 		try {
-			final DecimalFormat dfParse = (DecimalFormat) NumberFormat.getInstance(Locale.ROOT);
-			dfParse.setParseBigDecimal(true);
-			final BigDecimal d = (BigDecimal) dfParse.parse(grade);
+			final BigDecimal d = convertStringToBigDecimal(grade, 2);
 
 			final DecimalFormat dfFormat = (DecimalFormat) NumberFormat.getInstance(rl.getLocale());
 			dfFormat.setMinimumFractionDigits(0);
 			dfFormat.setMaximumFractionDigits(2);
 			dfFormat.setGroupingUsed(true);
 			s = dfFormat.format(d);
-		} catch (final NumberFormatException | ParseException e) {
-			log.debug("Bad format, returning original string: {}", grade);
+		} catch (final NumberFormatException e) {
+			log.warn("Bad format, returning original string: {}", grade);
 			s = grade;
 		}
 
 		return StringUtils.removeEnd(s, ".0");
+	}
+
+	/**
+	 * Convert an empty grade to a dash for display purposes
+	 *
+	 * @param grade
+	 * @return a dash if the grade is empty, the original grade if not
+	 */
+	public static String convertEmptyGradeToDash(final String grade) {
+		return StringUtils.defaultIfBlank(grade, " - ");
 	}
 
 	/**
@@ -218,7 +235,7 @@ public class FormatHelper {
 
 			s = df.format(d);
 		} catch (final NumberFormatException | ParseException e) {
-			log.debug("Bad format, returning original string: {}", grade);
+			log.warn("Bad format, returning original string: {}", grade);
 			s = grade;
 		}
 
@@ -287,17 +304,6 @@ public class FormatHelper {
 	}
 
 	/**
-	 * Validate if a string is a valid Double using the specified Locale.
-	 *
-	 * @param value - The value validation is being performed on.
-	 * @return true if the value is valid
-	 */
-	public static boolean isValidDouble(final String value) {
-		final DoubleValidator dv = new DoubleValidator();
-		return dv.isValid(value, rl.getLocale());
-	}
-
-	/**
 	 * Validate/convert a Double using the user's Locale.
 	 *
 	 * @param value - The value validation is being performed on.
@@ -306,6 +312,86 @@ public class FormatHelper {
 	public static Double validateDouble(final String value) {
 		final DoubleValidator dv = new DoubleValidator();
 		return dv.validate(value, rl.getLocale());
+	}
+
+	/**
+	 * Helper to encode a string and avoid the ridiculous exception that is never thrown
+	 *
+	 * @param s
+	 * @return encoded s
+	 */
+	public static String encode(final String s) {
+		if (StringUtils.isBlank(s)) {
+			return s;
+		}
+		try {
+			return URLEncoder.encode(s, "UTF-8");
+		} catch (final UnsupportedEncodingException e) {
+			throw new AssertionError("UTF-8 not supported");
+		}
+	}
+
+	/**
+	 * Helper to decode a string and avoid the ridiculous exception that is never thrown
+	 *
+	 * @param s
+	 * @return decoded s
+	 */
+	public static String decode(final String s) {
+		if (StringUtils.isBlank(s)) {
+			return s;
+		}
+		try {
+			return URLDecoder.decode(s, "UTF-8");
+		} catch (final UnsupportedEncodingException e) {
+			throw new AssertionError("UTF-8 not supported");
+		}
+	}
+
+	/**
+	 * Returns a list of drop highest/lowest labels based on the settings of the given category.
+	 * @param category the category
+	 * @return a list of 1 or 2 labels indicating that drop highest/lowest is in use, or an empty list if not in use.
+	 */
+	public static List<String> formatCategoryDropInfo(CategoryDefinition category) {
+
+		if (category == null) {
+			return Collections.emptyList();
+		}
+
+		int dropHighest = category.getDropHighest() == null ? 0 : category.getDropHighest();
+		int dropLowest = category.getDropLowest() == null ? 0 : category.getDropLowest();
+		int keepHighest = category.getKeepHighest() == null ? 0 : category.getKeepHighest();
+
+		if (dropHighest == 0 && dropLowest == 0 && keepHighest == 0) {
+			return Collections.emptyList();
+		}
+
+		List<String> info = new ArrayList<>(2);
+		if (dropHighest > 0) {
+			info.add(MessageHelper.getString("label.category.drophighest", dropHighest));
+		}
+		if (dropLowest > 0) {
+			info.add(MessageHelper.getString("label.category.droplowest", dropLowest));
+		}
+		if (keepHighest > 0) {
+			info.add(MessageHelper.getString("label.category.keephighest", keepHighest));
+		}
+
+		return info;
+	}
+
+	/**
+	* Turn special characters into HTML character references. Handles complete character set defined in HTML 4.01 recommendation.
+	* Escapes all special characters to their corresponding entity reference (e.g. &lt;) at least as required by the specified encoding. In other words, if a special character does not have to be escaped for the given encoding, it may not be.
+	* Reference: http://www.w3.org/TR/html4/sgml/entities.html
+	 */
+	public static String htmlEscape(String input){
+		return HtmlUtils.htmlEscape(input, StandardCharsets.UTF_8.name());
+	}
+	
+	public static String htmlUnescape(String input){
+		return HtmlUtils.htmlUnescape(input);
 	}
 
 	/**

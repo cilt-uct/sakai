@@ -44,7 +44,7 @@ import javax.xml.transform.sax.SAXResult;
 import javax.xml.transform.sax.TransformerHandler;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import org.apache.xml.serializer.OutputPropertiesFactory;
 import org.apache.xml.serializer.Serializer;
 import org.apache.xml.serializer.SerializerFactory;
@@ -536,7 +536,7 @@ public class XSLTEntityHandler extends BaseEntityHandlerImpl
          * ensure all page content is escaped or double escaped before it goes into the parser,
          * if this is not done then the parser will unescape html entities during processing
          */		
-        renderedPage = "<content><rendered>" + (escapeXML ? StringEscapeUtils.escapeXml(renderedPage) : renderedPage) //$NON-NLS-1$
+        renderedPage = "<content><rendered>" + (escapeXML ? StringEscapeUtils.escapeXml11(renderedPage) : renderedPage) //$NON-NLS-1$
 				+ "</rendered><rendered-cdata><![CDATA[" + cdataEscapedRendered + "]]></rendered-cdata><contentdigest><![CDATA[" + cdataContentDigest //$NON-NLS-1$ //$NON-NLS-2$
 				+ "]]></contentdigest></content>"; //$NON-NLS-1$
 
@@ -933,16 +933,6 @@ public class XSLTEntityHandler extends BaseEntityHandlerImpl
 			}
 
 			Properties p = OutputPropertiesFactory.getDefaultMethodProperties("xml");
-		
-			// SAK-14388 - use the alternate XHTMLSerializer2 for Websphere environments
-			if ("websphere".equals(ServerConfigurationService.getString("servlet.container")))
-			{
-				// SAK-16712: null in java.util.Properties causes NullPointerException
-				if (getXalan270ContentHandler() != null )
-				{
-					outputProperties.put("{http://xml.apache.org/xalan}content-handler", getXalan270ContentHandler());
-				}
-			}
 			p.putAll(outputProperties);
 			
 			/*

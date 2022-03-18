@@ -49,9 +49,13 @@
 
 <!-- DONE BUTTON FOR PREVIEW -->
 <h:panelGroup rendered="#{delivery.actionString=='previewAssessment'}">
-  <div class="previewMessage">
-     <h:outputText value="#{deliveryMessages.ass_preview}" />
-     <h:commandButton value="#{deliveryMessages.done}" action="#{person.cleanResourceIdListInPreview}" type="submit"/>
+  <div class="sak-banner-info">
+     <h:outputText value="#{deliveryMessages.ass_preview}" escape="false" />
+     <h:commandButton value="#{deliveryMessages.exit_preview}"
+        styleClass="exitPreviewButton"
+        action="#{person.cleanResourceIdListInPreview}"
+        type="submit"
+        onclick="return returnToHostUrl(\"#{delivery.selectURL}\");" />
   </div>
 </h:panelGroup>
 
@@ -64,30 +68,29 @@
     <h:outputText value="\"#{delivery.assessmentTitle}\" #{deliveryMessages.t_for} #{delivery.courseName} " escape="false"/>
   </div>
 
-  <h:messages styleClass="messageSamigo" rendered="#{! empty facesContext.maximumSeverity}" layout="table"/>
-
-  <div class="bs-callout-warn">
-
-    <b>Note:</b> to prevent issues while taking assessments, it is <u><b>highly</b></u> recommended that you limit your
-    NYU Classes session to <b><u>1</u></b> browser window / tab. If you need to access other pages in NYU Classes while
-    taking this assessment, you can do so via another browser or a private/incognito window in your current browser.
-    <a target="_blank" href="http://www.nyu.edu/servicelink/KB0016487">Learn more</a>.
-
-  </div>
-
-  <div class="bs-callout-primary">
+  <h:messages styleClass="sak-banner-error" rendered="#{! empty facesContext.maximumSeverity}" layout="table"/>
+  
+  <div class="sak-banner-info">
     <!-- ASSESSMENT INTRODUCTION -->
     <h:outputText value="<br/>#{delivery.instructorMessage}<br/>" escape="false" rendered="#{delivery.instructorMessage != null && delivery.instructorMessage != ''}"/>
 
   <!-- ASSESSMENT ATTACHMENTS -->
   <%@ include file="/jsf/delivery/assessment_attachment.jsp" %>
 
-<div class="tier2">
+
+<div>
 <h:panelGrid columns="1" border="0">
-	<!--  Due Message -->
-	<h:panelGroup rendered="#{delivery.firstTimeTaking}">
-		<h:outputText value="#{deliveryMessages.begin_assessment_msg_due} <b>#{delivery.dayDueDateString}</b>." rendered="#{(delivery.dueDate!=null && delivery.dueDate ne '')}" escape="false"/>
-    	<h:outputText value="#{deliveryMessages.begin_assessment_msg_no_due}" rendered="#{(delivery.dueDate==null || delivery.dueDate eq '')}" escape="false"/>
+    <!--  Due Message -->
+    <h:panelGroup rendered="#{delivery.firstTimeTaking}">
+        <h:panelGroup rendered="#{(delivery.dueDate != null && delivery.dueDate ne '')}">
+            <h:outputText value="#{deliveryMessages.begin_assessment_msg_due} " escape="false"/>
+            <h:outputText value="#{delivery.dueDate}">
+                <f:convertDateTime dateStyle="full" timeStyle="short" timeZone="#{delivery.userTimeZone}" />
+            </h:outputText>
+            <h:outputText value="." />
+        </h:panelGroup>
+
+        <h:outputText value="#{deliveryMessages.begin_assessment_msg_no_due}" rendered="#{(delivery.dueDate==null || delivery.dueDate eq '')}" escape="false"/>
     </h:panelGroup>
     
 	<h:outputText value="#{deliveryMessages.begin_assessment_msg_no_due}" rendered="#{(delivery.dueDate==null || delivery.dueDate eq '') && !delivery.firstTimeTaking && !delivery.hasTimeLimit}" escape="false"/>
@@ -203,7 +206,6 @@
 </h:panelGroup>
     <h:outputText id="honorPledgeRequired" value="#{deliveryMessages.honor_required}" styleClass="alertMessage" style="display:none"/>
 
-
 <p class="act">
 
 <!-- BEGIN ASSESSMENT BUTTON -->
@@ -212,8 +214,7 @@
     action="#{delivery.validate}" type="submit" styleClass="active" 
     rendered="#{(delivery.actionString=='takeAssessment'
              || delivery.actionString=='takeAssessmentViaUrl')
-			 && delivery.navigation != 1 && delivery.firstTimeTaking}"
-	onclick="return checkIfHonorPledgeIsChecked()">
+	     && delivery.navigation != 1 && delivery.firstTimeTaking}">
 	<f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.delivery.DeliveryActionListener" />
   </h:commandButton>
   
@@ -221,8 +222,7 @@
     action="#{delivery.validate}" type="submit" styleClass="active" 
     rendered="#{(delivery.actionString=='takeAssessment'
              || delivery.actionString=='takeAssessmentViaUrl')
-			 && delivery.navigation == 1 && delivery.firstTimeTaking}"
-	onclick="return checkIfHonorPledgeIsChecked()">
+	     && delivery.navigation == 1 && delivery.firstTimeTaking}">
 	<f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.delivery.LinearAccessDeliveryActionListener" />
   </h:commandButton>
   
@@ -246,7 +246,7 @@
   </h:commandButton>
   
 
- <h:commandButton id="beginAssessment3" value="#{deliveryMessages.begin_assessment_}" action="#{delivery.pvalidate}" type="submit" styleClass="active" rendered="#{delivery.actionString=='previewAssessment'}" onclick="return checkIfHonorPledgeIsChecked()">
+ <h:commandButton id="beginAssessment3" value="#{deliveryMessages.begin_assessment_}" action="#{delivery.pvalidate}" type="submit" styleClass="active" rendered="#{delivery.actionString=='previewAssessment'}" >
     <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.delivery.DeliveryActionListener" />
   </h:commandButton>
 
@@ -261,12 +261,12 @@
 
 </p>
 
-<!-- DONE BUTTON, FOR PREVIEW ONLY --> 
+<!-- DONE BUTTON, FOR PREVIEW ONLY -->
 <h:panelGroup rendered="#{delivery.actionString=='previewAssessment'}">
- <f:verbatim><div class="previewMessage"></f:verbatim>
-     <h:outputText value="#{deliveryMessages.ass_preview}" />
-     <h:commandButton value="#{deliveryMessages.done}" action="#{person.cleanResourceIdListInPreview}" type="submit"/>
- <f:verbatim></div></f:verbatim>
+  <h:commandButton value="#{deliveryMessages.exit_preview}"
+     action="#{person.cleanResourceIdListInPreview}"
+     type="submit"
+     onclick="return returnToHostUrl(\"#{delivery.selectURL}\");" />
 </h:panelGroup>
 
 </h:form>

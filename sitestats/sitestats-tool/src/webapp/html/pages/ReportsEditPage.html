@@ -37,10 +37,11 @@
             <!-- Menu -->
             <menu wicket:id="menu" class="navIntraTool">[menu]</menu>
             <!-- Page title -->
-            <h2>
-                <span wicket:id="reportAction"></span>
-            </h2>
-            
+            <div class="page-header">
+                <h1>
+                    <span wicket:id="reportAction"></span>
+                </h1>
+            </div>
 		    <!-- Last Job run -->
             <span wicket:id="lastJobRun"></span>
 		    
@@ -131,7 +132,7 @@
                             <td>
                                 <!-- Tool selection -->
                                 <div id="what-tools-select" style="display:none">
-	                               <select wicket:id="reportParams.whatToolIds" style="overflow: auto;" size="7" multiple="multiple" class="what-tools-select-component responsive-form">
+	                               <select wicket:id="reportParams.whatToolIds" style="overflow: auto; font-family: FontAwesome;" size="7" multiple="multiple" class="what-tools-select-component responsive-form">
 	                                   <span wicket:id="selectOptionsRV1">
 	                                       <span wicket:id="selectOptions">
 	                                           <option wicket:id="option"></option>
@@ -141,7 +142,7 @@
                                 </div>
                                 <!-- Event selection -->
                                 <div id="what-events-select" style="display:none">
-	                               <select wicket:id="reportParams.whatEventIds" class="responsive-form" style="overflow: auto;" size="7" multiple="multiple">
+	                               <select wicket:id="reportParams.whatEventIds" class="responsive-form" style="overflow: auto; font-family: FontAwesome;" size="7" multiple="multiple">
 	                                   <span wicket:id="selectOptionsRV2">
 	                                       <span wicket:id="group">
 			                                   <span wicket:id="selectOptions">
@@ -184,6 +185,7 @@
                         </td>
                         <td>
                             <select wicket:id="reportParams.when" class="when responsive-form" onchange="checkWhenSelection();"/>
+                            <span wicket:id="reportParams.when.serverTimeZone"></span>
                         </td>
                     </tr>
                     <tr id="when-custom-from" style="display: none">

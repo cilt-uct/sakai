@@ -34,7 +34,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -429,28 +429,34 @@ public class LessonsEntityProvider extends AbstractEntityProvider implements Ent
 		final JSONObject result = new JSONObject();
 
 		final List<SimplePage> topLevelPages = simplePageToolDao.getTopLevelPages(siteId);
+		if (topLevelPages == null) return result.toJSONString();
+
+		SimplePageBean simplePageBean = null;
 		final String currentUserId = sessionManager.getCurrentSessionUserId();
 
-		for (final SimplePage topLevelPage : topLevelPages) {
-			// reset this for each top level page to avoid caching of item isItemComplete values
-			// across different contexts (pages, items can be reused!)
-			SimplePageBean simplePageBean = null;
-
+		for (SimplePage topLevelPage : topLevelPages) {
 			final List<SimplePageItem> itemsOnPage = simplePageToolDao.findItemsOnPage(topLevelPage.getPageId());
-			final JSONArray inaccessibleSubPageIds = new JSONArray();
+			final JSONObject pageData = new JSONObject();
+			final JSONArray inaccessibleItems = new JSONArray();
+			final JSONArray invisibleItems = new JSONArray();
 
-			for (final SimplePageItem item : itemsOnPage) {
-				if (item.getType() == SimplePageItem.PAGE) {
-					simplePageBean = makeSimplePageBean(simplePageBean, siteId, item);
-					simplePageBean.setCurrentPage(topLevelPage);
-					simplePageBean.setCurrentPageId(topLevelPage.getPageId());
-					if (!simplePageBean.isItemAvailable(item)) {
-						inaccessibleSubPageIds.add(item.getSakaiId());
-					}
+			if (!itemsOnPage.isEmpty())
+				simplePageBean = makeSimplePageBean(null, siteId, itemsOnPage.get(0));
+
+			for (SimplePageItem item : itemsOnPage) {
+
+				if (!simplePageBean.isItemVisible(item, null, false)) {
+					invisibleItems.add(String.valueOf(item.getId()));
+				}
+				if (!simplePageBean.isItemAvailable(item, topLevelPage.getPageId())) {
+					inaccessibleItems.add(String.valueOf(item.getId()));
 				}
 			}
 
-			result.put(topLevelPage.getToolId(), inaccessibleSubPageIds);
+			pageData.put("invisible", invisibleItems);
+			pageData.put("unavailable", inaccessibleItems);
+			
+			result.put(topLevelPage.getToolId(), pageData);
 		}
 
 		return result.toJSONString();

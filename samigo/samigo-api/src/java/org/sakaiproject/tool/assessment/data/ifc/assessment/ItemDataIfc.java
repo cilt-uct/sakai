@@ -120,6 +120,10 @@ public interface ItemDataIfc extends Comparable<ItemDataIfc>, java.io.Serializab
 
   void setLastModifiedDate(Date lastModifiedDate);
 
+  Boolean getIsExtraCredit();
+
+  void setIsExtraCredit(Boolean isExtraCredit);
+
   Set<ItemTextIfc> getItemTextSet();
 
   void setItemTextSet(Set<ItemTextIfc> itemTextSet) ;
@@ -213,8 +217,11 @@ public interface ItemDataIfc extends Comparable<ItemDataIfc>, java.io.Serializab
   public boolean getIsAnswerOptionsSimple();
   public boolean getIsAnswerOptionsRich();
   String getImageMapSrc();
+  String getImageMapAltText();
   Boolean getScoreDisplayFlag();
   void setScoreDisplayFlag(Boolean scoreDisplayFlag);
   public String getTagListToJsonString();
-  public void setTagListToJsonString(String tagListToJsonString);
+  
+  public Long getOriginalItemId();
+  public void setOriginalItemId(Long originalItemId);
 }

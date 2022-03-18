@@ -81,12 +81,12 @@ public class PollOptionEntityProvider extends AbstractEntityProvider implements 
             throw new IllegalArgumentException("Poll ID must be set to create an option");
         }
         // check minimum settings
-        if (option.getOptionText() == null) {
+        if (option.getText() == null) {
             throw new IllegalArgumentException("Poll Option text must be set to create an option");
         }
         checkOptionPermission(userReference, option);
         // set default values
-        option.setUUId( UUID.randomUUID().toString() );
+        option.setUuid( UUID.randomUUID().toString() );
         boolean saved = pollListManager.saveOption(option);
         if (!saved) {
             throw new IllegalStateException("Unable to save option ("+option+") for user ("+userReference+"): " + ref);

@@ -25,6 +25,8 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.SessionScoped;
 import javax.faces.model.SelectItem;
 
 import org.sakaiproject.tool.assessment.data.ifc.assessment.SectionDataIfc;
@@ -35,14 +37,11 @@ import org.sakaiproject.tool.assessment.ui.bean.delivery.ItemContentsBean;
 import org.sakaiproject.tool.assessment.ui.bean.delivery.SectionContentsBean;
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * <p>Description: Backing bean for Published Assessment</p>
- *
- *
- */
+/* For author: Published Assessment backing bean. */
 @Slf4j
-public class PublishedAssessmentBeanie
-    implements Serializable {
+@ManagedBean(name="publishedAssessmentBean")
+@SessionScoped
+public class PublishedAssessmentBeanie implements Serializable {
 
   /** Use serialVersionUID for interoperability. */
   private final static long serialVersionUID = -630950053380808339L;
@@ -50,7 +49,7 @@ public class PublishedAssessmentBeanie
   private String assessmentId;
   private String title;
   // ArrayList of SectionContentsBean
-  private List sections = new ArrayList();
+  private List<SectionContentsBean> sections = new ArrayList<>();
   private List partNumbers = new ArrayList();
   private int questionSize=0;
   private double totalScore=0;
@@ -131,14 +130,13 @@ public class PublishedAssessmentBeanie
   public void setQuestionSizeAndTotalScore() {
    this.questionSize = 0;
    this.totalScore = 0;
-   for(int i=0;i<this.sections.size();i++){
-      SectionContentsBean sectionBean = (SectionContentsBean) sections.get(i);
-      List items = sectionBean.getItemContents();
+   for(SectionContentsBean sectionBean : sections) {
+      List<ItemContentsBean> items = sectionBean.getItemContents();
       this.questionSize += items.size();
-      for (int j=0; j<items.size();j++){
-        ItemContentsBean item = (ItemContentsBean)items.get(j);
+      for (ItemContentsBean item : items) {
         if (item.getItemData().getScore()!=null){
-          this.totalScore += item.getItemData().getScore().doubleValue();
+          if(!item.getItemData().getIsExtraCredit())
+            this.totalScore += item.getItemData().getScore();
         }
       }
     }

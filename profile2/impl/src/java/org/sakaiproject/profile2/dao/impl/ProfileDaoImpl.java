@@ -21,7 +21,8 @@ import java.util.List;
 
 import org.hibernate.CacheMode;
 import org.hibernate.FetchMode;
-import org.hibernate.Query;
+import org.hibernate.LockMode;
+import org.hibernate.query.Query;
 import org.hibernate.criterion.Restrictions;
 import org.hibernate.transform.Transformers;
 import org.hibernate.type.BooleanType;
@@ -49,8 +50,10 @@ import org.sakaiproject.profile2.model.TypeInputEntry;
 import org.sakaiproject.profile2.model.UserProfile;
 import org.sakaiproject.profile2.model.WallItem;
 import org.sakaiproject.profile2.model.WallItemComment;
-import org.springframework.orm.hibernate4.HibernateCallback;
-import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
+import org.springframework.orm.hibernate5.HibernateCallback;
+import org.springframework.orm.hibernate5.support.HibernateDaoSupport;
+
+import lombok.extern.slf4j.Slf4j;
 
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.Session;
@@ -314,7 +317,7 @@ public class ProfileDaoImpl extends HibernateDaoSupport implements ProfileDao {
 		
 		//delete
 		try {
-			getHibernateTemplate().delete(profileFriend);
+			getHibernateTemplate().delete(profileFriend, LockMode.NONE);
 			return true;
 		} catch (final Exception e) {
 			log.error("removeConnection failed. " + e.getClass() + ": " + e.getMessage());  
@@ -385,7 +388,7 @@ public class ProfileDaoImpl extends HibernateDaoSupport implements ProfileDao {
 	public boolean clearUserStatus(final ProfileStatus profileStatus) {
 				
 		try {
-			getHibernateTemplate().delete(profileStatus);
+			getHibernateTemplate().delete(getHibernateTemplate().merge(profileStatus));
 			return true;
 		} catch (final Exception e) {
 			log.error("ProfileLogic.clearUserStatus() failed. " + e.getClass() + ": " + e.getMessage());  
@@ -551,7 +554,7 @@ public class ProfileDaoImpl extends HibernateDaoSupport implements ProfileDao {
 	public boolean removeGalleryImage(final GalleryImage galleryImage) {
 		
 		try {
-			getHibernateTemplate().delete(galleryImage);
+			getHibernateTemplate().delete(getHibernateTemplate().merge(galleryImage));
 			return true;
 		} catch (final Exception e) {
 			log.error("removeGalleryImage failed. " + e.getClass() + ": " + e.getMessage());
@@ -1337,9 +1340,13 @@ public class ProfileDaoImpl extends HibernateDaoSupport implements ProfileDao {
 	public boolean invalidateCurrentProfileImage(final String userUuid) {
 		try {
 			final ProfileImageUploaded currentImage = getCurrentProfileImageRecord(userUuid);
-			currentImage.setCurrent(false);
-			getHibernateTemplate().save(currentImage);
-			return true;
+			if (currentImage != null) {
+				currentImage.setCurrent(false);
+				getHibernateTemplate().save(currentImage);
+				return true;
+			} else {
+				return false;
+			}
 		} catch (final Exception e) {
 			log.error("invalidateCurrentProfileImage failed. "+ e.getClass() + ": " + e.getMessage());
 			return false;

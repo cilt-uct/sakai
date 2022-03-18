@@ -23,6 +23,7 @@ package org.sakaiproject.email.impl;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.util.Date;
 import java.util.Hashtable;
 import java.util.Iterator;
@@ -329,9 +330,10 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 					{
 						TimeRange periodRange = timeService.newTimeRange(period);
 						Time timeInPeriod = periodRange.firstTime();
+						Instant timeInPeriodInstant = Instant.ofEpochMilli(timeInPeriod.getTime());
 
 						// any messages?
-						List msgs = edit.getMessages(timeInPeriod);
+						List msgs = edit.getMessages(timeInPeriodInstant);
 						if (msgs.size() > 0)
 						{
 							// send this one
@@ -339,7 +341,7 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 						}
 
 						// clear this period
-						edit.clear(timeInPeriod);
+						edit.clear(timeInPeriodInstant);
 
 						changed = true;
 					}
@@ -639,7 +641,7 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 		// Resource Bundle
 		String resourceClass = serverConfigurationService.getString(RESOURCECLASS, DEFAULT_RESOURCECLASS);
 		String resourceBundle = serverConfigurationService.getString(RESOURCEBUNDLE, DEFAULT_RESOURCEBUNDLE);
-		rb = new Resource().getLoader(resourceClass, resourceBundle);
+		rb = Resource.getResourceLoader(resourceClass, resourceBundle);
 
 		// USE A TIMER INSTEAD OF CREATING A NEW THREAD -AZ
 		// start();
@@ -662,12 +664,6 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 		@Override
 		public void run() {
 			try {
-				if ("true".equals(serverConfigurationService.getString("testMode@org.sakaiproject.email.api.EmailService", "false"))) {
-					// This server isn't sending mail, so don't do anything.
-					log.info("Digests skipped because test mode is enabled");
-					return;
-				}
-
 				log.debug("running timer task");
 				// process the queue of digest requests
 				processQueue();
@@ -1122,11 +1118,11 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 			return m_properties;
 		}
 
-		/**
-		 * @inheritDoc
-		 */
-		public List getMessages(Time period)
+
+		@Override
+		public List<DigestMessage> getMessages(Instant periodInstant)
 		{
+			Time period = timeService.newTime(periodInstant.toEpochMilli());
 			synchronized (m_ranges)
 			{
 				// find the range
@@ -1270,8 +1266,10 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 		/**
 		 * @inheritDoc
 		 */
-		public void clear(Time period)
-		{
+		
+		@Override
+		public void clear(Instant periodIntant) {
+			Time period = timeService.newTime(periodIntant.toEpochMilli());
 			synchronized (m_ranges)
 			{
 				// find the range
@@ -1283,6 +1281,7 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 				}
 			}
 		}
+
 
 		/**
 		 * Clean up.
@@ -1384,6 +1383,7 @@ public abstract class BaseDigestService implements DigestService, SingleStorageU
 				cancel(this);
 			}
 		}
+
 	}
 
 	/**********************************************************************************************************************************************************************************************************************************************************

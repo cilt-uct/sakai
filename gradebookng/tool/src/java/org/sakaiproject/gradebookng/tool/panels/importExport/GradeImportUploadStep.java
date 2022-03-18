@@ -16,11 +16,12 @@
 package org.sakaiproject.gradebookng.tool.panels.importExport;
 
 import java.io.IOException;
+import java.util.Map;
 
 import lombok.extern.slf4j.Slf4j;
 
-import org.apache.commons.lang.ArrayUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.wicket.Component;
 import org.apache.wicket.ajax.AjaxRequestTarget;
@@ -32,15 +33,18 @@ import org.apache.wicket.markup.html.form.upload.FileUpload;
 import org.apache.wicket.markup.html.form.upload.FileUploadField;
 import org.apache.wicket.model.Model;
 import org.apache.wicket.util.lang.Bytes;
-
+import org.apache.wicket.util.upload.FileUploadBase.SizeLimitExceededException;
+import org.apache.wicket.util.upload.FileUploadException;
+import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.gradebookng.business.exception.GbImportExportInvalidFileTypeException;
 import org.sakaiproject.gradebookng.business.model.ImportedSpreadsheetWrapper;
 import org.sakaiproject.gradebookng.business.util.ImportGradesHelper;
+import org.sakaiproject.gradebookng.business.util.MessageHelper;
 import org.sakaiproject.gradebookng.tool.model.ImportWizardModel;
 import org.sakaiproject.gradebookng.tool.pages.GradebookPage;
 import org.sakaiproject.gradebookng.tool.pages.ImportExportPage;
 import org.sakaiproject.gradebookng.tool.panels.BasePanel;
-import org.sakaiproject.util.FormattedText;
+import org.sakaiproject.util.api.FormattedText;
 
 /**
  * Upload/Download page
@@ -50,11 +54,16 @@ public class GradeImportUploadStep extends BasePanel {
 
 	private static final long serialVersionUID = 1L;
 
+	private static final String SAK_PROP_MAX_IMPORT_FILE_SIZE = "gradebook.import.maxSize";
+	private static final int SAK_PROP_MAX_IMPORT_FILE_SIZE_DFTL = 2;
+
 	private final String panelId;
+	private final int maxUploadFileSize;
 
 	public GradeImportUploadStep(final String id) {
 		super(id);
 		this.panelId = id;
+		this.maxUploadFileSize = businessService.getServerConfigService().getInt(SAK_PROP_MAX_IMPORT_FILE_SIZE, SAK_PROP_MAX_IMPORT_FILE_SIZE_DFTL);
 	}
 
 	@Override
@@ -77,7 +86,7 @@ public class GradeImportUploadStep extends BasePanel {
 			super(id);
 
 			setMultiPart(true);
-			setMaxSize(Bytes.megabytes(2));
+			setMaxSize(Bytes.megabytes(maxUploadFileSize));
 
 			this.fileUploadField = new FileUploadField("upload");
 			this.fileUploadField.add(new AjaxFormSubmitBehavior("onchange") {
@@ -104,6 +113,13 @@ public class GradeImportUploadStep extends BasePanel {
 					page.updateFeedback(target);
 					target.add(continueButton);
 				}
+
+				@Override
+				protected void onError(AjaxRequestTarget target) {
+					final ImportExportPage page = (ImportExportPage) getPage();
+					page.updateFeedback(target);
+					target.add(continueButton);
+				}
 			});
 			add(this.fileUploadField);
 
@@ -127,6 +143,14 @@ public class GradeImportUploadStep extends BasePanel {
 			add(cancel);
 		}
 
+		@Override
+		protected void onFileUploadException(FileUploadException e, Map<String, Object> model) {
+			if (e instanceof SizeLimitExceededException) {
+				error(MessageHelper.getString("importExport.error.fileTooBig", maxUploadFileSize));
+				continueButton.setEnabled(false);
+			}
+		}
+
 		public void processUploadedFile(AjaxRequestTarget target) {
 			final ImportExportPage page = (ImportExportPage) getPage();
 			final FileUpload upload = fileUploadField.getFileUpload();
@@ -138,7 +162,7 @@ public class GradeImportUploadStep extends BasePanel {
 				ImportedSpreadsheetWrapper spreadsheetWrapper;
 				try {
 					spreadsheetWrapper = ImportGradesHelper.parseImportedGradeFile(upload.getInputStream(), upload.getContentType(), 
-																					upload.getClientFileName(), businessService, FormattedText.getDecimalSeparator());
+																					upload.getClientFileName(), businessService, ComponentManager.get(FormattedText.class).getDecimalSeparator());
 				} catch (final GbImportExportInvalidFileTypeException | InvalidFormatException e) {
 					log.debug("incorrect type", e);
 					error(getString("importExport.error.incorrecttype"));

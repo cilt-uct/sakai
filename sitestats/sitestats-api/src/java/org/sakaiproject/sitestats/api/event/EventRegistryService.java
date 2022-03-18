@@ -81,17 +81,12 @@ public interface EventRegistryService {
 	public String getToolName(String toolId);
 
 	/**
-	 * Get the tool icon for the specific tool id.
-	 * @param toolId The id of the tool.
-	 * @return The tool icon.
-	 */
-	public String getToolIcon(String toolId);
-
-	/**
 	 * Get the event id to tool map such as: {event id} --> {tool mapping}.
 	 * @return The event id to tool map.
 	 */
 	public Map<String, ToolInfo> getEventIdToolMap();
+
+	public Map<String, EventInfo> getEventIdEventMap();
 	
 	/** 
 	 * Return an instance of the ToolFactory used to build a ToolInfo object.
@@ -118,4 +113,5 @@ public interface EventRegistryService {
 	 */
 	public boolean isRegisteredEvent(String eventId);
 
+	public boolean isResolvableEvent(String eventId);
 }

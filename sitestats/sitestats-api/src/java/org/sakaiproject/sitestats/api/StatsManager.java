@@ -46,14 +46,18 @@ public interface StatsManager {
 	public final static String			LESSONS_EVENTID_PREFIX		= "lessonbuilder.";
 	public final static String			SITESTATS_TOOLID			= "sakai.sitestats";
 	public final static String			SITESTATS_ADMIN_TOOLID		= "sakai.sitestats.admin";
+	public final static String			PRESENCE_TOOLID				= "sakai.presence";
 	public final static String			LOG_APP						= "sitestats";
 	public final static String			LOG_OBJ_REPORTDEF			= "report";
 	public final static String			LOG_OBJ_PREFSDATA			= "prefs";
+	public final static String			LOG_OBJ_USER					= "user";
 	public final static String			LOG_ACTION_NEW				= "new";
 	public final static String			LOG_ACTION_EDIT				= "edit";
 	public final static String			LOG_ACTION_VIEW				= "view";
 	public final static String			LOG_ACTION_DELETE			= "delete";
+	public final static String			LOG_ACTION_TRACK			= "track";
 	public final static String			RESOURCES_TOOLID			= "sakai.resources";
+	public final static String			LESSONS_TOOLID				= "sakai.lessonbuildertool";
 	public final static String			DROPBOX_TOOLID				= "sakai.dropbox";
 	public final static String			PARSERTIP_FOR_CONTEXTID		= "contextId";
 	public static final String			VIEW_WEEK					= "week";
@@ -112,19 +116,22 @@ public interface StatsManager {
 	// Spring bean methods
 	// ################################################################	
 	/** Are site visits statistics enabled? */
-	public boolean isEnableSiteVisits();
+	public Boolean getEnableSiteVisits();
 	
 	/** Are site activity statistics enabled? */
 	public boolean isEnableSiteActivity();
 	
 	/** Are site visits info available (displayable) in SiteStats tool? */
-	public boolean isVisitsInfoAvailable();
+	public Boolean getVisitsInfoAvailable();
 	
 	/** Are Resource statistics enabled for Overview page? */
 	public boolean isEnableResourceStats();	
+
+	/** Are Lessons statistics enabled for Overview page? */
+	public boolean isEnableLessonsStats();
 	
 	/** Are site presence statistics enabled? */
-	public boolean isEnableSitePresences();
+	public Boolean getEnableSitePresences();
 	
 	/** Get chart background color used to draw charts on SiteStats tool. */
 	public String getChartBackgroundColor();
@@ -153,6 +160,9 @@ public interface StatsManager {
 	/** Is user name sorted using User.getSortName()? Otherwise, User.getDisplayName() should be used. */
 	public boolean isSortUsersByDisplayName();
 	
+	/** Allow access to detailed events via the user interface */
+	public boolean isDisplayDetailedEvents();
+
 	// ################################################################
 	// Preferences
 	// ################################################################
@@ -469,6 +479,14 @@ public interface StatsManager {
 	public long getTotalSiteVisits(String siteId, Date iDate, Date fDate);
 
 	/**
+	 * Get total site visits for a user.
+	 * @param siteId Site identifier
+	 * @param userId User identifier
+	 * @return Total visits.
+	 */
+	public long getTotalSiteVisitsForUser(String siteId, String userId);
+
+	/**
 	 * Get total site unique visits on a specific date interval.
 	 * @param siteId Site identifier
 	 * @param iDate Initial date
@@ -511,6 +529,14 @@ public interface StatsManager {
 	 * @return The user display name
 	 */
 	public String getUserNameForDisplay(User user);
+
+	/**
+	 * returns getUserNameForDisplay() combined with User.getDisplayId()
+	 * @param userId the uuid of the user
+	 * @param siteId the site id
+	 * @return the user's name and id, or an "unknown user" message if not found
+	 */
+	public String getUserInfoForDisplay(String userId, String siteId);
 	
 	/**
 	 * Get users with at least one visit in site.
@@ -643,4 +669,7 @@ public interface StatsManager {
 	/** Logs an event using EventTrackingService. */
 	public void logEvent(Object object, String logAction, String siteId, boolean oncePerSession);
 	
+	/** Get the local sakai name (from ui.service property) */
+	public String getLocalSakaiName();
+
 }

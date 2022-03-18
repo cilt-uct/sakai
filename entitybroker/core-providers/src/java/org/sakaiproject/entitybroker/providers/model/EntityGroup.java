@@ -20,9 +20,11 @@
 
 package org.sakaiproject.entitybroker.providers.model;
 
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
@@ -30,10 +32,10 @@ import java.util.Stack;
 import org.azeckoski.reflectutils.annotations.ReflectIgnoreClassFields;
 import org.azeckoski.reflectutils.annotations.ReflectTransient;
 import org.sakaiproject.authz.api.AuthzGroup;
+import org.sakaiproject.authz.api.AuthzRealmLockException;
 import org.sakaiproject.authz.api.Member;
 import org.sakaiproject.authz.api.Role;
 import org.sakaiproject.authz.api.RoleAlreadyDefinedException;
-import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.entity.api.ResourceProperties;
 import org.sakaiproject.entity.api.ResourcePropertiesEdit;
 import org.sakaiproject.entitybroker.entityprovider.annotations.EntityFieldRequired;
@@ -44,7 +46,6 @@ import org.sakaiproject.entitybroker.entityprovider.annotations.EntitySummary;
 import org.sakaiproject.entitybroker.entityprovider.annotations.EntityTitle;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
-import org.sakaiproject.time.api.Time;
 import org.sakaiproject.user.api.User;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -130,7 +131,7 @@ public class EntityGroup implements Group {
         this.maintainRole = group.getMaintainRole();
         this.providerGroupId = group.getProviderGroupId();
         this.owner = group.getCreatedBy() == null ? null : group.getCreatedBy().getId();
-        this.lastModified = group.getModifiedTime() == null ? System.currentTimeMillis() : group.getModifiedTime().getTime();
+        this.lastModified = group.getModifiedDate() == null ? System.currentTimeMillis() : group.getModifiedDate().getTime();
         getUserRoles(); // populate the user roles
         // properties
         ResourceProperties rp = group.getProperties();
@@ -190,7 +191,7 @@ public class EntityGroup implements Group {
     @EntityLastModified
     public long getLastModified() {
         if (group != null) {
-            this.lastModified = group.getModifiedTime() == null ? lastModified : group.getModifiedTime().getTime();
+            this.lastModified = group.getModifiedDate() == null ? lastModified : group.getModifiedDate().getTime();
         }
         return lastModified;
     }
@@ -274,13 +275,6 @@ public class EntityGroup implements Group {
         throw new UnsupportedOperationException();
     }
 
-    public Time getCreatedTime() {
-        if (group != null) {
-            return group.getCreatedTime();
-        }
-        throw new UnsupportedOperationException();
-    }
-    
     public Date getCreatedDate() {
         if (group != null) {
             return group.getCreatedDate();
@@ -293,14 +287,6 @@ public class EntityGroup implements Group {
         }
         throw new UnsupportedOperationException();
     }
-
-    public Time getModifiedTime() {
-        if (group != null) {
-            return group.getModifiedTime();
-        }
-        throw new UnsupportedOperationException();
-    }
-    
     
     public Date getModifiedDate() {
     	if (group != null) {
@@ -375,14 +361,10 @@ public class EntityGroup implements Group {
         throw new UnsupportedOperationException();
     }
 
-    public void insertMember(String arg0, String arg1, boolean arg2, boolean arg3) throws IllegalStateException {
+    public void insertMember(String arg0, String arg1, boolean arg2, boolean arg3) throws AuthzRealmLockException {
         if (group != null) {
-            try {
-                group.insertMember(arg0, arg1, arg2, arg3);
-                return;
-            } catch (IllegalStateException e) {
-                throw e;
-            }
+            group.insertMember(arg0, arg1, arg2, arg3);
+            return;
         }
         throw new UnsupportedOperationException();
     }
@@ -492,6 +474,37 @@ public class EntityGroup implements Group {
         throw new UnsupportedOperationException();
     }
 
+    @Override
+    public RealmLockMode getRealmLock() {
+        if (group != null) {
+            return group.getRealmLock();
+        }
+        return RealmLockMode.NONE;
+    }
+
+    @Override
+    public List<String[]> getRealmLocks() {
+        if (group != null) {
+            return group.getRealmLocks();
+        }
+        return Collections.emptyList();
+    }
+
+    @Override
+    public RealmLockMode getLockForReference(String reference) {
+        if (group != null) {
+            return group.getLockForReference(reference);
+        }
+        return RealmLockMode.NONE;
+    }
+
+    @Override
+    public void setLockForReference(String reference, RealmLockMode type) {
+        if (group != null) {
+            group.setLockForReference(reference, type);
+        }
+    }
+
     public void removeMember(String arg0) {
         if (group != null) {
             group.removeMember(arg0);
@@ -500,14 +513,10 @@ public class EntityGroup implements Group {
         throw new UnsupportedOperationException();
     }
 
-    public void deleteMember(String arg0) throws IllegalStateException {
+    public void deleteMember(String arg0) throws AuthzRealmLockException {
         if (group != null) {
-            try {
-                group.deleteMember(arg0);
-                return;
-            } catch (IllegalStateException e) {
-                throw e;
-            }
+            group.deleteMember(arg0);
+            return;
         }
         throw new UnsupportedOperationException();
     }
@@ -520,14 +529,10 @@ public class EntityGroup implements Group {
         throw new UnsupportedOperationException();
     }
 
-    public void deleteMembers() throws IllegalStateException {
+    public void deleteMembers() throws AuthzRealmLockException {
         if (group != null) {
-            try {
-                group.deleteMembers();
-                return;
-            } catch (IllegalStateException e) {
-                throw e;
-            }
+            group.deleteMembers();
+            return;
         }
         throw new UnsupportedOperationException();
     }
@@ -554,59 +559,4 @@ public class EntityGroup implements Group {
         }
         throw new UnsupportedOperationException();
     }
-
-    public void lockGroup(Entity entity) {
-        if (group != null) {
-            group.lockGroup(entity);
-            return;
-        }
-        throw new UnsupportedOperationException();
-    }
-
-    public void lockGroup(String lock) {
-        if (group != null) {
-            group.lockGroup(lock);
-            return;
-        }
-        throw new UnsupportedOperationException();
-    }
-
-    public void unlockGroup(Entity entity) {
-        if (group != null) {
-            group.unlockGroup(entity);
-            return;
-        }
-        throw new UnsupportedOperationException();
-    }
-
-    public void unlockGroup(String lock) {
-        if (group != null) {
-            group.unlockGroup(lock);
-            return;
-        }
-        throw new UnsupportedOperationException();
-    }
-
-    public void unlockGroup() {
-        if (group != null) {
-            group.unlockGroup();
-            return;
-        }
-        throw new UnsupportedOperationException();
-    }
-
-    public boolean isLocked(String lock) {
-        if (group != null) {
-            return group.isLocked(lock);
-        }
-        throw new UnsupportedOperationException();
-    }
-
-    public boolean isLocked() {
-        if (group != null) {
-            return group.isLocked();
-        }
-        throw new UnsupportedOperationException();
-    }
-
 }

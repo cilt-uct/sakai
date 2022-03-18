@@ -29,7 +29,7 @@
             <h:inputHidden id="rowid" value="#{questionpool.tree.currentObjectHTMLId}"/>
             <h:selectManyCheckbox onclick="checkChildrenCheckboxes(this);updateButtonStatusOnCheck(document.getElementById('transferPool:transferpoolSubmit'), document.getElementById('transferPool'));" id="radiobtn"
                 value="#{questionpool.transferPools}" styleClass="tier#{questionpool.tree.currentLevel}" disabled="false">
-                <f:selectItem itemValue="#{pool.questionPoolId}" itemLabel="#{pool.displayName}" />
+                <f:selectItem itemValue="#{pool.questionPoolId}" itemLabel="#{pool.displayName}" escape="false" />
             </h:selectManyCheckbox>
         </h:panelGroup>
     </h:column>
@@ -53,7 +53,7 @@
         </f:facet>
         <h:panelGroup id="thirdcolumn">
             <h:outputText value="#{pool.lastModified}">
-                <f:convertDateTime pattern="#{generalMessages.output_date_picker}" />
+                <f:convertDateTime dateStyle="medium" timeStyle="short" timeZone="#{author.userTimeZone}" />
             </h:outputText>
         </h:panelGroup>
     </h:column>

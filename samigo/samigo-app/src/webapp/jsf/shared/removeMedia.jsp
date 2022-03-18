@@ -39,12 +39,10 @@
    <h:inputHidden id="showTimer" value="#{delivery.showTimer}"/>
    <h:inputHidden id="mediaId" value="#{mediaBean.mediaId}"/>
    <h3> <h:outputText  value="#{deliveryMessages.remove_media_conf}" /></h3>
-   <div class="validation tier1">
+   <div class="sak-banner-warn">
           <h:outputText value="#{deliveryMessages.cert_rem_media}" />
    </div>
-   <p>
-     <f:verbatim>&nbsp;&nbsp;&nbsp;&nbsp;</f:verbatim>
-     <h:outputLink title="#{deliveryMessages.t_media}" value="#" onclick="window.open('#{mediaBean.mediaUrl}','new_window');" onkeypress="window.open('#{mediaBean.mediaUrl}','new_window');">
+   <p><h:outputLink title="#{deliveryMessages.t_media}" value="#" onclick="window.open('#{mediaBean.mediaUrl}','new_window');" onkeypress="window.open('#{mediaBean.mediaUrl}','new_window');">
        <h:outputText value="#{mediaBean.filename}" />
      </h:outputLink>
    </p>
@@ -55,6 +53,10 @@
       <h:commandButton id="cancel" value="#{commonMessages.cancel_action}" type="submit" action="takeAssessment">
         <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.delivery.UpdateTimerListener" />
       </h:commandButton>
+      <h:commandButton id="save" styleClass="hidden" type="submit" value="#{commonMessages.action_save}"
+          action="#{delivery.saveWork}" rendered="#{delivery.actionString=='previewAssessment'
+                 || delivery.actionString=='takeAssessment'
+                 || delivery.actionString=='takeAssessmentViaUrl'}" />
    </p>
    <!-- HEADING -->
    <%@ include file="/jsf/delivery/questionProgress.jspf" %>

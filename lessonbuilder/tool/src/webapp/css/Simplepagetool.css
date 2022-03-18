@@ -7,9 +7,9 @@
 
 /* override for jquery ui */
 .ui-state-highlight{
-   border: 1px solid #2e83ff;
-   background: #f8fcff;
-   color: #184993;
+   border: 1px solid var(--sakai-active-color-3);
+   background: var(--sakai-active-color-1);
+   color: var(--sakai-text-color-3);
 }
 .ui-front {
 	z-index: 100001;
@@ -22,7 +22,7 @@
 }
 
 .ui-dialog label {
-   padding-left: 0.5em;  
+   padding-left: 0px;
    padding-right: 0.5em;
    font-weight: normal;
 }
@@ -47,6 +47,18 @@
 .lessonsDialog .radio label,
 .lessonsDialog .checkbox label {
   padding-left: 4px;
+}
+
+#column-dialog input[type="checkbox"] {
+    margin-left: 1em;
+}
+
+#column-dialog label {
+    margin-left: 6px;
+}
+
+#column-dialog input[type="checkbox"] + label {
+    margin-left: 0;
 }
 
 /* end override */
@@ -105,7 +117,8 @@
 	font-size: 16px;
 	border-style: dotted;
 	border-width: 2px;
-	background-color: #fdd;
+	background-color: var(--errorBanner-bgcolor);
+    color: var(--errorBanner-color);
 	margin-left: auto;
 	margin-right: auto;
 	width: 200px;
@@ -113,7 +126,7 @@
 }
 .expert {
 	margin-top: 10px;
-	background-color: #eee;
+	background-color: var(--sakai-background-color-2);
 	padding: 5px;
 }
 .Mrphs-siteHierarchy {
@@ -131,15 +144,12 @@ div.action span .nextbutton, .Mrphs-siteHierarchy span .nextbutton{
 .neoPortletTitleWrap {
 	padding-bottom: 4px;
 }
-.breadcrumbs a[title="Reset"] {
-
-}
 .breadcrumbs span {
 	display: inline-block;
 }
 .breadcrumbs span > span {
     margin-left: 5px;
-    margin-right:5px    
+    margin-right:5px;
 }
 .breadcrumbs span > span.bold {
     margin-left:0;
@@ -174,20 +184,14 @@ div.action span .nextbutton, .Mrphs-siteHierarchy span .nextbutton{
 	border-width: 2px;
 }
 .instructionPanel,.controlsPanel {
-    border:1px solid #bbb;
+    border:1px solid var(--sakai-border-color);
     font-size:12px;
-    background: #ddd;
+    background: var(--sakai-background-color-3);
     padding:5px;
     margin:5px 0
 }
 .indent {
     margin-left: 10px;
-}
-.grouplist {
-    margin-left: 20px;
-    border:1px solid #bbb;
-    background: #ddd;
-    padding: 5px;
 }
 .controlsPanel {
     padding:0;
@@ -195,19 +199,22 @@ div.action span .nextbutton, .Mrphs-siteHierarchy span .nextbutton{
     border: 1px solid transparent;
 }
 .controlsPanel .shorttext, .controlsPanel .longtext, .controlsPanel .filepicker{
-    margin:.4em 0
+    margin:.4em 0 0 0;
+}
+
+.controlsPanel .edit-header {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+span.group-name{
+    margin-left: 10px;
 }
 .controlsPanel .act {
-    margin:1em 0;
+    margin: 0;
+    padding: 0;
 }
-.controlsPanel .act .deleteButton, .act .deleteButton {
-    background: none !important;
-    border: none !important;
-    box-shadow: none !important;
-    color: #c00 !important;    
-    text-shadow:none !important;
 
-}
 .mainList .narrow-instruction {
     padding-top:5px;
     padding-bottom:5px;
@@ -228,33 +235,33 @@ div.action span .nextbutton, .Mrphs-siteHierarchy span .nextbutton{
 	width: 97%;
 }
 .fake-disabled {
-	color: #999 !important;
+	color: var(--sakai-text-color-disabled) !important;
 	text-decoration: underline;
 }
 .disabled:link {
-	color: #cccccc
+	color: var(--sakai-text-color-disabled);
 }
 .disabled-multimedia-item {
-	color: #cccccc;
+	color: var(--sakai-text-color-disabled);
     margin-top:4px;
     display: inline-block;
     /*padding-left: 8px !important;*/
 }
 .disabled-text-item {
-	color: #cccccc;
+	color: var(--sakai-text-color-disabled);
     margin-top:4px;
 }
 .disabled:visited {
-	color: #cccccc
+	color: var(--sakai-text-color-disabled);
 }
 .disabled:active {
-	color: #cccccc
+	color: var(--sakai-text-color-disabled);
 }
 .disabled:hover {
-	color: #cccccc
+	color: var(--sakai-text-color-disabled);
 }
 .portletBody a.ui-button:link, .portletBody a.ui-button:visited {
-	color: black;
+	color: var(--button-color);
 	text-decoration: none !important;
 }
 .gradingTable a.ui-button .ui-button-text{
@@ -281,7 +288,10 @@ body .error-spacingabove + .error-spacingabove{
 /* ff2, buttons don't work */
 a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merge-link:visited, a.column-merge-link:link, a.column-merge-link:visited, a.itemLink:link, a.itemLink:visited, a.multimedia-edit:link, a.multimedia-edit:visited, a.edit-youtube:link, a.edit-youtube:visited, a.edit-movie:link, a.edit-movie:visited {
 	text-decoration: none !important;
-	background-color: #eee;
+	background-color: var(--sakai-background-color-3);
+}
+.border2.controlsPanel label.mm-file {
+    padding-left: 0;
 }
 .border2.controlsPanel label.mm-file {
     padding-left: 0;
@@ -289,21 +299,54 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
 .mm-file-input {
 	display:inline;
 }
-.mm-file-input-name {
-        margin-right: 0.5em;
+span.mm-file-input-name {
+    margin-bottom: 0;
+    margin-right: 14px;
 }
 .mm-file-input-delete {
-        color: red;
 	cursor: pointer;
+    color: var(--errorBanner-color);
+    background: var(--errorBanner-bgcolor);
+}
+div.mm-file-group {
+    border: 1px solid var(--sakai-border-color);
+    padding: 8px;
+    margin-bottom: 5px;
+}
+.multimedia-url-box{
+    width: 75%;
+    display: block;
+    margin-bottom: 5px;
 }
 .mm-file-input-itemname {
 	margin-left: 1.0em;
 }
+a[href].collapse-toggle {
+    font-size: 14px;
+    font-weight: bold;
+    border: 1px solid var(--sakai-border-color);
+    padding: 7px;
+    margin-bottom: 5px;
+    border-radius: 3px;
+    background-color: var(--sakai-background-color-2);
+    display: block;
+    text-decoration: none;
+}
+a[href].collapse-toggle:hover {
+    cursor: pointer;
+    text-decoration: underline;
+    background-color: var(--sakai-background-color-3);
+}
+span.remove-upload {
+    margin-left: 6px;
+    font-size: 22px;
+    float: right;
+}
 .add-another-file-div {
 	padding: 10px;
 	padding-top: 0px;
-	background-color: #ddd;
-	border: 1px solid #bbb;
+	background-color: var(--sakai-background-color-2);
+	border: 1px solid var(--sakai-border-color);
 }
 .ui-button-text {
 	padding: 0.25em 0.8em !important
@@ -336,7 +379,7 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
 }
 
 .newItem {
-   border-left: 5px solid black !important;
+   border-left: 5px solid var(--sakai-border-color) !important;
    margin-left: -5px;
 }
 .listHierFlex {
@@ -363,14 +406,13 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
 
 /* padding-top 35 for one col, 25 for multiple, 20 in narrow screen */
 .column {
-    margin: 7px 0;
-    padding: 15px 7px;
-    padding-top: 25px;
+    margin: 4px 8px 4px 8px;
+    padding: 25px 7px 15px 7px;
     list-style:none;
-    background-color: white;
-    border: 1px solid #e5e5e5;
     display:inline-block;
     vertical-align: top;
+    border-radius: 2px;
+    transition: all 0.3s cubic-bezier(.25,.8,.25,1);
 }
 
 .sectionedit, .edit-col, .edit-col a {
@@ -384,64 +426,56 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
 
 /* only up to 4 cols has been tuned */
 .cols9 {
-    width: calc(100$ / 9  - 17px) !important;
+    width: calc(100% / 9  - 16px) !important;
     margin-right: 2px !important;
 }
 [class~="cols9"][class~="double"] {
-    width: calc(200% / 9 - 17px) !important;
+    width: calc(200% / 9 - 16px) !important;
 }
 .cols8 {
-    width: calc(100% / 8 - 17px) !important;
-    margin-right: 2px !important;
+    width: calc(100% / 8 - 16px) !important;
 }
 [class~="cols8"][class~="double"] {
-    width: calc(200% / 8 - 17px) !important;
+    width: calc(200% / 8 - 16px) !important;
 }
 .cols7 {
-    width: calc(100% / 7 - 17px) !important;
-    margin-right: 2px !important;
+    width: calc(100% / 7 - 16px) !important;
 }
 [class~="cols7"][class~="double"] {
-    width: calc(200% / 7 - 17px) !important;
+    width: calc(200% / 7 - 16px) !important;
 }
 .cols6 {
-    width: calc(100% / 6 - 17px) !important;
-    margin-right: 2px !important;
+    width: calc(100% / 6 - 16px) !important;
 }
 [class~="cols6"][class~="double"] {
-    width: calc(200% / 6 - 17px) !important;
+    width: calc(200% / 6 - 16px) !important;
 }
 .cols5 {
-    width: calc(100% / 5 - 17px) !important;
-    margin-right: 2px !important;
+    width: calc(100% / 5 - 16px) !important;
 }
 [class~="cols5"][class~="double"] {
-    width: calc(200% / 5 - 17px) !important;
+    width: calc(200% / 5 - 16px) !important;
 }
 .cols4 {
-    width: calc(100% / 4 - 17px) !important;
-    margin-right: 2px !important;
+    width: calc(100% / 4 - 16px) !important;
 }
 [class~="cols4"][class~="double"] {
-    width: calc(200% / 4 - 17px) !important;
+    width: calc(200% / 4 - 16px) !important;
 }
 .cols3 {
-    width: calc(100% / 3 - 17px) !important;
-    margin-right: 2px !important;
+    width: calc(100% / 3 - 16px) !important;
 }
 [class~="cols3"][class~="double"] {
-    width: calc(200% / 3 - 17px) !important;
+    width: calc(200% / 3 - 16px) !important;
 }
 .cols2 {
-    width: calc(100% / 2 - 17px) !important;
-    margin-right: 2px !important;
+    width: calc(100% / 2 - 16px) !important;
 }
 [class~="cols2"][class~="double"] {
-    width: calc(200% / 2 - 17px) !important;
+    width: calc(200% / 2 - 16px) !important;
 }
 .cols1 {
-    padding-top:35px;
-    width: calc(100% - 17px) !important;
+    width: calc(100% - 16px) !important;
 }
 /* this is to prevent the last column from going to a new
    line if the calculation is a bit off. */
@@ -459,91 +493,54 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
   padding-right: 7px;
 }
 
-.split .mainList {
-    -webkit-column-count: 2;
-    -moz-column-count: 2;
-    column-count: 2;
-} 
 .split .edit-col {
     right:0px;
 }
 
+.collapsibleSectionHeader:hover {
+    cursor: pointer;
+    background-color: var(--sakai-background-color-2);
+}
+
+.collapsibleSectionHeader:hover .toggleCollapse {
+    opacity: 1;
+    margin-top: 6px;
+}
+
+div.layout-option {
+    border:2px solid var(--sakai-background-color-1);
+    padding:4px;
+}
+
+div.layout-option > div {
+    padding: 8px;
+}
+
+.addSectionTitleExample {
+    border:1px solid var(--sakai-border-color);
+    background:var(--sakai-background-color-1);
+    color:var(--sakai-active-color-1);
+    padding:4px;
+}
+
+.addSectionTitleText {
+    display: block;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.addSectionColumn {
+    border:1px solid var(--sakai-border-color);
+    height:100px;
+    padding:4px;
+}
 
 .coltrans {
    border-color: transparent;
+   box-shadow: none;
+   transition: none;
 }
-/* 
-   Any changes shoud be checked to make sure they have enough
-   contrast for accessiblity. These colors have been checked
-   against the WebAIM Color Contrast Checker. I've tried to
-   make them subjectively the same darkness.
-*/
-/* default */
-.column .commentDiv, .column .studentContentTable, .column .questionDiv .contentCol, .column .checklistDiv, .column .forumSummaryHeaderDiv, .column .announcementsHeaderDiv, .column .fc-toolbar {
-  background-color: #b3ecff;
-}
-.column a[href]{
-  color: #004860;
-}
-.colgray {
-   background-color: #f0f0f0;
-   border-color: #222;
-}
-.colgray .commentDiv, .colgray .studentContentTable, .colgray .questionDiv .contentCol, .colgray .checklistDiv, .colgray .forumSummaryHeaderDiv, .colgray .announcementsHeaderDiv, .colgray .fc-toolbar {
-  background-color: #b8b8b8;
-}
-.colgray a[href]{
-  color:black;
-}
-.colred {
-   background-color: #fff0f0;
-   border-color: #600;
-   color: #4660000;
-}
-.colred .commentDiv, .colred .studentContentTable, .colred .questionDiv .contentCol, .colred .checklistDiv, .colred .forumSummaryHeaderDiv, .colred .announcementsHeaderDiv, .colred .fc-toolbar {
-  background-color: #ffb3b3;
-}
-.colred a[href], .colred h3.author {
-  color: black;
-}
-.colblue {
-   background-color: #f4f4ff;
-   background-color: #e6f9ff;
-   border-color: #004;
-   color: #004;
-}
-.colblue .commentDiv, .colblue .studentContentTable, .colblue .questionDiv .contentCol, .colblue .checklistDiv, .colblue .forumSummaryHeaderDiv, .colblue .announcementsHeaderDiv, .colblue .fc-toolbar {
-  background-color: #b3d9ff;
-  background-color: #99e7ff;
-}
-.colblue a[href] {
-  color: black;
-}
-.colgreen {
-   background-color: #f6fff6;
-   border-color: #030;
-   color: #030;
-}
-.colgreen .commentDiv, .colgreen .studentContentTable, .colgreen .questionDiv .contentCol, .colgreen .checklistDiv, .colgreen .forumSummaryHeaderDiv, .colgreen .announcementsHeaderDiv, .colgreen .fc-toolbar {
-  background-color: #9fc;
-}
-.colgreen a[href] {
-  color: black;
-}
-.colyellow {
-   background-color: #ffffe8;
-   border-color: #840;
-   color: #4b2600;
-}
-.colyellow .commentDiv, .colyellow .studentContentTable, .colyellow .questionDiv .contentCol, .colyellow .checklistDiv, .colyellow .forumSummaryHeaderDiv, .colyellow .announcementsHeaderDiv, .colyellow .fc-toolbar {
-  background-color:  #ffd480
-}
-.colyellow a[href],.colyellow h3.author {
-  color: black;
-}
-
-
-
 .columnopen, .addbottom {
   text-decoration: none;
 }
@@ -572,8 +569,7 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
     margin-bottom: 10px;
 } 
 .mainList div.question .multipleChoiceAnswer {
-}
-.mainList div.question .multipleChoiceForm input.bold {
+    padding: .5em 0;
 }
 .multipleChoiceAnswer label {
   margin-left: 5px;
@@ -584,16 +580,8 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
 .questionPollGraph {
   max-width: 100%;
 }
-.questionStatusText {
-}
-.mainList .textbox ul {
-
-}
 .mainList .textbox ul.forumSummaryList, .mainList .textbox ul.announcementSummaryList {
     display: inherit;
-}
-.mainList div.item .textbox {
-
 }
 /*maybe a universal selector, instead of a p*/
 .mainList div.item .textbox p:first-child{
@@ -633,20 +621,26 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
 	padding: 0px 4px !important;
 }
 .edit-col .ui-button-text, #submit-grading .ui-button-text, .portalmenu .ui-button-text {
-	font-size: 60%;
+	font-size: 90%;
 }
 .buttonItem {
 	padding-left: 20px
 }
 .offscreen {
-	/* from drupal */
+	/* from global skip */
 	position: absolute !important;
+	height: 1px; width: 1px; 
+	overflow: hidden;
 	clip: rect(1px 1px 1px 1px); /* IE6, IE7 */
 	clip: rect(1px, 1px, 1px, 1px);
+	clip-path: polygon(0px 0px, 0px 0px,0px 0px, 0px 0px);
 }
 .columnSetup2 {
     padding:5px;
-    float:none;height:100%;overflow:hidden;margin:1em 0
+    float:none;
+    height:100%;
+    overflow:visible;
+    margin:1em 0;
 }
 
 .layoutReorderer-module-content {
@@ -656,16 +650,22 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
 }
 
 .flc-reorderer-module {
-    border: 1px solid #ccc;
+    border: 1px solid var(--sakai-border-color);
     margin:5px 0;
     position:relative;
     padding: 0px 0px 0px 0px;
 }
 .flc-reorderer-module:focus {
-    outline:1px dashed #000
+    outline:1px dashed var(--focus-outline-color);
 } 
 .flc-reorderer-module:hover {
-    border:1px solid #000;
+    border:1px solid var(--focus-outline-color);
+}
+.reorderItemsContainer {
+    min-height: 60px;
+}
+.ui-sortable-handle {
+    cursor: move;
 }
 .reordSeqContainer {
     position: absolute;
@@ -675,19 +675,22 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
     padding:0px;
     
 }
-
+#layoutReorderer .reordItemContainer > .reorder-icon {
+    font-size: 1.3em;
+    color: var(--sakai-text-color-1);
+}
 .reordItemContainer {
-     padding: 0px 20px 0px 30px;
+     padding: 0 20px 0 0;
 }
 .reordItemContainerDesc {
     margin-top:5px;
     text-overflow: ellipsis;
     width: 100%;
     white-space: nowrap;
-    overflow: hidden;    
+    overflow: hidden;
 }
 .highlightEl {
-    background:#ffa
+    background: var(--warnBanner-bgcolor);
 }
 
 .col2 .reordItemContainer {
@@ -697,12 +700,24 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
     display: none
 }
 
+.column-section-break-text {
+    font-weight: bold;
+}
+
 .reordDeleteContainer {
     position: absolute;
-    width:17px;
-    top:1px;
-    right:5px;
+    top:-6px;
+    right:0px;
+    font-size: 1.35em;
+}
+#reorderCol1 .import-indicator {
+    margin-left: -36px;
+    margin-right: 22px;
+    font-size: 18px;
+}
 
+span.reorder-icon {
+    width: 22px;
 }
 /**
  * Interaction styling.
@@ -715,12 +730,12 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
 }
 
 .layoutReorderer-movable-selected {
-    border: 1px solid #fff;
+    border: 1px solid var(--sakai-background-color-1);
 }
 
 .layoutReorderer-avatar {
-    background-color:#ccc;
-    outline: 2px solid #000;
+    background-color:var(--sakai-background-color-3);
+    outline: 2px solid var(--focus-outline-color);
     opacity: 0.5;
     filter: alpha(opacity=50); /* ie opacity fix */
 }
@@ -740,42 +755,83 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
 }
 
 .layoutReorderer-dropMarker {
-    background: #9f9 url("/library/image/silk/arrow_right.png")  1% 50% no-repeat;
-    height: 20px;
+    background: var(--sakai-active-color-1);
+    color: var(--sakai-text-color-3);
+    height: 40px;
     padding: 0 0 0 0;
     margin-left: 1em;
     margin-right: 1em;
 }
 
-.col1 {
-    min-width:60%;
-    width:60%;
-    min-height:50px;
+.layoutReorderer-dropMarker:before {
+    font-family: FontAwesome;
+    content: "\f061";
+    font-size: 1.5em;
+    line-height: 2em;
 }
-.col2 {
-    border: 1px solid #CCCCCC;
-    margin-left: 16px;
-    margin-top: 4px;
-    min-height: 50px;
-    min-width: 30%;
-    padding: 5px 5px 5px;
-    width: 30%;
-}
-.col1, .col2{
-    float:left;
-    background:#fff;
-}
+
 .deleteListMessage {
     padding:5px;
     padding-left: 25px;
-    background: #fff url(/library/image/silk/bin.png) 5px 5px no-repeat;
 }
 .deleteListMessageEmpty {
     padding:5px;
     padding-left: 25px;
-    background: #fff url(/library/image/silk/bin_empty.png) 5px 5px no-repeat;
     
 }
+.deleteListMessage.panel-heading, .deleteListMessageEmpty.panel-heading {
+    padding: 5px;
+    padding-left: 25px;
+}
+
+#reorderCol1 {
+    background: var(--sakai-background-color-3);
+    padding: .5em;
+    border: 1px solid var(--sakai-border-color);
+}
+
+#reorderCol1 .list-group-item:not(.list-group-item-info):not(.active) {
+    margin-left: 2em;
+}
+
+h3.section-label {
+    margin: 0;
+}
+
+.active .column-section-break-text {
+    color: var(--sakai-text-color-inverted);
+}
+
+.deleteAnswerLinkOptions > span {
+    font-size: 1.5em;
+    color: var(--sakai-text-color-inverted);
+    padding: 8px 4px;
+}
+
+.deleteAnswerLinkOptions:hover {
+    cursor: pointer;
+}
+
+.deleteAnswerTrashLink > span {
+    font-size: 20px;
+    top: 6px;
+    position: relative;
+    padding: 10px 16px 9px;
+}
+
+.section-delete-icon {
+    color: var(--sakai-text-color-inverted);
+    font-size: 24px !important;
+    margin-top: 8px;
+}
+
+#reorderCol2 {
+    padding: 0;
+}
+#reorderCol2 .list-group-item.active, #reorderCol2 .list-group-item.active:hover, #reorderCol2 .list-group-item.active:focus {
+    z-index: 1;
+}
+
 .afterheader {
 	margin-top: 1em
 }
@@ -784,12 +840,12 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
 }
 /* also uses nextprev. this is specific for ShowItem */
 .returnheader a:link, .returnheader a:visited {
-	background-color: #fee !important;
-	color:black !important;
+	background-color: var(--errorBanner-bgcolor) !important;
+	color:var(--errorBanner-color) !important;
 }
-.returnheader a:hover, returnheader  a:active {
-	background-color: #edd !important;
-	color:black !important;
+.returnheader a:hover, .returnheader  a:active {
+	background-color: var(--errorBanner-bgcolor) !important;
+	color:var(--errorBanner-color) !important;
 }
 .showItemNoMorpheus .returnheader {
     display:block;
@@ -808,7 +864,7 @@ a.edit-link:link, a.edit-link:visited, a.section-merge-link:link, a.section-merg
 h3.author {
 	margin-right: 10px;
 	font-weight: bold;
-	color: #039;
+	color: var(--sakai-text-color-3);
 	display: inline;
 }
 .replaceWithComments {
@@ -816,18 +872,18 @@ h3.author {
 }
 .commentPageTitle {
 	margin: 0 10px;
-	color: #906;
+	color: var(--sakai-text-color-3);
 }
 .commentDiv {
 	margin-top: 5px;
 	margin-bottom: 5px;
-	background-color: #e4edff;
+	background-color: var(--sakai-background-color-2);
 	padding: 5px 10px;
 }
 .gradingTable .commentDiv {
     padding:5px;
     margin-top:5px;
-    outline:1px solid #ccc;
+    outline:1px solid var(--focus-outline-color);
 }
 .commentBody {
 	margin-top: 3px
@@ -836,7 +892,7 @@ h3.author {
 	margin-bottom: 0px;
 }
 .specialCommenter {
-	background-color: white;
+	background-color: var(--sakai-background-color-1);
 	padding: 0 3px 1px 3px;
 	-moz-border-radius: 3px;
 	-webkit-border-radius: 3px;
@@ -847,21 +903,28 @@ h3.author {
 }
 /* Commenter looking at their own comment */
 .personalComment {
-	background-color: white !important
+	background-color: var(--sakai-background-color-1) !important
 }
 /* Site Owner Comment */
 .ownerComment {
-	background-color: #CCCEED !important;
-	color: black !important;
+	background-color: var(--infoBanner-bgcolor) !important;
+	color: var(--infoBanner-color) !important;
 }
 .item-group-titles {
 	font-style: italic;
-	color: #930;
+	color: var(--sakai-text-color-dimmed);
 	padding-left: 1em;
+}
+.item-group-titles.released {
+    color:var(--successBanner-color);
+}
+
+.item-group-titles.not-released {
+    color: var(--warnBanner-color);
 }
 .page-picker-note {
 	font-style: italic;
-	color: #930;
+	color: var(--warnBanner-color);
 	padding-left: 0.5em;
 	padding-right: 0.25em;
 }
@@ -881,9 +944,6 @@ h3.author {
 .commentDiv .editLink:hover, .commentDiv .deleteLink:hover,  .commentDiv .replyLink:hover {
     cursor:pointer;
 }
-.link-div .usebutton {
-	  background-color: rgb(246,246,246)
-}
 .link-div {
 	display:inline;
 }
@@ -900,18 +960,17 @@ a.peer-eval-stats {
         font-size:75% !important
 }
 .peer-eval-title-student {
-        font-size:110%;			 
+        font-size:110%;
 }
 .noDisplay {
 	display: none !important;
 }
-.imgCell {
-}
+
 .studentCell {
 	padding-left: 7px
 }
 .studentTitle {
-	color: black;
+	color: var(--sakai-text-color-1);
 	margin-top: 0px;
 }
 .studentContentTitle, .mainList li.question .questionText, h3.author {
@@ -927,13 +986,13 @@ a.peer-eval-stats {
     margin-left: 23px;
 }
 .studentContentTable {
-        margin-top:10px;
+    margin-top:10px;
 	border: none;
-	background-color: #e4edff; 
+	background-color: var(--infoBanner-bgcolor); 
 	padding: 14px 8px;
-	-moz-border-radius: 5px;
-	-webkit-border-radius: 5px;
-	border-radius: 5px;
+	-moz-border-radius: 2px;
+	-webkit-border-radius: 2px;
+	border-radius: 2px;
 }
 .studentContentTable .studentRow{
     padding:1px 8px;
@@ -951,10 +1010,9 @@ a.peer-eval-stats {
 
 /* negative bottom margin because we set a top margin for the section below for the case where there's no toolbar */
 #toolbar {
-  padding:2px;
-  margin:0px;
-  margin-bottom:-10px;
-  display:block !important;
+  margin: 0;
+  margin-bottom: -10px;
+  display: inline-block;
 }
 
 /* Dropdown Menu */
@@ -963,19 +1021,19 @@ a.peer-eval-stats {
 	width: 350px;
 	margin-top: 0;
 	margin-left: 0.5em;
-	background-color: #fff !important;
+	background: var(--sakai-background-color-2);
 	padding: 5px !important;
-    border: 1px solid #d1d1d1 !important;
+	background: linear-gradient(top, var(--sakai-background-color-2) 0%, var(--sakai-background-color-3) 100%) !important;
+    border: 1px solid var(--sakai-border-color) !important;
     z-index: 10;
-    -webkit-box-shadow: 1px 1px 3px 2px #eeeeee;
-    box-shadow: 1px 1px 3px 2px #eeeeee;
+    box-shadow: var(--elevation-2dp);
 }
 .dropDownDiv  ul {
     margin:0;
     padding: 0;
 }
 .dropDownDiv li {
-    background: #fff !important;
+    background: var(--sakai-background-color-1) !important;
     padding: 3px !important;
     padding-left: 7px !important;
     display:block;
@@ -1004,34 +1062,8 @@ a.peer-eval-stats {
 .dropDownDiv li div {
     font-size: .85em !important
 }
-.Mrphs-siteHierarchy .breadcrumb-link, .Mrphs-siteHierarchy .lessons-siteHierarchy-title {
-  display: inline-block;
-  padding-top: 4px;
-}
-
-.Mrphs-siteHierarchy .lessons-siteHierarchy-title.bold {
-  /* Yup */
-  font-weight: normal;
-}
-
-/* Reset all inherited padding */
-.Mrphs-siteHierarchy * {
-  margin-top: 0 !important;
-  padding: 0 !important;
-}
-
-/* And apply consistent padding */
-.Mrphs-siteHierarchy {
-  padding: 1.2em !important;
-}
-
-.Mrphs-siteHierarchy .Mrphs-hierarchy--separator {
-  margin-left: 0.5em;
-}
-
 .lessons-siteHierarchy-title {
    font-weight: bold;
-   margin-left: 0;
 }
 .itemAction {
   padding-top: 0px;
@@ -1039,8 +1071,7 @@ a.peer-eval-stats {
   position:relative;
   top:-4px;
 }
-span.nextprev {
-}
+
 .crumb-link {
   margin-right: 0.5em;
 }
@@ -1062,7 +1093,7 @@ img {
        display:none;
 }
 .unsubmitted {
-	background-color: #FFC9D7
+	background-color: var(--errorBanner-bgcolor);
 }
 .showPollGraph span {
 	font-size: 70%;
@@ -1072,15 +1103,16 @@ img {
 	border-collapse: collapse;
 	margin-top: 20px;
 	width:auto !important;
+	text-align: center;
 }
 .gradingTable th {
        padding-right: 2em;
 }
 .bottomBorder {
-	border-bottom: 1px solid black
+	border-bottom: 1px solid var(--sakai-border-color);
 }
 .topBorder td {
-	border-top: 3px solid white
+	border-top: 3px solid var(--sakai-background-color-1);
 }
 .forum-summary-div, .forumSummary  .textbox, .forumSummary .right-col{
    width: 100%;
@@ -1093,9 +1125,7 @@ img {
    width: 100.0%;
    vertical-align: top;
    overflow: hidden;
-   -moz-border-radius: 10px 10px 0px 0px;
-   -webkit-border-radius: 10px 10px 0px 0px;
-   border-radius: 10px 10px 0px 0px;
+   border-radius: 6px 6px 0 0;
 }
 .forumSummaryHeader{
  padding: 0px 0px 10px 15px;
@@ -1104,27 +1134,23 @@ img {
 }
 .forumSummaryLink{
  text-decoration: none;
- color: #444;
+ color: var(--sakai-text-color-1);
  margin-left: 5px;
 }
 .forumSummaryDate{
  font-size:12px;
- color:#000;
+ color:var(--sakai-text-color-1);
  font-weight: normal;
 }
 .forumSummaryList, .announcementSummaryList{
  list-style: none;
  padding: 0 15px;
- font-family: 'Segoe UI', Segoe, Tahoma, Helvetica, Arial, sans-serif;
- color: #666;
- -moz-border-radius: 0px 0px 10px 10px;
- -webkit-border-radius: 0px 0px 10px 10px;
- border-radius: 0px 0px 10px 10px;
- border: solid #999 1px;
+ color: var(--sakai-text-color-2);
+ border-radius: 0 0 6px 6px;
+ border: 1px solid var(--sakai-border-color);
  border-top-style: none;
 }
-.first-row {
-}
+
 .first-row td {
    padding: 0px;
 }
@@ -1132,7 +1158,7 @@ img {
    padding-left: 2em
 }
 .details-row td:hover {
-    background: #fff
+    background: var(--sakai-background-color-1);
 }
 .gradingarea {
 	margin-left: 1em;
@@ -1145,31 +1171,31 @@ img {
 	border-radius: 3px;
 }
 .backgroundHighlight {
-	border: 2px solid black;
-	background-color: #F8F8F8;
+	border: 2px solid var(--sakai-border-color);
+	background-color: var(--sakai-background-color-2);
 }
 .linkCell {
 	margin-top: 1.5em
 }
 .itemcopylink {
 	display: none;
-	border: 1px solid black;
+	border: 1px solid var(--warnBanner-bordercolor);
 	padding: 2px;
 	margin-left: 2px;
 	text-decoration: none !important;
-	background-color: #ffc;
+	background-color: var(--warnBanner-bgcolor);
 	-moz-border-radius: 2px;
 	-webkit-border-radius: 2px;
 	border-radius: 2px;
-	color: black !important;
+	color: var(--warnBanner-color) !important;
 }
 #peer-eval-create-table td, #peer-eval-create-table th {
 	padding:5px;
-	border: 1px solid black !important;
+	border: 1px solid var(--sakai-border-color) !important;
 }
 #peer-eval-create-table thead{
-	background-color: grey;
-	color: white;
+	background-color: var(--sakai-background-color-3);
+	color: var(--sakai-text-color-1);
 }
 #question-correct-text, #question-incorrect-text {
 	width: 400px;
@@ -1184,8 +1210,8 @@ img {
  overflow-y: auto;
  float: left;margin:
  0 10.0px 20.0px 0;
- border: solid #999 1px;
- border-radius: 0px 0px 10px 10px;
+ border: 1px solid var(--sakai-border-color);
+ border-radius: 0 0 6px 6px;
  clear: right;
 }
 .edit-twitter-div{
@@ -1197,28 +1223,13 @@ float:left;
 .question-multiplechoice-answer, .question-shortanswer-answer {
 	width: 250px;
 }
-input[type="submit"].question-submit,.linkCell .addStudentContent, input[type="submit"].setStudentZero {
-   margin: inherit;
-   margin-top:15px;
-   border:1px solid #999;
-   color: black !important;
-   font-family: inherit;
-   cursor: pointer;
-   padding:6px 20px !important;
-   background:#f0f0f0;
-   font-weight: normal;
-   font-size: inherit;
-   letter-spacing: inherit;   
-   line-height: inherit;
-   border-radius: 3px;
-   position: static;
-}
+
 .linkCell .addStudentContent {
  -webkit-border-radius: 3px;
  -moz-border-radius: 3px;
  background-image:none;
  border-radius: 3px;
- border:solid #999 1px;
+ border: 1px solid var(--sakai-border-color);
  text-decoration:none;
  margin-top:0px;
 }
@@ -1227,7 +1238,6 @@ input[type="submit"].question-submit,.linkCell .addStudentContent, input[type="s
  margin-top:5px;
  padding: 15px;
  padding-right: 30px;
- background-color: #e4edff;
  -webkit-border-radius: 10px;
  -moz-border-radius: 10px;
  border-radius: 10px;
@@ -1246,13 +1256,10 @@ input[type="submit"].question-submit,.linkCell .addStudentContent, input[type="s
 }
 
 div[role="dialog"] {
-    -webkit-box-shadow: 1px 1px 2px 1px #ccc;
-     box-shadow: 1px 1px 2px 1px #ccc;
+     box-shadow: var(--elevation-2dp);
 }
 .commentsType div[role="dialog"] {
-    -webkit-box-shadow: 0px 0px 0px 0px #ccc;
-     box-shadow: 0px 0px 0px 0px #ccc;
-    
+     box-shadow: var(--elevation-2dp);
 }
 #copyableShortanswerDiv {
     line-height:30px;
@@ -1260,6 +1267,10 @@ div[role="dialog"] {
 
 .controlsPanel fieldset {
     margin: 10px 0 
+}
+
+textarea.shortAnswerInput {
+    width: 100%;
 }
 
 .deleteCandidate td:first-child {
@@ -1283,7 +1294,7 @@ div[role="dialog"] {
     padding-left:5px;
 }
 .pageList img {
-    vertical-align:middle;   
+    vertical-align:middle;
 }
 .itemListContainer {
     padding-top: 5px;
@@ -1293,7 +1304,7 @@ div[role="dialog"] {
     margin-left: 20px;
     display: none;
     list-style:none;
-    background-color: #F3F3F3;
+    background-color: var(--sakai-background-color-2);
     padding-bottom: 1.0em;
     margin-bottom: 0.5em;
 }
@@ -1356,7 +1367,7 @@ div[role="dialog"] {
     outline: none;
 }
 .portletTitle .title a:focus, .portletTitle .action a:focus {
-    outline: black dotted thin
+    outline: 1px dotted var(--focus-outline-color);
 }
 .portletTitle .action a.help:hover, .portletTitle .action a.help:focus img {
     background: url(../images/help_h.gif) center right no-repeat
@@ -1373,10 +1384,10 @@ div[role="dialog"] {
 }
 .direct-url-wrap {
     font-size: 85%;
-    color: #555;
+    color: var(--sakai-text-color-dimmed);
 }
 .direct-url-wrap textarea {
-    color: #000;
+    color: var(--sakai-text-color-1);
     overflow:auto;
     width:250px;
     display:block;
@@ -1405,12 +1416,12 @@ div[role="dialog"] {
     text-decoration: none;    
 }
 .portletTitle .title h2 .siteTitle {
-    color: #333
+    color: var(--sakai-active-color-2);
 }
 .portletTitle .title a.reload {
     background: url(../images/reload.gif) center left no-repeat;
     text-decoration: none !important;
-    border: 1px solid #fff;
+    border: 1px solid var(--sakai-background-color-1);
     height: 1.5em;
     outline: none;
 }
@@ -1461,9 +1472,9 @@ div[role="dialog"] {
    width: 100.0%;
    vertical-align: top;
    overflow: hidden;
-   -moz-border-radius: 10px 10px 0px 0px;
-   -webkit-border-radius: 10px 10px 0px 0px;
-   border-radius: 10px 10px 0px 0px;
+   -moz-border-radius: 6px 6px 0 0;
+   -webkit-border-radius: 6px 6px 0 0;
+   border-radius: 6px 6px 0 0;
 }
 .announcementSummaryHeader{
  padding: 0px 0px 10px 15px;
@@ -1474,10 +1485,10 @@ div[role="dialog"] {
 margin-left: 5px;
 }
 .announcementList {
- -moz-border-radius: 0px 0px 10px 10px;
- -webkit-border-radius: 0px 0px 10px 10px;
- border-radius: 0px 0px 10px 10px;
- border: solid #999 1px;
+ -moz-border-radius: 0 0 6px 6px;
+ -webkit-border-radius: 0 0 6px 6px;
+ border-radius: 0 0 6px 6px;
+ border: 1px solid var(--sakai-border-color);
  border-top-style: none;
  padding-bottom:15px;
 }
@@ -1495,15 +1506,6 @@ div.navIntraTool {
   border-top:none;
   padding-top: 0 !important;
 }
-/* our additions to the top menu */
-
-.top-icon:before {
-   margin-right: 5px;
-}
-#print-view {
-    margin-right: 7px;
-}
-
 /* temporary, to avoid changing old stuff for the moment */
 .edit-col {
   padding-top: 0px !important;
@@ -1516,22 +1518,22 @@ div.navIntraTool {
 margin-top:4px;
 display:inline-block;
 position:absolute;
-background-color:#eee;
+background-color:var(--sakai-background-color-3);
 top:-5px;
 right:-8px;
 z-index: 15;
 -webkit-border-radius: 3px;
 -moz-border-radius: 3px;
 border-radius: 3px;
-border: solid #bbb 1px;
+border: 1px solid var(--sakai-border-color);
 padding:1px;
 }
 .edit-col span {
-color: #666;
+color: var(--sakai-text-color-2);
 }
 .calendar-div{
-max-width: 550px;
-border: solid #999 1px;
+max-width: 650px;
+border: 1px solid var(--sakai-border-color);
 border-radius: 0px 0px 10px 10px;
 }
 
@@ -1546,11 +1548,8 @@ list-style-type: none;
 cursor: pointer;
 margin-bottom: 6px; /*to add space between two events*/
 }
-.fc-today-button{
-background-color: #eee !important;
-}
 .fc-state-default {
-color: #333 !important;
+color: var(--sakai-text-color-1) !important;
 }
 .fc-toolbar {
 padding: 10px 15px;
@@ -1562,17 +1561,21 @@ border: none !important;
 background: none !important;
 }
 .sectionHeader {
-    padding: .5em;
+    padding: 8px;
+    margin: 16px 0 0;
 }
 
 .sectionHeader .collapseIcon {
     font-family: FontAwesome;
-    float:right;
+    margin-right: 4px;
 }
 
 .sectionCollapsedIcon {
     font-family: FontAwesome;
     margin-left: 1em;
+}
+.section {
+    margin-bottom: 1em;
 }
 #expandCollapseButtons {
     width: 100%;
@@ -1591,35 +1594,25 @@ background: none !important;
     display: none;
 }
 .collapsibleSectionHeader .collapseIcon {
-    display: block;
+    display: inline;
+    font-weight: normal;
 }
 .collapsibleSectionHeader .toggleCollapse {
     display: block;
     position: absolute;
     opacity: 0;
     z-index: 1000000;
-    webkit-transition: 0.3s ease;
-    moz-transition: 0.3s ease;
+    transition: 0.3s ease;
     pointer-events: none;
-    background: rgba(0, 0, 0, 0.8);
-    color: white;
+    background: var(--sakai-background-color-2);
+    color: var(--sakai-text-color-1);
     padding: 8px 10px;
     font-size: 12px;
     white-space: nowrap;
-    box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--elevation-2dp);
     top: 100%;
     left: 50%;
     margin: -2px 0 0 -10px;
-}
-
-.collapsibleSectionHeader:hover {
-    cursor: pointer;
-    background-color: #eee;
-}
-
-.collapsibleSectionHeader:hover .toggleCollapse {
-    opacity: 1;
-    margin-top: 6px;
 }
 
 /* position relative with no args does nothing, but editsection's position absolute needs it as a refernce */
@@ -1628,22 +1621,22 @@ background: none !important;
 }
 .editsection {
    position:absolute;
-   top:-12px;
+   top: 1px;
+   left: 1px;
+   z-index: 1;
 }
 .sectionedit {
    display:inline-block;
-   background-color:#ddd;
-   z-index: 15;
-   -webkit-border-radius: 3px;
-   -moz-border-radius: 3px;
-   border-radius: 3px;
-   border: solid #bbb 1px;
-   padding: 0px 5px 0px 5px ;
+   background-color:var(--sakai-background-color-3);
+   z-index: 3;
+   border-radius: 2px;
+   border: 1px solid var(--sakai-border-color);
+   padding: 0 5px;
    font-size: 20px;
    line-height: 24px;
 }
 .sectionedit a span {
-   color: #666;
+   color: var(--sakai-text-color-dimmed);
 }
 .addbottom {
    position:absolute;
@@ -1679,10 +1672,6 @@ margin-left: 0px;
   padding-right: 25px;
 }
 
-li.listType .contentCol {
-}
-li.question .contentCol
-}
 /* links should be spaced as close as possible to each other, so override padding */
 li.resourceType .right-col {
   padding-top: 0px;
@@ -1691,13 +1680,9 @@ li.resourceType .right-col {
 
 .edit-col a:link {
  background:none;
- border:none;
 }
 .itemclass {
   margin-top: 2.0em !important;
-}
-.add-comment-button span {
-font-size: 90%;
 }
 .add-comment-button a {
  padding: 3px 7px;
@@ -1706,20 +1691,11 @@ font-size: 90%;
  padding: 5px 10px;
 }
 
-/* in full width mode, if we don't do this, and the
-   first region is split, the right column doesn't fit
-   must be overridden for narrow format */
-.Mrphs-container--toolTitleNav {
-  margin-bottom:-30px;
-}
-
 /* for ShowItem */
 .itemDate {
-font-family: 'Segoe UI', Segoe, Tahoma, Helvetica, Arial, sans-serif;
 font-size: 12px;
 }
-.itemHeader {
-}
+
 .itemHeader-resource {
   margin-bottom:20px; 
   border-bottom:none;
@@ -1736,10 +1712,6 @@ font-size: 12px;
 .itemTitle {
   line-height:10px;
   margin-bottom:5px;
-}
-/* fit the actual height, so it doesn't overlap title */
-.Mrphs-toolTitleNav__button_container {
-  height: 30px;
 }
 .portletBody {
   margin-top:2px;
@@ -1777,18 +1749,12 @@ div.portletBody[sakaiversion="12"] {
 .column {
   margin-left: 2px;
   margin-right: 2px;
-  padding-top: 20px;
 }
 .right-col {
   padding-left: 7px;
   padding-right: 7px;
 }
 
-.split .mainList {
-    -webkit-column-count: 1;
-    -moz-column-count: 1;
-    column-count: 1;
-} 
 /* with narrow screen, don't use multiple columns */
 .cols1, .cols2, .cols3, .cols4, .cols5, .cols6, .cols7, .cols8, .cols9, 
 [class~="cols9"][class~="double"],
@@ -1807,10 +1773,6 @@ div.portletBody[sakaiversion="12"] {
 .cols2 .right-col,.cols3 .right-col,.cols4 .right-col,.cols5 .right-col,.cols6 .right-col,.cols7 .right-col,.cols8 .right-col,.cols9 .right-col {
   padding-left: 7px;
   padding-right: 7px;
-}
-/* Give the repositioned button container some room */
-#toolbar {
-  margin-top: 20px;
 }
 }
 /* 480 is boundary of most phones */
@@ -1884,7 +1846,7 @@ span.nextprev {
 .fa-edit-icon{
   font-size:16px;
   font-weight: normal;
-  color: #aaa;
+  color: var(--sakai-text-color-dimmed);
   font-family:FontAwesome;
 }
 .fa-group-icon {
@@ -1892,18 +1854,12 @@ span.nextprev {
   font-family:FontAwesome;
 }
 .mainList div:hover.canEdit {
-    background-color: #eee;
+    background-color: var(--sakai-background-color-3);
 }
 .peer-eval-row .newPeerCell {
-   background-color: rgb(173,216,230) !important;
-}
-.peer-eval-row .selectedPeerCell {
-/* nothing - used to save information */
+   background-color: var(--infoBanner-bgcolor) !important;
 }
 
-.Mrphs-siteHierarchy span:last-child {
-  margin-left: 6px;
-}
 .Mrphs-siteHierarchy .action .lessonsToolButton {
   background-color: transparent;
   padding-top: 1px;
@@ -1911,22 +1867,17 @@ span.nextprev {
   padding-right: 10px;
 }
 .startupHelp {
-  margin-top: 45px;
+  margin-top: 40px;
 }
 /* this section is to make things work when lessons is in an iframe */
 .contentButton span a {
   display:inline-block !important;
-  border:1px solid #e0e0e0;
+  border:1px solid var(--sakai-border-color);
 }
 body > .portletBody {
   margin-top:-15px;
   padding-top:0px;
   padding-bottom:0px;
-}
-.oldPortal + .navIntroTool {
-}
-.oldPortal .title {
-
 }
 .oldPortal + .navIntraTool {
   padding-top:0px;
@@ -1985,7 +1936,7 @@ body > .portletBody > .action {
 }
 
 .cols9 {
-    width: calc(100$ / 9  - 32px) !important;
+    width: calc(100% / 9  - 32px) !important;
 }
 [class~="cols9"][class~="double"] {
     width: calc(200% / 9 - 32px) !important;
@@ -2060,14 +2011,9 @@ nav.Mrphs-container--toolTitleNav .Mrphs-directUrl__dropDown .active {
     font-style: italic;
     font-size: 100%;
     font-weight: normal;
-    color: #000;
-}
-.checklistDiv h3 {
-    margin-top: 0px;
-    font-size: 100%;
+    color: var(--sakai-text-color-1);
 }
 .checklistSaveMessage {
-    font-family:Arial, Helvetica, sans-serif;
     font-size:13px;
     margin: 0 0 0 1em;
     padding:4px 4px 4px 24px;
@@ -2075,11 +2021,11 @@ nav.Mrphs-container--toolTitleNav .Mrphs-directUrl__dropDown .active {
     background-position: 4px center;
 }
 .saveChecklistSuccess {
-    color: #4F8A10;
+    color: var(--successBanner-color);
     background-image:url('../images/success.png');
 }
 .saveChecklistError {
-    color: #D8000C;
+    color: var(--errorBanner-bgcolor);
     background-image: url('../images/failed.png');
     background-size: 16px 16px;
 }
@@ -2087,11 +2033,6 @@ nav.Mrphs-container--toolTitleNav .Mrphs-directUrl__dropDown .active {
     margin-left: 2em;
 }
 
-.stylingstuff {
-    padding: .5em;
-    margin: .5em 0;
-    border: 1px solid #ccc;
-}
 
 .Mrphs-sakai-lessonbuildertool .navIntraTool.top-next-prev {
     margin-top: 20px;
@@ -2111,7 +2052,185 @@ nav.Mrphs-container--toolTitleNav .Mrphs-directUrl__dropDown .active {
 
 .subpage-breadcrumb-div {
     margin-top: 1.5em;
-    margin-bottom: -1em
+}
+
+/*
+	This CSS should be deleted in the moment Lessons doesn't use iframes to include other tools inside itself. 
+*/
+form#revise[action$=dfReviseForumSettingsAttach] label {
+  font-weight: 400;
+  margin: 1em 0 0.25em 0;
+}
+form#revise[action$=dfReviseForumSettingsAttach] label input[type=radio] {
+  margin: 0 0.5em 0 0;
+}
+form#revise[action$=dfReviseForumSettingsAttach] label[for*=forum_assignments] {
+  margin-top: 0;
+}
+form#revise[action$=dfReviseForumSettingsAttach] input[type=text], form#revise[action$=dfReviseForumSettingsAttach] textarea {
+  width: 100%;
+}
+form#revise[action$=dfReviseForumSettingsAttach] input[type=text].hasDatepicker, form#revise[action$=dfReviseForumSettingsAttach] textarea.hasDatepicker {
+  display: inline-block;
+  margin: 0 4px 0 0;
+  width: calc(100% - 62px);
+}
+form#revise[action$=dfReviseForumSettingsAttach] .jsfFormTable, form#revise[action$=dfReviseForumSettingsAttach] .shorttext, form#revise[action$=dfReviseForumSettingsAttach] .longtext {
+  width: 100%;
+}
+form#revise[action$=dfReviseForumSettingsAttach] table {
+  width: 100%;
+}
+form#revise[action$=dfReviseForumSettingsAttach] .checkbox {
+  display: block;
+  margin: 0 0 0 0;
+}
+form#revise[action$=dfReviseForumSettingsAttach] .checkbox input[type=radio] {
+  margin-left: -10px;
+  margin-right: 11px;
+  position: relative;
+}
+form#revise[action$=dfReviseForumSettingsAttach] .checkbox input[type=checkbox] {
+  margin-left: 10px;
+  position: inherit;
+}
+form#revise[action$=dfReviseForumSettingsAttach] .checkbox input[type=checkbox] + label {
+  padding-left: 10px;
+  padding-right: 40px;
+}
+@media only screen and (max-width: 800px) {
+  form#revise[action$=dfReviseForumSettingsAttach] .checkbox input[type=checkbox] + label {
+    max-width: calc(100% - 50px);
+    vertical-align: middle;
+  }
+}
+form#revise[action$=dfReviseForumSettingsAttach] .checkbox.openDateSpan label {
+  font-weight: 700;
+  padding-left: 0;
+}
+form#revise[action$=dfReviseForumSettingsAttach] .act {
+  margin: 1em 0 0 0;
+}
+form#revise[action$=dfReviseForumSettingsAttach] .permissionRow label {
+  margin: 0 0 0 0;
+}
+form#revise[action$=dfReviseForumSettingsAttach] .messageInstruction {
+  display: inline;
+}
+form#revise[action$=dfReviseForumSettingsAttach] #forum_grading {
+  margin-top: 2em;
+}
+@media only screen and (max-width: 800px) {
+  form#revise[action$=dfReviseForumSettingsAttach] .messageInstruction {
+    display: inline-block;
+    margin: 0 0 0 0;
+    padding: 3px 0 3px 6px;
+  }
+}
+
+.layout-option {
+    border: 1px solid var(--sakai-active-color-1);
+    padding: 4px;
+}
+.layout-option:hover {
+    cursor: pointer;
+}
+#layout-color-scheme-selection {
+    width: 100%;
+}
+.row.row-no-margin {
+    margin-left: 0;
+    margin-right: 0;
+}
+.blueLessonsIcon {
+    color: var(--sakai-color-blue--darker-3);
+}
+.darkblueLessonsIcon {
+    color: var(--sakai-color-blue--darker-5);
+}
+.darkgrayLessonsIcon {
+    color: var(--sakai-color-gray--darker-3);
+}
+.greenLessonsIcon {
+    color: var(--sakai-color-green--darker-3);
+}
+.redLessonsIcon {
+    color: var(--errorBanner-color);
+    background: var(--errorBanner-bgcolor);
+}
+.orangeLessonsIcon {
+    color: var(--sakai-color-orange--darker-3);
+}
+/* SAK-44158 */
+#addContentDiv {
+    background: var(--sakai-background-color-1) !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 1em 0 0 0 !important;
+}
+
+#addContentDiv .panel-heading h4 {
+    margin: 0 !important;
+}
+
+body div[role="dialog"] {
+    width: 60% !important;
+    left: 20% !important;
+}
+
+#path.instruction {
+    margin: 5px;
+}
+
+p.noTopSpacing {
+    margin-top: 0px;
+}
+
+legend.noBottomSpacing {
+    padding-bottom: 0px;
+}
+.itemDesc {
+    padding-left: 0px !important; /* important needed to override bootstrap grid-layout */
+}
+
+.edit-form-input {
+    margin-bottom: 10px;
+}
+
+textarea.edit-form-input {
+    padding: 8px;
+}
+
+p.checkbox{
+    margin-top: 0px;
+}
+
+#mm-path {
+    margin: 0px;
+}
+
+button.accordionBtn {
+    color: var(--sakai-text-color-1) !important; /*have to override Sakai button color*/
+    background-color: transparent !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+button.accordionBtn:focus {
+    outline: none !important;
+}
+button.accordionBtn:before {
+    font-family: "FontAwesome";
+    content: "\f0d7";
+    color: var(--sakai-text-color-1);
+    padding-right: 5px;
+}
+button.accordionBtn.collapsed:before {
+    font-family: "FontAwesome";
+    content: "\f0da";
+    color: var(--sakai-text-color-1);
+    padding-right: 5px;
 }
 
 /* Styles for the poll's new horizontal bar graph */

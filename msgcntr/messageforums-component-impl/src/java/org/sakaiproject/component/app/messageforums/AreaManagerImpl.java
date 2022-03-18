@@ -25,12 +25,12 @@ import java.util.Iterator;
 
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.HibernateException;
-import org.hibernate.Query;
+import org.hibernate.query.Query;
 import org.hibernate.Session;
 import org.hibernate.collection.internal.PersistentSet;
 import org.hibernate.type.StringType;
-import org.springframework.orm.hibernate4.HibernateCallback;
-import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
+import org.springframework.orm.hibernate5.HibernateCallback;
+import org.springframework.orm.hibernate5.support.HibernateDaoSupport;
 
 import org.sakaiproject.api.app.messageforums.Area;
 import org.sakaiproject.api.app.messageforums.AreaManager;
@@ -60,6 +60,8 @@ public class AreaManagerImpl extends HibernateDaoSupport implements AreaManager 
     private static final String MESSAGECENTER_BUNDLE = "org.sakaiproject.api.app.messagecenter.bundle.Messages";
     private static final String MESSAGES_TITLE = "cdfm_message_pvtarea";
     private static final String FORUMS_TITLE = "cdfm_discussion_forums";
+
+    private ResourceLoader rb;
 
     private IdManager idManager;
 
@@ -97,6 +99,7 @@ public class AreaManagerImpl extends HibernateDaoSupport implements AreaManager 
 
 	public void init() {
        log.info("init()");
+       rb = new ResourceLoader(MESSAGECENTER_BUNDLE);
        DEFAULT_AUTO_MARK_READ = serverConfigurationService.getBoolean("msgcntr.forums.default.auto.mark.threads.read", false);
     }
 
@@ -147,7 +150,7 @@ public class AreaManagerImpl extends HibernateDaoSupport implements AreaManager 
             area.setPostFirst(Boolean.FALSE);
 	    area.setAutoMarkThreadsRead(DEFAULT_AUTO_MARK_READ);
             area.setSendToEmail(serverConfigurationService.getInt(DEFAULT_SEND_TO_EMAIL_PROP, Area.EMAIL_COPY_OPTIONAL));
-            saveArea(area);
+            area = saveArea(area);
         }
 
         return area;
@@ -181,7 +184,7 @@ public class AreaManagerImpl extends HibernateDaoSupport implements AreaManager 
             // this is a Messages tool option
 	    area.setSendToEmail(serverConfigurationService.getInt(DEFAULT_SEND_TO_EMAIL_PROP, Area.EMAIL_COPY_OPTIONAL));
 	    area.setAvailabilityRestricted(Boolean.FALSE);
-            saveArea(area);
+            area = saveArea(area);
             //if set populate the default Forum and topic
             if  (createDefaultForum && serverConfigurationService.getBoolean("forums.setDefault.forum", true)) {
             	setAreaDefaultElements(area);
@@ -208,7 +211,7 @@ public class AreaManagerImpl extends HibernateDaoSupport implements AreaManager 
     	forum.setDraft(false);
     	forum.setModerated(area.getModerated());
     	forum.setPostFirst(area.getPostFirst());
-        forumManager.saveDiscussionForum(forum);
+        forum = forumManager.saveDiscussionForum(forum);
     	DiscussionTopic topic = forumManager.createDiscussionForumTopic(forum);
     	topic.setTitle(getResourceBundleString("default_topic"));
     	//MSGCNTR-453
@@ -255,17 +258,15 @@ public class AreaManagerImpl extends HibernateDaoSupport implements AreaManager 
      * sort index of 0.  (if a sort index on a forum is 0 then it is new). If there is a 
      * zero sort index then it increments all the sort indices by one so the new sort index
      * becomes the first without having to rely on the creation date for the sorting.
-     * 
+     *
      * @param area Area to save
      */
-    public void saveArea(Area area) {
+    public Area saveArea(Area area) {
     	String currentUser = getCurrentUser();
-    	saveArea( area, currentUser);
+    	return saveArea( area, currentUser);
     }
     
-    public void saveArea(Area area, String currentUser){
-        boolean isNew = area.getId() == null;
-
+    public Area saveArea(Area area, String currentUser){
         area.setModified(new Date());
         area.setModifiedBy(currentUser);
         
@@ -295,9 +296,11 @@ public class AreaManagerImpl extends HibernateDaoSupport implements AreaManager 
         // the area will always be available. 
         area.setAvailability(true); 
         
-        getHibernateTemplate().saveOrUpdate(area);
+        area = getHibernateTemplate().merge(area);
 
-        log.debug("saveArea executed with areaId: " + area.getId());
+        log.debug("saveArea executed with areaId: {}", area.getId());
+
+        return area;
     }
 
     public void deleteArea(Area area) {
@@ -378,16 +381,12 @@ public class AreaManagerImpl extends HibernateDaoSupport implements AreaManager 
      */
     public String getResourceBundleString(String key) 
     {
-    	final ResourceLoader rb = new ResourceLoader(MESSAGECENTER_BUNDLE);
     	return rb.getString(key);
     }
     
     private String getResourceBundleString(String key, Object[] replacementValues) 
     {
-    	final ResourceLoader rb = new ResourceLoader(MESSAGECENTER_BUNDLE);
     	return rb.getFormattedMessage(key, replacementValues);
-    	
-    	
     }
 
 }

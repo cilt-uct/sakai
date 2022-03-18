@@ -22,14 +22,18 @@
 package org.sakaiproject.poll.tool.params;
 
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.multipart.MultipartFile;
 
 import org.sakaiproject.poll.logic.ExternalLogic;
 import org.sakaiproject.poll.logic.PollListManager;
@@ -38,8 +42,8 @@ import org.sakaiproject.poll.model.Option;
 import org.sakaiproject.poll.model.Poll;
 import org.sakaiproject.poll.model.Vote;
 import org.sakaiproject.poll.model.VoteCollection;
+import org.sakaiproject.poll.tool.util.OptionsFileConverterUtil;
 import org.sakaiproject.poll.util.PollUtils;
-import org.sakaiproject.util.FormattedText;
 
 import uk.org.ponder.localeutil.LocaleGetter;
 import uk.org.ponder.messageutil.MessageLocator;
@@ -55,7 +59,6 @@ public class PollToolBean {
 	
 	//public Poll newPoll = new Poll();
 	public String siteID;
-
 
 	public Option option;
 
@@ -82,6 +85,9 @@ public class PollToolBean {
 	
 	//how to handle orphaned votes when deleting an option
 	private String handleOrphanVotes;
+
+	@Setter
+	public Map<String, MultipartFile> multipartMap;
 
 	public Map perms = null;
 	public void setRoleperms(Map perms)
@@ -139,16 +145,17 @@ public class PollToolBean {
 		boolean isNew = true;
 		if (poll.getPollId()!=null) {
 			log.debug("Actualy updating poll " + poll.getPollId());
+			Poll existingPoll = manager.getPollById(poll.getPollId(), false);
 			isNew = false;
 			//check for possible unchanged values
-			log.debug(" newPoll is " + poll.getText()+ " while poll text is " + poll.getText());
+			log.debug("newPoll is {} while poll text is {}", poll.getText(), existingPoll.getText());
 			
 
-			if (poll.getText().equals("") && poll.getText()!=null)
-				poll.setText(poll.getText());
-
-			if (poll.getDetails().equals("") && poll.getDetails() != null)
-				poll.setDetails(poll.getDetails());
+			if (poll.getCreationDate() == null) {
+				poll.setCreationDate(existingPoll.getCreationDate());
+			}
+		} else {
+			poll.setCreationDate(new Date());
 		}
 
 		
@@ -174,7 +181,7 @@ public class PollToolBean {
 		}
 
 
-		poll.setDetails(PollUtils.cleanupHtmlPtags(FormattedText.processFormattedText(poll.getDetails(), new StringBuilder())));
+		poll.setDetails(PollUtils.cleanupHtmlPtags(externalLogic.processFormattedText(poll.getDetails(), new StringBuilder())));
 		log.debug("about to save poll " + poll);
 		manager.savePoll(poll);
 
@@ -273,33 +280,107 @@ public class PollToolBean {
 		if ("cancel".equals(submissionStatus))
 			return "cancel";
 		
-		log.debug("adding option with text " + option.getOptionText());
-		if (option.getOptionText() == null || option.getOptionText().trim().length()==0) {
+		log.debug("adding option with text " + option.getText());
+		if (option.getText() == null || option.getText().trim().length()==0) {
 			//errors.reject("vote_closed","vote closed");
 			// return null;
 		}
 		StringBuilder sb = new StringBuilder();
-		option.setOptionText(FormattedText.processFormattedText(option.getOptionText(), sb, true, true));
+		option.setText(externalLogic.processFormattedText(option.getText(), sb, true, true));
 
-		String text = option.getOptionText();
-		text = PollUtils.cleanupHtmlPtags(text);
-
-		option.setOptionText(text);
+		String text = PollUtils.cleanupHtmlPtags(option.getText());
+		option.setText(text);
+		option.setOptionOrder(manager.getOptionsForPoll(option.getPollId()).size());
 		manager.saveOption(option);
 		log.debug("Succesuly save option with id" + option.getId());
 
-		//voteBean.poll = manager.getPollById(option.getPollId());
-
-		
-		if ("option".equals(submissionStatus))
-			return "option";
-		else 
-			return "Saved";
-
-		
+		String action = "Saved";
+		switch(submissionStatus) {
+			case "option":
+				action = "option";
+				break;
+			case "batch":
+				action = "batch";
+				break;
+			default:
+				break;
+		}
+		return action;
 	}
 
-	
+	public String processActionAddOptionBatch() {
+		log.debug("processActionAddOptionBatch");
+		if ("cancel".equals(submissionStatus)){
+			log.debug("processActionAddOptionBatch: cancel");
+			return "cancel";
+		}
+
+		Long pollId = option.getPollId();
+		if (pollId == null) {
+			messages.addMessage(new TargettedMessage("error_batch_options","no file"));
+			throw new IllegalArgumentException("error_batch_options");
+		}
+
+		MultipartFile file = null;
+
+		if (multipartMap.size() > 0) {
+			log.debug("The multipartMap is not empty so retrieving the file.");
+			// 	user specified a file, create it
+			file = multipartMap.values().iterator().next();
+			//Clear the map to get new file items.
+			multipartMap.clear();
+		}
+
+		boolean fileError = false;
+		if (file != null) {
+			log.debug("File uploaded successfully with contentType {}, size {} and name {}", file.getContentType(), file.getSize(), file.getOriginalFilename());
+			try{
+				switch(file.getContentType()){
+					case "application/octet-stream":
+					case "text/plain":
+					case "text/csv":
+					case "application/vnd.ms-excel":
+					case "application/msexcel":
+					case "application/x-msexcel":
+					case "application/x-ms-excel":
+					case "application/x-excel":
+					case "application/x-dos_ms_excel":
+					case "application/xls":
+					case "application/x-xls":
+					case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+						List<String> optionsList = OptionsFileConverterUtil.convertInputStreamToOptionList(file.getInputStream());
+						for(String optionString : optionsList){
+							Option newOption = new Option();
+							newOption.setPollId(pollId);
+							newOption.setText(PollUtils.cleanupHtmlPtags(optionString));
+							newOption.setOptionOrder(manager.getOptionsForPoll(pollId).size());
+							manager.saveOption(newOption);
+							log.debug("Option with id {} successfully saved.", newOption.getId());
+						}
+						break;
+					default:
+						log.warn("File mimetype not accepted {}.", file.getContentType());
+						throw new IOException();
+				}
+			} catch(Exception ex) {
+				log.warn("Error converting the input file into options.", ex);
+				fileError = true;
+			}
+		} else {
+			log.warn("The uploaded file object is null.");
+			fileError = true;
+		}
+
+		if (fileError) {
+			log.debug("There was a problem processing the file.");
+			messages.addMessage(new TargettedMessage("error_batch_options", "no file"));
+			throw new IllegalArgumentException("error_batch_options");
+		}
+
+		log.debug("processActionAddOptionBatch: Saved");
+		return "Saved";
+	}
+
 	public Poll proccessActionDeleteOption() {
 		log.info("about to delete option " + option.getId());
 		Long pollId = option.getPollId();
@@ -369,7 +450,7 @@ public class PollToolBean {
 	private void sendOptionDeletedNotification(String[] userEids) {
 		Poll poll = manager.getPollById(option.getPollId());
 		String siteTitle = externalLogic.getSiteTile(poll.getSiteId());
-		externalLogic.notifyDeletedOption(Arrays.asList(userEids), siteTitle, poll.getPollText());
+		externalLogic.notifyDeletedOption(Arrays.asList(userEids), siteTitle, poll.getText());
 	}
 
 }

@@ -24,16 +24,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.collections.Predicate;
-import org.apache.commons.lang.ArrayUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.validator.EmailValidator;
-import uk.org.ponder.messageutil.MessageLocator;
-import uk.org.ponder.messageutil.TargettedMessage;
-import uk.org.ponder.messageutil.TargettedMessageList;
-
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.Predicate;
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.validator.routines.EmailValidator;
 import org.sakaiproject.accountvalidator.logic.ValidationLogic;
 import org.sakaiproject.authz.api.AuthzGroup;
 import org.sakaiproject.authz.api.AuthzGroupService;
@@ -42,16 +37,17 @@ import org.sakaiproject.authz.api.GroupNotDefinedException;
 import org.sakaiproject.authz.api.Role;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.component.cover.ComponentManager;
+import org.sakaiproject.event.api.UsageSessionService;
 import org.sakaiproject.event.cover.EventTrackingService;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.site.util.Participant;
-import org.sakaiproject.site.util.SiteTypeUtil;
+import org.sakaiproject.site.util.SiteConstants;
 import org.sakaiproject.site.util.SiteParticipantHelper;
+import org.sakaiproject.site.util.SiteTypeUtil;
 import org.sakaiproject.sitemanage.api.SiteHelper;
 import org.sakaiproject.sitemanage.api.UserNotificationProvider;
-import org.sakaiproject.event.api.UsageSessionService;
 import org.sakaiproject.tool.api.SessionManager;
 import org.sakaiproject.tool.api.Tool;
 import org.sakaiproject.tool.api.ToolManager;
@@ -65,7 +61,13 @@ import org.sakaiproject.user.api.UserNotDefinedException;
 import org.sakaiproject.user.api.UserPermissionException;
 import org.sakaiproject.userauditservice.api.UserAuditRegistration;
 import org.sakaiproject.userauditservice.api.UserAuditService;
-import org.sakaiproject.util.PasswordCheck;
+import org.sakaiproject.util.api.PasswordFactory;
+
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+import uk.org.ponder.messageutil.MessageLocator;
+import uk.org.ponder.messageutil.TargettedMessage;
+import uk.org.ponder.messageutil.TargettedMessageList;
 
 /**
  * 
@@ -80,6 +82,7 @@ public class SiteAddParticipantHandler {
     public AuthzGroupService authzGroupService = null;
     public ToolManager toolManager = null;
     public SessionManager sessionManager = null;
+    @Setter private PasswordFactory passwordFactory;
     public ServerConfigurationService serverConfigurationService;
     private final String HELPER_ID = "sakai.tool.helper.id";
     private static final UserAuditRegistration userAuditRegistration = (UserAuditRegistration) ComponentManager.get("org.sakaiproject.userauditservice.api.UserAuditRegistration.sitemanage");
@@ -336,12 +339,24 @@ public class SiteAddParticipantHandler {
     public String processCancel() {
         ToolSession session = sessionManager.getCurrentToolSession();
         session.setAttribute(ATTR_TOP_REFRESH, Boolean.TRUE);
+
+        // Go to Site Info landing page on 'Cancel'
+        setNextPage(SiteConstants.SITE_INFO_TEMPLATE_INDEX);
+
         resetTargettedMessageList();
         reset();
 
         return "done";
     }
-    
+
+    /*
+     * Utility method; sets the template index (in the tool session) of the desired page to transfer the user to.
+     */
+    private void setNextPage(String nextPageTemplateIndex) {
+        ToolSession session = sessionManager.getCurrentToolSession();
+        session.setAttribute(SiteConstants.STATE_TEMPLATE_INDEX, nextPageTemplateIndex);
+    }
+
     private boolean validCsrfToken() {
 		return StringUtils.equals(csrfToken, getCsrfToken());
     }
@@ -678,7 +693,7 @@ public class SiteAddParticipantHandler {
 						if (lastName != null  && lastName.length() > 0)
 							uEdit.setLastName(entry.lastName);
 						
-						String pw = PasswordCheck.generatePassword();
+						String pw = passwordFactory.generatePassword();
 						uEdit.setPassword(pw);
 
 						// and save
@@ -745,7 +760,10 @@ public class SiteAddParticipantHandler {
 		{
 			// time to reset user inputs
 			reset();
-			
+
+			// After succesfully adding participants, return to the 'Manage Participants' UI rather than whatever the previously selected tab was
+			setNextPage(SiteConstants.MANAGE_PARTICIPANTS_TEMPLATE_INDEX);
+
 	        return "done";
 		}
 		else

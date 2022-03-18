@@ -22,23 +22,54 @@
 package org.sakaiproject.site.impl;
 
 import java.io.PrintWriter;
-import java.util.*;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Observable;
+import java.util.Observer;
+import java.util.Properties;
+import java.util.Set;
+import java.util.Stack;
+import java.util.Vector;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import lombok.extern.slf4j.Slf4j;
-
 import org.apache.commons.lang3.StringUtils;
-
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-
-import org.sakaiproject.authz.api.*;
+import org.apache.commons.validator.routines.UrlValidator;
+import org.sakaiproject.authz.api.AuthzGroup;
+import org.sakaiproject.authz.api.AuthzGroupService;
+import org.sakaiproject.authz.api.AuthzPermissionException;
+import org.sakaiproject.authz.api.AuthzRealmLockException;
+import org.sakaiproject.authz.api.FunctionManager;
+import org.sakaiproject.authz.api.GroupNotDefinedException;
+import org.sakaiproject.authz.api.Member;
+import org.sakaiproject.authz.api.Role;
+import org.sakaiproject.authz.api.SecurityAdvisor;
+import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.component.cover.ComponentManager;
-import org.sakaiproject.entity.api.*;
+import org.sakaiproject.entity.api.ContextObserver;
+import org.sakaiproject.entity.api.Entity;
+import org.sakaiproject.entity.api.EntityAccessOverloadException;
+import org.sakaiproject.entity.api.EntityCopyrightException;
+import org.sakaiproject.entity.api.EntityManager;
+import org.sakaiproject.entity.api.EntityNotDefinedException;
+import org.sakaiproject.entity.api.EntityPermissionException;
+import org.sakaiproject.entity.api.EntityProducer;
+import org.sakaiproject.entity.api.HardDeleteAware;
+import org.sakaiproject.entity.api.HttpAccess;
+import org.sakaiproject.entity.api.Reference;
+import org.sakaiproject.entity.api.ResourceProperties;
+import org.sakaiproject.entity.api.ResourcePropertiesEdit;
 import org.sakaiproject.event.api.Event;
 import org.sakaiproject.event.api.EventTrackingService;
 import org.sakaiproject.event.api.Notification;
@@ -52,9 +83,16 @@ import org.sakaiproject.id.api.IdManager;
 import org.sakaiproject.javax.PagingPosition;
 import org.sakaiproject.memory.api.Cache;
 import org.sakaiproject.memory.api.MemoryService;
-import org.sakaiproject.site.api.*;
+import org.sakaiproject.site.api.AllowedJoinableAccount;
+import org.sakaiproject.site.api.Group;
+import org.sakaiproject.site.api.Site;
+import org.sakaiproject.site.api.SiteAdvisor;
+import org.sakaiproject.site.api.SitePage;
+import org.sakaiproject.site.api.SiteRemovalAdvisor;
+import org.sakaiproject.site.api.SiteService;
+import org.sakaiproject.site.api.SiteTitleAdvisor;
+import org.sakaiproject.site.api.ToolConfiguration;
 import org.sakaiproject.thread_local.api.ThreadLocalManager;
-import org.sakaiproject.time.api.Time;
 import org.sakaiproject.time.api.TimeService;
 import org.sakaiproject.tool.api.ActiveToolManager;
 import org.sakaiproject.tool.api.SessionManager;
@@ -62,7 +100,15 @@ import org.sakaiproject.user.api.PreferencesService;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserNotDefinedException;
-import org.sakaiproject.util.*;
+import org.sakaiproject.util.BasicConfigItem;
+import org.sakaiproject.util.Resource;
+import org.sakaiproject.util.ResourceLoader;
+import org.sakaiproject.util.StringUtil;
+import org.sakaiproject.util.Validator;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * <p>
@@ -93,6 +139,9 @@ public abstract class BaseSiteService implements SiteService, Observer
 	private static final String RESOURCECLASS = "resource.class.siteimpl";
 	private static final String RESOURCEBUNDLE = "resource.bundle.siteimpl";
 	private static final String ORIGINAL_SITE_ID_PROPERTY = "original-site-id";
+
+	private final UrlValidator siteIdValidator
+		= new UrlValidator(UrlValidator.ALLOW_LOCAL_URLS | UrlValidator.ALLOW_2_SLASHES);
 
 	private ResourceLoader rb = null;
 	// protected ResourceLoader rb = new ResourceLoader("site-impl");
@@ -250,7 +299,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 		String current = sessionManager().getCurrentSessionUserId();
 
 		site.m_lastModifiedUserId = current;
-		site.m_lastModifiedTime = timeService().newTime();
+		site.m_lastModifiedTime = Instant.now();
 	}
 
 	/**
@@ -263,9 +312,9 @@ public abstract class BaseSiteService implements SiteService, Observer
 		site.m_createdUserId = current;
 		site.m_lastModifiedUserId = current;
 
-		Time now = timeService().newTime();
-		site.m_createdTime = now;
-		site.m_lastModifiedTime = (Time) now.clone();
+
+		site.m_createdTime = Instant.now();
+		site.m_lastModifiedTime = Instant.now();
 	}
 
 	/**
@@ -446,7 +495,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 			// Get resource bundle
 			String resourceClass = serverConfigurationService().getString(RESOURCECLASS, DEFAULT_RESOURCECLASS);
 			String resourceBundle = serverConfigurationService().getString(RESOURCEBUNDLE, DEFAULT_RESOURCEBUNDLE);
-			rb = new Resource().getLoader(resourceClass, resourceBundle);
+			rb = Resource.getResourceLoader(resourceClass, resourceBundle);
 			
 			m_relativeAccessPoint = REFERENCE_ROOT;
 
@@ -907,6 +956,13 @@ public abstract class BaseSiteService implements SiteService, Observer
 		{
 			throw new IdUnusedException(site.getId());
 		}
+		
+		// Invalidate the user-site cache.
+		Site cached = getCachedSite(site.getId());
+		if (cached != null ) {
+			clearUserCacheForSite(site);
+		}
+		cacheSite(site);
 
 		try
 		{
@@ -937,6 +993,13 @@ public abstract class BaseSiteService implements SiteService, Observer
 		{
 			throw new IdUnusedException(site.getId());
 		}
+		
+		// Invalidate the user-site cache.
+		Site cached = getCachedSite(site.getId());
+		if (cached != null ) {
+			clearUserCacheForSite(site);
+		}
+		cacheSite(site);
 
 		try
 		{
@@ -1010,7 +1073,7 @@ public abstract class BaseSiteService implements SiteService, Observer
 		// track it
 		String event = site.getEvent();
 		if (event == null) event = SECURE_UPDATE_SITE;
-		eventTrackingService().post(eventTrackingService().newEvent(event, site.getReference(), true));
+		eventTrackingService().post(eventTrackingService().newEvent(event, site.getReference(), site.getId(), true, NotificationService.NOTI_OPTIONAL));
 
 		// clear the event for next time
 		site.setEvent(null);
@@ -1083,6 +1146,8 @@ public abstract class BaseSiteService implements SiteService, Observer
 				try
 				{
 					authzGroupService().save(group.m_azg);
+					// track it
+					eventTrackingService().post(eventTrackingService().newEvent(SECURE_UPDATE_GROUP_MEMBERSHIP, group.getId(), true));
 				}
 				catch (Exception t)
 				{
@@ -1140,6 +1205,43 @@ public abstract class BaseSiteService implements SiteService, Observer
 			siteTypes = new String[] {type};
 		}
 		return Arrays.asList(siteTypes);
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	@Override
+	public void silentlyUnpublish(List<String> siteIds)
+	{
+		if (siteIds == null)
+		{
+			throw new IllegalArgumentException("siteIds cannot be null");
+		}
+
+		String currentUser = sessionManager().getCurrentSessionUserId();
+		Instant lastModifiedTime = Instant.now();
+
+		// complete the edit
+		storage().unpublish(siteIds, currentUser, lastModifiedTime);
+
+		// track it
+		String event = SECURE_UPDATE_SITE;
+		for (String siteId : siteIds)
+		{
+			String siteReference = siteReference(siteId);
+			eventTrackingService().post(eventTrackingService().newEvent(event, siteReference, true));
+		}
+	}
+
+	/**
+	 * Saves a site property for the sites with the specified IDs using the specified name-value pair in a single transaction.
+	 * NB: inserts only; doesn't do any duplicate checking. Vulnerable to unique constraint violations
+	 * Use this only when making very minimal changes in performance critical tasks.
+	 */
+	@Override
+	public void saveSitePropertyOnSites(String propertyName, String propertyValue, String... siteIds)
+	{
+		storage().writeProperty(propertyName, propertyValue, siteIds);
 	}
 
 	private boolean isCourseSite(String siteId) {
@@ -1214,6 +1316,14 @@ public abstract class BaseSiteService implements SiteService, Observer
 		}
 
 		id = Validator.escapeResourceName(id);
+
+		if (!serverConfigurationService().getBoolean("site.api.allow_malformed_ids", false)
+				&& !siteIdValidator.isValid("http://localhost/portal/site/" + id)) {
+			String message
+				= "Id " + id + " is not a valid id format. It can only contain url friendly characters";
+			log.warn(".addSite(): " + message);
+			throw new IdInvalidException(message);
+		}
 
 		// check for a valid site type
 		if (!Validator.checkSiteType(type)) {
@@ -1377,11 +1487,19 @@ public abstract class BaseSiteService implements SiteService, Observer
 	 */
 	public void removeSite(Site site) throws PermissionException, IdUnusedException
 	{
+		removeSite(site, false);
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public void removeSite(Site site, boolean isHardDelete) throws PermissionException, IdUnusedException
+	{
 		// check security (throws if not permitted)
 		unlock(SECURE_REMOVE_SITE, site.getReference());
 
 		// if soft site deletes are active
-		if(serverConfigurationService().getBoolean("site.soft.deletion", true)) {
+		if (!isHardDelete && serverConfigurationService().getBoolean("site.soft.deletion", true)) {
 			
 			log.debug("Soft site deletes are enabled.");
 			
@@ -1425,6 +1543,11 @@ public abstract class BaseSiteService implements SiteService, Observer
 
 		// get the services related to this site setup for the site's removal
 		disableRelated(site);
+
+		// Use the HardDelete interface to purge content from database
+		if (isHardDelete) {
+			hardDelete(site);
+		}
 	}
 
 	/**
@@ -1907,6 +2030,9 @@ public abstract class BaseSiteService implements SiteService, Observer
 		{
 			throw new PermissionException(e.getUser(), e.getFunction(), e.getResource());
 		}
+		catch (AuthzRealmLockException arle) {
+			log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
+		}
 	}
 
 	/**
@@ -2008,6 +2134,14 @@ public abstract class BaseSiteService implements SiteService, Observer
 		{
 			return (List<Site>) getSites( selectionType, null, null, null, excludedSites, sortType, null, requireDescription, userID );
 		}
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public List<String> getSiteIds(SelectionType type, Object ofType, String criteria, Map<String, String> propertyCriteria, Map<String, String> propertyRestrictions, SortType sort, PagingPosition page, String userId)
+	{
+		return storage().getSiteIds(type, ofType, criteria, propertyCriteria, propertyRestrictions, null, sort, page, userId);
 	}
 
 	/**
@@ -2434,9 +2568,10 @@ public abstract class BaseSiteService implements SiteService, Observer
 			Site site = getSite(ref.getId());
 			rv = rb.getFormattedMessage("entdsc.sit_usr", new Object[]{
 					site.getTitle() + " (" + site.getId() + ")",
-					site.getCreatedTime().toStringLocalFull(),
+					//TODO UserTimeService?
+					site.getCreatedDate(),
 					site.getCreatedBy().getDisplayName() + " (" + site.getCreatedBy().getDisplayId() + ")",
-					StringUtil.limit((site.getDescription() == null ? "" : site.getDescription()), 30)});
+					StringUtils.abbreviate((site.getDescription() == null ? "" : site.getDescription()), 30)});
 		}
 		catch (IdUnusedException e)
 		{
@@ -2658,6 +2793,29 @@ public abstract class BaseSiteService implements SiteService, Observer
 		finally
 		{
 			disableAzgSecurityAdvisor();
+		}
+	}
+	
+	/**
+	 * Sync up with all other services for a site that content should be hard-deleted from database.
+	 * 
+	 * @param site
+	 *        The site.
+	 */
+	protected void hardDelete(Site site) {
+		// skip if special
+		if (isSpecialSite(site.getId())) {
+			return;
+		}
+
+		// leverage the entityproducer registration system
+		for (EntityProducer ep : entityManager().getEntityProducers()) {
+			//if a registered service implements hard delete, then ask it to delete itself
+			if (ep instanceof HardDeleteAware) {
+				HardDeleteAware hd = (HardDeleteAware) ep;
+				log.info("Requesting hard delete for site: {}, tool: {}", site.getId(), ep.getLabel());
+				hd.hardDelete(site.getId());
+			}
 		}
 	}
 
@@ -2936,6 +3094,29 @@ public abstract class BaseSiteService implements SiteService, Observer
 		public void saveInfo(String siteId, String description, String infoUrl);
 
 		/**
+		 * Unpublish the sites by simply unsetting the PUBLISHED flag
+		 * @param siteIds
+		 *        The site to unpublish
+		 * @param modifedBy
+		 *        User who is unpublishing the site (as a userID)
+		 * @param modifiedOn
+		 *        Time that the site is unpublished
+		 */
+		public void unpublish(List<String> siteIds, String modifiedBy, Instant modifiedOn);
+
+		/**
+		 * Writes site properties
+		 */
+		public void writeProperties(Entity r, ResourceProperties props);
+
+		/**
+		 * Saves a site property for the sites with the specified IDs using the specified name-value pair in a single transaction.
+		 * NB: inserts only; doesn't do any duplicate checking. Vulnerable to unique constraint violations
+		 * Use this only when making very minimal changes in performance critical tasks.
+		 */
+		public void writeProperty(String propertyName, String propertyValue, String... siteId);
+
+		/**
 		 * Remove this site.
 		 * 
 		 * @param user
@@ -3124,6 +3305,34 @@ public abstract class BaseSiteService implements SiteService, Observer
 		 * @return a List of the Site IDs for the sites matching the criteria.
 		 */
 		List<String> getSiteIds(SelectionType type, Object ofType, String criteria, Map<String, String> propertyCriteria, SortType sort, PagingPosition page);
+
+		/**
+		 * Get the Site IDs for all sites matching criteria.
+		 * This is useful when you only need the listing of site ids (for other operations) and do not need the actual Site objects.
+		 *
+		 * All parameters are the same as {@link #getSites(org.sakaiproject.site.api.SiteService.SelectionType, Object, String, Map, org.sakaiproject.site.api.SiteService.SortType, PagingPosition)}
+		 *
+		 * @param type
+		 *        The SelectionType specifying what sort of selection is intended.
+		 * @param ofType
+		 *        Site type criteria: null for any type; a String to match a single type; A String[], List or Set to match any type in the collection.
+		 * @param criteria
+		 *        Additional selection criteria: sites returned will match this string somewhere in their id, title, description, or skin.
+		 * @param propertyCriteria
+		 *        Additional selection criteria: sites returned will have a property named to match each key in the map, whose values match (somewhere in their value) the value in the map (may be null or empty).
+		 * @param propertyRestrictions
+		 *        Similar to propertyCriteria, except matches will be excluded
+		 * @param excludedSites
+		 *        siteIds to be excluded from the results
+		 * @param sort
+		 *        A SortType indicating the desired sort. For no sort, set to SortType.NONE.
+		 * @param page
+		 *        The PagePosition subset of items to return.
+		 * @param userId
+		 *        The returned sites will be those which can be accessed by the user with this internal ID
+		 * @return a List of the Site IDs for the sites matching the criteria.
+		 */
+		List<String> getSiteIds(SelectionType type, Object ofType, String criteria, Map<String, String> propertyCriteria, Map<String, String> propertyRestrictions, List<String> excludedSites, SortType sort, PagingPosition page, String userId);
 
 		/**
 		 * Count the Site objets that meet specified criteria.

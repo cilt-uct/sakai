@@ -37,8 +37,6 @@ import java.util.Set;
 
 import javax.imageio.ImageIO;
 
-import org.apache.commons.lang.StringUtils;
-import lombok.extern.slf4j.Slf4j;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.PeriodAxis;
@@ -88,11 +86,11 @@ import org.sakaiproject.sitestats.api.chart.ChartService;
 import org.sakaiproject.sitestats.api.event.EventRegistryService;
 import org.sakaiproject.sitestats.api.report.Report;
 import org.sakaiproject.sitestats.api.report.ReportManager;
-import org.sakaiproject.sitestats.impl.event.EventRegistryServiceImpl;
 import org.sakaiproject.user.api.PreferencesService;
 import org.sakaiproject.user.api.UserDirectoryService;
-import org.sakaiproject.user.api.UserNotDefinedException;
 import org.sakaiproject.util.ResourceLoader;
+
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class ChartServiceImpl implements ChartService {
@@ -336,11 +334,7 @@ public class ChartServiceImpl implements ChartService {
 			boolean render3d, float transparency,
 			boolean itemLabelsVisible, 
 			boolean smallFontInDomainAxis) {
-		// JFreeChart chart = null;
-		// JFreechart 1.5 doesn't support 3D rendering anymore.
-		// if(render3d)
-		// 	chart = ChartFactory.createBarChart3D(null, null, null, dataset, PlotOrientation.VERTICAL, true, false, false);
-		// else
+		// JFreechart 1.5 doesn't support 3D rendering so this was changed to a bar chart
 		JFreeChart chart = ChartFactory.createBarChart(null, null, null, dataset, PlotOrientation.VERTICAL, true, false, false);
 		CategoryPlot plot = (CategoryPlot) chart.getPlot();
 		
@@ -411,11 +405,7 @@ public class ChartServiceImpl implements ChartService {
 			boolean render3d, float transparency,
 			boolean itemLabelsVisible, 
 			boolean smallFontInDomainAxis) {
-		// JFreechart 1.5 doesn't support 3D rendering anymore.
-		// JFreeChart chart = null;
-		// if(render3d)
-		// 	chart = ChartFactory.createLineChart3D(null, null, null, dataset, PlotOrientation.VERTICAL, true, false, false);
-		// else
+		// JFreechart 1.5 doesn't support 3D rendering so this was changed to a line chart
 		JFreeChart chart = ChartFactory.createLineChart(null, null, null, dataset, PlotOrientation.VERTICAL, true, false, false);
 		CategoryPlot plot = (CategoryPlot) chart.getPlot();
 		

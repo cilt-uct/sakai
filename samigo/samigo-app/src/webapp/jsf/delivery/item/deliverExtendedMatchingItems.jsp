@@ -24,7 +24,7 @@ should be included in file importing DeliveryMessages
 **********************************************************************************/
 --%>
 -->
-  <samigo:script path="/js/utils-emi.js" />
+  <script src="/samigo-app/js/utils-emi.js"></script>
   <f:verbatim></h5><h3></f:verbatim><h:outputText value="#{question.themeText}"  escape="false"/>
   <f:verbatim></h3><br /></f:verbatim>
   
@@ -51,8 +51,6 @@ should be included in file importing DeliveryMessages
       <h:outputText escape="false" value="
 	    <embed src=\"#{delivery.protocol}/samigo-app/servlet/ShowAttachmentMedia?actionMode=preview&resourceId=#{attach.encodedResourceId}&mimeType=#{attach.mimeType}&filename=#{attach.filename}\" volume=\"50\" height=\"350\" width=\"400\" autostart=\"false\"/>" rendered="#{attach.isInlineVideo}"/>
       <h:outputText escape="false" value="
-	    <embed src=\"#{delivery.protocol}/samigo-app/servlet/ShowAttachmentMedia?actionMode=preview&resourceId=#{attach.encodedResourceId}&mimeType=#{attach.mimeType}&filename=#{attach.filename}\" height=\"350\" width=\"400\"/>" rendered="#{attach.isInlineFlash}"/>
-	  <h:outputText escape="false" value="
 	    <img src=\"#{delivery.protocol}/samigo-app/servlet/ShowAttachmentMedia?actionMode=preview&resourceId=#{attach.encodedResourceId}&mimeType=#{attach.mimeType}&filename=#{attach.filename}\" />" rendered="#{attach.isInlineImage}"/>
       <h:outputLink value="#{attach.location}" target="new_window" rendered="#{!attach.isMedia}">
          <h:outputText escape="false" value="#{attach.filename}" />
@@ -126,8 +124,6 @@ should be included in file importing DeliveryMessages
     <h:column>
       <h:outputText escape="false" value="
 	    <embed src=\"#{delivery.protocol}/samigo-app/servlet/ShowAttachmentMedia?actionMode=preview&resourceId=#{attach.encodedResourceId}&mimeType=#{attach.mimeType}&filename=#{attach.filename}\" volume=\"50\" height=\"350\" width=\"400\" autostart=\"false\"/>" rendered="#{attach.isInlineVideo}"/>
-      <h:outputText escape="false" value="
-	    <embed src=\"#{delivery.protocol}/samigo-app/servlet/ShowAttachmentMedia?actionMode=preview&resourceId=#{attach.encodedResourceId}&mimeType=#{attach.mimeType}&filename=#{attach.filename}\" height=\"350\" width=\"400\"/>" rendered="#{attach.isInlineFlash}"/>
 	  <h:outputText escape="false" value="
 	    <img src=\"#{delivery.protocol}/samigo-app/servlet/ShowAttachmentMedia?actionMode=preview&resourceId=#{attach.encodedResourceId}&mimeType=#{attach.mimeType}&filename=#{attach.filename}\" />" rendered="#{attach.isInlineImage}"/>
       <h:outputLink value="#{attach.location}" target="new_window" rendered="#{!attach.isMedia}">
@@ -151,7 +147,7 @@ should be included in file importing DeliveryMessages
              && delivery.navigation ne '1' && delivery.displayMardForReview }">
 <h:selectBooleanCheckbox value="#{question.review}" id="mark_for_review" />
 	<h:outputLabel for="mark_for_review" value="#{deliveryMessages.mark}" />
-	<h:outputLink title="#{assessmentSettingsMessages.whats_this_link}" value="#" onclick="javascript:window.open('../author/markForReviewPopUp.faces','MarkForReview','width=300,height=220,scrollbars=yes, resizable=yes');" onkeypress="javascript:window.open('../author/markForReviewTipText.faces','MarkForReview','width=300,height=220,scrollbars=yes, resizable=yes');" >
+	<h:outputLink title="#{assessmentSettingsMessages.whats_this_link}" value="#" onclick="javascript:window.open('/samigo-app/jsf/author/markForReviewPopUp.faces','MarkForReview','width=350,height=280,scrollbars=yes, resizable=yes');event.preventDefault();" >
 		<h:outputText  value=" #{assessmentSettingsMessages.whats_this_link}"/>
 	</h:outputLink>
 </h:panelGroup>

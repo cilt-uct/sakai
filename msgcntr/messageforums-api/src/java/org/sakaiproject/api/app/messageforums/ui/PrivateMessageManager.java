@@ -24,15 +24,19 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
+import javax.mail.MessagingException;
+import javax.mail.internet.MimeMessage;
+import org.sakaiproject.entity.api.Reference;
 import org.sakaiproject.api.app.messageforums.Area;
 import org.sakaiproject.api.app.messageforums.Attachment;
+import org.sakaiproject.api.app.messageforums.DraftRecipient;
+import org.sakaiproject.api.app.messageforums.MembershipItem;
 import org.sakaiproject.api.app.messageforums.Message;
 import org.sakaiproject.api.app.messageforums.MessageForumsMessageManager;
 import org.sakaiproject.api.app.messageforums.PrivateForum;
 import org.sakaiproject.api.app.messageforums.PrivateMessage;
 import org.sakaiproject.api.app.messageforums.PrivateTopic;
 import org.sakaiproject.api.app.messageforums.Topic;
-
 import org.sakaiproject.user.api.User;
 
 public interface PrivateMessageManager {
@@ -48,7 +52,9 @@ public interface PrivateMessageManager {
     public static String SORT_DESC = "desc";
     
     public String getContextId();
-    
+
+    boolean isAllowToFieldMyGroupRoles(User user);
+
     public String getContextSiteId();
     
     public PrivateMessage initMessageWithAttachmentsAndRecipients(PrivateMessage msg);
@@ -116,6 +122,7 @@ public interface PrivateMessageManager {
      * @param asEmail
      */
     public void sendPrivateMessage(PrivateMessage message, Map<User, Boolean> recipients, boolean asEmail);
+    public void sendPrivateMessage(PrivateMessage message, Map<User, Boolean> recipients, boolean asEmail, List<MembershipItem> draftRecipients, List<MembershipItem> draftBccRecipients);
     
     
     /**
@@ -129,8 +136,8 @@ public interface PrivateMessageManager {
      * @param message
      * @param recipients
      */
-    void savePrivateMessage(Message message);
-    void savePrivateMessage(Message message, boolean logEvent);
+    Message savePrivateMessage(Message message);
+    Message savePrivateMessage(Message message, boolean logEvent);
             
     /**
      * find message count for type
@@ -194,19 +201,43 @@ public interface PrivateMessageManager {
     public boolean isEmailPermit();
     
     public boolean isAllowToFieldGroups();
+
+    boolean isAllowToFieldGroups(User user);
+
     public boolean isAllowToFieldAllParticipants();
+
+    boolean isAllowToFieldAllParticipants(User user);
+
     public boolean isAllowToFieldRoles();
+
+    boolean isAllowToFieldRoles(User user);
+
     public boolean isAllowToViewHiddenGroups();
+
+    boolean isAllowToViewHiddenGroups(User user);
+
     public boolean isAllowToFieldUsers();
-    public boolean isAllowToFieldMyGroups();    
+
+    boolean isAllowToFieldUsers(User user);
+
+    public boolean isAllowToFieldMyGroups();
+
+    boolean isAllowToFieldMyGroups(User user);
+
     public boolean isAllowToFieldMyGroupMembers();
+
+    boolean isAllowToFieldMyGroupMembers(User user);
+
     public boolean isAllowToFieldMyGroupRoles();
 
     public PrivateMessage getNextMessage(PrivateMessage message);
     public PrivateMessage getPreviousMessage(PrivateMessage message);
     public boolean hasPreviousMessage(PrivateMessage message);
     public boolean hasNextMessage(PrivateMessage message);
-    
+    public PrivateMessage getPrivateMessage(final String id) throws MessagingException;
+    public Map<User, Boolean> getRecipients(List recipients);
+    public PrivateMessage getPvtMsgReplyMessage(PrivateMessage currentMessage, MimeMessage msg, StringBuilder[] bodyBuf, List<Reference> attachments, String from) throws MessagingException;
+    public void processPvtMsgReplySentAction(PrivateMessage currentMessage, PrivateMessage rrepMsg);
     /** advanced search for private messages */ 
     public List searchPvtMsgs(String typeUuid, String searchText,Date searchFromDate, Date searchToDate, boolean searchByText, boolean searchByAuthor,boolean searchByBody, boolean searchByLabel,boolean searchByDate);
     

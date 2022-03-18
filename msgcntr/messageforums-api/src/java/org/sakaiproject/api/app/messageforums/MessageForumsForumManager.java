@@ -20,7 +20,6 @@
  **********************************************************************************/
 package org.sakaiproject.api.app.messageforums;
 
-import java.util.Collection;
 import java.util.List;
 
 
@@ -43,6 +42,8 @@ public interface MessageForumsForumManager {
    * attachments, and the topics' attachments.
    */
     public List<DiscussionForum> getForumsForMainPage();
+
+    public List<DiscussionForum> getForumsForSite(String siteId);
   
     public Topic getTopicByIdWithMessages(final Long topicId);
     
@@ -98,10 +99,10 @@ public interface MessageForumsForumManager {
     /**
      * Save a discussion forum
      */
-    public void saveDiscussionForum(DiscussionForum forum);
-    public void saveDiscussionForum(DiscussionForum forum, boolean draft);
-    public void saveDiscussionForum(DiscussionForum forum, boolean draft, boolean logEvent);
-    public void saveDiscussionForum(DiscussionForum forum, boolean draft, boolean logEvent, String currentUser);
+    public DiscussionForum saveDiscussionForum(DiscussionForum forum);
+    public DiscussionForum saveDiscussionForum(DiscussionForum forum, boolean draft);
+    public DiscussionForum saveDiscussionForum(DiscussionForum forum, boolean draft, boolean logEvent);
+    public DiscussionForum saveDiscussionForum(DiscussionForum forum, boolean draft, boolean logEvent, String currentUser);
 
 
     /**
@@ -112,9 +113,9 @@ public interface MessageForumsForumManager {
     /**
      * Save a discussion forum topic
      */
-    public void saveDiscussionForumTopic(DiscussionTopic topic);
-    public void saveDiscussionForumTopic(DiscussionTopic topic, boolean parentForumDraftStatus);
-    public void saveDiscussionForumTopic(DiscussionTopic topic, boolean parentForumDraftStatus, String currentUser, boolean logEvent);
+    public DiscussionTopic saveDiscussionForumTopic(DiscussionTopic topic);
+    public DiscussionTopic saveDiscussionForumTopic(DiscussionTopic topic, boolean parentForumDraftStatus);
+    public DiscussionTopic saveDiscussionForumTopic(DiscussionTopic topic, boolean parentForumDraftStatus, String currentUser, boolean logEvent);
     /**
      * Create and save an empty private discussion forum topic
      */
@@ -131,8 +132,12 @@ public interface MessageForumsForumManager {
      * Delete a private forum topic
      */
     public void deletePrivateForumTopic(PrivateTopic topic);
-    
-    
+
+    /**
+     * Create an empty message
+     */
+    Message createMessage(final DiscussionTopic topic);
+
     /**
      * Create and save an empty open discussion forum topic
      */
@@ -205,23 +210,23 @@ public interface MessageForumsForumManager {
     
     /**
 	 * Returns # moderated topics that the current user has moderate
-	 * perm for, given the user's memberships and contextid
+	 * perm for, given the user's memberships and topics
 	 * based on permissionLevelId (custom permissions)
 	 * @param membershipItems
-	 * @param contextId
+	 * @param moderatedTopics
 	 * @return
 	 */
-	public int getNumModTopicCurrentUserHasModPermForWithPermissionLevel(final List membershipItems);
+	public int getNumModTopicCurrentUserHasModPermForWithPermissionLevel(final List<String> membershipItems, final List<Topic> moderatedTopics);
 	
 	/**
 	 * Returns # moderated topics that the current user has moderate
-	 * perm for, given the user's memberships and contextid
+	 * perm for, given the user's memberships and topics
 	 * based on permissionLevelName (non-custom permissions)
 	 * @param membershipItems
-	 * @param contextId
+	 * @param moderatedTopics
 	 * @return
 	 */
-	public int getNumModTopicCurrentUserHasModPermForWithPermissionLevelName(final List membershipItems);
+	public int getNumModTopicCurrentUserHasModPermForWithPermissionLevelName(final List<String> membershipItems, final List<Topic> moderatedTopics);
 	
 	/**
 	 * Returns forum with topics, topic attachments, and topic messages
@@ -274,4 +279,7 @@ public interface MessageForumsForumManager {
 	 * @return
 	 */
 	public boolean doesRoleHavePermissionInTopic(final Long topicId, final String roleName, final String permissionName);
+
+	public List<String> getAllowedGroupForRestrictedForum(final Long forumId, final String permissionName);
+	public List<String> getAllowedGroupForRestrictedTopic(final Long topicId, final String permissionName);
 }

@@ -39,7 +39,7 @@ import javax.faces.context.ExternalContext;
 import javax.faces.context.FacesContext;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import org.apache.myfaces.shared_impl.util.MessageUtils;
 
 import org.sakaiproject.api.app.postem.data.Gradebook;
@@ -70,7 +70,7 @@ import org.sakaiproject.util.ResourceLoader;
 
 @Slf4j
 public class PostemTool {
-	
+
 	protected GradebookManager gradebookManager;
 	protected ArrayList gradebooks;
 
@@ -107,9 +107,7 @@ public class PostemTool {
 	protected boolean displayErrors;
 
 	protected boolean userPressedBack = false;
-	
-	protected boolean gradebooksExist = true;
-	
+
 	private static final int TEMPLATE_MAX_LENGTH = 4000;
 	private static final int TITLE_MAX_LENGTH = 255;
 	private static final int HEADING_MAX_LENGTH = 500;
@@ -128,7 +126,7 @@ public class PostemTool {
 	protected int column = 0;
 
 	public static final String messageBundle = "org.sakaiproject.tool.postem.bundle.Messages";
-	public ResourceLoader msgs = new ResourceLoader(messageBundle);
+	private static final ResourceLoader msgs = new ResourceLoader(messageBundle);
 
 	private ContentHostingService contentHostingService;
 
@@ -177,18 +175,14 @@ public class PostemTool {
 		} catch (Exception e) {
 			gradebooks = null;
 		}
-		
-		if (gradebooks != null && gradebooks.size() > 0)
-			gradebooksExist = true;
-		else
-			gradebooksExist = false;
 
 		return gradebooks;
 
 	}
-	
+
 	public boolean getGradebooksExist() {
-		return gradebooksExist;
+		this.gradebooks = this.getGradebooks();
+		return this.gradebooks != null && !this.gradebooks.isEmpty();
 	}
 
 	public String getCsv() {
@@ -281,7 +275,7 @@ public class PostemTool {
 		}
 		if (currentStudent == null) {	
 			return "<p>" + msgs.getFormattedMessage("no_grades_for_user", 
-					new Object[]{StringEscapeUtils.escapeHtml(currentGradebook.getTitle())}) + "</p>";
+					new Object[]{StringEscapeUtils.escapeHtml4(currentGradebook.getTitle())}) + "</p>";
 		}
 		return currentStudent.formatGrades();
 		
@@ -294,7 +288,7 @@ public class PostemTool {
 		Set students = currentGradebook.getStudents();
 		if (students.size() == 0) {
 			return "<p>" + msgs.getFormattedMessage("no_grades_in_gradebook", 
-					new Object[]{StringEscapeUtils.escapeHtml(currentGradebook.getTitle())}) + "</p>";
+					new Object[]{StringEscapeUtils.escapeHtml4(currentGradebook.getTitle())}) + "</p>";
 		}
 		if (currentGradebook.getFirstUploadedUsername() != null) {
 			StudentGrades student = currentGradebook.studentGrades(currentGradebook.getFirstUploadedUsername());
@@ -312,7 +306,7 @@ public class PostemTool {
 
 		if (currentGradebook.getUsernames() == null || currentGradebook.getUsernames().isEmpty()) {
 			return "<p>" + msgs.getFormattedMessage("no_grades_in_gradebook", 
-					new Object[]{StringEscapeUtils.escapeHtml(currentGradebook.getTitle())}) + "</p>";
+					new Object[]{StringEscapeUtils.escapeHtml4(currentGradebook.getTitle())}) + "</p>";
 		}
 		
 		if (selectedStudent == null || selectedStudent.equals("")) {
@@ -480,9 +474,8 @@ public class PostemTool {
 	
 	public static void populateMessage(FacesMessage.Severity severity,
 			String messageId, Object[] args) {
-		final ResourceLoader rb = new ResourceLoader(messageBundle);
 		FacesContext.getCurrentInstance().addMessage(null, 
-		        new FacesMessage(rb.getFormattedMessage(messageId, args)));
+		        new FacesMessage(msgs.getFormattedMessage(messageId, args)));
 	}
 	
 	protected static void clearMessages() {
@@ -547,6 +540,7 @@ public class PostemTool {
 		
 		Reference attachment = getAttachmentReference();
 		if (attachment == null){			
+			PostemTool.populateMessage(FacesMessage.SEVERITY_ERROR, "missing_csv", new Object[] {});
 			return "create_gradebook";
 		}
 		

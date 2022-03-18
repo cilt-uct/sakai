@@ -21,6 +21,7 @@
 
 package org.sakaiproject.tool.assessment.ui.listener.evaluation;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -33,6 +34,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
+import javax.faces.context.FacesContext;
 import javax.faces.event.AbortProcessingException;
 import javax.faces.event.ActionEvent;
 import javax.faces.event.ActionListener;
@@ -40,12 +42,17 @@ import javax.faces.event.ValueChangeEvent;
 import javax.faces.event.ValueChangeListener;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.math.NumberUtils;
+import org.apache.commons.lang3.math.NumberUtils;
+import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.component.cover.ServerConfigurationService;
+import org.sakaiproject.rubrics.logic.RubricsConstants;
+import org.sakaiproject.rubrics.logic.RubricsService;
+import org.sakaiproject.spring.SpringBeanLocator;
 import org.sakaiproject.tool.assessment.data.dao.assessment.AssessmentAccessControl;
 import org.sakaiproject.tool.assessment.data.dao.assessment.EvaluationModel;
 import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedAnswer;
 import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedItemData;
+import org.sakaiproject.tool.assessment.data.dao.grading.ItemGradingAttachment;
 import org.sakaiproject.tool.assessment.data.dao.grading.ItemGradingData;
 import org.sakaiproject.tool.assessment.data.dao.grading.MediaData;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AnswerIfc;
@@ -67,11 +74,9 @@ import org.sakaiproject.tool.assessment.ui.bean.evaluation.SubmissionStatusBean;
 import org.sakaiproject.tool.assessment.ui.bean.evaluation.TotalScoresBean;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 import org.sakaiproject.tool.assessment.util.BeanSort;
-import org.sakaiproject.util.FormattedText;
 import org.sakaiproject.util.ResourceLoader;
+import org.sakaiproject.util.api.FormattedText;
 import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
-
-// end testing
 
 /**
  * <p>
@@ -99,9 +104,11 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 	// private static EvaluationListenerUtil util;
 	private static BeanSort bs;
 
-	private static final String MSG_BUNDLE = "org.sakaiproject.tool.assessment.bundle.EvaluationMessages";
-	private static final String noAnswer = ContextUtil.getLocalizedString(MSG_BUNDLE, "no_answer");
-	private static final String noneOfTheAbove = ContextUtil.getLocalizedString(MSG_BUNDLE, "none_above");
+	private static final ResourceLoader evaluationMessages = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.EvaluationMessages");
+	private static final String noAnswer = evaluationMessages.getString("no_answer");
+	private static final String noneOfTheAbove = evaluationMessages.getString("none_above");
+
+	private RubricsService rubricsService = (RubricsService) SpringBeanLocator.getInstance().getBean("org.sakaiproject.rubrics.logic.RubricsService");
 
 	/**
 	 * Standard process action method.
@@ -117,7 +124,7 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 				.lookupBean("questionScores");
 
 		// Reset the search field
-		String defaultSearchString = ContextUtil.getLocalizedString(MSG_BUNDLE, "search_default_student_search_string");
+		String defaultSearchString = evaluationMessages.getString("search_default_student_search_string");
 		bean.setSearchString(defaultSearchString);
 
 		// we probably want to change the poster to be consistent
@@ -143,6 +150,9 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 	 */
 	public void processValueChange(ValueChangeEvent event) {
 		log.debug("QuestionScore CHANGE LISTENER.");
+		ResetQuestionScoreListener reset = new ResetQuestionScoreListener();
+		reset.processAction(null);
+
 		QuestionScoresBean bean = (QuestionScoresBean) ContextUtil.lookupBean("questionScores");
 		TotalScoresBean totalBean = (TotalScoresBean) ContextUtil.lookupBean("totalScores");
 		HistogramScoresBean histogramBean = (HistogramScoresBean) ContextUtil.lookupBean("histogramScores");
@@ -179,6 +189,9 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 		if (!questionScores(publishedId, bean, toggleSubmissionSelection)) {
 			throw new RuntimeException("failed to call questionScores.");
 		}
+
+		FacesContext.getCurrentInstance().getApplication().getNavigationHandler().handleNavigation(FacesContext.getCurrentInstance(), null, "questionScores");
+
 	}
 
 	/**
@@ -256,7 +269,7 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 //			}
 			log.debug("questionScores(): publishedAnswerHash.size = "
 					+ publishedAnswerHash.size());
-			Map agentResultsByItemGradingIdMap = new HashMap();
+			Map<Long, AgentResults> agentResultsByItemGradingIdMap = new HashMap<>();
 
 			TotalScoresBean totalBean = (TotalScoresBean) ContextUtil
 					.lookupBean("totalScores");
@@ -311,7 +324,6 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 			Map map = getItemScores(Long.valueOf(publishedId), Long
 					.valueOf(itemId), which, isValueChange);
 			log.debug("questionScores(): map .size = " + map.size());
-			ResourceLoader rb = null;
 			List allscores = new ArrayList();
 			Iterator keyiter = map.keySet().iterator();
 			while (keyiter.hasNext()) {
@@ -319,8 +331,6 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 			}
 
 			log.debug("questionScores(): allscores.size = " + allscores.size());
-
-			// /
 
 			// now we need filter by sections selected
 			List scores = new ArrayList(); // filtered list
@@ -370,7 +380,7 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 				log.debug("questionScores(): this section has no students");
 				bean.setAgents(agents);
 				bean.setAllAgents(agents);
-				bean.setTotalPeople(Integer.toString(bean.getAgents().size()));
+				bean.setTotalPeople(Integer.toString(agents.size()));
 				bean.setAnonymous(totalBean.getAnonymous());
 				//return true;
 			}
@@ -583,7 +593,7 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 					});
 				}
 				Iterator iter2 = answerList.iterator();
-				List itemGradingAttachmentList = new ArrayList();
+				List<ItemGradingAttachment> itemGradingAttachmentList = new ArrayList<>();
 				Map<Long, Set<String>> fibmap = new HashMap<Long, Set<String>>();
 				int i = 1;
 				Map<Integer, String> answersMap = new HashMap<Integer, String>();
@@ -592,7 +602,7 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 					results.setItemGrading(gdata);
 					delegate.extractCalcQAnswersArray(answersMap, item, 
 								gdata.getAssessmentGradingId(), gdata.getAgentId());
-					itemGradingAttachmentList.addAll(gdata.getItemGradingAttachmentList());
+					itemGradingAttachmentList.addAll(gdata.getItemGradingAttachmentSet());
 					agentResultsByItemGradingIdMap.put(gdata.getItemGradingId(), results);
 										
 					ItemTextIfc gdataPubItemText = (ItemTextIfc) publishedItemTextHash
@@ -641,14 +651,11 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 					}
 
 					if ("4".equals(bean.getTypeId())) {
-						if (rb == null) { 	 
-			        		rb = new ResourceLoader(MSG_BUNDLE);
-			        	}
 						if ("true".equals(answerText)) {
-							answerText = rb.getString("true_msg");
+							answerText = evaluationMessages.getString("true_msg");
 						}
 						else if ("false".equals(answerText)) {
-							answerText = rb.getString("false_msg");
+							answerText = evaluationMessages.getString("false_msg");
 						}
 					}
 					
@@ -712,7 +719,7 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 					else {
 						if (gdata.getRationale() != null
 								&& !gdata.getRationale().trim().equals(""))
-							rationale = "\nRationale: " + gdata.getRationale();
+							rationale = "\n" + evaluationMessages.getString("rationale") + " " + gdata.getRationale();
 					}
 					// Huong's temp commandout
 					// answerText = answerText.replaceAll("<.*?>", "");
@@ -754,12 +761,12 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 					 */
 
 					//SAM-755-"checkmark" indicates right, add "X" to indicate wrong
-					String correct = ContextUtil.getLocalizedString(MSG_BUNDLE, "alt_correct");
-					String incorrect = ContextUtil.getLocalizedString(MSG_BUNDLE, "alt_incorrect");
+					String correct = evaluationMessages.getString("alt_correct");
+					String incorrect = evaluationMessages.getString("alt_incorrect");
 					String checkmarkGif = String.format("<span title=\"%s\" class=\"icon-sakai--check feedBackCheck\"></span>", correct);
 					String crossmarkGif = String.format("<span title=\"%s\" class=\"icon-sakai--delete feedBackCross\"></span>", incorrect);
 					if (gdataAnswer != null) {
-						answerText = FormattedText.escapeHtml(answerText, true);
+						answerText = ComponentManager.get(FormattedText.class).escapeHtml(answerText, true);
 						if (bean.getTypeId().equals("8") || bean.getTypeId().equals("11")) {
 							if (gdata.getIsCorrect() == null) {
 								boolean result = false;
@@ -866,9 +873,10 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 						results.setAnswer(results.getAnswer() + "<br/>"
 								+ answerText);
 						if (gdata.getAutoScore() != null) {
-							results.setTotalAutoScore(Double.toString((Double.valueOf(
-								results.getExactTotalAutoScore())).doubleValue()
-								+ gdata.getAutoScore().doubleValue()));
+							BigDecimal dataAutoScore = new BigDecimal(gdata.getAutoScore());
+							BigDecimal exactTotalAutoScore = new BigDecimal(results.getExactTotalAutoScore());
+							exactTotalAutoScore = exactTotalAutoScore.add(dataAutoScore);
+							results.setTotalAutoScore(String.valueOf(exactTotalAutoScore.doubleValue()));
 						}
 						else {
 							results.setTotalAutoScore(Double.toString((Double.valueOf(
@@ -891,7 +899,7 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 						} else {
 							results.setTotalAutoScore(Double.toString(0));
 						}
-						results.setComments(FormattedText.convertFormattedTextToPlaintext(gdata.getComments()));
+						results.setComments(ComponentManager.get(FormattedText.class).convertFormattedTextToPlaintext(gdata.getComments()));
 						results.setAnswer(answerText);
 						if (bean.getTypeId().equals("15")){ // CALCULATED_QUESTION Answer Key
 							results.setAnswerKey(answerKey);
@@ -957,10 +965,11 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 			}
 			bean.setAgents(agents);
 			bean.setAllAgents(agents);
-			bean
-					.setTotalPeople(Integer.valueOf(bean.getAgents().size())
-							.toString());
+			bean.setTotalPeople(Integer.valueOf(agents.size()).toString());
 			bean.setAgentResultsByItemGradingId(agentResultsByItemGradingIdMap);
+
+			bean.setRubricStateDetails("");
+			bean.setHasAssociatedRubric(rubricsService.hasAssociatedRubric(RubricsConstants.RBCS_TOOL_SAMIGO, RubricsConstants.RBCS_PUBLISHED_ASSESSMENT_ENTITY_PREFIX + bean.getPublishedId() + "." + bean.getItemId()));
 		}
 
 		catch (RuntimeException e) {
@@ -979,6 +988,9 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 			for (int s = 0; s < thisItemOptions.length; s++) {
 				int endOfCheckmark = thisItemOptions[s].indexOf(">");
 				int colonAt = thisItemOptions[s].indexOf(":");
+				if(endOfCheckmark==-1||colonAt==-1) {
+					continue;
+				}
 				String thisSequence = thisItemOptions[s].substring(endOfCheckmark, colonAt);
 				StringBuilder editItemBuffer = new StringBuilder();
 				editItemBuffer.append(thisSequence).append("|").append(thisItemOptions[s]);
@@ -988,7 +1000,9 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 			StringBuilder optionBuffer = new StringBuilder();
 			for (String thisItemOption : thisItemOptions) {
 				int dlmIndex = thisItemOption.indexOf('|');
-				optionBuffer.append(thisItemOption.substring(dlmIndex + 1)).append("<br/>");
+				if (dlmIndex != -1) {
+					optionBuffer.append(thisItemOption.substring(dlmIndex + 1)).append("<br/>");
+				}
 			}
 			log.debug("sortedOptions{}", optionBuffer);
 			thisAgentResult.setAnswer(optionBuffer.toString());
@@ -1015,7 +1029,7 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 		log.debug("getItemScores: itemScoresMap ==null ?" + itemScoresMap);
 		log.debug("getItemScores: isValueChange ?" + isValueChange);
 
-		if (itemScoresMap == null || isValueChange || questionScoresBean.getIsAnyItemGradingAttachmentListModified()) {
+		if (itemScoresMap == null || isValueChange || questionScoresBean.isAnyItemGradingAttachmentListModified()) {
 			log
 					.debug("getItemScores: itemScoresMap == null or isValueChange == true ");
 			log.debug("getItemScores: isValueChange = " + isValueChange);
@@ -1023,7 +1037,7 @@ import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 			questionScoresBean.setItemScoresMap(itemScoresMap);
 			// reset this anyway (because the itemScoresMap will be refreshed as well as the 
 			// attachment list)
-			questionScoresBean.setIsAnyItemGradingAttachmentListModified(false); 
+			questionScoresBean.setAnyItemGradingAttachmentListModified(false);
 		}
 		log
 				.debug("getItemScores: itemScoresMap.size() "

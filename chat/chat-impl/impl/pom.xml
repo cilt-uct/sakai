@@ -4,18 +4,13 @@
   <parent>
     <artifactId>chat-base</artifactId>
     <groupId>org.sakaiproject</groupId>
-    <version>12.5</version>
+    <version>21-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
 
   <name>sakai-chat-impl</name>
   <groupId>org.sakaiproject</groupId>
   <artifactId>sakai-chat-impl</artifactId>
-  <organization>
-    <name>University of Michigan</name>
-    <url>http://sakaiproject.org/</url>
-  </organization>
-  <inceptionYear>2003</inceptionYear>
   <packaging>sakai-component</packaging>
   <properties>
     <deploy.target>components</deploy.target>
@@ -28,7 +23,7 @@
     </dependency>
     <dependency>
       <groupId>javax.servlet</groupId>
-      <artifactId>servlet-api</artifactId>
+      <artifactId>javax.servlet-api</artifactId>
     </dependency>
     <dependency>
       <groupId>org.hibernate</groupId>
@@ -83,8 +78,8 @@
         <artifactId>guava</artifactId>
     </dependency>
     <dependency>
-      <groupId>commons-lang</groupId>
-      <artifactId>commons-lang</artifactId>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
     </dependency>
   </dependencies>
   <build>

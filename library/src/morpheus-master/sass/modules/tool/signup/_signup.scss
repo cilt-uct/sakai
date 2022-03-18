@@ -3,7 +3,7 @@
 	.form-required{
 		&:after{
 			content: "*";
-			color: $error-color;
+			color: var(--errorBanner-color);
 			position: relative;
 			top: 3px;
 		}		
@@ -11,11 +11,8 @@
 
 	.toggleMeetings{
 		cursor:pointer;
-		&.toggleDownload{
-			left: 5px;
-			top: -2px;
-			position: relative;
-			margin: 0 0 0 0;
+		&.toggleDownload img{
+			vertical-align: baseline;
 		}
 	}
 
@@ -99,5 +96,16 @@
 		input[id*='minutes']{
 				margin-left: 1em;
 		}
+	}
+    legend{
+        font-size: inherit;
+    }
+
+	.orgGroupSync > input {
+		width: 100%;					// match the width of the buttons in the same cell
+	}
+
+	.orgGroupSync > input + input {
+		margin-top: $standard-space;	// if a button appears on top of another button, add spacing
 	}
 }

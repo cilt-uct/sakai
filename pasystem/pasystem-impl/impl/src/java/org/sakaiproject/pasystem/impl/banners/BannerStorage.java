@@ -46,8 +46,6 @@ import org.sakaiproject.pasystem.impl.common.DB;
 import org.sakaiproject.pasystem.impl.common.DBAction;
 import org.sakaiproject.pasystem.impl.common.DBConnection;
 import org.sakaiproject.pasystem.impl.common.DBResults;
-import org.sakaiproject.user.api.User;
-import org.sakaiproject.user.cover.UserDirectoryService;
 
 /**
  * Query and store Banner objects in the database.

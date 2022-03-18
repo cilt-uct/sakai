@@ -18,7 +18,7 @@ package org.sakaiproject.gradebookng.tool.panels;
 import java.util.Collections;
 import java.util.List;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.extensions.ajax.markup.html.modal.ModalWindow;
 import org.apache.wicket.markup.html.basic.Label;
@@ -117,11 +117,11 @@ public class CourseGradeOverrideLogPanel extends BasePanel {
 	 */
 	private String formatLogEntry(final GbGradeLog gradeLog) {
 
-		final String logDate = FormatHelper.formatDateTime(gradeLog.getDateGraded());
+		final String logDate = this.businessService.formatDateTime(gradeLog.getDateGraded());
 		final String grade = gradeLog.getGrade();
 
 		final GbUser grader = CourseGradeOverrideLogPanel.this.businessService.getUser(gradeLog.getGraderUuid());
-		final String graderDisplayId = (grader != null) ? grader.getDisplayId() : getString("unknown.user.id");
+		final String graderDisplayId = (grader != null) ? grader.getDisplayName() + " (" +  grader.getDisplayId() + ")" : getString("unknown.user.id");
 
 		String rval;
 

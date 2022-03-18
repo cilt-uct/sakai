@@ -25,8 +25,8 @@ import java.util.Map;
 
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringEscapeUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.text.StringEscapeUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import org.sakaiproject.api.common.edu.person.SakaiPerson;
 import org.sakaiproject.api.common.edu.person.SakaiPersonManager;
@@ -608,24 +608,16 @@ public class SakaiProxyImpl implements SakaiProxy {
 	 */
 	@Override
 	public boolean removeResource(final String resourceId) {
-
-		boolean result = false;
-
 		try {
 			enableSecurityAdvisor();
-
 			this.contentHostingService.removeResource(resourceId);
-
-			result = true;
-		} catch (final Exception e) {
-			log.error("SakaiProxy.removeResource() failed for resourceId "
-					+ resourceId + ": " + e.getMessage());
+			return true;
+		} catch (Exception e) {
+			log.debug("Could not retrieve resource {}, {}", resourceId, e.getMessage());
 			return false;
 		} finally {
 			disableSecurityAdvisor();
 		}
-
-		return result;
 	}
 
 	/**
@@ -705,7 +697,7 @@ public class SakaiProxyImpl implements SakaiProxy {
 				sb.append(this.MIME_ADVISORY);
 				sb.append(this.BOUNDARY_LINE);
 				sb.append(this.PLAIN_TEXT_HEADERS);
-				sb.append(StringEscapeUtils.escapeHtml(message));
+				sb.append(StringEscapeUtils.escapeHtml4(message));
 				sb.append(this.BOUNDARY_LINE);
 				sb.append(this.HTML_HEADERS);
 				sb.append(htmlPreamble(subject));
@@ -1088,6 +1080,16 @@ public class SakaiProxyImpl implements SakaiProxy {
 		return this.serverConfigurationService.getBoolean(
 				"profile2.profile.student.enabled",
 				ProfileConstants.SAKAI_PROP_PROFILE2_PROFILE_STUDENT_ENABLED);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public boolean isNamePronunciationProfileEnabled() {
+		return this.serverConfigurationService.getBoolean(
+				"profile2.profile.name.pronunciation.enabled",
+				ProfileConstants.SAKAI_PROP_PROFILE2_PROFILE_PRONUNCIATION_ENABLED);
 	}
 
 	/**
@@ -1826,6 +1828,22 @@ public class SakaiProxyImpl implements SakaiProxy {
 			log.error("SakaiProxy.getFirstInstanceOfTool() failed for siteId: " + siteId + " and toolId: " + toolId);
 			return null;
 		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getNamePronunciationExamplesLink() {
+		return this.serverConfigurationService.getString("profile2.profile.name.pronunciation.examples.link", "");
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public int getNamePronunciationDuration() {
+		return this.serverConfigurationService.getInt("profile2.profile.name.pronunciation.duration", 10);
 	}
 
 	/**

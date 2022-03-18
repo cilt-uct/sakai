@@ -9,7 +9,7 @@
 	<parent>
 		<artifactId>content-review-impl</artifactId>
 		<groupId>org.sakaiproject.contentreview</groupId>
-		<version>12.5</version>
+		<version>21-SNAPSHOT</version>
 	</parent>
 
 	<dependencies>
@@ -61,8 +61,8 @@
 			<version>${sakai.poi.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>commons-lang</groupId>
-			<artifactId>commons-lang</artifactId>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>commons-validator</groupId>
@@ -123,18 +123,17 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.hibernate</groupId>
-            <artifactId>hibernate-ehcache</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.javassist</groupId>
             <artifactId>javassist</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
 	        <groupId>javax.servlet</groupId>
-	        <artifactId>servlet-api</artifactId>
+	        <artifactId>javax.servlet-api</artifactId>
 	    </dependency>
+		<dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>hibernate-core</artifactId>
+		</dependency>
 	</dependencies>
 </project>

@@ -5,12 +5,11 @@
         $tlang.getString("gen.instrcomment")
         $tlang.getString("gen.to")
         $tlang.getString("gen.openquote")
-        $validator.escapeHtml($assignment.Title)
+        $formattedText.escapeHtml($assignment.Title)
         $tlang.getString("gen.closequote")
     </h3>
     #if ($alertMessage)
-        <div class="alertMessage"><strong>$tlang.getString("gen.alert")</strong> $alertMessage</div>
-        <div class="clear"></div>
+        <div class="sak-banner-error"><strong>$tlang.getString("gen.alert")</strong> $alertMessage</div>
     #end
     <form id="previewGradeSubmissionForm" action="#toolForm("AssignmentAction")" method="post">
         <table class="itemSummary">
@@ -20,7 +19,7 @@
                 </th>
                 <td>
 					#if ($value_CheckAnonymousGrading)
-                        $validator.escapeHtml($!submission.Id) $tlang.getString("grading.anonymous.title")
+                        $formattedText.escapeHtml($!submission.Id) $tlang.getString("grading.anonymous.title")
                     #else
                         $!submitterNames
                     #end
@@ -62,43 +61,15 @@
         <h4>
             $tlang.getString("gen.instr")
         </h4>
-        #if ($assignment.Instructions.length() > 0)
-            <div class="textPanel">$validator.escapeHtmlFormattedText($assignment.Instructions)</div>
+        #if ($assignment.Instructions && !$assignment.Instructions.isEmpty())
+            <div class="textPanel">$formattedText.escapeHtmlFormattedText($assignment.Instructions)</div>
         #else
         #end
 
         ## Assignment Attachments
-        #set ($aAttachments = $!assignment.Attachments)
-        #if ($aAttachments)
-            #set ($size = $aAttachments.size())
-            #if ($size > 0)
-                <h4>
-                    $tlang.getString("gen.addres2")
-                </h4>
-                <ul class="attachList indnt1">
-                    #foreach ($attachmentReference in $aAttachments)
-                        #set ($reference = $!assignmentAttachmentReferences.get($attachmentReference))
-                        #if ($reference)
-                            #set ($props = false)
-                            #set ($props = $reference.Properties)
-                            #if ($!props)
-                                <li>
-                                    #if ($props.getBooleanProperty($props.NamePropIsCollection))
-                                        <img src = "#imageLink($contentTypeImageService.getContentTypeImage("folder"))" border="0" alt="$tlang.getString("gen.folatt")" />
-                                    #else
-                                        <img src = "#imageLink($contentTypeImageService.getContentTypeImage($props.getProperty($props.NamePropContentType)))" border="0" alt="$tlang.getString("gen.filatt")" />
-                                    #end
-                                    <a href="$reference.Url" target="_blank">$validator.escapeHtml($props.getPropertyFormatted($props.NamePropDisplayName))</a>
-                                    #propertyDetails($props)
-                                </li>
-                            #end
-                        #end
-                    #end
-                </ul>
-            #end
-        #end
+        #attachmentFragment($assignment.Attachments $assignmentAttachmentReferences $!decoratedUrlMap false)
 
-        #if ($!feedback_text.length() > 0)
+        #if ($feedback_text && !$feedback_text.isEmpty())
             <h4>
                 $tlang.getString("gen.orisub2")
             </h4>
@@ -130,7 +101,7 @@
                                     #else
                                         <img src = "#imageLink($contentTypeImageService.getContentTypeImage($props.getProperty($props.NamePropContentType)))" border="0" alt="$tlang.getString("gen.filatt")" />
                                     #end
-                                    <a href="$reference.Url" target="_blank">$validator.escapeHtml($props.getPropertyFormatted($props.NamePropDisplayName))</a>
+                                    <a href="$reference.Url" target="_blank">$formattedText.escapeHtml($props.getPropertyFormatted($props.NamePropDisplayName))</a>
                                     #propertyDetails($props)
                                 </li>
                             #end
@@ -142,7 +113,7 @@
 
         #if ($!feedback_comment.length() > 0)
             <h4>$tlang.getString("gen.sumcom")</h4>
-            <div class="textPanel">$validator.escapeHtmlFormattedText($feedback_comment)</div>
+            <div class="textPanel">$formattedText.escapeHtmlFormattedText($feedback_comment)</div>
         #end
 
         ## Feedback Attachments
@@ -167,7 +138,7 @@
                             #else
                                 <img src = "#imageLink($contentTypeImageService.getContentTypeImage($props.getProperty($props.NamePropContentType)))" border="0" alt="$tlang.getString("gen.filatt")" />
                             #end
-                            <a href="$attachment.Url" target="_blank">$validator.escapeHtml($props.getPropertyFormatted($props.NamePropDisplayName))</a>
+                            <a href="$attachment.Url" target="_blank">$formattedText.escapeHtml($props.getPropertyFormatted($props.NamePropDisplayName))</a>
                             #propertyDetails($props)
                         </li>
                     #end

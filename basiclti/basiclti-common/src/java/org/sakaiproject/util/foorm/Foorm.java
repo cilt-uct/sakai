@@ -21,6 +21,8 @@
 
 package org.sakaiproject.util.foorm;
 
+import java.sql.ResultSetMetaData;	
+import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -28,19 +30,22 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.SortedMap;
 import java.util.Properties;
+import java.util.SortedMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.lang.Number;
-import java.sql.ResultSetMetaData;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAccessor;
 
-import lombok.extern.slf4j.Slf4j;
-
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.lti.api.LTISearchData;
 import org.sakaiproject.lti.api.LTIService;
 import org.sakaiproject.util.ResourceLoader;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 
@@ -302,24 +307,24 @@ public class Foorm {
 	 */
 	public void formInputStart(StringBuffer sb, String field, String type, String label,
 			boolean required, Object loader) {
-		sb.append("<p id=\"");
+		// Checkbox and radio no longer call this
+		sb.append("<div id=\"");
 		sb.append(field);
-		sb.append(".input\" class=\"foorm-"+type+"\" style=\"clear:all;\">");
+		sb.append("-input\" class=\"foorm-"+type+"\" style=\"clear:both;\">");
 
-		if (label != null && ( ! "checkbox".equals(type) ) ) {
-			sb.append("<label for=\"");
-			sb.append(field);
-			sb.append("\" style=\"display:block;float:none;\">");
-		}
-		if (label != null && required ) {
+		if (label == null ) return;
+
+		sb.append("<label for=\"");
+		sb.append(field);
+		sb.append("\" style=\"display:block;float:none;\">");
+
+		if ( required ) {
 			sb.append("<span class=\"foorm-required\" style=\"color:#903;font-weight:bold;\" title=\"");
 			sb.append(getI18N(label, loader));
 			sb.append("\">*</span>");
 		}
-		if (label != null && ( ! "checkbox".equals(type) ) ) {
-			sb.append(getI18N(label, loader));
-			sb.append("</label>");
-		}
+		sb.append(getI18N(label, loader));
+		sb.append("</label>");
 	}
 
 	/**
@@ -332,17 +337,7 @@ public class Foorm {
 	 */
 	public void formInputEnd(StringBuffer sb, String field, String type, String label, boolean required,
 			Object loader) {
-		if (label != null && ( "checkbox".equals(type) ) ) {
-			sb.append("<label for=\"");
-			sb.append(field);
-			sb.append("\" style=\"display:block;float:none;\">");
-		}
-		if ( label != null) sb.append("</label>");
-		if ( "checkbox".equals(type) || "radio".equals(type) ) {
-			// Not needed
-		} else {
-			sb.append("</p>\n");
-		}
+		sb.append("</div>\n");
 	}
 
 	/**
@@ -361,7 +356,9 @@ public class Foorm {
 			value = "";
 		StringBuffer sb = new StringBuffer();
 		formInputStart(sb, field, "text", label, required, loader);
-		sb.append("<input type=\"text\" id=\"");
+		sb.append("<div id=\"div_");
+		sb.append(field);
+		sb.append("\"><input type=\"text\" id=\"");
 		sb.append(field);
 		sb.append("\" name=\"");
 		sb.append(field);
@@ -369,7 +366,7 @@ public class Foorm {
 		sb.append(size);
 		sb.append("\" style=\"border:1px solid #555;padding:5px;font-size:1em;width:300px\" value=\"");
 		sb.append(htmlSpecialChars(value));
-		sb.append("\"/>");
+		sb.append("\"/></div>");
 		formInputEnd(sb, field, "text", label, required, loader);
 		return sb.toString();
 	}
@@ -426,9 +423,6 @@ public class Foorm {
 		if (value == null)
 			value = "";
 		StringBuffer sb = new StringBuffer();
-		sb.append("<p id=\"");
-		sb.append(field);
-		sb.append(".input\" class=\"longtext\" style=\"clear:all;\">");
 		formInputStart(sb, field, "textarea", label, required, loader);
 		sb.append("<textarea style=\"border:1px solid #555;width:300px\" id=\"");
 		sb.append(field);
@@ -438,7 +432,7 @@ public class Foorm {
 		sb.append(rows);
 		sb.append("\" cols=\"");
 		sb.append(cols);
-		sb.append("\"/>");
+		sb.append("\">");
 		sb.append(htmlSpecialChars(value));
 		sb.append("</textarea>\n");
 		formInputEnd(sb, field, "textarea", label, required, loader);
@@ -458,8 +452,11 @@ public class Foorm {
 	public String formInputRadio(Object value, String field, String label,
 			boolean required, String[] choices, Object loader) {
 		StringBuffer sb = new StringBuffer();
-		// formInputStart(sb, field, "radio", label, required, loader);
-		sb.append(formInputHeader(field, label, loader));
+
+		sb.append("<div id=\""+field+"-input\">");
+		sb.append("<h4 id=\""+field+"-header\">");
+		sb.append(getI18N(label, loader));
+		sb.append("</h4>\n");
 		int val = 0;
 		if (value != null && value instanceof Number)
 			val = ((Number) value).intValue();
@@ -472,27 +469,27 @@ public class Foorm {
 		if (choices == null || val >= choices.length)
 			val = 0;
 		int i = 0;
-		sb.append("<ol style=\"list-style-type:none\">\n");
+		sb.append("<ol id=\""+field+"-list\" style=\"list-style-type:none\">\n");
 		for (String choice : choices) {
 			String checked = "";
 			if (i == val)
 				checked = " checked=\"checked\"";
-			sb.append("<li style=\"border:padding:3px;;margin:7px 3px;\">\n");
+			String id = field + "_" + choice;
+			sb.append("<li id=\""+id+"\" style=\"border:3px; padding:3px; margin:7px;\">\n");
 			sb.append("<input type=\"radio\" name=\"");
 			sb.append(field);
-			sb.append("\" value=\"" + i + "\" id=\"");
-			String id = field + "_" + choice;
-			sb.append(id + "\"");
+			sb.append("\" id=\"");
+			sb.append(id);
+			sb.append("-input\" value=\"" + i + "\" ");
 			sb.append(checked);
 			sb.append("/> <label for=\"");
 			sb.append(id);
-			sb.append("\">");
+			sb.append("-input\">");
 			sb.append(getI18N(label + "_" + choice, loader));
 			sb.append("</label></li>\n");
 			i++;
 		}
-		sb.append("</ol>\n");
-		formInputEnd(sb, field, "radio", label, required, loader);
+		sb.append("</ol></div>\n");
 		return sb.toString();
 	}
 
@@ -508,7 +505,7 @@ public class Foorm {
 	public String formInputCheckbox(Object value, String field, String label,
 			boolean required, Object loader) {
 		StringBuffer sb = new StringBuffer();
-		formInputStart(sb, field, "checkbox", label, required, loader);
+		// formInputStart(sb, field, "checkbox", label, required, loader);
 		int val = getInt(value);
 		String checked = "";
 		if (val == 1) checked = " checked=\"checked\"";
@@ -539,8 +536,12 @@ public class Foorm {
 			sb.append(field);
 			sb.append(".mirror\" value=\"0\" />");
 		}
+		sb.append("<label for=\"");
+		sb.append(field);
+		sb.append("\">");
 		sb.append(getI18N(label, loader));
-		formInputEnd(sb, field, "checkbox", label, required, loader);
+		sb.append("</label>");
+		// formInputEnd(sb, field, "checkbox", label, required, loader);
 		sb.append("</li>\n");
 		return sb.toString();
 	}
@@ -554,7 +555,7 @@ public class Foorm {
 	 */
 	public String formInputHeader(String field, String label, Object loader) {
 		StringBuffer sb = new StringBuffer();
-		sb.append("<h4>");
+		sb.append("<h4 id=\""+field+"\">");
 		sb.append(getI18N(label, loader));
 		sb.append("</h4>\n");
 		return sb.toString();
@@ -675,6 +676,8 @@ public class Foorm {
 			return formInputTextArea((String) value, field, label, required, rows, cols, loader);
 		if ("autodate".equals(type))
 			return "";
+		if ("date".equals(type))
+			return "";
 		if ("checkbox".equals(type)) {
 			return formInputCheckbox(value, field, label, required, loader);
 		}
@@ -724,6 +727,8 @@ public class Foorm {
 			if ("true".equals(hidden))
 				continue;
 			if ("autodate".equals(type))
+				continue;
+			if ("date".equals(type))
 				continue;
 
 			String choices = info.getProperty("choices", null);
@@ -794,7 +799,7 @@ public class Foorm {
 			}
 
 			if ( ! inCheckboxes && "checkbox".equals(type) ) {
-				sb.append("<ol style=\"list-style-type:none\">\n");
+				sb.append("<ol id=\""+field+"-checkbox-start\" style=\"list-style-type:none\">\n");
 				inCheckboxes = true;
 			}
 
@@ -827,11 +832,12 @@ public class Foorm {
 	 * @param loader
 	 */
 	public void formOutputStart(StringBuffer sb, String field, String label, Object loader) {
-		sb.append("<p class=\"row\">\n");
+		sb.append("<div class=\"foorm-text\" id=\""+field+"\">\n");
 		if (label != null) {
 			sb.append("<b>");
 			sb.append(getI18N(label, loader));
 			sb.append("</b><br/>");
+			sb.append("<span id=\"foorm_output_"+field+"\">\n");
 		}
 	}
 
@@ -843,7 +849,7 @@ public class Foorm {
 	 * @param loader
 	 */
 	public void formOutputEnd(StringBuffer sb, String field, String label, Object loader) {
-		sb.append("</p>\n");
+		sb.append("</div>\n");
 	}
 
 	/**
@@ -978,6 +984,8 @@ public class Foorm {
 			return ""; // Key will be handled by the caller
 		if ("autodate".equals(type))
 			return "";
+		if ("date".equals(type))
+			return "";
 		if ("integer".equals(type))
 			return formOutputInteger(getLongNull(value), field, label, loader);
 		if ("text".equals(type))
@@ -1060,7 +1068,7 @@ public class Foorm {
 
 			// Check the automatically populate empty date fields
 			if ("autodate".equals(type) && dataMap != null && (!isFieldSet(parms, field)) ) {
-				java.sql.Timestamp sqlTimestamp = new java.sql.Timestamp(
+				Timestamp sqlTimestamp = new Timestamp(
 						new java.util.Date().getTime());
 				if ("updated_at".equals(field) || (forInsert && "created_at".equals(field))) {
 					dataMap.put(field, sqlTimestamp);
@@ -1073,8 +1081,8 @@ public class Foorm {
 
 			Object dataField = getField(parms, field);
 			String sdf = null;
-			if (dataField instanceof String)
-				sdf = (String) dataField;
+			if (dataField instanceof String) sdf = (String) dataField;
+			sdf = StringUtils.trim(sdf);
 			if (sdf != null && sdf.length() < 1) {
 				sdf = null;
 				dataField = null;
@@ -1169,6 +1177,16 @@ public class Foorm {
 				} else {
 					if (dataMap != null)
 						dataMap.put(field, sdf);
+				}
+			}
+
+			if ("date".equals(type) ) {
+				if (sdf == null) {
+					if (dataMap != null)
+						dataMap.put(field, null);
+				} else {
+					if (dataMap != null)
+						dataMap.put(field, getInstantUTC(sdf));
 				}
 			}
 		}
@@ -1716,7 +1734,7 @@ public class Foorm {
 						"All model elements must include field name and type");
 			}
 			// always allow autodate fields
-			if ("autodate".equals(type))
+			if ("autodate".equals(type) || "date".equals(type))
 			{
 				ret.add(line);
 			}
@@ -1741,6 +1759,49 @@ public class Foorm {
 
 		}
 		return ret.toArray(new String[ret.size()]);
+	}
+
+	/**
+	 * Determines if the tool instance has configurable settings.
+	 * For instance if the admin tool disallows every type of instructor customization, this method would return false for instructors
+	 */
+	public boolean formHasConfiguration(Object controlRow, String[] fieldinfo, String includePattern, String excludePattern) {
+		if (fieldinfo == null) {
+			return false;
+		}
+
+		for (String line : fieldinfo) {
+			if ((includePattern != null && (!line.matches(includePattern))) || (excludePattern != null && (line.matches(excludePattern)))) {
+				continue;
+			}
+
+			Properties fields = parseFormString(line);
+			String field = fields.getProperty("field", null);
+			String type = fields.getProperty("type", null);
+			String allowed = fields.getProperty("allowed", null);
+
+			if (field == null || type == null) {
+				throw new IllegalArgumentException("All model elements must include field name and type");
+			}
+
+			if ("radio".equals(type) || "checkbox".equals(type)) {
+				int value = getInt(getField(controlRow, field));
+				if (value == 2 || !isFieldSet(controlRow, field)) {
+					// radio / checkbox is configuration
+					return true;
+				}
+			} else if (isFieldSet(controlRow, "allow" + field) && !"false".equals(allowed)) {
+				Object allowRow = getField(controlRow, "allow" + field);
+				int value = getInt(allowRow);
+
+				// "Allow external tool to store setting data" enters this block, but it's not configuration; so exclude LTI_SETTINGS
+				if (value == 1 && !LTIService.LTI_SETTINGS.equals(field)) {
+					return true;
+				}
+			}
+		}
+
+		return false;
 	}
 
 	// http://technology-ameyaaloni.blogspot.com/2010/06/mysql-to-hsql-migration-tips.html
@@ -1780,6 +1841,12 @@ public class Foorm {
 				schema = "TIMESTAMP NOT NULL";
 			} else {
 				schema = "DATETIME NOT NULL";
+			}
+		} else if ("date".equals(type)) {
+			if ("oracle".equals(vendor)) {
+				schema = "TIMESTAMP NULL";
+			} else {
+				schema = "DATETIME NULL";
 			}
 		} else if ("integer".equals(type)) {
 			if ("oracle".equals(vendor)) {
@@ -1898,6 +1965,7 @@ public class Foorm {
 			boolean shouldAlter = false;
 			if ("key".equals(type)) {
 				if ( ! NUMBER_TYPE.equals(sqlType) ) log.warn("{} must be Integer and Auto Increment", field);
+			} else if ("date".equals(type)) {
 			} else if ("autodate".equals(type)) {
 			} else if ("url".equals(type) || "text".equals(type) || "textarea".equals(type)) {
 				if ( "oracle.sql.CLOB".equals(sqlType) || "oracle.jdbc.OracleClob".equals(sqlType) ) continue;  // CLOBS large enough :)
@@ -2072,6 +2140,51 @@ public class Foorm {
 			int recordCount = (endRec - startRec) + 1;
 			return sqlIn + " limit " + startRec + "," + recordCount;
 		}
+	}
+
+	/**
+	 * Deal with the vagaries of date object types returned from this library - all UTC
+	 */
+	// https://www.baeldung.com/java-date-to-localdate-and-localdatetime
+	public static Instant getInstantUTC(Object input)
+	{
+		if ( input == null ) return null;
+
+		String dateString = null;
+		if ( input instanceof LocalDateTime ) {
+			return ((LocalDateTime) input).toInstant(ZoneOffset.UTC);
+		} else if ( input instanceof Timestamp ) {
+			return ((Timestamp) input).toInstant();
+		} else if ( input instanceof Date ) {
+			Date dateToConvert = (Date) input;
+			return dateToConvert.toInstant();
+		} else if ( input instanceof String ) {
+			dateString = (String) input;
+			if ( dateString.trim().length() < 1 ) return null;
+		} else {
+			dateString = input.toString();
+		}
+
+		// https://stackoverflow.com/questions/4024544/how-to-parse-dates-in-multiple-formats-using-simpledateformat
+		String pattern = "[yyyy-MM-dd[['T'][ ]HH:mm:ss[.SSSSSSSz][.SSS[XXX][X]]]]";
+		try {
+			DateTimeFormatter formatter = DateTimeFormatter.ofPattern(pattern).withZone(ZoneOffset.UTC);
+			TemporalAccessor accessor = formatter.parse(dateString);
+			return Instant.from(accessor);
+		} catch(Exception e) {
+			return null;
+		}
+
+	}
+
+	/**
+	 * Return now() in the right format to add to a Map to all Foorm routines
+	 */
+	public static String now()
+	{
+		Instant instant = Foorm.getInstantUTC(new Date());
+		String nowStr = instant.toString();
+		return nowStr;
 	}
 
 	/**

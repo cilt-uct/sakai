@@ -4,17 +4,12 @@
   <name>Sakai SiteStats Hibernate</name>
   <groupId>org.sakaiproject.sitestats</groupId>
   <artifactId>sitestats-impl-hib</artifactId>
-  <organization>
-    <name>Universidade Fernando Pessoa</name>
-    <url>http://www.ufp.pt</url>
-  </organization>
-  <inceptionYear>2006</inceptionYear>
 
   <!-- Parent: Sakai SiteStats base -->
   <parent>
     <groupId>org.sakaiproject.sitestats</groupId>
     <artifactId>sitestats</artifactId>
-    <version>12.5</version><!-- sitestats.version --> 
+    <version>21-SNAPSHOT</version><!-- sitestats.version --> 
   </parent>
   
   <!-- Packaging -->
@@ -30,6 +25,16 @@
       <groupId>org.sakaiproject.sitestats</groupId>
       <artifactId>sitestats-api</artifactId>
     </dependency>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.hamcrest</groupId>
+      <artifactId>hamcrest</artifactId>
+      <version>2.2</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
   
   <!-- Build -->
@@ -42,6 +47,12 @@
         </includes>
       </resource>
     </resources>
+    <testSourceDirectory>src/test</testSourceDirectory>
+    <testResources>
+      <testResource>
+        <directory>src/test</directory>
+      </testResource>
+    </testResources>
   </build>
   
 </project>

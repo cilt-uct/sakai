@@ -27,10 +27,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import org.hibernate.Query;
-
 import lombok.extern.slf4j.Slf4j;
 
+import org.hibernate.query.Query;
 import org.sakaiproject.assignment.api.AssignmentConstants;
 import org.sakaiproject.assignment.api.AssignmentReferenceReckoner;
 import org.sakaiproject.assignment.api.AssignmentService;
@@ -48,8 +47,8 @@ import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.springframework.dao.DataAccessException;
-import org.springframework.orm.hibernate4.HibernateCallback;
-import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
+import org.springframework.orm.hibernate5.HibernateCallback;
+import org.springframework.orm.hibernate5.support.HibernateDaoSupport;
 
 @Slf4j
 public class AssignmentSupplementItemServiceImpl extends HibernateDaoSupport implements AssignmentSupplementItemService {
@@ -172,7 +171,7 @@ public class AssignmentSupplementItemServiceImpl extends HibernateDaoSupport imp
 	{
 		try 
 		{
-			getHibernateTemplate().delete(attachment);
+			getHibernateTemplate().delete(getHibernateTemplate().merge(attachment));
 			return true;
 		}
 		catch (DataAccessException e)
@@ -216,7 +215,7 @@ public class AssignmentSupplementItemServiceImpl extends HibernateDaoSupport imp
 
 		try 
 		{
-			getHibernateTemplate().delete(mItem);
+			getHibernateTemplate().delete(getHibernateTemplate().merge(mItem));
 			return true;
 		}
 		catch (DataAccessException e)
@@ -274,7 +273,7 @@ public class AssignmentSupplementItemServiceImpl extends HibernateDaoSupport imp
 
 		try 
 		{
-			getHibernateTemplate().delete(mItem);
+			getHibernateTemplate().delete(getHibernateTemplate().merge(mItem));
 			return true;
 		}
 		catch (DataAccessException e)
@@ -330,10 +329,9 @@ public class AssignmentSupplementItemServiceImpl extends HibernateDaoSupport imp
 	 */
 	public boolean removeAllPurposeItem(AssignmentAllPurposeItem mItem)
 	{
-
-		try 
+		try
 		{
-			getHibernateTemplate().delete(mItem);
+			getHibernateTemplate().delete(getHibernateTemplate().merge(mItem));
 			return true;
 		}
 		catch (DataAccessException e)
@@ -408,7 +406,7 @@ public class AssignmentSupplementItemServiceImpl extends HibernateDaoSupport imp
 
 		try 
 		{
-			getHibernateTemplate().delete(access);
+			getHibernateTemplate().delete(getHibernateTemplate().merge(access));
 			return true;
 		}
 		catch (DataAccessException e)

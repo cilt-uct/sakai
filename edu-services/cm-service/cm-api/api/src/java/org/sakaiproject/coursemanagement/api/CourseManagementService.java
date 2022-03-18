@@ -34,6 +34,13 @@ import org.sakaiproject.coursemanagement.api.exception.IdNotFoundException;
  * @author <a href="mailto:jholtzman@berkeley.edu">Josh Holtzman</a>
  */
 public interface CourseManagementService {
+
+        /**
+         * Security function and entity reference for use in SecurityAdivsors to permit
+         * CM admin functions without setting a session to admin
+         */
+	public static final String SECURE_CM_ADMIN = "cm.admin";
+	public static final String ENTITY_CM_ADMIN = "/cm/admin";
 	
 	/**
 	 * Gets a CourseSet by its eid.
@@ -323,6 +330,13 @@ public interface CourseManagementService {
 	public Set<Enrollment> getEnrollments(String enrollmentSetEid) throws IdNotFoundException;
 
 	/**
+	 * Gets the known enrollment status code for the id
+	 *
+	 * @return the status description as an Optional<String>
+	 */
+	public String getEnrollmentStatusDescription(String statusId);
+
+	/**
 	 * Gets the known enrollment status codes and descriptions for Enrollments.
 	 * 
 	 * @return
@@ -446,6 +460,16 @@ public interface CourseManagementService {
 	 * @return A Map of Section EIDs to roles for the user
 	 */
 	public Map<String, String> findSectionRoles(String userEid);
+
+	/**
+	 * Finds the Sections (and roles) for which a user is a member and which are part of a
+	 * CourseOffering in a given AcademicSession.
+	 *
+	 * @param userEid
+	 * @param academicSessionEid
+	 * @return A Map of Section EIDs to roles for the user
+	 */
+	public Map<String, String> findSectionRoles(String userEid, String academicSessionEid);
 
 	/**
 	 * Finds the CourseOfferings (and roles) for which a user is a member.

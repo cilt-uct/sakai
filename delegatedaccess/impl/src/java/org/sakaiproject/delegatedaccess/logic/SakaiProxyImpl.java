@@ -237,7 +237,7 @@ public class SakaiProxyImpl implements SakaiProxy {
 	 */
 	public List<User> searchUsers(String search) {
 		List<User> returnList = new ArrayList<User>();
-		returnList.addAll(userDirectoryService.searchExternalUsers(search, -1, -1));
+		returnList.addAll(userDirectoryService.searchExternalUsers(search, 1, Integer.MAX_VALUE));
 		returnList.addAll(userDirectoryService.searchUsers(search, 1, Integer.MAX_VALUE));
 		return returnList;
 	}
@@ -603,7 +603,17 @@ public class SakaiProxyImpl implements SakaiProxy {
 	public boolean getDisableShoppingTreeView(){
 		return serverConfigurationService.getBoolean(DelegatedAccessConstants.PROP_DISABLE_SHOPPING_TREE_VIEW, false);
 	}
-	
+
+	public boolean getToolsListUIEnabled() {
+		return serverConfigurationService.getBoolean(
+			DelegatedAccessConstants.PROP_TOOLSLIST_UI_ENABLED, DelegatedAccessConstants.PROP_TOOLSLIST_UI_ENABLED_DEFAULT);
+	}
+
+	public boolean getShoppingUIEnabled() {
+		return serverConfigurationService.getBoolean(
+			DelegatedAccessConstants.PROP_SHOPPING_UI_ENABLED, DelegatedAccessConstants.PROP_SHOPPING_UI_ENABLED_DEFAULT);
+	}
+
 	public boolean isUserInstructor(String userId, String siteId){
 		Site site = getSiteById(siteId);
 		return isUserInstructor(userId, site);

@@ -4,8 +4,11 @@
         <meta charset="utf-8">
         <title>${loginRequired} - ${uiService} - ${bottomNavServer}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">        
-		<link href="${pageSkinRepo}/${pageSkin}/tool.css" type="text/css" rel="stylesheet" media="all" />
-		<script src="${pageSkinRepo}/${pageSkin}/js/lib/modernizr.js$!{portalCDNQuery}"></script>
+        <link href="${pageSkinRepo}/${pageSkin}/tool.css" type="text/css" rel="stylesheet" media="all" />
+        <script src="${pageSkinRepo}/${pageSkin}/js/lib/modernizr.js$!{portalCDNQuery}"></script>
+    #if (${sakaiThemesEnabled})
+        <script src="$!{portalCDNPath}/portal/scripts/themeswitcher.js$!{portalCDNQuery}"></script>
+    #end
     </head>
     <body class="portalBody Mrphs-portalBody">
     	<form id="Mrphs-xlogin" method="post" action="${action}" #if (${notify}) class="with-errors" #end>
@@ -19,10 +22,9 @@
         	#end
     		<fieldset>	
     			<label for="eid">${loginEidWording}</label>
-    			<input name="eid" id="eid" value="${eid}" type="text" size="15"/>
+    			<input name="eid" id="eid" value="${eid}" type="text" autocomplete="username" size="15"/>
     			<label for="pw">${loginPwWording}</label>
-    			<input name="pw" id="pw" value="${password}" type="password" onfocus="this.passwordfocus = true; " size="15"/>
-                        <input type="hidden" name="samlfailed" value="${samlfailed}" />
+    			<input name="pw" id="pw" value="${password}" type="password" autocomplete="current-password" onfocus="this.passwordfocus = true; " size="15"/>
     			#if (${loginAdvice})
     				<aside>${loginAdvice}</aside>
     			#end
@@ -56,13 +58,13 @@
     	    }
     	    if ( needJQuery ) {
     	        document.write('\x3Cscript src="${pageWebjarsPath}jquery/1.12.4/jquery.min.js$!{portalCDNQuery}">'+'\x3C/script>')
+    	        document.write('\x3Cscript src="${pageWebjarsPath}jquery-ui/1.12.1/jquery-ui.min.js$!{portalCDNQuery}">'+'\x3C/script>')
     	        document.write('\x3Cscript src="${pageWebjarsPath}jquery-migrate/1.4.1/jquery-migrate.min.js$!{portalCDNQuery}">'+'\x3C/script>')
     	    }
     	</script>
     	<script>
     	    ${d}PBJQ = jQuery; // The Portal's jQuery (also in $ for now)
     	</script>
-    	<script src="${pageSkinRepo}/${pageSkin}/js/morpheus.plugins.min.js$!{portalCDNQuery}"></script>
     	<script src="${pageSkinRepo}/${pageSkin}/js/morpheus.scripts.min.js$!{portalCDNQuery}"></script>
     	<script src="${pageScriptPath}caps-lock-checker.js$!{portalCDNQuery}"></script>
     </body>

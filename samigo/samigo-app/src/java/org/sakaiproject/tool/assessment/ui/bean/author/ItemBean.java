@@ -22,7 +22,9 @@
 package org.sakaiproject.tool.assessment.ui.bean.author;
 
 import java.io.Serializable;
+import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -36,7 +38,10 @@ import javax.faces.event.ValueChangeEvent;
 import javax.faces.model.SelectItem;
 import javax.faces.model.SelectItemGroup;
 
-import org.apache.commons.math3.util.Precision;
+import lombok.Getter;
+import lombok.Setter;
+import org.apache.commons.lang3.StringUtils;
+
 import org.sakaiproject.tool.assessment.data.ifc.assessment.ItemDataIfc;
 import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.tool.assessment.facade.TypeFacade;
@@ -45,6 +50,7 @@ import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 import org.sakaiproject.tool.assessment.services.assessment.AssessmentService; 
 import org.sakaiproject.tool.assessment.data.dao.assessment.FavoriteColChoices;
 import org.sakaiproject.tool.assessment.data.dao.assessment.FavoriteColChoicesItem;
+import static org.sakaiproject.tool.assessment.ui.listener.author.ItemAddListener.MAX_FEEDBACK_CHARS;
 import org.sakaiproject.util.ResourceLoader;
 
 
@@ -73,12 +79,12 @@ public class ItemBean
   private String itemScoreDisplayFlag= "true";
   private Double itemMinScore;
   private double itemDiscount = 0.0d;
-  private String partialCreditFlag = "Defualt";
+  private String partialCreditFlag = "Default";
   private String[] answers;
   private String[] answerLabels;  //  such as A, B, C
   private String[] corrAnswers;  // store checkbox values(labels) for multiple correct answers, as in mcmc type
   private String corrAnswer;  // store text value for single correct answer, as in true/false , mcsc, also used for essay's model answer
-  private ArrayList multipleChoiceAnswers;  // store List of answers multiple choice items, ArrayList of AnswerBean
+  private List<AnswerBean> multipleChoiceAnswers;  // store List of answers multiple choice items, ArrayList of AnswerBean
   private String additionalChoices = "0";  // additonal multiple choice answers to be add. for the select menu
   private List<AnswerBean> emiAnswerOptions;  // ArrayList of AnswerBean - store List of possible options for an EMI question's anwers
   private String additionalEmiAnswerOptions = "3";  //Additonal options for an EMI question's answers - Jul 2010 forced to 3, no longer selected from a list
@@ -98,26 +104,28 @@ public class ItemBean
   
   private int totalMCAsnwers;
   private CalculatedQuestionBean calculatedQuestion;
+  @Getter @Setter
+  private boolean extraCredit;
   
   private String requireAllOk = "false";
   private String imageMapSrc="";
+  @Getter @Setter
+  private String imageMapAltText="";
   
   private boolean[] choiceCorrectArray;
   private String maxRecordingTime;
   private String maxNumberRecordings;
   private String scaleName;
-  private boolean multipleCorrect = false ;
-  private String multipleCorrectString;
   private String randomized = "false";
   private String rationale = "false";
   private String mcmsPartialCredit;
 
 // for matching and calculated questions only
   private String instruction;  // matching's question text
-  private ArrayList matchItemBeanList;  // store List of MatchItemBean, used for Matching only
+  @Getter @Setter private List<MatchItemBean> matchItemBeanList;  // store List of MatchItemBean, used for Matching only
   private MatchItemBean currentMatchPair;  // do not need this ?   store List of MatchItemBeans, used for Matching only
   
-  private ArrayList imageMapItemBeanList;
+  @Getter @Setter private List<ImageMapItemBean> imageMapItemBeanList;
 
 // begin DELETEME
   private String[] matches;
@@ -650,7 +658,6 @@ public class ItemBean
     this.rubric= param;
   }
 
-
   public String getTimeAllowed()
   {
     return timeAllowed;
@@ -671,37 +678,9 @@ public class ItemBean
     this.numAttempts= param;
   }
 
-  /**
-   * for multiple choice questions, multiple correct?
-   * @return
-   */
-  public String getMultipleCorrectString()
-  {
-    return multipleCorrectString;
-  }
-
-  /**
-   * for multiple choice questions
-   * @param multipleCorrectString  multiple correct?
-   */
-  public void setMultipleCorrectString(String multipleCorrect)
-  {
-    this.multipleCorrectString = multipleCorrect;
-  }
-  
-  public void setMultipleChoiceAnswers(ArrayList list)
+  public void setMultipleChoiceAnswers(List<AnswerBean> list)
   {
     this.multipleChoiceAnswers= list;
-  }
-
-  public void setMatchItemBeanList(ArrayList list)
-  {
-    this.matchItemBeanList= list;
-  }
-  
-  public void setImageMapItemBeanList(ArrayList list)
-  {
-	  this.imageMapItemBeanList= list;
   }
 
   /**
@@ -716,9 +695,9 @@ public class ItemBean
 	  String selfSequence = MatchItemBean.CONTROLLING_SEQUENCE_DEFAULT;
 	  String distractorSequence = MatchItemBean.CONTROLLING_SEQUENCE_DISTRACTOR;
 	  
-	  SelectItem selfOption = new SelectItem(selfSequence, selfSequence, selfSequence);
+	  SelectItem selfOption = new SelectItem(selfSequence, "*" + RB_AUTHOR_MESSAGES.getString("new") + "*", RB_AUTHOR_MESSAGES.getString("new_desc"));
 	  options.add(selfOption);
-	  SelectItem distractorOption = new SelectItem(distractorSequence, distractorSequence, distractorSequence);
+	  SelectItem distractorOption = new SelectItem(distractorSequence, "*" + RB_AUTHOR_MESSAGES.getString("none_above") + "*", RB_AUTHOR_MESSAGES.getString("none_above_desc"));
 	  options.add(distractorOption);
 	  
 	  List<SelectItem> subOptions = new ArrayList<SelectItem>();
@@ -742,16 +721,10 @@ public class ItemBean
 	  }
 	  if (subOptions.size() > 0) {
 		  SelectItem[] selectItems = subOptions.toArray(new SelectItem[]{});
-		  SelectItemGroup group = new SelectItemGroup("Existing");
-		  group.setSelectItems(selectItems);
+		  SelectItemGroup group = new SelectItemGroup(RB_AUTHOR_MESSAGES.getString("existing"), RB_AUTHOR_MESSAGES.getString("existing_desc"), false, selectItems);
 		  options.add(group);
 	  }
 	  return options;
-  }
-
-  public ArrayList getMatchItemBeanList()
-  {
-	return matchItemBeanList;
   }
 
   public void setCurrentMatchPair(MatchItemBean param)
@@ -765,29 +738,6 @@ public class ItemBean
         return currentMatchPair;
   }
   
-  public ArrayList getImageMapItemBeanList()
-  {
-	  return imageMapItemBeanList;
-  }
-
-  /**
-   * for multiple choice questions, multiple correct?
-   * @return
-   */
-  public boolean getMultipleCorrect()
-  {
-    return multipleCorrect;
-  }
-
-  /**
-   * for multiple choice questions
-   * @param multipleCorrect multiple correct?
-   */
-  public void setMultipleCorrect(boolean multipleCorrect)
-  {
-    this.multipleCorrect = multipleCorrect;
-  }
-
   /**
    * Is question to be randomized?
    * @return true or false
@@ -1067,33 +1017,26 @@ public class ItemBean
     this.origSection= param;
   }
 
-  public ArrayList getMultipleChoiceAnswers() {
-	ArrayList list = new ArrayList();
+  public List<AnswerBean> getMultipleChoiceAnswers() {
+	List<AnswerBean> list = new ArrayList<>();
 	// build a default list of 4 choices, a, b, c, d,
 	if (multipleChoiceAnswers!=null) {
 		return multipleChoiceAnswers;
-	// for modify
- 	}
-	else {
-	int defaultlength = 4;
-	for (int i=0; i<defaultlength; i++){
-		AnswerBean answerbean = new AnswerBean();
+ 	} else {
+		int defaultlength = 4;
+		for (int i=0; i<defaultlength; i++){
+			AnswerBean answerbean = new AnswerBean();
        		answerbean.setSequence( Long.valueOf(i+1));
-       		answerbean.setLabel(AnswerBean.getChoiceLabels()[i]);
-                
-      		list.add(answerbean);
-             
-    	}
-	
-	setMultipleChoiceAnswers(list);
-	}// else
-
-    return list;
+       		answerbean.setLabel(AnswerBean.getChoiceLabels()[i]);                
+      		list.add(answerbean);             
+    	}	
+		setMultipleChoiceAnswers(list);
+	}
+	return list;
   }
 
   public void toggleChoiceTypes(ValueChangeEvent event) {
 
-	//FacesContext context = FacesContext.getCurrentInstance();
 	String type = (String) event.getNewValue();
 	if ((type == null) || type.equals(TypeFacade.MULTIPLE_CHOICE.toString())) {
 	  setItemType(TypeFacade.MULTIPLE_CHOICE.toString());
@@ -1109,137 +1052,71 @@ public class ItemBean
 
   public String addChoicesAction() {
         // build a default list of 4 choices, a, b, c, d,
-     //   FacesContext context = FacesContext.getCurrentInstance();
-     //   String newvalue = (String) event.getNewValue();
-          String newvalue = this.getAdditionalChoices();
-        ArrayList list = getMultipleChoiceAnswers(); // get existing list
+        String newvalue = getAdditionalChoices();
+        List<AnswerBean> list = getMultipleChoiceAnswers();
         if (list!=null) {
-                // add additional answer bean
-           int currentsize = list.size();
-           int newlength = currentsize+ new Integer(newvalue).intValue();
-           if (newlength<=26){
-              for (int i=currentsize; i<newlength; i++){
-                  AnswerBean answerbean = new AnswerBean();
-                  answerbean.setSequence( Long.valueOf(i+1));
-                  answerbean.setLabel(AnswerBean.getChoiceLabels()[i]);
-                  list.add(answerbean);
-
+            // add additional answer bean
+            int currentsize = list.size();
+            int newlength = currentsize+ new Integer(newvalue).intValue();
+            if (newlength<=26){
+                for (int i=currentsize; i<newlength; i++){
+                    AnswerBean answerbean = new AnswerBean();
+                    answerbean.setSequence( Long.valueOf(i+1));
+                    answerbean.setLabel(AnswerBean.getChoiceLabels()[i]);
+                    list.add(answerbean);
                 }
-              setMultipleChoiceAnswers(list);
-              setAdditionalChoices("0");
+                setMultipleChoiceAnswers(list);
+                setAdditionalChoices("0");
 
-              // if mcmc, need to set corrAnswers 
-              if (TypeFacade.MULTIPLE_CORRECT.toString().equals(this.itemType) || TypeFacade.MULTIPLE_CORRECT_SINGLE_SELECTION.toString().equals(this.itemType)) {
-                 ArrayList corranswersList = ContextUtil.paramArrayValueLike("mccheckboxes");
-                 int corrsize = corranswersList.size();
-                 int counter = 0;
-                 String[] corrchoices = new String[corrsize];
-                 Iterator iter = corranswersList.iterator();
-                 while (iter.hasNext()) {
-
-                   String currentcorrect = (String) iter.next();
-	           corrchoices[counter]= currentcorrect; 
-                   counter++;
-                 }
-                 this.setCorrAnswers(corrchoices);
-             }
-           }
-           else
-	       {
-		   //print error
-               FacesContext context=FacesContext.getCurrentInstance();
-               context.addMessage(null,new FacesMessage(RB_AUTHOR_MESSAGES.getString("MCanswer_outofbound_error")));
-	       }
-    
-       }
+                // if mcmc, need to set corrAnswers 
+                if (TypeFacade.MULTIPLE_CORRECT.toString().equals(this.itemType) || TypeFacade.MULTIPLE_CORRECT_SINGLE_SELECTION.toString().equals(this.itemType)) {
+                    List<String> corranswersList = ContextUtil.paramArrayValueLike("mccheckboxes");
+                    int corrsize = corranswersList.size();
+                    int counter = 0;
+                    String[] corrchoices = new String[corrsize];
+                    for(String currentcorrect : corranswersList){
+	                   corrchoices[counter++]= currentcorrect;
+                    }
+                    this.setCorrAnswers(corrchoices);
+                }
+            } else {
+		        //print error
+                FacesContext context=FacesContext.getCurrentInstance();
+                context.addMessage(null,new FacesMessage(RB_AUTHOR_MESSAGES.getString("MCanswer_outofbound_error")));
+	        }    
+        }
         return "multipleChoiceItem";
   }
 
-  public String removeChoices() {
+	public String removeChoices() {
 		String labelToRemove = ContextUtil.lookupParam("answerid");
-		ArrayList corranswersList = ContextUtil.paramArrayValueLike("mccheckboxes");
-		Object [] objArray = corranswersList.toArray();
-		String [] corrAnswers = new String[objArray.length];
-		ArrayList list = getMultipleChoiceAnswers(); // get existing list
-		if (list == null) {
-			return null;
-		}
-		Iterator iter = list.iterator();
+		List<String> previousCorrect = Arrays.asList(getCorrAnswers());
+		List<String> newCorrect = new ArrayList<>();
 		int currentindex = 0;
-		int correctIndex = 0;
-		boolean delete = false;
-		while (iter.hasNext()) {
-			AnswerBean answerbean = (AnswerBean) iter.next();
-			if (answerbean.getLabel().equals(labelToRemove)) {
+		List<AnswerBean> toRemove = new ArrayList<>();
+		for(AnswerBean answerbean: getMultipleChoiceAnswers()){
+			String oldLabel = answerbean.getLabel();
+			if (oldLabel.equals(labelToRemove)) {
 				// delete selected choices
-				iter.remove();
-				delete = true;
+				toRemove.add(answerbean);
 			} else {
-				currentindex = currentindex + 1;
-				// reset sequence and labels , shift the seq/labels after a
-				// choice is deleted
-				answerbean.setSequence( Long.valueOf(currentindex));
-				answerbean.setLabel(AnswerBean.getChoiceLabels()[currentindex - 1]);
-			}
-			
-			// reset correct answers
-			for (int i = 0; i < objArray.length; i++) {
-				if (!labelToRemove.equals(objArray[i])) {
-					if ((delete && AnswerBean.getChoiceLabels()[currentindex].equals(objArray[i])) ||
-							(!delete && AnswerBean.getChoiceLabels()[currentindex - 1].equals(objArray[i]))) {
-						corrAnswers[correctIndex++] = AnswerBean.getChoiceLabels()[currentindex - 1];
-					}
+				// shift the seq/labels after a choice is deleted
+				answerbean.setSequence( Long.valueOf(++currentindex));
+				String newLabel = AnswerBean.getChoiceLabels()[currentindex - 1];
+				answerbean.setLabel(newLabel);
+				if(previousCorrect.contains(oldLabel)){
+					newCorrect.add(newLabel);
 				}
 			}
 		}
-		this.setCorrAnswers(corrAnswers);
-		return null;
-	}
+		multipleChoiceAnswers.removeAll(toRemove);
 
-  public String removeChoicesSingle() {
-		String labelToRemove = ContextUtil.lookupParam("answeridSingle");
-		ArrayList corranswersList = ContextUtil.paramArrayValueLike("mcradiobtn");
-		Object [] objArray = corranswersList.toArray();
-		String [] corrAnswers = new String[objArray.length];
-		ArrayList list = getMultipleChoiceAnswers(); // get existing list
-		if (list == null) {
-			return null;
-		}
-		Iterator iter = list.iterator();
-		int currentindex = 0;
-		int correctIndex = 0;
-		boolean delete = false;
-		while (iter.hasNext()) {
-			AnswerBean answerbean = (AnswerBean) iter.next();
-			if (answerbean.getLabel().equals(labelToRemove)) {
-				// delete selected choices
-				iter.remove();
-				delete = true;
-			} else {
-				currentindex = currentindex + 1;
-				// reset sequence and labels , shift the seq/labels after a
-				// choice is deleted
-				answerbean.setSequence( Long.valueOf(currentindex));
-				answerbean.setLabel(AnswerBean.getChoiceLabels()[currentindex - 1]);
-			}
-			
-			// reset correct answers
-			for (int i = 0; i < objArray.length; i++) {
-				if (!labelToRemove.equals(objArray[i])) {
-					if ((delete && AnswerBean.getChoiceLabels()[currentindex].equals(objArray[i])) ||
-							(!delete && AnswerBean.getChoiceLabels()[currentindex - 1].equals(objArray[i]))) {
-						corrAnswers[correctIndex++] = AnswerBean.getChoiceLabels()[currentindex - 1];
-					}
-				}
-			}
-		}
-
-		this.setCorrAnswers(corrAnswers);
+		corrAnswers = new String[newCorrect.size()];
+		corrAnswers = newCorrect.toArray(corrAnswers);
 		if (corrAnswers.length == 0) {
-			this.setCorrAnswer("");
-		}
-		else {
-			this.setCorrAnswer(corrAnswers[0]);
+			setCorrAnswer("");
+		} else {
+			setCorrAnswer(corrAnswers[0]);
 		}
 		return null;
 	}
@@ -1259,13 +1136,20 @@ public class ItemBean
 	    context.addMessage(null,new FacesMessage(RB_AUTHOR_MESSAGES.getString("match_error")));
 	    return true;
 	}
+
+    // Choice level feedback cannot exceed 4000 characters
+    if(StringUtils.length(currentMatchPair.getCorrMatchFeedback()) > MAX_FEEDBACK_CHARS || StringUtils.length(currentMatchPair.getIncorrMatchFeedback()) > MAX_FEEDBACK_CHARS) {
+        FacesContext context = FacesContext.getCurrentInstance();
+        context.addMessage(null, new FacesMessage(MessageFormat.format(RB_AUTHOR_MESSAGES.getString("feedbackTooLong"), new Object[]{MAX_FEEDBACK_CHARS})));
+        return true;
+    }
 	return false;
     }
 
   public String addMatchPair() {
       if (!isMatchError()){
 	    // get existing list
-	    ArrayList<MatchItemBean> list = getMatchItemBeanList();
+	    List<MatchItemBean> list = getMatchItemBeanList();
 	    MatchItemBean newpair = null;
 	    MatchItemBean currpair = this.getCurrentMatchPair();
 	    if (!currpair.getSequence().equals( Long.valueOf(-1))) {
@@ -1289,7 +1173,7 @@ public class ItemBean
 	    newpair.setIsCorrect(Boolean.TRUE);
 	    newpair.setControllingSequence(currpair.getControllingSequence());
 	    if (MatchItemBean.CONTROLLING_SEQUENCE_DISTRACTOR.equals(newpair.getControllingSequence())) {
-	  	  newpair.setMatch(MatchItemBean.CONTROLLING_SEQUENCE_DISTRACTOR);
+	  	  newpair.setMatch("*" + RB_AUTHOR_MESSAGES.getString("none_above") + "*");
 	    } else if (!MatchItemBean.CONTROLLING_SEQUENCE_DEFAULT.equals(newpair.getControllingSequence())) {
 	  	  Iterator<MatchItemBean> listIter = list.iterator();
 	  	  while (listIter.hasNext()) {
@@ -1704,13 +1588,9 @@ public class ItemBean
     }
 
     public void resetPartialCreditValues() {
-
-		ArrayList answersList = this.getMultipleChoiceAnswers();
-		Iterator iter = answersList.iterator();
 		// information about the correct answer is not available here so
 		// checking whether the answer is correct simply leads to NPE.
-		while (iter.hasNext()) {
-			AnswerBean answerBean = (AnswerBean) iter.next();
+		for(AnswerBean answerBean : getMultipleChoiceAnswers()){
 			if (Integer.parseInt(answerBean.getPartialCredit()) < 100) {
 				answerBean.setPartialCredit("0");
 			}
@@ -1718,22 +1598,16 @@ public class ItemBean
 				answerBean.setPartialCredit("100");
 			}
 		}
-		this.setMultipleChoiceAnswers(answersList);
 	}
 
 	public String resetToDefaultGradingLogic() {
-		// String switchEvent = (String) event.getNewValue();
 		partialCreditFlag = "Default";
-		ArrayList answersList = this.getMultipleChoiceAnswers();
-		Iterator iter = answersList.iterator();
 		// information about about the correct answer is not available here so
-		// checking whether the answer is correct
-		// simply leads to NPE.
-		while (iter.hasNext()) {
-			AnswerBean answerBean = (AnswerBean) iter.next();
+		// checking whether the answer is correct simply leads to NPE.
+		for(AnswerBean answerBean : getMultipleChoiceAnswers()){
 			answerBean.setPartialCredit("0");
 		}
-		this.setMultipleChoiceAnswers(answersList);
+		itemDiscount = 0.0d;
 		return null;
 	}
 
@@ -2094,4 +1968,15 @@ public class ItemBean
 	public List<ItemTagBean> getItemTags() { return itemTags; }
 
 	public void setItemTags(List<ItemTagBean> itemTags) { this.itemTags = itemTags; }
+
+    public boolean getRenderDiscountBlock() {
+
+        return itemType.equals("4") || (itemType.equals("1") && (partialCreditFlag.equals("false") || !partialCreditEnabled)
+            || itemType.equals("12") || (itemType.equals("2") && mcmsPartialCredit.equals("false")));
+    }
+
+    public boolean getRenderMinPointsWarning() {
+        return (itemType.equals("1") && partialCreditFlag.equals("true")) || (getRenderDiscountBlock() && getItemDiscount() > 0);
+    }
+
 }

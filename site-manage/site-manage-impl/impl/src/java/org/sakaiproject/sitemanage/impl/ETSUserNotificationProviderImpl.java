@@ -107,6 +107,7 @@ public class ETSUserNotificationProviderImpl implements UserNotificationProvider
 		emailTemplateService.importTemplateFromXmlFile(loader.getResourceAsStream(SITE_IMPORT_EMAIL_TEMPLATE_FILE_NAME), SITE_IMPORT_EMAIL_TEMPLATE_KEY);
 	}
 	
+	@Override
 	public void notifyAddedParticipant(boolean newNonOfficialAccount,
 			User user, Site site) {
 		
@@ -145,6 +146,7 @@ public class ETSUserNotificationProviderImpl implements UserNotificationProvider
 		} // if
 	}
 
+	@Override
 	public void notifyNewUserEmail(User user, String newUserPassword,
 			Site site) {
 		
@@ -179,6 +181,7 @@ public class ETSUserNotificationProviderImpl implements UserNotificationProvider
 		}
 	}
 	
+	@Override
 	public void notifyTemplateUse(Site templateSite, User currentUser, Site site) {
 		// send an email to track who are using the template
 		String from = getSetupRequestEmailAddress();
@@ -207,6 +210,7 @@ public class ETSUserNotificationProviderImpl implements UserNotificationProvider
 		}
 	}
 	
+	@Override
 	public boolean notifyCourseRequestAuthorizer(String instructorId, String requestEmail, String replyToEmail, String termTitle, String requestSectionInfo, String siteTitle, String siteId, String additionalInfo, String serverName)
 	{
 		try {
@@ -240,6 +244,7 @@ public class ETSUserNotificationProviderImpl implements UserNotificationProvider
 		}
 	}
 	
+	@Override
 	public String notifyCourseRequestSupport(String requestEmail, String serverName, String request, String termTitle, int requestListSize, String requestSectionInfo,
 			String officialAccountName, String siteTitle, String siteId, String additionalInfo, boolean requireAuthorizer, String authorizerNotified, String authorizerNotNotified)
 	{
@@ -286,6 +291,7 @@ public class ETSUserNotificationProviderImpl implements UserNotificationProvider
 		}
 	}
 	
+	@Override
 	public void notifyCourseRequestRequester(String requestEmail, String supportEmailContent, String termTitle)
 	{
 		User currentUser = userDirectoryService.getCurrentUser();
@@ -308,7 +314,8 @@ public class ETSUserNotificationProviderImpl implements UserNotificationProvider
 		emailTemplateServiceSend(NOTIFY_COURSE_REQUEST_REQUESTER, (new ResourceLoader()).getLocale(), currentUser, from, to, headerTo, replyTo, replacementValues);
 	}
 	
-	public void notifySiteCreation(Site site, List notifySites, boolean courseSite, String termTitle, String requestEmail) {
+	@Override
+	public void notifySiteCreation(Site site, List<String> notifySites, boolean courseSite, String termTitle, String requestEmail, boolean sendToRequestEmail, boolean sendToUser) {
 		User currentUser = userDirectoryService.getCurrentUser();
 		String currentUserDisplayName = currentUser!=null?currentUser.getDisplayName():"";
 		String currentUserDisplayId = currentUser!=null?currentUser.getDisplayId():"";
@@ -348,16 +355,21 @@ public class ETSUserNotificationProviderImpl implements UserNotificationProvider
 			replacementValues.put("numSections", "0");
 		}
 		replacementValues.put("sections", buf.toString());
-		
-		emailTemplateServiceSend(NOTIFY_SITE_CREATION, (new ResourceLoader()).getLocale(), currentUser, from, to, headerTo, replyTo, replacementValues);
-		
-		// send a confirmation email to site creator
-		from = requestEmail;
-		to = currentUserEmail;
-		headerTo = currentUserEmail;
-		replyTo = serverConfigurationService.getString("setup.request","no-reply@" + serverConfigurationService.getServerName());
-		emailTemplateServiceSend(NOTIFY_SITE_CREATION_CONFIRMATION, (new ResourceLoader()).getLocale(), currentUser, from, to, headerTo, replyTo, replacementValues);
-		
+
+		if (sendToRequestEmail)
+		{
+			emailTemplateServiceSend(NOTIFY_SITE_CREATION, (new ResourceLoader()).getLocale(), currentUser, from, to, headerTo, replyTo, replacementValues);
+		}
+
+		if (sendToUser)
+		{
+			// send a confirmation email to site creator
+			from = requestEmail;
+			to = currentUserEmail;
+			headerTo = currentUserEmail;
+			replyTo = serverConfigurationService.getString("setup.request","no-reply@" + serverConfigurationService.getServerName());
+			emailTemplateServiceSend(NOTIFY_SITE_CREATION_CONFIRMATION, (new ResourceLoader()).getLocale(), currentUser, from, to, headerTo, replyTo, replacementValues);
+		}
 	}
 	
 	/*
@@ -426,6 +438,7 @@ public class ETSUserNotificationProviderImpl implements UserNotificationProvider
 		return null;
 	}
 	
+	@Override
 	public void notifySiteImportCompleted(String toEmail, Locale locale, String siteId, String siteTitle){
 		if(toEmail != null && !"".equals(toEmail)){
 			

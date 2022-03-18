@@ -24,19 +24,27 @@
               val: '',
               ashidden: { iso8601: 'podAddISO8601' }
           });
+
+          var menuLink = $('#podcastAddMenuLink');
+          var menuLinkSpan = menuLink.closest('span');
+          menuLinkSpan.addClass('current');
+          menuLinkSpan.html(menuLink.text());
+
         });
       </script>
       
   <h:form id="podAdd" enctype="multipart/form-data">
-
+    <%@ include file="/podcasts/podcastMenu.jsp" %>
     <div>  <!-- Page title and Instructions -->
-       <h3><h:outputText value="#{msgs.add_title}" /></h3>
+        <div class="page-header">
+            <h1><h:outputText value="#{msgs.add_title}" /></h1>
+        </div>
 		<%-- SAK-9822: added error message when too large file was attempted to be uploaded  --%>
 	    <h:outputText value="#{podHomeBean.maxSizeExceededAlert}" styleClass="alertMessage" rendered="#{podHomeBean.uploadStatus}" />
        <h:outputText value="#{msgs.add_directions}" styleClass="indnt1" /> <br />
        <h:outputText value="#{msgs.required_prompt}" styleClass="indnt1" />
        <span class="reqStarInline indnt1">*</span>
-       <h:messages styleClass="alertMessage" id="errorMessages" rendered="#{! empty facesContext.maximumSeverity}" />
+       <h:messages styleClass="sak-banner-error" id="errorMessages" rendered="#{! empty facesContext.maximumSeverity}" />
     </div>
     <br />
     
@@ -58,7 +66,7 @@
  	     	</td>
  	      </tr>
  	      <tr>
-			<td colspan="3"><h:outputText value="#{msgs.nofile_alert}" styleClass="alertMessage" rendered="#{podHomeBean.displayNoFileErrMsg}" /></td>
+			<td colspan="3"><h:outputText value="#{msgs.nofile_alert}" styleClass="sak-banner-error" rendered="#{podHomeBean.displayNoFileErrMsg}" /></td>
 	      </tr>
 		  <tr>  <!-- ****** Date ****** -->
       		<td class="reqStarInline">*</td>
@@ -69,8 +77,8 @@
 	  	  </tr>
 	  	  <tr>
  	  		<td colspan="3">
- 	  			<h:outputText value="#{msgs.nodate_alert}" styleClass="alertMessage" rendered="#{podHomeBean.displayNoDateErrMsg}" /> 
- 	  			<h:outputText value="#{msgs.invalid_date_alert}" styleClass="alertMessage" rendered="#{podHomeBean.displayInvalidDateErrMsg}" />
+ 	  			<h:outputText value="#{msgs.nodate_alert}" styleClass="sak-banner-error" rendered="#{podHomeBean.displayNoDateErrMsg}" /> 
+ 	  			<h:outputText value="#{msgs.invalid_date_alert}" styleClass="sak-banner-error" rendered="#{podHomeBean.displayInvalidDateErrMsg}" />
  	  		</td>
  	  	  </tr>
 		  <tr>  <!-- ****** Title ****** -->
@@ -79,7 +87,7 @@
 	 	  	<td><h:inputText id="podtitle" value="#{podHomeBean.title}" size="35" maxlength="255" /></td>
 	 	  </tr>
 	 	  <tr>
-			<td colspan="3"><h:outputText value="#{msgs.notitle_alert}" styleClass="alertMessage" rendered="#{podHomeBean.displayNoTitleErrMsg}" /></td>
+			<td colspan="3"><h:outputText value="#{msgs.notitle_alert}" styleClass="sak-banner-error" rendered="#{podHomeBean.displayNoTitleErrMsg}" /></td>
 	      </tr>
           <tr> <!-- ****** Description ****** -->
       		<td colspan="2"><label for="podAdd:poddescription"><h:outputText value="#{msgs.description_prompt}" /></label></td>
@@ -93,7 +101,7 @@
         <sakai:button_bar_item action="#{podHomeBean.processAdd}" value="#{msgs.add}"
             accesskey="a" title="Add a Podcast" styleClass="active" />
         <sakai:button_bar_item action="#{podHomeBean.processCancelAdd}" value="#{msgs.cancel}" 
-            accesskey="c" title="Cancel a Podcast" />
+            accesskey="x" title="Cancel a Podcast" />
     </sakai:button_bar>
   </h:form>
  </sakai:view>

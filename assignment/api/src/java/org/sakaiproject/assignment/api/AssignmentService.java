@@ -91,6 +91,17 @@ public interface AssignmentService extends EntityProducer {
     public boolean allowAddAssignment(String context);
 
     /**
+     * Check permissions for adding an Assignment.
+     *
+     * @param context -
+     *                Describes the portlet context - generated with DefaultId.getChannel().
+     * @param user -
+     *             The user for which the permission will be checked
+     * @return True if the provided User is allowed to add an Assignment, false if not.
+     */
+    public boolean allowAddAssignment(String context, String userId);
+
+    /**
      * Check permissions for updating an Assignment based on context.
      *
      * @param context -
@@ -143,6 +154,16 @@ public interface AssignmentService extends EntityProducer {
      * @return The Collection (Group) of groups defined for the context of this site that the end user has add assignment permissions in, empty if none.
      */
     public Collection<Group> getGroupsAllowAddAssignment(String context);
+
+    /**
+     * Get the collection of Groups defined for the context of this site that the end user has add assignment permissions in.
+     * @param context -
+     *                Describes the portlet context - generated with DefaultId.getChannel().
+     * @param userId -
+     *               The user for which the permission will be checked
+     * @return The Collection (Group) of groups defined for the context of this site that the end user has add assignment permissions in, empty if none.
+     */
+    public Collection<Group> getGroupsAllowAddAssignment(String context, String userId);
 
     /**
      * Get the collection of Groups defined for the context of this site that the end user has update assignment permissions in.
@@ -268,9 +289,8 @@ public interface AssignmentService extends EntityProducer {
     /**
      * Creates and adds a new Assignment to the service.
      *
-     * @param context -
-     *                Describes the portlet context - generated with DefaultId.getChannel().
-     * @return AssignmentEdit The new Assignment object.
+     * @param context The site id for this assignment
+     * @return Assignment The new Assignment object, ready for editing.
      * @throws IdInvalidException  if the id contains prohibited characers.
      * @throws IdUsedException     if the id is already used in the service.
      * @throws PermissionException if current User does not have permission to do this.
@@ -467,6 +487,18 @@ public interface AssignmentService extends EntityProducer {
     public String getSubmissionStatus(String submissionId);
 
     /**
+     * @param submissionId
+     * @return
+     */
+    AssignmentConstants.SubmissionStatus getSubmissionCanonicalStatus(AssignmentSubmission submission, boolean canGrade);
+
+    /**
+     * @param submissionId
+     * @return
+     */
+    public Map<String,Boolean> getProgressBarStatus(AssignmentSubmission submission);
+
+    /**
      * Return a sorted list of users representing a group.
      */
     public List<User> getSortedGroupUsers(Group g);
@@ -502,6 +534,8 @@ public interface AssignmentService extends EntityProducer {
      */
     public void getSubmissionsZip(OutputStream out, String ref, String queryString) throws IdUnusedException, PermissionException;
 
+    public boolean permissionCheck(String permission, String resource, String user);
+
     /**
      * Access the internal reference which can be used to assess security clearance.
      *
@@ -529,21 +563,25 @@ public interface AssignmentService extends EntityProducer {
     public String submissionReference(String context, String id, String assignmentId);
 
     /**
-     * Whether a specific user can submit
-     * @param context
-     * @param a
-     * @param userId
-     * @return
+     * Whether a specific user can submit to this assignment thereby creating a submission
+     * <p>
+     * Of particular importance is whether <b>userId</b> is <b>blank</b> or <b>not</b>,
+     * a blank userId will perform all security checks against the current user
+     * while a non blank userId will perform all security checks against the specified user.
+     *
+     * @param assignment the Assignment to check for allowing to submit to
+     * @param userId the specified user is checked vs the current user
+     * @return true if the specified user or the current user can submit to the assignment, otherwise false
      */
-    public boolean canSubmit(String context, Assignment a, String userId);
+    public boolean canSubmit(Assignment assignment, String userId);
 
     /**
-     * Whether the current user can submit
-     * @param context
-     * @param a
-     * @return
+     * Whether the current user can submit to this assignment thereby creating a submission
+     *
+     * @param assignment the Assignment to check for allowing to submit to
+     * @return true if the current user can submit to the assignment, otherwise false
      */
-    public boolean canSubmit(String context, Assignment a);
+    public boolean canSubmit(Assignment assignment);
 
 
     /**
@@ -586,6 +624,15 @@ public interface AssignmentService extends EntityProducer {
     public Map<User, AssignmentSubmission> getSubmitterMap(String searchFilterOnly, String allOrOneGroup, String search, String aRef, String contextString);
 
     /**
+     * Given an Assignment and a User, rationalize who the submitter should be taking into account the assignment configuration
+     * Will check the assignments access and group configuration to determine the submitter id
+     * @param assignment The assignment
+     * @param user The user
+     * @return the correct submitter id to use for creating a submission or null if one can't be determined
+     */
+    String getSubmitterIdForAssignment(Assignment assignment, User user);
+
+    /**
      * @param accentedString
      * @return
      */
@@ -625,9 +672,10 @@ public interface AssignmentService extends EntityProducer {
      *
      * @param context      The site id
      * @param assignmentId The assignment id
+     * @param userId       The user id
      * @return The url as a String
      */
-    public String getDeepLink(String context, String assignmentId) throws Exception;
+    public String getDeepLink(String context, String assignmentId, String userId) throws Exception;
 
     /**
      * get csv separator for exporting to CSV. It can be a comma or point configured through
@@ -708,12 +756,68 @@ public interface AssignmentService extends EntityProducer {
     public void postReviewableSubmissionAttachments(AssignmentSubmission submission);
 
     /**
-    * This will return the internationalized title of the tool.
-    * This is used when creating a new gradebook item.
-    */
+     * This will return the internationalized title of the tool.
+     * This is used when creating a new gradebook item.
+     */
     public String getToolTitle();
+
+    /**
+     * This will return the reference removing from it the auxiliar prefix.
+     * This is used when interacting with the ContentHostingService.
+     */
+    public String removeReferencePrefix(String referenceId);
 
     String getUsersLocalDateTimeString(Instant date);
 
     public List<ContentReviewResult> getContentReviewResults(AssignmentSubmission submission);
+
+    public List<ContentReviewResult> getSortedContentReviewResults(AssignmentSubmission submission);
+
+    /**
+     * Determines whether it is appropriate to display the content review results for a submission. For instance, this will be false if the submission is a draft or if the user doesn't have permission
+     * Note: this doesn't check if content review is enabled in the site / if the associated assignment has content review enabled; it is assumed that this has been handled by the caller.
+     * @param submission
+     * @return true if content review results for the given submission can be displayed.
+     */
+    public boolean isContentReviewVisibleForSubmission(AssignmentSubmission submission);
+
+    /**
+     * Get an assignment that is linked with a gradebook item
+     * @param context the context (site id)
+     * @param linkId the link id of the gradebook item, usually the gradebook item name or id
+     * @return the matching assignment if found or null if none
+     * @throws IdUnusedException if the assignment doesn't exist
+     * @throws PermissionException if the current user is not allowed to access the assignment
+     */
+    Assignment getAssignmentForGradebookLink(String context, String linkId) throws IdUnusedException, PermissionException;
+
+    /**
+     * Returns a list of users that belong to multiple groups, if the user is considered a "student" in the group
+     * by the standards of the Assignments tool.
+     * @param siteId the site id
+     * @param asnGroups the assignment groups to check membership in
+     * @return list of users with multiple group memberships and the groups they belong to
+     */
+    public List<MultiGroupRecord> checkAssignmentForUsersInMultipleGroups(String siteId, Collection<Group> asnGroups);
+
+    /**
+     * Returns a list of users in the submission group that also belong to other assignment groups, if the user is considered
+     * a "student" in the group by the standards of the Assignments tool.
+     * @param siteId the site id
+     * @param submissionGroup the group the submission is from
+     * @param asnGroups the assignment groups to check membership in
+     * @return list of submission group users with multiple group memberships and the groups they belong to
+     */
+    public List<MultiGroupRecord> checkSubmissionForUsersInMultipleGroups(String siteId, Group submissionGroup, Collection<Group> asnGroups);
+
+    /**
+     * Returns true if the content review implementation successfully created the assignment
+     * @param a
+     * @param assignmentRef
+     * @param openTime
+     * @param dueTime
+     * @param closeTime
+     * @return
+     */
+    public String createContentReviewAssignment(Assignment a, String assignmentRef, Instant openTime, Instant dueTime, Instant closeTime);
 }

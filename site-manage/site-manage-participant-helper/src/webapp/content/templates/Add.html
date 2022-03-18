@@ -15,9 +15,10 @@
 <div id="participant-body" class="portletBody">
 	<div rsf:id="content:">
 		<!-- instruction for adding participant to course sites  -->
-		<h3 rsf:id="msg=java.addp">Add Participant</h3>
-		<!-- CLASSES-1623 NYU custom text
-		<p class="instruction">
+		<div class="page-header">
+			<h1 rsf:id="msg=java.addp">Add Participant</h1>
+		</div>
+		<p>
 			<span rsf:id="add.official" class="highlight"></span>
 			<span rsf:id = "add.official1"></span>
 		</p>
@@ -25,26 +26,22 @@
 
 		<!-- alert message -->
 		<div rsf:id="error-row:">
-			<div class="alertMessage" rsf:id="error">We Have Errors!</div>
+			<div class="sak-banner-error" rsf:id="error">We Have Errors!</div>
 		</div>
 		<div rsf:id="info-row:">
-			<div class="information" rsf:id="info">We Have Infos!</div>
+			<div class="sak-banner-info" rsf:id="info">We Have Infos!</div>
 		</div>
 
 		<!-- form for adding participant -->
 		<form rsf:id="participant-form" >
 			<input rsf:id="csrfToken" name="csrfToken" id="csrfToken" type="hidden"/>
-			<!-- CLASSES-2807 custom wording -->
-			<p><strong>Note</strong>: Students enrolled in a course through SIS/Albert are <u>automatically</u> added as course site participants in NYU Classes.</p>
-			<p>
-				To add participants <u>manually</u>, enter the user's <strong>NetID</strong>.
-				<a href="http://www.nyu.edu/servicelink/041309409300648" target="_blank"><span class="icon-sakai-help"></span></a>
-			</p>
-			<label rsf:id="officialAccountLabel" for ="officialAccountParticipant" class="sr-only">
+			<!-- add official account -->
+			<h3 rsf:id="officialAccountSectionTitle"></h3>
+			<label rsf:id="officialAccountLabel" for ="officialAccountParticipant">
 	           Official Account Label
 	        </label>
 	        <textarea rsf:id="officialAccountParticipant" name="officialAccountParticipant" cols="35" rows="4" id="officialAccountParticipant"></textarea>
-			<a href="#" onclick="rsf:id='officialAccountPickerAction'"><strong rsf:id="officialAccountPickerLabel"></strong></a><br />
+			<a href="#" onclick="rsf:id='officialAccountPickerAction'" aria-hidden="true"><strong rsf:id="officialAccountPickerLabel"></strong></a><br />
 			<p class="help-block textPanelFooter" rsf:id="msg=add.multiple"></p>
 			
 			<!-- add non-official account -->

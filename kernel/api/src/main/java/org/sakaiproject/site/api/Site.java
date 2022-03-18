@@ -28,9 +28,8 @@ import java.util.List;
 import java.util.Set;
 
 import org.sakaiproject.authz.api.AuthzGroup;
-import org.sakaiproject.authz.api.Member;
+import org.sakaiproject.authz.api.AuthzRealmLockException;
 import org.sakaiproject.entity.api.Edit;
-import org.sakaiproject.time.api.Time;
 import org.sakaiproject.user.api.User;
 
 /**
@@ -59,11 +58,21 @@ public interface Site extends Edit, Comparable, Serializable, AuthzGroup
 	 * property name for term-eid
 	 */
 	public final static String PROP_SITE_TERM_EID = "term_eid";
-	
+
+	/**
+	 * property name for portal-neochat
+	 */
+	public final static String PROP_SITE_PORTAL_NEOCHAT = "portal.neochat";
+
 	/**
 	 * property name for mathjax
 	 */
 	public final static String PROP_SITE_MATHJAX_ALLOWED = "mathJaxAllowed";
+
+	/**
+	 * property name for custom overview
+	 */
+	public final static String PROP_CUSTOM_OVERVIEW = "custom_overview";
 
 	/**
 	 * @return the user who created this.
@@ -74,20 +83,8 @@ public interface Site extends Edit, Comparable, Serializable, AuthzGroup
 	 * @return the user who last modified this.
 	 */
 	User getModifiedBy();
-
-	/**
-	 * @return the time created.
-	 * @deprecated use {@link #getCreatedDate()}
-	 */
-	Time getCreatedTime();
 	
 	
-
-	/**
-	 * @return the time last modified.
-	 * @deprecated use {@link #getModifiedTime()}
-	 */
-	Time getModifiedTime();
 
 	/** @return The human readable Title of the site. */
 	String getTitle();
@@ -399,7 +396,7 @@ public interface Site extends Edit, Comparable, Serializable, AuthzGroup
 	 * @param group
 	 *        The group to delete.
 	 */
-	void deleteGroup(Group group) throws IllegalStateException;
+	void deleteGroup(Group group) throws AuthzRealmLockException;
 
 	/**
 	 * Check if the site has a custom page order

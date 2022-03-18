@@ -7,27 +7,31 @@
     <parent>
         <groupId>org.sakaiproject</groupId>
         <artifactId>master</artifactId>
-        <version>12.5</version>
+        <version>21-SNAPSHOT</version>
         <relativePath>../master/pom.xml</relativePath>
     </parent>
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <wicket.version>6.30.0</wicket.version>
+    </properties>
     <packaging>war</packaging>
     <dependencies>
         <!-- third party dependencies -->
         <dependency>
             <groupId>org.apache.wicket</groupId>
             <artifactId>wicket</artifactId>
-            <version>6.26.0</version>
+            <version>${wicket.version}</version>
             <type>pom</type>
         </dependency>
         <dependency>
             <groupId>org.apache.wicket</groupId>
             <artifactId>wicket-spring</artifactId>
-            <version>6.26.0</version>
+            <version>${wicket.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.wicket</groupId>
             <artifactId>wicket-extensions</artifactId>
-            <version>6.26.0</version>
+            <version>${wicket.version}</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -47,7 +51,7 @@
         </dependency>
         <dependency>
             <groupId>javax.servlet</groupId>
-            <artifactId>servlet-api</artifactId>
+            <artifactId>javax.servlet-api</artifactId>
         </dependency>
         <dependency>
             <groupId>org.sakaiproject.kernel</groupId>
@@ -62,8 +66,8 @@
             <artifactId>sakai-kernel-util</artifactId>
         </dependency>
         <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>

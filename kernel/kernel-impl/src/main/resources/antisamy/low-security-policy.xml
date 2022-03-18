@@ -38,6 +38,7 @@
 
 
     <regexp name="anything" value=".*" />
+    <regexp name="anyWithPara" value="(?s).*" />
     <regexp name="numberOrPercent" value="(\d)+(%{0,1})" />
     <regexp name="paragraph" value="([\p{L}\p{N},'\.\s\-_\(\)\?]|&amp;[0-9]{2};)*" />
     <regexp name="htmlId" value="[a-zA-Z0-9\:\-_\.]+" />
@@ -188,7 +189,7 @@
          
          <attribute name="alt" description="The 'alt' attribute provides alternative text to users when its visual representation is not available">
             <regexp-list>
-                <regexp name="paragraph"/>
+                <regexp name="anyWithPara"/>
             </regexp-list>
          </attribute>
 
@@ -1131,6 +1132,11 @@
 
         <!-- Frame & related tags -->
         <tag name="iframe" action="validate">
+            <attribute name="allow">
+                <regexp-list>
+                    <regexp name="anything"/>
+                </regexp-list>
+            </attribute>
             <attribute name="height"/>
             <attribute name="width"/>
             <attribute name="frameborder">
@@ -1358,6 +1364,16 @@
             <attribute name="controls">
                 <literal-list>
                     <literal value="controls"/>
+                </literal-list>
+                <regexp-list>
+                    <regexp name="boolean"/>
+                </regexp-list>
+            </attribute>
+            <attribute name="controlslist">
+                <literal-list>
+                    <literal value="nodownload"/>
+                    <literal value="nofullscreen"/>
+                    <literal value="noremoteplayback"/>
                 </literal-list>
                 <regexp-list>
                     <regexp name="boolean"/>

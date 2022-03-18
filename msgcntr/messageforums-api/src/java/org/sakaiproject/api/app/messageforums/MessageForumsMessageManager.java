@@ -37,9 +37,35 @@ public interface MessageForumsMessageManager {
 
     public Message createOpenMessage();
 
-    public void saveMessage(Message message);
+    public Message saveOrUpdateMessage(Message message);
 
-    public void saveMessage(Message message, boolean logEvent);
+    public Message saveOrUpdateMessage(Message message, boolean logEvent);
+    /**
+     * 
+     * @param message message
+     * @param logEvent logEvent
+     * @param toolId id of the forums tool 
+     * @param userId user id
+     * @param contextId context id
+     * @return 
+     *
+     */
+    public Message saveOrUpdateMessage(Message message, boolean logEvent, String toolId, String userId, String contextId);
+    /**
+     * 
+     * @param message
+     * @param logEvent
+     * @param ignoreLockedTopicForum set true if you want to allow the message
+     * to be updated even if the topic or forum is locked (ie marking as read or
+     * commenting on a moderated message)
+     * @return Message saved or updated, with the assigned id. Different object
+     * that the one passed as parameter.
+     */
+    public Message saveOrUpdateMessage(Message message, boolean logEvent, boolean ignoreLockedTopicForum);
+
+    String saveMessage(Message message);
+
+    String saveMessage(Message message, boolean logEvent);
     /**
      * 
      * @param message message
@@ -49,7 +75,7 @@ public interface MessageForumsMessageManager {
      * @param contextId context id
      *
      */
-	public void saveMessage(Message message, boolean logEvent, String toolId, String userId, String contextId);
+    String saveMessage(Message message, boolean logEvent, String toolId, String userId, String contextId);
 	
     /**
      * 
@@ -59,8 +85,10 @@ public interface MessageForumsMessageManager {
      * to be updated even if the topic or forum is locked (ie marking as read or
      * commenting on a moderated message)
      */
-    public void saveMessage(Message message, boolean logEvent, boolean ignoreLockedTopicForum);
+	String saveMessage(Message message, boolean logEvent, boolean ignoreLockedTopicForum);
 
+    String saveMessage(Message message, boolean logEvent, String toolId, String userId, String contextId,
+            boolean ignoreLockedTopicForum);
     public void deleteMessage(Message message);
 
     public Message getMessageById(Long messageId);
@@ -234,11 +262,11 @@ public interface MessageForumsMessageManager {
 	public Map<Long, Boolean> getReadStatusForMessagesWithId(List<Long> msgIds, String userId);
 	
 	/**
-	 * Returns list of all messages in site with Pending approval for which
+	 * Returns list of all messages from a given set of topics with Pending approval for which
 	 * at least one of the given memberships has moderate perm
 	 * @return
 	 */
-	public List getPendingMsgsInSiteByMembership(final List membershipList);
+	public List getPendingMsgsInSiteByMembership(final List<String> membershipList, final List<Topic> moderatedTopics);
 	
 	/**
 	 * Retrieves all pending messages in a given topic
@@ -267,4 +295,10 @@ public interface MessageForumsMessageManager {
 	 * @return
 	 */
 	public List getRecentDiscussionForumThreadsByTopicIds(List<Long> topicIds, int numberOfMessages);
+
+	public void saveDraftRecipients(long msgId, List<DraftRecipient> recipients);
+
+	public List<DraftRecipient> findDraftRecipientsByMessageId(long msgId);
+
+	public void deleteDraftRecipientsByMessageId(long msgId);
 }

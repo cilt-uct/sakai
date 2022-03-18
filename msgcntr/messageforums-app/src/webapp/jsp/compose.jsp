@@ -1,6 +1,6 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://sakaiproject.org/jsf/messageforums" prefix="mf" %>
 <jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
    <jsp:setProperty name="msgs" property="baseName" value="org.sakaiproject.api.app.messagecenter.bundle.Messages"/>
@@ -15,15 +15,15 @@
 
 <f:view>
 	<sakai:view title="#{msgs.pvt_pvtcompose}">
-		<link rel="stylesheet" href="/library/js/jquery/select2/4.0.0/select2.css" type="text/css" />
 		<link rel="stylesheet" href="/messageforums-tool/css/messages.css" type="text/css" />
 		<link rel="stylesheet" href="/library/webjars/jquery-ui/1.12.1/jquery-ui.min.css" type="text/css" />
-		<script type="text/javascript">includeLatestJQuery("msgcntr");</script>
-		<script type="text/javascript" src="/library/js/jquery/select2/4.0.0/select2.min.js"></script>
-		<sakai:script contextBase="/messageforums-tool" path="/js/sak-10625.js"/>
-		<sakai:script contextBase="/messageforums-tool" path="/js/messages.js"/>
+		<script>includeLatestJQuery("msgcntr");</script>
+		<script src="/messageforums-tool/js/sak-10625.js"></script>
+		<script src="/messageforums-tool/js/messages.js"></script>
+		<script>includeWebjarLibrary('select2');</script>
+
 	<h:form id="compose">
-		<script type="text/javascript">
+		<script>
 				function clearSelection(selectObject)
 				{
 					for (var i=0; i<selectObject.options.length; i++)
@@ -33,17 +33,21 @@
 					changeSelect(selectObject);
 				}
 
-				function fadeInBcc(){
+				function fadeInBcc(clearSelected){
 					$('.bccLink').fadeOut();
 					$('.bcc').fadeIn();
-					clearSelection(document.getElementById('compose:list2'));
+					if (clearSelected) {
+						clearSelection(document.getElementById('compose:list2'));
+					}
 					resize();
 				}
 
-				function fadeOutBcc(){
+				function fadeOutBcc(clearSelected){
 					$('.bccLink').fadeIn();
 					$('.bcc').fadeOut();
-					clearSelection(document.getElementById('compose:list2'));
+					if (clearSelected) {
+						clearSelection(document.getElementById('compose:list2'));
+					}
 					resize();
 				}
 
@@ -54,13 +58,18 @@
 				$(document).ready(function() {
 				  	if(document.getElementById('compose:list2').selectedIndex != -1){
 				  		//BCC has selected items, so show it
-				  		fadeInBcc();
+				  		fadeInBcc(false);
 				  	}
 				  	addTagSelector(document.getElementById('compose:list1'));
 				  	addTagSelector(document.getElementById('compose:list2'));
 				  	resize();
+					var menuLink = $('#messagesComposeMenuLink');
+					var menuLinkSpan = menuLink.closest('span');
+					menuLinkSpan.addClass('current');
+					menuLinkSpan.html(menuLink.text());
 				});
 			</script>
+			<%@ include file="/jsp/privateMsg/pvtMenu.jsp" %>
 		<!-- compose.jsp -->
   			<div class="page-header">
 				<h1>
@@ -90,7 +99,8 @@
 
 		  <h:messages styleClass="alertMessage" id="errorMessages" rendered="#{! empty facesContext.maximumSeverity}" />
 
-		  <h:outputText style="display:block;" styleClass="messageConfirmation" value="#{msgs.pvt_hiddenGroupsBccMsg}" rendered="#{PrivateMessagesTool.displayHiddenGroupsMsg}" />
+		  <h:outputText styleClass="sak-banner-warn" value="#{msgs.pvt_hiddenGroupsBccMsg}" rendered="#{PrivateMessagesTool.displayHiddenGroupsMsg}" />
+		  <h:outputText styleClass="sak-banner-warn" value="#{msgs.pvt_draftRecipientsNotFoundMsg}" rendered="#{PrivateMessagesTool.displayDraftRecipientsNotFoundMsg}" />
 
 		  <div class="composeForm">
 				<div class="row">
@@ -132,7 +142,7 @@
 								</f:verbatim>
 								<h:graphicImage url="/../../library/image/silk/add.png" title="#{msgs.pvt_addBcc}" alt="#{msgs.pvt_addBcc}"/>
 								<f:verbatim>
-									<a href="#" onclick="fadeInBcc();">
+									<a href="#" onclick="fadeInBcc(true);">
 								</f:verbatim>
 								<h:outputText value="#{msgs.pvt_addBcc}"/>
 								<f:verbatim>
@@ -148,7 +158,7 @@
 								</f:verbatim>
 								<h:graphicImage url="/../../library/image/silk/cancel.png" title="#{msgs.pvt_removeBcc}" alt="#{msgs.pvt_removeBcc}"/>
 								<f:verbatim>
-									<a href="#" onclick="fadeOutBcc();">
+									<a href="#" onclick="fadeOutBcc(true);">
 								</f:verbatim>
 								<h:outputText value="#{msgs.pvt_removeBcc}"/>
 								<f:verbatim>
@@ -221,14 +231,14 @@
 					<div class="col-xs-12 col-sm-10">
 						<h:panelGroup styleClass="shorttext">
 							<h:inputText value="#{PrivateMessagesTool.composeSubject}" styleClass="form-control" id="subject" size="45">
-								<f:validateLength minimum="1" maximum="255"/>
+								<f:validateLength maximum="255"/>
 							</h:inputText>
 						</h:panelGroup>
 					</div>
 				</div>
 		  </div>
 
-		  <h4><h:outputText value="#{msgs.pvt_message}" /></h4>
+		  <h4><h:outputText value="#{msgs.pvt_star}" styleClass="reqStar"/><h:outputText value="#{msgs.pvt_message}" /></h4>
 			<sakai:inputRichText textareaOnly="#{PrivateMessagesTool.mobileSession}" value="#{PrivateMessagesTool.composeBody}" id="pvt_message_body" rows="#{ForumTool.editorRows}" cols="132">
 			</sakai:inputRichText>
 
@@ -243,7 +253,7 @@
 
 	      <sakai:doc_section>
 	        <sakai:button_bar>
-	          <sakai:button_bar_item action="#{PrivateMessagesTool.processAddAttachmentRedirect}" value="#{msgs.cdfm_button_bar_add_attachment_redirect}"
+	          <h:commandButton action="#{PrivateMessagesTool.processAddAttachmentRedirect}" value="#{msgs.cdfm_button_bar_add_attachment_redirect}"
 	                                 accesskey="a" />
 	        </sakai:button_bar>
 	      </sakai:doc_section>
@@ -269,9 +279,7 @@
 						<h:column>
 
 						  <h:commandLink action="#{PrivateMessagesTool.processDeleteAttach}"
-							           		immediate="true"
-									           onfocus="document.forms[0].onsubmit();"
-									           title="#{msgs.pvt_attrem}">
+							           		immediate="true" title="#{msgs.pvt_attrem}">
 							  <h:outputText value="#{msgs.pvt_attrem}"/>
 <%--							<f:param value="#{eachAttach.attachmentId}" name="dfmsg_current_attach"/>--%>
 								<f:param value="#{eachAttach.attachment.attachmentId}" name="pvmsg_current_attach"/>
@@ -282,7 +290,8 @@
 					  <f:facet name="header">
 						  <h:outputText value="#{msgs.pvt_attsize}" />
 						</f:facet>
-						<h:outputText value="#{eachAttach.attachment.attachmentSize}"/>
+						<h:outputText
+								value="#{PrivateMessagesTool.getAttachmentReadableSize(eachAttach.attachment.attachmentSize)}"/>
 					</h:column>
 					<h:column rendered="#{!empty PrivateMessagesTool.attachments}">
 					  <f:facet name="header">
@@ -307,10 +316,10 @@
 				</h:dataTable>
 
       <sakai:button_bar>
-        <sakai:button_bar_item action="#{PrivateMessagesTool.processPvtMsgSend}" value="#{msgs.pvt_send}" accesskey="s"  styleClass="active" />
-        <sakai:button_bar_item action="#{PrivateMessagesTool.processPvtMsgPreview}" value="#{msgs.pvt_preview}" accesskey="p"  styleClass="active" />
-        <sakai:button_bar_item action="#{PrivateMessagesTool.processPvtMsgSaveDraft}" value="#{msgs.pvt_savedraft}" />
-        <sakai:button_bar_item action="#{PrivateMessagesTool.processPvtMsgComposeCancel}" value="#{msgs.pvt_cancel}" accesskey="x" />
+        <h:commandButton action="#{PrivateMessagesTool.processPvtMsgSend}" value="#{msgs.pvt_send}" accesskey="s"  styleClass="active" />
+        <h:commandButton action="#{PrivateMessagesTool.processPvtMsgPreview}" value="#{msgs.pvt_preview}" accesskey="p" />
+        <h:commandButton action="#{PrivateMessagesTool.processPvtMsgSaveDraft}" value="#{msgs.pvt_savedraft}" />
+        <h:commandButton immediate="true" action="#{PrivateMessagesTool.processPvtMsgComposeCancel}" value="#{msgs.pvt_cancel}" accesskey="x" />
       </sakai:button_bar>
 
   	</div>

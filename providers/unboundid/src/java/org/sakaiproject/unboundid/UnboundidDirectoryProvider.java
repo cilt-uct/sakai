@@ -31,29 +31,42 @@ import java.util.Map;
 import java.security.GeneralSecurityException;
 import javax.net.ssl.SSLSocketFactory;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.sakaiproject.user.api.*;
-import org.apache.commons.lang.StringUtils;
+import lombok.extern.slf4j.Slf4j;
+import lombok.Getter;
+import lombok.Setter;
 
+import org.apache.commons.lang3.StringUtils;
+
+import org.sakaiproject.authz.api.SecurityService;
+import org.sakaiproject.memory.api.MemoryService;
+import org.sakaiproject.user.api.AuthenticationIdUDP;
+import org.sakaiproject.user.api.DisplayAdvisorUDP;
+import org.sakaiproject.user.api.ExternalUserSearchUDP;
+import org.sakaiproject.user.api.User;
+import org.sakaiproject.user.api.UserDirectoryProvider;
+import org.sakaiproject.user.api.UserEdit;
+import org.sakaiproject.user.api.UserFactory;
+import org.sakaiproject.user.api.UsersShareEmailUDP;
+
+import com.unboundid.ldap.sdk.BindRequest;
 import com.unboundid.ldap.sdk.BindResult;
 import com.unboundid.ldap.sdk.DereferencePolicy;
+import com.unboundid.ldap.sdk.GetEntryLDAPConnectionPoolHealthCheck;
+import com.unboundid.ldap.sdk.LDAPConnectionOptions;
 import com.unboundid.ldap.sdk.LDAPConnectionPool;
 import com.unboundid.ldap.sdk.LDAPSearchException;
 import com.unboundid.ldap.sdk.ResultCode;
-import com.unboundid.ldap.sdk.ServerSet;
-import com.unboundid.ldap.sdk.SingleServerSet;
 import com.unboundid.ldap.sdk.SearchResult;
 import com.unboundid.ldap.sdk.SearchResultEntry;
 import com.unboundid.ldap.sdk.SearchScope;
+import com.unboundid.ldap.sdk.ServerSet;
 import com.unboundid.ldap.sdk.SimpleBindRequest;
+import com.unboundid.ldap.sdk.SingleServerSet;
 import com.unboundid.ldap.sdk.migrate.ldapjdk.LDAPConnection;
 import com.unboundid.ldap.sdk.migrate.ldapjdk.LDAPEntry;
 import com.unboundid.ldap.sdk.migrate.ldapjdk.LDAPException;
 import com.unboundid.util.ssl.SSLUtil;
-import com.unboundid.util.ssl.TrustAllTrustManager;
-
-import org.sakaiproject.component.cover.HotReloadConfigurationService;
+import org.sakaiproject.memory.api.Cache;
 
 /**
  * <p>
@@ -62,8 +75,16 @@ import org.sakaiproject.component.cover.HotReloadConfigurationService;
  * </p>
  * 
  */
+@Slf4j
 public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapConnectionManagerConfig, ExternalUserSearchUDP, UsersShareEmailUDP, DisplayAdvisorUDP, AuthenticationIdUDP
 {
+
+	/** Security Service */
+	@Setter private SecurityService securityService;
+
+	/** Memory Service */
+	@Setter private MemoryService memoryService;
+
 	/** Default LDAP connection port */
 	public static final int[] DEFAULT_LDAP_PORT = {389};
 
@@ -71,7 +92,7 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 	public static final boolean DEFAULT_IS_SECURE_CONNECTION = false;
 
 	/**  Default LDAP access timeout in milliseconds */
-	public static final int DEFAULT_OPERATION_TIMEOUT_MILLIS = 5000;
+	public static final int DEFAULT_OPERATION_TIMEOUT_MILLIS = 9000;
 
 	/** Default referral following behavior */
 	public static final boolean DEFAULT_IS_FOLLOW_REFERRALS = false;
@@ -84,8 +105,12 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 	public static final SearchScope DEFAULT_SEARCH_SCOPE = SearchScope.SUB;
 
 	/** Default LDAP maximum number of connections in the pool */
-	public static final int DEFAULT_POOL_MAX_CONNS = 30;
+	public static final int DEFAULT_POOL_MAX_CONNS = 10;
 	
+	public static final boolean DEFAULT_RETRY_FAILED_OPERATIONS_DUE_TO_INVALID_CONNECTIONS = false;
+
+	public static final long DEFAULT_HEALTH_CHECK_INTERVAL_MILLIS = 180000L;
+
 	/** Default LDAP maximum number of objects in a result */
 	public static final int DEFAULT_MAX_RESULT_SIZE = 1000;
 
@@ -99,11 +124,16 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 	public static final String DISPLAY_NAME_PROPERTY = UnboundidDirectoryProvider.class+"-displayName";
 
 	public static final boolean DEFAULT_ALLOW_AUTHENTICATION = true;
+
+	public static final boolean DEFAULT_ALLOW_AUTHENTICATION_EXTERNAL = true;
+
+	public static final boolean DEFAULT_ALLOW_AUTHENTICATION_ADMIN = false;
+
+	public static final boolean DEFAULT_ALLOW_SEARCH_EXTERNAL = true;
+
+	public static final boolean DEFAULT_ALLOW_GET_EXTERNAL = true;
 	
 	public static final boolean DEFAULT_AUTHENTICATE_WITH_PROVIDER_FIRST = false;
-
-	/** Class-specific logger */
-	private static Logger M_log = LoggerFactory.getLogger(UnboundidDirectoryProvider.class);
 
 	/** LDAP host address */
 	private String[] ldapHost;
@@ -129,6 +159,12 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 	/** Maximum number of physical connections in the pool */
 	private int poolMaxConns = DEFAULT_POOL_MAX_CONNS;
 	
+	private boolean retryFailedOperationsDueToInvalidConnections = DEFAULT_RETRY_FAILED_OPERATIONS_DUE_TO_INVALID_CONNECTIONS;
+
+	private long healthCheckIntervalMillis = DEFAULT_HEALTH_CHECK_INTERVAL_MILLIS;
+
+	private Map<String,String> healthCheckMappings = null;
+
 	/** Maximum number of results from one LDAP query */
 	private int maxResultSize = DEFAULT_MAX_RESULT_SIZE;
 
@@ -191,6 +227,28 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 	 * Flag for allowing/disallowing authentication on a global basis
 	 */
 	private boolean allowAuthentication = DEFAULT_ALLOW_AUTHENTICATION;
+
+	/**
+	 * Flag for allowing/disallowing authentication for external users (who do not already exist).
+	 * If false, only users who have existing accounts may authenticate via LDAP.
+	 */
+	@Getter @Setter private boolean allowAuthenticationExternal = DEFAULT_ALLOW_AUTHENTICATION_EXTERNAL;
+
+	/**
+	 * Flag for allowing/disallowing authentication for admin-equivalent users.
+	 * If false, users who have admin-equivalent accounts may not authenticate via LDAP.
+	 */
+	@Getter @Setter private boolean allowAuthenticationAdmin = DEFAULT_ALLOW_AUTHENTICATION_ADMIN;
+
+	/**
+	 * Flag for allowing/disallowing searching external users
+	 */
+	@Getter @Setter private boolean allowSearchExternal = DEFAULT_ALLOW_SEARCH_EXTERNAL;
+
+	/**
+	 * Flag for allowing/disallowing getting an external user
+	 */
+	@Getter @Setter private boolean allowGetExternal = DEFAULT_ALLOW_GET_EXTERNAL;
 	
 	/**
 	 * Flag for controlling the return value of 
@@ -198,10 +256,11 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 	 */
 	private boolean authenticateWithProviderFirst = DEFAULT_AUTHENTICATE_WITH_PROVIDER_FIRST;
 
+	/** Negative cache */
+	private Cache negativeCache;
+
 	public UnboundidDirectoryProvider() {
-		if ( M_log.isDebugEnabled() ) {
-			M_log.debug("instantating UnboundidDirectoryProvider");
-		}
+		log.debug("instantating UnboundidDirectoryProvider");
 	}
 
 	/**
@@ -215,42 +274,80 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 	public void init()
 	{
 
-		if ( M_log.isDebugEnabled() ) {
-			M_log.debug("init()");
-		}
+		log.debug("init()");
 
 		// We don't want to allow people to break their config by setting the batch size to be more than the maxResultsSize.
 		if (batchSize > maxResultSize) {
 			batchSize = maxResultSize;
-			M_log.warn("Unboundid batchSize is larger than maxResultSize, batchSize has been reduced from: "+ batchSize + " to: "+ maxResultSize);
+			log.warn("Unboundid batchSize is larger than maxResultSize, batchSize has been reduced from: "+ batchSize + " to: "+ maxResultSize);
 		}
 
-		ServerSet serverSet = null;
+		// setup the negative user cache
+		negativeCache = memoryService.getCache(getClass().getName() + ".negativeCache");
 
-		if (isSecureConnection()) {
-			try {
-				SSLUtil sslUtil = new SSLUtil(new TrustAllTrustManager());
-				SSLSocketFactory sslSocketFactory = sslUtil.createSSLSocketFactory();
-
-				serverSet = new SingleServerSet(ldapHost[0], ldapPort[0], sslSocketFactory);
-			} catch (GeneralSecurityException ex) {
-				M_log.error("Error while initializing LDAP SSLSocketFactory");
-				throw new RuntimeException(ex);
-			}
-		} else {
-			serverSet = new SingleServerSet(ldapHost[0], ldapPort[0]);
-		}
-
-		SimpleBindRequest bindRequest = new SimpleBindRequest(ldapUser, ldapPassword);
-		try {
-			M_log.info("Creating LDAP connection pool of size " + poolMaxConns);
-			connectionPool = new LDAPConnectionPool(serverSet, bindRequest, poolMaxConns);
-		} catch (com.unboundid.ldap.sdk.LDAPException e) {
-			M_log.error("Could not init LDAP pool", e);
-		}
-		   
+		createConnectionPool();
 		initLdapAttributeMapper();
 	}
+
+        /**
+         * Create the LDAP connection pool
+         */
+        protected synchronized boolean createConnectionPool() {
+
+                if (connectionPool != null) {
+                        return true;
+                }
+
+                // Create a new LDAP connection pool with 10 connections
+                ServerSet serverSet = null;
+
+                // Set some sane defaults to better handle timeouts. Unboundid will wait 30 seconds by default on a hung connection.
+                LDAPConnectionOptions connectOptions = new LDAPConnectionOptions();
+                connectOptions.setAbandonOnTimeout(false); // If no response from server, dont send an abandon request to the server
+                connectOptions.setConnectTimeoutMillis(operationTimeout);
+                connectOptions.setResponseTimeoutMillis(operationTimeout); // Sakai should not be making any giant queries to LDAP
+                connectOptions.setUseSynchronousMode(true); // "operate more efficiently and without requiring a separate reader thread per connection"
+
+                if (isSecureConnection()) {
+                        try {
+                                // If testing locally only, could use `new TrustAllTrustManager()` as contructor parameter to SSLUtil
+                                SSLUtil sslUtil = new SSLUtil();
+                                SSLSocketFactory sslSocketFactory = sslUtil.createSSLSocketFactory();
+
+                                serverSet = new SingleServerSet(ldapHost[0], ldapPort[0], sslSocketFactory, connectOptions);
+                        } catch (GeneralSecurityException ex) {
+                                log.error("Error while initializing LDAP SSLSocketFactory");
+                                throw new RuntimeException(ex);
+                        }
+                } else {
+                        serverSet = new SingleServerSet(ldapHost[0], ldapPort[0], connectOptions);
+                }
+
+                BindRequest bindRequest = new SimpleBindRequest(ldapUser, ldapPassword);
+                try {
+                    log.info("Creating LDAP connection pool of size {}", poolMaxConns);
+                    connectionPool = new LDAPConnectionPool(serverSet, bindRequest, poolMaxConns);
+                    connectionPool.setRetryFailedOperationsDueToInvalidConnections(retryFailedOperationsDueToInvalidConnections);
+                    connectionPool.setHealthCheckIntervalMillis(healthCheckIntervalMillis);
+                    if (healthCheckMappings != null) {
+                        GetEntryLDAPConnectionPoolHealthCheck healthCheck = new GetEntryLDAPConnectionPoolHealthCheck(
+                            ldapUser,
+                            Long.parseLong(healthCheckMappings.get("maxResponseTime")),
+                            Boolean.parseBoolean(healthCheckMappings.get("invokeOnCreate")),
+                            Boolean.parseBoolean(healthCheckMappings.get("invokeAfterAuthentication")),
+                            Boolean.parseBoolean(healthCheckMappings.get("invokeOnCheckout")),
+                            Boolean.parseBoolean(healthCheckMappings.get("invokeOnRelease")),
+                            Boolean.parseBoolean(healthCheckMappings.get("invokeForBackgroundChecks")),
+                            Boolean.parseBoolean(healthCheckMappings.get("invokeOnException")));
+                        connectionPool.setHealthCheck(healthCheck);
+                    }
+               } catch (com.unboundid.ldap.sdk.LDAPException e) {
+                   log.error("Could not init LDAP pool", e);
+                   return false;
+              }
+
+             return true;
+        }
 
 	/**
 	 * Lazily "injects" a {@link LdapAttributeMapper} if one
@@ -266,9 +363,7 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 	 */
 	protected void initLdapAttributeMapper() {
 
-		if ( M_log.isDebugEnabled() ) {
-			M_log.debug("initLdapAttributeMapper()");
-		}
+		log.debug("initLdapAttributeMapper()");
 
 		if ( ldapAttributeMapper == null ) {
 			// emulate what Spring should really be doing
@@ -286,10 +381,7 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 	 * @return a new {@link LdapAttributeMapper}
 	 */
 	protected LdapAttributeMapper newDefaultLdapAttributeMapper() {
-		if ( M_log.isDebugEnabled() ) {
-			M_log.debug(
-			"newDefaultLdapAttributeMapper(): returning a new SimpleLdapAttributeMapper");
-		}
+		log.debug("newDefaultLdapAttributeMapper(): returning a new SimpleLdapAttributeMapper");
 		return new SimpleLdapAttributeMapper();
 	}
 
@@ -297,12 +389,17 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 	 * Typically called by Spring to signal bean destruction.
 	 *
 	 */
-	public void destroy()
-	{
-		if ( M_log.isDebugEnabled() ) {
-			M_log.debug("destroy()");
-		}
+	public void destroy() {
+		log.debug("destroy()");
+		clearCache();
+	}
 
+	/**
+	 * Resets the internal {@link LdapUserData} cache
+	 */
+	public void clearCache() {
+		log.debug("clearCache()");
+		negativeCache.clear();
 	}
 
 	/**
@@ -332,85 +429,64 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 	{
 		com.unboundid.ldap.sdk.LDAPConnection lc = null;
 
-		if ( M_log.isDebugEnabled() ) {
-			M_log.debug("authenticateUser(): [userLogin = " + userLogin + "]");
-		}
+		log.debug("authenticateUser(): [userLogin = {}]", userLogin);
 
 		if ( !(allowAuthentication) ) {
-			M_log.debug("authenticateUser(): denying authentication attempt [userLogin = " + userLogin + "]. All authentication has been disabled via configuration");
+			log.debug("authenticateUser(): denying authentication attempt [userLogin = " + userLogin + "]. All authentication has been disabled via configuration");
 			return false;
 		}
 		
-		if ( StringUtils.isBlank(password) )
-		{
-			if ( M_log.isDebugEnabled() ) {
-				M_log.debug("authenticateUser(): returning false, blank password");
-			}
+		if ( StringUtils.isBlank(password) ) {
+			log.debug("authenticateUser(): returning false, blank password");
 			return false;
 		}
 
-                long _ldapStartTime = System.currentTimeMillis();
+		if ( !allowAuthenticationExternal && (edit.getId() == null)) {
+			log.debug("authenticateUser(): returning false, not authenticating for external users");
+			return false;
+		}
+
+		if ( !allowAuthenticationAdmin && securityService.isSuperUser(edit.getId())) {
+			log.debug("authenticateUser(): returning false, not authenticating for superuser (admin) {}", edit.getEid());
+			return false;
+		}
+
+		if (connectionPool == null && !createConnectionPool()) {
+			log.error("No LDAP connection pool available: unable to authenticate");
+			return false;
+		}
 
 		try
 		{
+			long start = System.currentTimeMillis();
+
 			// look up the end-user's DN, which could be nested at some 
 			// arbitrary depth below getBasePath().
 			// TODO: optimization opportunity if user entries are 
 			// directly below getBasePath()
 			final String endUserDN = lookupUserBindDn(userLogin);
 
-			long _ldapFinishedLookupUserBindDn = System.currentTimeMillis();
-
 			if ( endUserDN == null ) {
-				if ( M_log.isDebugEnabled() ) {
-					M_log.debug("authenticateUser(): failed to find bind dn for login [userLogin = " + userLogin + "], returning false");
-				}
+				log.debug("authenticateUser(): failed to find bind dn for login [userLogin = {}], returning false", userLogin);
 				return false;
 			}
 
-			if ( M_log.isDebugEnabled() ) {
-				M_log.debug("authenticateUser(): returning connection to pool [userLogin = " + userLogin + "]");
-			}
-
-			if ( M_log.isDebugEnabled() ) {
-				M_log.debug("authenticateUser(): attempting to allocate bound connection [userLogin = " + 
-						userLogin + "][bind dn [" + endUserDN + "]");
-			}
+			log.debug("authenticateUser(): attempting to allocate bound connection [userLogin = {}][bind dn [{}]", userLogin, endUserDN);
 			
-                        nyuLogLDAPUsage();
-
 			lc = connectionPool.getConnection();
-			long _ldapFinishedConnecting = System.currentTimeMillis();
-
 			BindResult bindResult = lc.bind(endUserDN, password);
-			long _ldapFinishTime = System.currentTimeMillis();
-
-			M_log.info(String.format("[%s] Successful LDAP authentication for '%s' (connection: %d; lookup: %d; bind: %d; total: %d)",
-							Thread.currentThread().toString(),
-							userLogin,
-							(_ldapFinishedConnecting - _ldapFinishedLookupUserBindDn),
-							(_ldapFinishedLookupUserBindDn - _ldapStartTime),
-							(_ldapFinishTime - _ldapFinishedConnecting),
-							(_ldapFinishTime - _ldapStartTime)));
-
 			if(bindResult.getResultCode().equals(ResultCode.SUCCESS)) {
+				log.info("Authenticated {} ({}) from LDAP in {} ms", userLogin, endUserDN, System.currentTimeMillis() - start);
 				return true;
 			}
 
-			if ( M_log.isDebugEnabled() ) {
-				M_log.debug("authenticateUser(): unsuccessfull bind attempt [userLogin = " + 
-						userLogin + "][bind dn [" + endUserDN + "]");
-			}
+			log.debug("authenticateUser(): unsuccessfull bind attempt [userLogin = {}][bind dn [{}]", userLogin, endUserDN);
 			return false;
-
 		}
 		catch (com.unboundid.ldap.sdk.LDAPException e)
 		{
 			if (e.getResultCode().intValue() == LDAPException.INVALID_CREDENTIALS) {
-				if ( M_log.isWarnEnabled() ) {
-					M_log.warn("authenticateUser(): invalid credentials [userLogin = "
-							+ userLogin + "]");
-				}
+				log.info("authenticateUser(): invalid credentials [userLogin = {}]", userLogin);
 				return false;
 			} else {
 				throw new RuntimeException(
@@ -462,7 +538,7 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 					}
 					resolvedEntry = getUserByEid(eid);
 				} catch ( InvalidEmailAddressException e ) {
-					M_log.error("findUserByEmail(): Attempted to look up user at an invalid email address [" + email + "]", e);
+					log.error("findUserByEmail(): Attempted to look up user at an invalid email address [" + email + "]", e);
 					useStdFilter = true; // fall back to std processing, we cant derive an EID from this addr
 				}
 			}
@@ -478,15 +554,11 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 			}
 		
 			if ( resolvedEntry == null ) {
-				if ( M_log.isDebugEnabled() ) {
-					M_log.debug("findUserByEmail(): failed to find user by email [email = " + email + "]");
-				}
+				log.debug("findUserByEmail(): failed to find user by email [email = {}]", email);
 				return false;
 			}
 
-			if ( M_log.isDebugEnabled() ) {
-				M_log.debug("findUserByEmail(): found user by email [email = " + email + "]");
-			}
+			log.debug("findUserByEmail(): found user by email [email = {}]", email);
 
 			if ( edit != null ) {
 				mapUserDataOntoUserEdit(resolvedEntry, edit);
@@ -495,8 +567,8 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 			return true;
 		
 		} catch ( Exception e ) {
-			M_log.error("findUserByEmail(): failed [email = " + email + "]");
-			M_log.debug("Exception: ", e);
+			log.error("findUserByEmail(): failed [email = " + email + "]");
+			log.debug("Exception: ", e);
 			return false;
 		}
 
@@ -511,10 +583,27 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 	public boolean getUser(UserEdit edit)
 	{
 
+		if (!allowGetExternal) {
+			log.debug("getUser() external get not enabled");
+			return false;
+		}
+
 		try {
-			return getUserByEid(edit, edit.getEid());
+			boolean userFound = getUserByEid(edit, edit.getEid());
+
+			// No LDAPException means we have a good connection. Cache a negative result.
+			if (!userFound) {
+				Object o = negativeCache.get(edit.getEid());
+				Integer seenCount = 0;
+				if (o != null) {
+					seenCount = (Integer) o;
+				}
+				negativeCache.put(edit.getEid(), (seenCount + 1));
+			}
+
+			return userFound;
 		} catch ( LDAPException e ) {
-			M_log.error("getUser() failed [eid: " + edit.getEid() + "]", e);
+			log.error("getUser() failed [eid: " + edit.getEid() + "]", e);
 			return false;
 		}
 
@@ -543,7 +632,7 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 			mappedEntry = (LdapUserData) searchDirectoryForSingleEntry(filter,
 					null, null, null);
 		} catch (LDAPException e) {
-			M_log.error("Failed to find user for AID: " + aid, e);
+			log.error("Failed to find user for AID: " + aid, e);
 		}
 		return mappedEntry;
 	}
@@ -561,9 +650,7 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 	 */
 	public void getUsers(Collection<UserEdit> users)
 	{
-		if ( M_log.isDebugEnabled() ) {
-			M_log.debug("getUsers(): [Collection size = " + users.size() + "]");
-		}
+		log.debug("getUsers(): [Collection size = {}]", users.size());
 
 		boolean abortiveSearch = false;
 		int maxQuerySize = getMaxObjectsToQueryFor();
@@ -617,10 +704,16 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 			
 			// Finally clean up the original collection and remove and users we could not find
 			for (UserEdit userRemove : usersToRemove) {
-				if (M_log.isDebugEnabled()) {
-					M_log.debug("Unboundid getUsers could not find user: " + userRemove.getEid());
-				}
+				log.debug("Unboundid getUsers could not find user: {}", userRemove.getEid());
 				users.remove(userRemove);
+
+				// Add eid to negative cache. We are confident the LDAP conn is alive and well here.
+				Integer seenCount = 0;
+				Object o = negativeCache.get(userRemove.getEid());
+				if (o != null) {
+					seenCount = (Integer) o;
+				}
+				negativeCache.put(userRemove.getEid(), (seenCount + 1));
 			}
 			
 		} catch (LDAPException e)	{
@@ -637,9 +730,7 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 		} finally {
 			// no sense in returning a partially complete search result
 			if ( abortiveSearch ) {
-				if ( M_log.isDebugEnabled() ) {
-					M_log.debug("getUsers(): abortive search, clearing received users collection");
-				}
+				log.debug("getUsers(): abortive search, clearing received users collection");
 				users.clear();
 			}
 		}
@@ -662,16 +753,14 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 	 */
 	public boolean userExists(String eid)
 	{
-		if ( M_log.isDebugEnabled() ) {
-			M_log.debug("userExists(): [eid = " + eid + "]");
-		}
+		log.debug("userExists(): [eid = {}]", eid);
 
 		try {
 
 			return getUserByEid(null, eid);
 
 		} catch ( LDAPException e ) {
-			M_log.error("userExists() failed: [eid = " + eid + "]", e);
+			log.error("userExists() failed: [eid = " + eid + "]", e);
 			return false;
 		}
 	}
@@ -714,23 +803,20 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 	 */
 	protected LdapUserData getUserByEid(String eid) 
 	throws LDAPException {
-		if ( M_log.isDebugEnabled() ) {
-			M_log.debug("getUserByEid(): [eid = " + eid + "]");
-		}
 
 		if ( !(isSearchableEid(eid)) ) {
 			if (eid == null)
 			{
-				M_log.debug("User EID not searchable (eid is null)");
+				log.debug("User EID not searchable (eid is null)");
+				return null;
 			}
-			else if ( M_log.isInfoEnabled() ) {
-				M_log.info("User EID not searchable (possibly blacklisted or otherwise syntactically invalid) [" + eid + "]");
-			}
+
+			log.info("User EID not searchable (possibly blacklisted or otherwise syntactically invalid) [{}]", eid);
 			return null;
 		}
 
-		String filter = 
-			ldapAttributeMapper.getFindUserByEidFilter(eid);
+		log.debug("getUserByEid(): [eid = {}]", eid);
+		String filter = ldapAttributeMapper.getFindUserByEidFilter(eid);
 
 		// takes care of caching and everything
 		return (LdapUserData)searchDirectoryForSingleEntry(filter, 
@@ -748,6 +834,18 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 	 *   set, or the result of {@link EidValidator#isSearchableEid(String)}
 	 */
 	protected boolean isSearchableEid(String eid) {
+		if (negativeCache == null) {
+			negativeCache = memoryService.getCache(getClass().getName() + ".negativeCache");
+			log.debug("negativeCache initialized in isSearchableEid");
+		}
+		Object o = negativeCache.get(eid);
+		if (o != null) {
+			Integer seenCount = (Integer) o;
+			log.debug("negativeCache count for {}={}", eid, seenCount);
+			if (seenCount > 3) {
+				return false;
+			}
+		}
 		if ( eidValidator == null ) {
 			return true;
 		}
@@ -770,10 +868,7 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 	protected String lookupUserBindDn(String eid) 
 	throws LDAPException {
 
-		if ( M_log.isDebugEnabled() ) {
-			M_log.debug("lookupUserEntryDN(): [eid = " + eid + 
-					"]");
-		}
+			log.debug("lookupUserEntryDN(): [eid = {}]", eid);
 
 		LdapUserData foundUserData;
 		if (enableAid) {
@@ -783,10 +878,7 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 		}
 
 		if ( foundUserData == null ) {
-			if ( M_log.isDebugEnabled() ) {
-				M_log.debug("lookupUserEntryDN(): no directory entried found [eid = " + 
-						eid + "]");
-			}
+			log.debug("lookupUserEntryDN(): no directory entried found [eid = {}]", eid);
 			return null;
 		}
 		return ldapAttributeMapper.getUserBindDn(foundUserData);
@@ -811,10 +903,7 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 			String searchBaseDn)
 	throws LDAPException {
 
-		if ( M_log.isDebugEnabled() ) {
-			M_log.debug("searchDirectoryForSingleEntry(): [filter = " + filter + 
-					"]");
-		}
+		log.debug("searchDirectoryForSingleEntry(): [filter = {}]", filter);
 
 		List<LdapUserData> results = searchDirectory(filter,
 				mapper,
@@ -851,29 +940,28 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 	 * @throws LDAPException if thrown by the search
 	 * @throws RuntimeExction wrapping any non-{@link LDAPException} {@link Exception}
 	 */
-	protected List<LdapUserData> searchDirectory(String filter, 
-			LdapEntryMapper mapper,
-			String[] searchResultPhysicalAttributeNames,
-			String searchBaseDn, 
-			int maxResults) 
+	protected List<LdapUserData> searchDirectory(final String filter, 
+			final LdapEntryMapper passedMapper,
+			final String[] searchResultPhysicalAttributeNames,
+			final String unescapedSearchBaseDn, 
+			final int maxResults) 
 	throws LDAPException {
 
-		if ( M_log.isDebugEnabled() ) {
-			M_log.debug("searchDirectory(): [filter = " + filter + 
-					"]");
+		log.debug("searchDirectory(): [filter = {}]", filter);
+
+		if (connectionPool == null && !createConnectionPool()) {
+			throw new LDAPException("No LDAP connection pool available: unable to search");
 		}
 
 		try {
 
-			searchResultPhysicalAttributeNames = 
-				scrubSearchResultPhysicalAttributeNames(
-						searchResultPhysicalAttributeNames);
+			final String[] scrubbedPhysicalAttributeNames = scrubSearchResultPhysicalAttributeNames(searchResultPhysicalAttributeNames);
 
-			searchBaseDn = 
-				scrubSearchBaseDn(searchBaseDn);
+			final String searchBaseDn = scrubSearchBaseDn(unescapedSearchBaseDn);
 
-			if ( mapper == null ) {
-				mapper = defaultLdapEntryMapper;
+			LdapEntryMapper mapper = defaultLdapEntryMapper;
+			if ( passedMapper != null ) {
+				mapper = passedMapper;
 			}
 
 			DereferencePolicy dr = DereferencePolicy.NEVER;
@@ -881,19 +969,11 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 				dr = DereferencePolicy.ALWAYS;
 			}
 
-			if ( M_log.isDebugEnabled() ) {
-				M_log.debug("searchDirectory(): [baseDN = " + 
-						searchBaseDn + "][filter = " + filter + 
-						"][return attribs = " + 
-						Arrays.toString(searchResultPhysicalAttributeNames) + 
-						"][max results = " + maxResults + "]" +
-						"][search scope = " + searchScope + "]");
-			}
+			log.debug("searchDirectory(): [baseDN = {}][filter = {}][return attribs = {}][max results = {}][search scope = {}]",
+				searchBaseDn, filter, Arrays.toString(scrubbedPhysicalAttributeNames), maxResults, searchScope);
 			long start = System.currentTimeMillis();
 			
 			SearchResult searchResult = null;
-
-                        nyuLogLDAPUsage();
 
                         try {
                             searchResult = connectionPool.search(searchBaseDn, 
@@ -903,14 +983,15 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
                                     operationTimeout,
                                     false,
                                     filter,
-                                    searchResultPhysicalAttributeNames
+                                    scrubbedPhysicalAttributeNames
                             );
                         } catch (LDAPSearchException e) {
                             if (e.getResultCode().equals(ResultCode.SIZE_LIMIT_EXCEEDED)) {
-                                // CLASSES-2606 We still want results even
+                                // We still want results even
                                 // though we hit the max.  Just take what we
                                 // were able to get.
                                 searchResult = e.getSearchResult();
+                                log.warn("Hit ResultCode.SIZE_LIMIT_EXCEEDED: {}", e.getDiagnosticMessage());
                             } else {
                                 throw e;
                             }
@@ -928,15 +1009,13 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 				}
 				mappedResults.add((LdapUserData) mappedResult);
 			}
-			if (M_log.isDebugEnabled()) {
-				M_log.debug("Query took: "+ (System.currentTimeMillis() - start)+ "ms.");
-			}
+			log.debug("Query took: {}ms",  (System.currentTimeMillis() - start));
 			
 			return mappedResults;
 
 		} catch ( Exception e ) {
 			throw new RuntimeException("searchDirectory(): RuntimeException while executing search [baseDN = " + 
-					searchBaseDn + "][filter = " + filter + 
+					unescapedSearchBaseDn + "][filter = " + filter + 
 					"][return attribs = " + 
 					Arrays.toString(searchResultPhysicalAttributeNames) + 
 					"][max results = " + maxResults + "]", e);
@@ -955,9 +1034,8 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 	 * @return a default base DN or the received DN, if non <code>null</code>. Return
 	 *   value may be <code>null</code> if no default base DN has been configured
 	 */
-	protected String scrubSearchBaseDn(String searchBaseDn) {
-		searchBaseDn = searchBaseDn == null ? basePath : searchBaseDn;
-		return searchBaseDn;
+	protected String scrubSearchBaseDn(final String searchBaseDn) {
+		return searchBaseDn == null ? basePath : searchBaseDn;
 	}
 
 	/**
@@ -973,19 +1051,18 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 	 * @param searchResultPhysicalAttributeNames
 	 * @return
 	 */
-	protected String[] scrubSearchResultPhysicalAttributeNames(
-			String[] searchResultPhysicalAttributeNames) {
+	protected String[] scrubSearchResultPhysicalAttributeNames(final String[] searchResultPhysicalAttributeNames) {
+		String[] scrubbedNames = searchResultPhysicalAttributeNames;
 
-		if ( searchResultPhysicalAttributeNames == null ) {
-			searchResultPhysicalAttributeNames = 
-				ldapAttributeMapper.getSearchResultAttributes();
+		if ( scrubbedNames == null ) {
+			scrubbedNames = ldapAttributeMapper.getSearchResultAttributes();
 		}
 
-		if ( searchResultPhysicalAttributeNames == null ) {
-			searchResultPhysicalAttributeNames = new String[0];
+		if ( scrubbedNames == null ) {
+			scrubbedNames = new String[0];
 		}
 
-		return searchResultPhysicalAttributeNames;
+		return scrubbedNames;
 
 	}
 
@@ -1001,9 +1078,7 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 	 */
 	protected LdapUserData mapLdapEntryOntoUserData(LDAPEntry ldapEntry) {
 
-		if ( M_log.isDebugEnabled() ) {
-			M_log.debug("mapLdapEntryOntoUserData() [dn = " + ldapEntry.getDN() + "]");
-		}
+		log.debug("mapLdapEntryOntoUserData() [dn = {}]", ldapEntry.getDN());
 
 		LdapUserData userData = newLdapUserData();
 		ldapAttributeMapper.mapLdapEntryOntoUserData(ldapEntry, userData);
@@ -1031,10 +1106,8 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 	 */
 	protected void mapUserDataOntoUserEdit(LdapUserData userData, UserEdit userEdit) {
 
-		if ( M_log.isDebugEnabled() ) {
-			//  std. UserEdit impl has no meaningful toString() impl
-			M_log.debug("mapUserDataOntoUserEdit() [userData = " + userData + "]");
-		}
+		//  std. UserEdit impl has no meaningful toString() impl
+		log.debug("mapUserDataOntoUserEdit() [userData = {}]", userData);
 
 		// delegate to the LdapAttributeMapper since it knows the most
 		// about how the LdapUserData instance was originally populated
@@ -1208,6 +1281,38 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 	/**
 	 * {@inheritDoc}
 	 */
+	public boolean getRetryFailedOperationsDueToInvalidConnections() {
+		return retryFailedOperationsDueToInvalidConnections;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public void setRetryFailedOperationsDueToInvalidConnections(boolean retryFailedOperationsDueToInvalidConnections) {
+		this.retryFailedOperationsDueToInvalidConnections = retryFailedOperationsDueToInvalidConnections;
+	}
+
+	public long getHealthCheckIntervalMillis() {
+		return healthCheckIntervalMillis;
+	}
+
+	public void setHealthCheckIntervalMillis(long healthCheckIntervalMillis) {
+		this.healthCheckIntervalMillis = healthCheckIntervalMillis;
+	}
+
+	public Map<String, String> getHealthCheckMappings()
+	{
+		return healthCheckMappings;
+	}
+
+	public void setHealthCheckMappings(Map<String, String> healthCheckMappings)
+	{
+		this.healthCheckMappings = healthCheckMappings;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
 	public int getMaxObjectsToQueryFor() {
 		return getBatchSize();
 	}
@@ -1216,7 +1321,7 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 	 * {@inheritDoc}
 	 */
 	public void setMaxObjectsToQueryFor (int maxObjectsToQueryFor) {
-		M_log.info("maxObjectToQueryFor is deprecated please use " + "batchSize@org.sakaiproject.user.api.UserDirectoryProvider instead");
+		log.info("maxObjectToQueryFor is deprecated please use " + "batchSize@org.sakaiproject.user.api.UserDirectoryProvider instead");
 		setBatchSize(maxObjectsToQueryFor);
 	}
 
@@ -1439,7 +1544,7 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
      * record range given (sorted by sort name). 
      */  
 	//public List<User> searchUsers(String criteria, int first, int last) {
-	//	M_log.error("Not yet implemented");
+	//	log.error("Not yet implemented");
 	//	return null;
 	//}
 
@@ -1466,6 +1571,11 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
      * 		A list (UserEdit) of all the users matching the criteria.
      */ 
 	public List<UserEdit> searchExternalUsers(String criteria, int first, int last, UserFactory factory) {
+
+		if (!allowSearchExternal) {
+			log.debug("External search is disabled");
+			return null;
+		}
 		
 		String filter = ldapAttributeMapper.getFindUserByCrossAttributeSearchFilter(criteria);
 		List<UserEdit> users = new ArrayList<UserEdit>();
@@ -1485,7 +1595,7 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 			}
 
 		} catch (LDAPException e) {
-			M_log.warn("An error occurred searching for users: " + e.getClass().getName() + ": (" + e.getLDAPResultCode() + ") " + e.getMessage());
+			log.warn("An error occurred searching for users: " + e.getClass().getName() + ": (" + e.getLDAPResultCode() + ") " + e.getMessage());
 			return null;
 		}
 		
@@ -1504,8 +1614,14 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 	@SuppressWarnings("rawtypes")
     public Collection findUsersByEmail(String email, UserFactory factory) {
 
-		String filter = ldapAttributeMapper.getFindUserByEmailFilter(email);
 		List<User> users = new ArrayList<User>();
+
+                if (!allowSearchExternal) {
+                        log.debug("External search is disabled");
+                        return users;
+                }
+
+		String filter = ldapAttributeMapper.getFindUserByEmailFilter(email);
 		try {
 			List<LdapUserData> ldapUsers = searchDirectory(filter, null, null, null, maxResultSize);
 
@@ -1518,7 +1634,7 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 				users.add(user);
 			}
 		} catch (LDAPException e) {
-			M_log.warn("An error occurred finding users by email: " + e.getClass().getName() + ": (" + e.getLDAPResultCode() + ") " + e.getMessage());
+			log.warn("An error occurred finding users by email: " + e.getClass().getName() + ": (" + e.getLDAPResultCode() + ") " + e.getMessage());
 			return null;
 		}
 		return users;
@@ -1535,27 +1651,4 @@ public class UnboundidDirectoryProvider implements UserDirectoryProvider, LdapCo
 		this.searchAliases = searchAliases;
 	}
 
-
-	private void nyuLogLDAPUsage() {
-		if (!"true".equals(HotReloadConfigurationService.getString("nyu.log-ldap-usage", "false"))) {
-			return;
-		}
-
-		StringBuilder sb = new StringBuilder();
-		int count = 0;
-		for (StackTraceElement elt : Thread.currentThread().getStackTrace()) {
-			if (count < 20) {
-				if (sb.length() > 0) {
-					sb.append("    ");
-				}
-
-				sb.append(elt.toString());
-				sb.append("\n");
-			}
-
-			count++;
-		}
-
-		M_log.info("LDAP hit: " + sb.toString());
-	}
 }

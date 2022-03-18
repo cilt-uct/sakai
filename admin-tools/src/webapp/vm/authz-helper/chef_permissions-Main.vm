@@ -1,7 +1,6 @@
 ## This is the fallback template which is used when there is a problem and a normal template
 ## isn't used.
 <div class="portletBody">
-#css("/sakai-authz-tool/css/authz.css" 'media="all"')
 #javascript("/library/js/spinner.js")
 #if($menu)
 	#toolbar($menu)
@@ -10,14 +9,13 @@
 	<h3>
 		$thelp.getString("per.lis.title")
 	</h3>
-		<div class="alertMessage">
+		<div class="sak-banner-error">
 			$thelp.getString("gen.alert")
 			## We do fallback message here so there is no chance of it not being set.
-			#if ($alertMessage) $validator.escapeHtml($alertMessage)
+			#if ($alertMessage) $formattedText.escapeHtml($alertMessage)
 			#else $thelp.getString("alert.prbset")
 			#end
 		</div>
-		<div class="clear"></div>
 
 	<form name= "permissionForm" action="#toolForm("$action")" method="post">
 		<div class="act">

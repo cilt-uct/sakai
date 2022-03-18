@@ -50,11 +50,11 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.time.DateUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.time.DateUtils;
 
 import org.hibernate.Criteria;
-import org.hibernate.Query;
+import org.hibernate.query.Query;
 import org.hibernate.Session;
 import org.hibernate.criterion.Expression;
 import org.hibernate.criterion.Order;
@@ -97,7 +97,7 @@ import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserNotDefinedException;
 import org.sakaiproject.util.ResourceLoader;
 import org.sakaiproject.util.api.FormattedText;
-import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
+import org.springframework.orm.hibernate5.support.HibernateDaoSupport;
 import org.springframework.transaction.support.TransactionSynchronizationAdapter;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -177,13 +177,13 @@ public class ChatManagerImpl extends HibernateDaoSupport implements ChatManager,
 
             // register functions
             if(functionManager.getRegisteredFunctions(ChatFunctions.CHAT_FUNCTION_PREFIX).size() == 0) {
-                functionManager.registerFunction(ChatFunctions.CHAT_FUNCTION_READ);
-                functionManager.registerFunction(ChatFunctions.CHAT_FUNCTION_NEW);
-                functionManager.registerFunction(ChatFunctions.CHAT_FUNCTION_DELETE_ANY);
-                functionManager.registerFunction(ChatFunctions.CHAT_FUNCTION_DELETE_OWN);
-                functionManager.registerFunction(ChatFunctions.CHAT_FUNCTION_DELETE_CHANNEL);
-                functionManager.registerFunction(ChatFunctions.CHAT_FUNCTION_NEW_CHANNEL);
-                functionManager.registerFunction(ChatFunctions.CHAT_FUNCTION_EDIT_CHANNEL);
+                functionManager.registerFunction(ChatFunctions.CHAT_FUNCTION_READ, true);
+                functionManager.registerFunction(ChatFunctions.CHAT_FUNCTION_NEW, true);
+                functionManager.registerFunction(ChatFunctions.CHAT_FUNCTION_DELETE_ANY, true);
+                functionManager.registerFunction(ChatFunctions.CHAT_FUNCTION_DELETE_OWN, true);
+                functionManager.registerFunction(ChatFunctions.CHAT_FUNCTION_DELETE_CHANNEL, true);
+                functionManager.registerFunction(ChatFunctions.CHAT_FUNCTION_NEW_CHANNEL, true);
+                functionManager.registerFunction(ChatFunctions.CHAT_FUNCTION_EDIT_CHANNEL, true);
             }
 
             pollInterval = serverConfigurationService.getInt("chat.pollInterval", 5000);
@@ -337,7 +337,7 @@ public class ChatManagerImpl extends HibernateDaoSupport implements ChatManager,
      */
     public List<ChatMessage> getChannelMessages(ChatChannel channel, String context, Date date, int start, int max, boolean sortAsc) throws PermissionException {
         if (channel == null) {
-            List<ChatMessage> allMessages = new ArrayList<ChatMessage>();
+            List<ChatMessage> allMessages = new ArrayList<>();
             List<ChatChannel> channels = getContextChannels(context, true);
             for (Iterator<ChatChannel> i = channels.iterator(); i.hasNext();) {
                 ChatChannel tmpChannel = i.next();
@@ -364,7 +364,7 @@ public class ChatManagerImpl extends HibernateDaoSupport implements ChatManager,
     @SuppressWarnings("unchecked")
     protected List<ChatMessage> getChannelMessages(ChatChannel channel, Date date, int start, int max, boolean sortAsc) throws PermissionException {
 
-        List<ChatMessage> messages = new ArrayList<ChatMessage>();
+        List<ChatMessage> messages = new ArrayList<>();
         if (channel == null || max == 0) {
             // no channel or no items causes nothing to be returned
             return messages;
@@ -407,15 +407,16 @@ public class ChatManagerImpl extends HibernateDaoSupport implements ChatManager,
         // Always sort desc so we get the newest messages, reorder after we get the final list
         c.addOrder(Order.desc("messageDate"));
 
-        if (localMax != 0) {
-            if (localMax > 0) {
-                c.setMaxResults(localMax);
-            }
-            if (localStart > 0) {
-                c.setFirstResult(localStart);
-            }
-            messages = c.list();
+        if (localStart > 0) {
+            c.setFirstResult(localStart);
         }
+
+        // Date settings should always override the max message setting
+        if (localMax > 0) {
+            c.setMaxResults(localMax);
+        }
+
+        messages = c.list();
 
         //Reorder the list
         if (sortAsc) {
@@ -432,13 +433,6 @@ public class ChatManagerImpl extends HibernateDaoSupport implements ChatManager,
      */
     public int countChannelMessages(ChatChannel channel) {
         return getChannelMessagesCount(channel, null, null);
-        // use getChannelMessagesCount since it is more efficient
-//        Criteria c = this.getSession().createCriteria(ChatMessage.class);
-//        if (channel != null) {
-//            c.add(Expression.eq("chatChannel", channel));      
-//        }
-//        List<ChatMessage> messages = c.list();
-//        return messages.size();
     }
 
     /* (non-Javadoc)
@@ -997,7 +991,7 @@ public class ChatManagerImpl extends HibernateDaoSupport implements ChatManager,
         ZonedDateTime ldt = ZonedDateTime.ofInstant(item.getMessageDate().toInstant(), ZoneId.of(getUserTimeZone()));
         Locale locale = rl.getLocale();
         
-        String newText = body + ", " + user.getDisplayName() + ", " + ldt.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT).withLocale(locale));
+        String newText = body + ", " + user.getDisplayName(item.getChatChannel().getContext()) + ", " + ldt.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT).withLocale(locale));
         return newText;
     }
 
@@ -1091,10 +1085,10 @@ public class ChatManagerImpl extends HibernateDaoSupport implements ChatManager,
         if (StringUtils.isNotBlank(siteId)) {
 
             // refresh our presence at the location and retrieve the present users
-            String location = siteId + "-presence";
+            String location = siteId + PresenceService.PRESENCE_SUFFIX;
             presenceService.setPresence(location);
 
-            for(UsageSession us : presenceService.getPresence(siteId + "-presence")){
+            for(UsageSession us : presenceService.getPresence(siteId + PresenceService.PRESENCE_SUFFIX)){
                 //check if still online in the heartbeat map
                 if (isOnline(channelId, us.getId())) {
                     TransferableChatMessage tcm = heartbeatMap.getIfPresent(channelId).getIfPresent(us.getId());
@@ -1103,11 +1097,11 @@ public class ChatManagerImpl extends HibernateDaoSupport implements ChatManager,
                     String displayName = us.getUserDisplayId();
                     String userId = us.getUserId();
                     try {
-                        displayName = userDirectoryService.getUser(us.getUserId()).getDisplayName();
+                        displayName = userDirectoryService.getUser(us.getUserId()).getDisplayName(siteId);
                         //if user stored in heartbeat is different to the presence one
                         if(!userId.equals(sessionUserId)) {
                             userId += ":"+sessionUserId;
-                            displayName += " (" + userDirectoryService.getUser(sessionUserId).getDisplayName() + ")";
+                            displayName += " (" + userDirectoryService.getUser(sessionUserId).getDisplayName(siteId) + ")";
                         }
                     }catch(Exception e){
                         log.error("Error getting user "+sessionUserId, e);

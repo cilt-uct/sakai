@@ -18,20 +18,19 @@
  */
 package org.sakaiproject.sitestats.tool.wicket.pages;
 
-import java.text.Collator;
-import java.text.ParseException;
-import java.text.RuleBasedCollator;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.Locale;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.wicket.AttributeModifier;
@@ -65,7 +64,7 @@ import org.apache.wicket.model.ResourceModel;
 import org.apache.wicket.model.StringResourceModel;
 import org.apache.wicket.util.convert.IConverter;
 import org.apache.wicket.util.convert.converter.IntegerConverter;
-
+import org.sakaiproject.authz.api.GroupNotDefinedException;
 import org.sakaiproject.authz.api.Role;
 import org.sakaiproject.event.api.EventTrackingService;
 import org.sakaiproject.exception.IdUnusedException;
@@ -83,7 +82,6 @@ import org.sakaiproject.sitestats.tool.facade.Locator;
 import org.sakaiproject.sitestats.tool.wicket.components.CSSFeedbackPanel;
 import org.sakaiproject.sitestats.tool.wicket.components.FileSelectorPanel;
 import org.sakaiproject.sitestats.tool.wicket.components.IStylableOptionRenderer;
-import org.sakaiproject.sitestats.tool.wicket.components.IndicatingAjaxDropDownChoice;
 import org.sakaiproject.sitestats.tool.wicket.components.LastJobRun;
 import org.sakaiproject.sitestats.tool.wicket.components.Menus;
 import org.sakaiproject.sitestats.tool.wicket.components.StylableSelectOptions;
@@ -91,10 +89,8 @@ import org.sakaiproject.sitestats.tool.wicket.components.StylableSelectOptionsGr
 import org.sakaiproject.sitestats.tool.wicket.models.EventModel;
 import org.sakaiproject.sitestats.tool.wicket.models.ReportDefModel;
 import org.sakaiproject.sitestats.tool.wicket.models.ToolModel;
-import org.sakaiproject.user.api.User;
-import org.sakaiproject.user.api.UserNotDefinedException;
-import org.sakaiproject.util.DateFormatterUtil;
-import org.sakaiproject.util.Web;
+import org.sakaiproject.sitestats.tool.wicket.util.Comparators;
+import org.sakaiproject.wicket.component.SakaiDateTimeField;
 
 /**
  * @author Nuno Fernandes
@@ -127,20 +123,11 @@ public class ReportsEditPage extends BasePage {
 	private final ReentrantLock		ajaxUpdateLock	= new ReentrantLock();
 	private boolean					usersLoaded		= false;
 
-	private transient Collator		collator		= Collator.getInstance();
-	
-	private static String 			HIDDEN_WHENFROM_ISO8601 = "whenFromISO8601";
-	private static String 			HIDDEN_WHENTO_ISO8601 = "whenToISO8601";
-	private static String 			DATEPICKER_FORMAT = "yyyy-MM-dd HH:mm:ss";
-	
-	{
-		try{
-			collator= new RuleBasedCollator(((RuleBasedCollator)Collator.getInstance()).getRules().replaceAll("<'\u005f'", "<' '<'\u005f'"));
-		}catch(ParseException e){
-			log.error("Unable to create RuleBasedCollator");
-		}		
-	}
-	
+	private ZonedDateTime startDate, endDate;
+
+	// namespace for sakai icons see _icons.scss
+	public static final String ICON_SAKAI = "icon-sakai--";
+
 	public ReportsEditPage() {
 		this(null, null, null);
 	}
@@ -179,7 +166,7 @@ public class ReportsEditPage extends BasePage {
 		boolean allowed = Locator.getFacade().getStatsAuthz().isUserAbleToViewSiteStats(siteId);
 		if(allowed) {
 			// options visibility
-			visitsVisible = Locator.getFacade().getStatsManager().isEnableSiteVisits() && Locator.getFacade().getStatsManager().isVisitsInfoAvailable();
+			visitsVisible = Locator.getFacade().getStatsManager().getEnableSiteVisits() && Locator.getFacade().getStatsManager().getVisitsInfoAvailable();
 			activityVisible = Locator.getFacade().getStatsManager().isEnableSiteActivity();
 			resourcesVisible = false;
 			try{
@@ -188,7 +175,7 @@ public class ReportsEditPage extends BasePage {
 			}catch(Exception e) {
 				resourcesVisible = false;
 			}
-			presencesVisible = Locator.getFacade().getStatsManager().isEnableSitePresences();
+			presencesVisible = Locator.getFacade().getStatsManager().getEnableSitePresences();
 			// render body
 			renderBody();
 		}else{
@@ -200,8 +187,6 @@ public class ReportsEditPage extends BasePage {
 	public void renderHead(IHeaderResponse response) {
 		super.renderHead(response);
 		response.render(JavaScriptHeaderItem.forUrl(JQUERYSCRIPT));
-		response.render(JavaScriptHeaderItem.forUrl(JQUERYUISCRIPT));
-		response.render(JavaScriptHeaderItem.forUrl(DATEPICKERSCRIPT));
 		response.render(JavaScriptHeaderItem.forUrl(StatsManager.SITESTATS_WEBAPP + "/script/reports.js"));
 		StringBuilder onDomReady = new StringBuilder();
 		onDomReady.append("checkWhatSelection();");
@@ -210,8 +195,6 @@ public class ReportsEditPage extends BasePage {
         onDomReady.append("checkHowSelection();");
         onDomReady.append("checkReportDetails();");
         onDomReady.append("checkHowChartSelection();");
-        onDomReady.append(String.format("loadJQueryDatePicker('%s','%s');", "whenFrom", DateFormatterUtil.format(getReportParams().getWhenFrom(), DATEPICKER_FORMAT, getSession().getLocale())));
-        onDomReady.append(String.format("loadJQueryDatePicker('%s','%s');", "whenTo", DateFormatterUtil.format(getReportParams().getWhenTo(), DATEPICKER_FORMAT, getSession().getLocale())));
 		response.render(OnDomReadyHeaderItem.forScript(onDomReady.toString()));
 	}
 	
@@ -240,7 +223,7 @@ public class ReportsEditPage extends BasePage {
 		add(new Label("reportAction", action));
 		
 		// model
-		visitsEnabled = statsManager.isEnableSiteVisits();
+		visitsEnabled = statsManager.getEnableSiteVisits();
 		if(!visitsEnabled) {
 			getReportParams().setWhat(ReportManager.WHAT_EVENTS_BYTOOL);
 		}
@@ -547,24 +530,37 @@ public class ReportsEditPage extends BasePage {
 			}
 			public String getIdValue(Object object, int index) {
 				return (String) object;
-			}		
+			}
 		};
 		DropDownChoice when = new DropDownChoice("reportParams.when", whenOptions, whenChoiceRenderer);
 		when.setMarkupId("when");
 		when.setOutputMarkupId(true);
 		form.add(when);
+
+		String localSakaiName = Locator.getFacade().getStatsManager().getLocalSakaiName();
+		StringResourceModel model = new StringResourceModel("report_server_time_zone", getPage(), null,
+						new Object[] {localSakaiName});
+		form.add(new Label("reportParams.when.serverTimeZone", model));
 		
 		// custom dates
-		form.add(new TextField<String>("whenFrom", Model.of("")));
-		form.add(new TextField<String>("whenTo", Model.of("")));
+		// date range for reports uses the server time zone to match how the events are counted
+		ZoneId sys = ZoneId.systemDefault();
+		startDate = ZonedDateTime.ofInstant(getReportParams().getWhenFrom().toInstant(), sys);
+		endDate = ZonedDateTime.ofInstant(getReportParams().getWhenTo().toInstant(), sys);
+		SakaiDateTimeField startDateField = new SakaiDateTimeField("whenFrom", new PropertyModel<>(this, "startDate"), sys);
+		startDateField.setUseTime(false).setAllowEmptyDate(false);
+		form.add(startDateField);
+		SakaiDateTimeField endDateField = new SakaiDateTimeField("whenTo", new PropertyModel<>(this, "endDate"), sys);
+		endDateField.setUseTime(false).setAllowEmptyDate(false);
+		form.add(endDateField);
 	}
 	
 	
 	@SuppressWarnings("serial")
 	private void renderWhoUI(Form form) {		
 		List<String> groups = getGroups();
-		final RepeatingView selectOptionsRV = new RepeatingView("selectOptionsRV");
-		final Select whoUserIds = new MultipleSelect("reportParams.whoUserIds");
+		RepeatingView selectOptionsRV = new RepeatingView("selectOptionsRV");
+		Select whoUserIds = new Select("reportParams.whoUserIds");
 		
 		// who		
 		List<String> whoOptions = new ArrayList<String>();
@@ -598,47 +594,16 @@ public class ReportsEditPage extends BasePage {
 				return (String) object;
 			}		
 		};
-		final IndicatingAjaxDropDownChoice who = new IndicatingAjaxDropDownChoice("reportParams.who", whoOptions, whoChoiceRenderer);
-		who.add(new AjaxFormComponentUpdatingBehavior("onchange") {
-			@Override
-			protected void onUpdate(AjaxRequestTarget target) {
-				if(ReportManager.WHO_CUSTOM.equals(getReportParams().getWho())) {
-					addUsers(selectOptionsRV);
-					who.remove(this);
-					whoUserIds.add(new AttributeModifier("onchange", new Model("checkWhoSelection();")));
-					target.add(who);
-					target.add(whoUserIds);
-				}
-				target.appendJavaScript("checkWhoSelection();");
-			}
-			@Override
-			public CharSequence getCallbackScript() {
-				CharSequence ajaxScript =  super.getCallbackScript();
-				StringBuilder b = new StringBuilder();
-				b.append("checkWhoSelection();");
-				b.append("if(jQuery('#who').val() == 'who-custom') {;");
-				b.append(ajaxScript);
-				b.append("}");
-				return b.toString();
-			}
-		});
+		DropDownChoice who = new DropDownChoice("reportParams.who", whoOptions, whoChoiceRenderer);
 		who.setMarkupId("who");
 		who.setOutputMarkupId(true);
 		form.add(who);
 		
 		// users
-		selectOptionsRV.setRenderBodyOnly(true);
-		selectOptionsRV.setEscapeModelStrings(true);		
 		whoUserIds.add(selectOptionsRV);
 		whoUserIds.add(new AttributeModifier("title", new ResourceModel("report_multiple_sel_instruction")));
-		whoUserIds.setOutputMarkupId(true);
-		whoUserIds.setOutputMarkupPlaceholderTag(true);
-		whoUserIds.setEscapeModelStrings(true);
+		addUsers(selectOptionsRV);
 		form.add(whoUserIds);
-		boolean preloadData = ReportManager.WHO_CUSTOM.equals(getReportParams().getWho());
-		if(preloadData) {
-			addUsers(selectOptionsRV);
-		}
 		
 		// roles
 		List<String> roles = getRoles();
@@ -650,7 +615,7 @@ public class ReportsEditPage extends BasePage {
 				return (String) object;
 			}			
 		};
-		Collections.sort(roles, getChoiceRendererComparator(collator, rolesRenderer));
+		Collections.sort(roles, Comparators.getChoiceRendererComparator(rolesRenderer));
 		DropDownChoice whoRoleId = new DropDownChoice("reportParams.whoRoleId", roles, rolesRenderer);
 		whoRoleId.setEnabled(roles.size() > 0);
 		if(getReportParams().getWhoRoleId() == null) {
@@ -677,7 +642,7 @@ public class ReportsEditPage extends BasePage {
 				return (String) object;
 			}		
 		};
-		Collections.sort(groups, getChoiceRendererComparator(collator, groupsRenderer));
+		Collections.sort(groups, Comparators.getChoiceRendererComparator(groupsRenderer));
 		DropDownChoice whoGroupId = new DropDownChoice("reportParams.whoGroupId", groups, groupsRenderer);
 		if(groups.size() == 0) {
 			whoGroupTr.setVisible(false);
@@ -742,8 +707,7 @@ public class ReportsEditPage extends BasePage {
 				return (String) object;
 			}		
 		};
-		
-		
+
 		// site to report
 		WebMarkupContainer siteContainer = new WebMarkupContainer("siteContainer");		
 		siteContainer.setVisible(renderSiteSelectOption);
@@ -821,6 +785,19 @@ public class ReportsEditPage extends BasePage {
 				}else{
 					return trim(input[0]);
 				}
+			}
+			@Override
+			public IConverter<Integer> getConverter(Class type) {
+				return new IntegerConverter() {
+					@Override
+					public Integer convertToObject(String value, Locale locale) {
+						if (value != null) {
+							return super.convertToObject(value, locale);
+						}
+
+						return 0;
+					}
+				};
 			}
 		};
 		howMaxResults.setMarkupId("howMaxResults");
@@ -930,7 +907,7 @@ public class ReportsEditPage extends BasePage {
 		IStylableOptionRenderer optionRenderer = new IStylableOptionRenderer() {
 			public String getDisplayValue(Object object) {
 				SelectOption opt = (SelectOption) object;
-				return ((ToolModel) opt.getDefaultModel()).getToolName();				
+				return " " + ((ToolModel) opt.getDefaultModel()).getToolName();
 			}
 			public IModel getModel(Object value) {
 				SelectOption opt = (SelectOption) value;
@@ -940,15 +917,18 @@ public class ReportsEditPage extends BasePage {
 				SelectOption opt = (SelectOption) object;
 				ToolModel toolModel = (ToolModel) opt.getDefaultModel();
 				String toolId = toolModel.getToolId();
-				if(!ReportManager.WHAT_EVENTS_ALLTOOLS.equals(toolId)) {
-					String toolIconPath = "background-image: url(" + Locator.getFacade().getEventRegistryService().getToolIcon(toolId) + ");";
-					String style = "background-position:left center; background-repeat:no-repeat; margin-left:3px; padding-left:20px; "+toolIconPath;
-					return style;
-				}
-				return null;
-			}		
+				String style = "display:block;";
+				return style;
+			}
+			public String getIconClass(Object object) {
+				SelectOption opt = (SelectOption) object;
+				ToolModel toolModel = (ToolModel) opt.getDefaultModel();
+				String toolId = toolModel.getToolId();
+				String hclass = ICON_SAKAI + toolId.replace('.', '-');
+				return hclass;
+			}
 		};
-		Collections.sort(tools, getOptionRendererComparator(collator, optionRenderer));
+		Collections.sort(tools, Comparators.getOptionRendererComparator(optionRenderer));
 		// "all" tools (insert in position 0
 		tools.add(0, new SelectOption("option", new ToolModel(ReportManager.WHAT_EVENTS_ALLTOOLS, ReportManager.WHAT_EVENTS_ALLTOOLS)));
 		StylableSelectOptions selectOptions = new StylableSelectOptions("selectOptions", tools, optionRenderer);
@@ -959,7 +939,7 @@ public class ReportsEditPage extends BasePage {
 	@SuppressWarnings("serial")
 	private void addEvents(final RepeatingView rv) {
 		List<ToolInfo> siteTools = Locator.getFacade().getEventRegistryService().getEventRegistry(siteId, getPrefsdata().isListToolEventsOnlyAvailableInSite());
-		Collections.sort(siteTools, getToolInfoComparator(collator));
+		Collections.sort(siteTools, Comparators.getToolInfoComparator());
 		// add events
 		Iterator<ToolInfo> i = siteTools.iterator();
 		while(i.hasNext()){
@@ -976,10 +956,11 @@ public class ReportsEditPage extends BasePage {
 				WebMarkupContainer optgroupItem = new WebMarkupContainer(rv.newChildId());
 				optgroupItem.setRenderBodyOnly(true);
 				rv.add(optgroupItem);
-				String toolIconPath = "background-image: url(" + Locator.getFacade().getEventRegistryService().getToolIcon(toolInfo.getToolId()) + ");";
-				String style = "background-position:left top; background-repeat:no-repeat; margin-left:3px; padding-left:20px; "+toolIconPath;
-				String toolName = Locator.getFacade().getEventRegistryService().getToolName(toolInfo.getToolId());
-				StylableSelectOptionsGroup group = new StylableSelectOptionsGroup("group", new Model(toolName), new Model(style));
+				String style = "display:block;";
+				String toolId = toolInfo.getToolId();
+				String toolName = Locator.getFacade().getEventRegistryService().getToolName(toolId);
+				String hclass = ICON_SAKAI + toolId.replace('.', '-');
+				StylableSelectOptionsGroup group = new StylableSelectOptionsGroup("group", new Model(toolName), new Model(style), new Model(hclass));
 				optgroupItem.add(group);
 				SelectOptions selectOptions = new SelectOptions("selectOptions", events, new IOptionRenderer() {
 					public String getDisplayValue(Object object) {
@@ -1035,20 +1016,9 @@ public class ReportsEditPage extends BasePage {
 					SelectOption opt = (SelectOption) object;
 					String userId = (String) opt.getDefaultModel().getObject();
 					if(EventTrackingService.UNKNOWN_USER.equals(userId)) {
-						return Web.escapeHtml( (String) new ResourceModel("user_anonymous_access").getObject() );
+						return (String) new ResourceModel("user_anonymous_access").getObject();
 					}else{
-						User u = null;
-						try{
-							u = Locator.getFacade().getUserDirectoryService().getUser(userId);
-						}catch(UserNotDefinedException e){
-							return Web.escapeHtml(userId);
-						}
-						StringBuilder buff = new StringBuilder();
-						buff.append(Locator.getFacade().getStatsManager().getUserNameForDisplay(u));
-						buff.append(" (");
-						buff.append(u.getDisplayId());
-						buff.append(")");
-						return Web.escapeHtml(buff.toString());
+						return Locator.getFacade().getStatsManager().getUserInfoForDisplay(userId, siteId);
 					}
 				}
 				public IModel getModel(Object value) {
@@ -1056,7 +1026,7 @@ public class ReportsEditPage extends BasePage {
 					return new Model( (String) opt.getDefaultModel().getObject() );
 				}			
 			};
-			Collections.sort(users, getOptionRendererComparator(collator, optionRenderer));
+			Collections.sort(users, Comparators.getOptionRendererComparator(optionRenderer));
 			SelectOptions selectOptions = new SelectOptions("selectOptions", users, optionRenderer);
 			selectOptions.setRenderBodyOnly(true);
 			optgroupItem.add(selectOptions);
@@ -1154,19 +1124,23 @@ public class ReportsEditPage extends BasePage {
 	}
 	
 	private List<String> getRoles() {
-		List<String> roles = new ArrayList<String>();
-		try{
-			Set<Role> roleSet = Locator.getFacade().getSiteService().getSite(siteId).getRoles();
-			Iterator<Role> i = roleSet.iterator();
-			while(i.hasNext()){
-				Role r = i.next();
-				roles.add(r.getId());
-			}
-		}catch(IdUnusedException e){
-			log.warn("Site does not exist: " + siteId);
-			
+		Set<String> siteIdWithRoles = new HashSet<>(Arrays.asList("/site/" + siteId));
+
+		if ("!admin".equals(siteId) || "~admin".equals(siteId)) {
+			siteIdWithRoles.add("!site.template");
+			siteIdWithRoles.add("!site.user");
+			Locator.getFacade().getSiteService().getSiteTypes().stream().map(s -> "!site.template." + s).forEach(siteIdWithRoles::add);
 		}
-		return roles;
+
+		Set<String> roles = new HashSet<String>();
+		for (String s : siteIdWithRoles) {
+			try {
+				Locator.getFacade().getAuthzGroupService().getAuthzGroup(s).getRoles().forEach(r -> roles.add(r.getId()));
+			} catch (GroupNotDefinedException e) {
+				log.debug("AuthzGroup does not exist, skipping: {}", s);
+			}
+		}
+		return new ArrayList<String>(roles);
 	}
 	
 	private boolean isToolSuported(final ToolInfo toolInfo) {
@@ -1178,54 +1152,15 @@ public class ReportsEditPage extends BasePage {
 			while (i.hasNext()){
 				ToolInfo t = i.next();
 				if(t.getToolId().equals(toolInfo.getToolId())){
-					EventParserTip parserTip = t.getEventParserTip();
-					if(parserTip != null && parserTip.getFor().equals(StatsManager.PARSERTIP_FOR_CONTEXTID)){
+					boolean match = t.getEventParserTips().stream()
+									.anyMatch(tip -> StatsManager.PARSERTIP_FOR_CONTEXTID.equals(tip.getFor()));
+					if(match){
 						return true;
 					}
 				}
 			}
 		}
 		return false;
-	}
-	
-	public static final Comparator<String> getStringComparator(final Collator collator){
-		return new Comparator<String>(){
-			public int compare(String o1, String o2) {
-				return collator.compare(o1, o2);
-			}		
-		};
-	}
-	
-	public static final Comparator<ToolInfo> getToolInfoComparator(final Collator collator){
-		return new Comparator<ToolInfo>(){
-			public int compare(ToolInfo o1, ToolInfo o2) {
-				String toolName1 = Locator.getFacade().getEventRegistryService().getToolName(o1.getToolId());
-				String toolName2 = Locator.getFacade().getEventRegistryService().getToolName(o2.getToolId());				
-				return collator.compare(toolName1, toolName2);
-			}		
-		};
-	}
-	
-	public static final Comparator<Object> getOptionRendererComparator(final Collator collator, final IOptionRenderer renderer){
-		return new Comparator<Object>(){
-			public int compare(Object o1, Object o2) {
-				return collator.compare(
-						renderer.getDisplayValue(o1),
-						renderer.getDisplayValue(o2)
-						);
-			}		
-		};
-	}
-	
-	public static final Comparator<Object> getChoiceRendererComparator(final Collator collator, final IChoiceRenderer renderer){
-		return new Comparator<Object>(){
-			public int compare(Object o1, Object o2) {
-				return collator.compare(
-						renderer.getDisplayValue(o1),
-						renderer.getDisplayValue(o2)
-						);
-			}		
-		};
 	}
 
 	private PrefsData getPrefsdata() {
@@ -1265,10 +1200,10 @@ public class ReportsEditPage extends BasePage {
 				&& (getReportParams().getWhenFrom() == null || getReportParams().getWhenTo() == null)) {
 			error((String) new ResourceModel("report_err_nocustomdates").getObject());
 		}
-			
+
 		// check WHO
 		if(getReportParams().getWho().equals(ReportManager.WHO_ROLE)){
-			if(site.getUsersHasRole(getReportParams().getWhoRoleId()).isEmpty())
+			if(!siteId.equals("!admin") && !siteId.equals("~admin") && site.getUsersHasRole(getReportParams().getWhoRoleId()).isEmpty())
 				error((String) new ResourceModel("report_err_emptyrole").getObject());	
 		}else if(getReportParams().getWho().equals(ReportManager.WHO_GROUPS)){
 			if(getReportParams().getWhoGroupId() == null || getReportParams().getWhoGroupId().equals(""))
@@ -1279,7 +1214,7 @@ public class ReportsEditPage extends BasePage {
 				&& (getReportParams().getWhoUserIds() == null || getReportParams().getWhoUserIds().size() == 0)){
 			error((String) new ResourceModel("report_err_nousers").getObject());
 		}
-		
+
 		// check HOW
 		if(getReportParams().getHowTotalsBy() != null){
 			if(getReportParams().getHowSortBy().length() == 0) {
@@ -1339,40 +1274,10 @@ public class ReportsEditPage extends BasePage {
 	public ReportParams getReportParams() {
 		return getReportDef().getReportParams();
 	}
-	
-	/** Subclass of Select that fixes behavior when used with AjaxFormChoiceComponentUpdatingBehavior.*/
-	static class MultipleSelect extends Select {
-		private static final long	serialVersionUID	= 1L;
-		
-		public MultipleSelect(String id) {
-			super(id);
-		}
-
-		@Override
-		public void updateModel() {
-			Object converted = getConvertedInput();
-			Collection modelCollection = new ArrayList();
-			modelChanging();
-			if(converted != null){
-				modelCollection.addAll((Collection) converted);
-			}
-			modelChanged();
-			getModel().setObject(modelCollection);
-			
-		}
-		
-	}
 
 	private void setISODates(){
-		String whenFrom = getRequest().getRequestParameters().getParameterValue(HIDDEN_WHENFROM_ISO8601).toString("");
-		String whenTo = getRequest().getRequestParameters().getParameterValue(HIDDEN_WHENTO_ISO8601).toString("");
-		if(DateFormatterUtil.isValidISODate(whenFrom)){
-			getReportParams().setWhenFrom(DateFormatterUtil.parseISODate(whenFrom));
-		}
-
-		if(DateFormatterUtil.isValidISODate(whenTo)){
-			getReportParams().setWhenTo(DateFormatterUtil.parseISODate(whenTo));
-		}
+		getReportParams().setWhenFrom(Date.from(startDate.toInstant()));
+		getReportParams().setWhenTo(Date.from(endDate.toInstant()));
 	}
 }
 

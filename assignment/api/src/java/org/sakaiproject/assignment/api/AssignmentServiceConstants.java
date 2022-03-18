@@ -102,16 +102,29 @@ public final class AssignmentServiceConstants {
      */
     public static final String REF_PREFIX = "/content";
 
-    // the three choices for Gradebook Integration
-    public static final String GRADEBOOK_INTEGRATION_NO = "no";
-    public static final String GRADEBOOK_INTEGRATION_ADD = "add";
-    public static final String GRADEBOOK_INTEGRATION_ASSOCIATE = "associate";
-    public static final String NEW_ASSIGNMENT_ADD_TO_GRADEBOOK = "new_assignment_add_to_gradebook";
+    // and the prop name
+    public static final String NEW_ASSIGNMENT_CHECK_ANONYMOUS_GRADING = "new_assignment_check_anonymous_grading";
+    // SAK-33971 Property for enable/disable the group filter
+    public static final String PROP_ASSIGNMENT_GROUP_FILTER_ENABLED = "assignment.group.filter.enabled";
+
+    /**
+     * The configuration choice of with grading option or not
+     */
     public static final String GRADEBOOK_PERMISSION_GRADE_ALL = "gradebook.gradeAll";
     public static final String GRADEBOOK_PERMISSION_EDIT_ASSIGNMENTS = "gradebook.editAssignments";
-    // and the prop name
-    public static final String PROP_ASSIGNMENT_ASSOCIATE_GRADEBOOK_ASSIGNMENT = "prop_new_assignment_add_to_gradebook";
-    public static final String NEW_ASSIGNMENT_CHECK_ANONYMOUS_GRADING = "new_assignment_check_anonymous_grading";
+
+    public static final Set<String> PROPERTIES_EXCLUDED_FROM_DUPLICATE_ASSIGNMENTS =
+            Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+                    AssignmentConstants.NEW_ASSIGNMENT_DUE_DATE_SCHEDULED,
+                    AssignmentConstants.NEW_ASSIGNMENT_OPEN_DATE_ANNOUNCED,
+                    ResourceProperties.PROP_ASSIGNMENT_DUEDATE_CALENDAR_EVENT_ID,
+                    ResourceProperties.PROP_ASSIGNMENT_OPENDATE_ANNOUNCEMENT_MESSAGE_ID,
+                    ResourceProperties.PROP_ASSIGNMENT_DUEDATE_ADDITIONAL_CALENDAR_EVENT_ID,
+                    AssignmentConstants.NEW_ASSIGNMENT_ADD_TO_GRADEBOOK,
+                    AssignmentConstants.PROP_ASSIGNMENT_ASSOCIATE_GRADEBOOK_ASSIGNMENT)));
+
+    public static final String LINE_SEPARATOR = System.getProperty("line.separator");
+    public static final String SAK_PROP_ASSIGNMENT_IMPORT_SUBMISSIONS = "assignment.merge.import.submissions";
 
     public static final Set<String> PROPERTIES_EXCLUDED_FROM_DUPLICATE_ASSIGNMENTS =
             Collections.unmodifiableSet(new HashSet<>(Arrays.asList(

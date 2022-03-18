@@ -185,7 +185,7 @@ public class SignupEntityProducer implements MeetingTypes, EntityProducer, Entit
 	
 	@Override
 	//this method is for merge data
-	public void transferCopyEntities(String fromContext, String toContext, List ids) {
+	public Map<String, String> transferCopyEntities(String fromContext, String toContext, List<String> ids, List<String> transferOptions) {
 		
 		String currentUserId = getSakaiFacade().getCurrentUserId();
 		List<SignupMeeting> allMeetings = getSignupMeetingService().getAllSignupMeetings(fromContext, currentUserId);
@@ -247,6 +247,8 @@ public class SignupEntityProducer implements MeetingTypes, EntityProducer, Entit
 				log.warn("permission issue:" + e.getMessage());
 			}
 		} //if end
+
+		return null;
 	}
 
 	@Override
@@ -256,18 +258,18 @@ public class SignupEntityProducer implements MeetingTypes, EntityProducer, Entit
 
 	@Override
 	//this method is for replace data
-	public void transferCopyEntities(String fromContext, String toContext, List ids, boolean cleanup) {
-		// TODO Auto-generated method stub
-		String currentUserId = getSakaiFacade().getCurrentUserId();
-		List<SignupMeeting> oldMeetings = getSignupMeetingService().getAllSignupMeetings(toContext, currentUserId);
-
-		//removes meetings before adding new ones
-		try {
-			getSignupMeetingService().removeMeetings(oldMeetings);
-		} catch (Exception e1) {
-			log.warn("remove oldmeeting error:" + e1.getMessage());
+	public Map<String, String> transferCopyEntities(String fromContext, String toContext, List<String> ids, List<String> transferOptions, boolean cleanup) {
+		if (cleanup) {
+			String currentUserId = getSakaiFacade().getCurrentUserId();
+			List<SignupMeeting> oldMeetings = getSignupMeetingService().getAllSignupMeetings(toContext, currentUserId);
+			//removes meetings before adding new ones
+			try {
+				getSignupMeetingService().removeMeetings(oldMeetings);
+			} catch (Exception e1) {
+				log.warn("remove oldmeeting error:" + e1.getMessage());
+			}
 		}
-		transferCopyEntities(fromContext, toContext, ids);
+		return transferCopyEntities(fromContext, toContext, ids, transferOptions);
 	}
 
 	@Override

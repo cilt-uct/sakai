@@ -24,9 +24,11 @@ package org.sakaiproject.tool.assessment.ui.listener.author;
 import java.io.UnsupportedEncodingException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -41,19 +43,27 @@ import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 
+import org.sakaiproject.authz.api.AuthzGroup.RealmLockMode;
+import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.email.cover.EmailService;
 import org.sakaiproject.event.cover.EventTrackingService;
 import org.sakaiproject.exception.IdUnusedException;
+import org.sakaiproject.rubrics.logic.RubricsConstants;
+import org.sakaiproject.rubrics.logic.RubricsService;
+import org.sakaiproject.rubrics.logic.model.ToolItemRubricAssociation;
+import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.cover.SiteService;
 import org.sakaiproject.spring.SpringBeanLocator;
 import org.sakaiproject.samigo.util.SamigoConstants;
 import org.sakaiproject.service.gradebook.shared.AssignmentHasIllegalPointsException;
 import org.sakaiproject.service.gradebook.shared.GradebookExternalAssessmentService;
+import org.sakaiproject.service.gradebook.shared.InvalidGradeItemNameException;
+import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedItemData;
 import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedSectionData;
-import org.sakaiproject.tool.assessment.data.ifc.assessment.ItemDataIfc;
 import org.sakaiproject.tool.assessment.facade.ExtendedTimeFacade;
 import org.sakaiproject.tool.assessment.integration.helper.ifc.CalendarServiceHelper;
 import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedMetaData;
@@ -72,11 +82,13 @@ import org.sakaiproject.tool.assessment.services.assessment.PublishedAssessmentS
 import org.sakaiproject.tool.assessment.ui.bean.author.AssessmentSettingsBean;
 import org.sakaiproject.tool.assessment.ui.bean.author.AuthorBean;
 import org.sakaiproject.tool.assessment.ui.bean.author.PublishRepublishNotificationBean;
+import org.sakaiproject.tool.assessment.ui.bean.authz.AuthorizationBean;
 import org.sakaiproject.tool.assessment.ui.bean.evaluation.TotalScoresBean;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 import org.sakaiproject.tool.assessment.util.TextFormat;
 import org.sakaiproject.tool.cover.ToolManager;
 import org.sakaiproject.util.ResourceLoader;
+import org.springframework.web.client.HttpClientErrorException;
 
 /**
  * <p>Title: Samigo</p>2
@@ -96,9 +108,12 @@ public class PublishAssessmentListener
   private static boolean repeatedPublish = false;
 
   private CalendarServiceHelper calendarService = IntegrationContextFactory.getInstance().getCalendarServiceHelper();
-  private ResourceLoader rl= new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AssessmentSettingsMessages");
-  
+  private static final ResourceLoader rl = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AssessmentSettingsMessages");
+
+  private RubricsService rubricsService;
+
   public PublishAssessmentListener() {
+    rubricsService = ComponentManager.get(RubricsService.class);
   }
 
   public void processAction(ActionEvent ae) throws AbortProcessingException {
@@ -132,6 +147,7 @@ public class PublishAssessmentListener
   			//Map requestParams = context.getExternalContext().getRequestParameterMap();
   			AuthorBean author = (AuthorBean) ContextUtil.lookupBean(
   			"author");
+  			AuthorizationBean authorization = (AuthorizationBean) ContextUtil.lookupBean("authorization");
 
   			AssessmentSettingsBean assessmentSettings = (AssessmentSettingsBean) ContextUtil.lookupBean("assessmentSettings");
 
@@ -162,7 +178,7 @@ public class PublishAssessmentListener
   				GradingService gradingService = new GradingService();
   				PublishedAssessmentService publishedAssessmentService = new PublishedAssessmentService();
   				AuthorActionListener authorActionListener = new AuthorActionListener();
-  				authorActionListener.prepareAssessmentsList(author, assessmentService, gradingService, publishedAssessmentService);
+  				authorActionListener.prepareAssessmentsList(author, authorization, assessmentService, gradingService, publishedAssessmentService);
 
   				repeatedPublish = true;
   			}else{
@@ -192,38 +208,75 @@ public class PublishAssessmentListener
     PublishedAssessmentFacade pub = null;
 
     try {
-       assessment.addAssessmentMetaData("ALIAS", assessmentSettings.getAlias());
-       pub = publishedAssessmentService.publishAssessment(assessment);
-       PublishRepublishNotificationBean publishRepublishNotification = (PublishRepublishNotificationBean) ContextUtil.lookupBean("publishRepublishNotification");
-       boolean sendNotification = publishRepublishNotification.getSendNotification();
-       String subject = publishRepublishNotification.getNotificationSubject();
-       String notificationMessage = getNotificationMessage(publishRepublishNotification, assessmentSettings.getTitle(), assessmentSettings.getReleaseTo(), assessmentSettings.getStartDateString(), assessmentSettings.getPublishedUrl(),
-          		assessmentSettings.getReleaseToGroupsAsString(), assessmentSettings.getDueDateString(), assessmentSettings.getTimedHours(), assessmentSettings.getTimedMinutes(), 
-          		assessmentSettings.getUnlimitedSubmissions(), assessmentSettings.getSubmissionsAllowed(), assessmentSettings.getScoringType(), assessmentSettings.getFeedbackDelivery(), assessmentSettings.getFeedbackDateString());
+      assessment.addAssessmentMetaData("ALIAS", assessmentSettings.getAlias());
+      pub = publishedAssessmentService.publishAssessment(assessment);
+
+      //Lock the groups for deletion if the assessment is released to groups, students can lose submissions if the group is deleted.
+      boolean groupRelease = AssessmentAccessControlIfc.RELEASE_TO_SELECTED_GROUPS.equals(assessmentSettings.getReleaseTo());
+
+      if (groupRelease) {
+        try{
+            String publishedAssessmentId = String.valueOf(pub.getPublishedAssessmentId());
+            PublishedAssessmentFacade publishedAssessment = publishedAssessmentService.getPublishedAssessment(publishedAssessmentId, true);
+            Map<String, String> selectedGroups = publishedAssessment.getReleaseToGroups();
+
+            log.debug("Locking groups for deletion by the published assessment with id {}.", publishedAssessmentId);
+            log.debug("Locking for deletion the following groups {}.", selectedGroups);
+
+            Site site = SiteService.getSite(ToolManager.getCurrentPlacement().getContext());
+            Collection<Group> groups = site.getGroups();
+
+            for(Group group : groups){
+                if(selectedGroups.keySet().contains(group.getId())){
+                    log.debug("Locking the group {} for deletion by the the published assessment with id {}.", group.getTitle(), publishedAssessmentId);
+                    group.setLockForReference(publishedAssessmentId, RealmLockMode.DELETE);
+                }
+            }
+
+            log.debug("Saving the site after locking the groups for deletion.");
+            SiteService.save(site);
+        }catch(Exception e){
+            log.error("Fatal error locking the groups for deletion {}.", e);
+        }
+      }
+
+      PublishRepublishNotificationBean publishRepublishNotification = (PublishRepublishNotificationBean) ContextUtil.lookupBean("publishRepublishNotification");
+      boolean sendNotification = publishRepublishNotification.getSendNotification();
+      String subject = publishRepublishNotification.getNotificationSubject();
+      String notificationMessage = getNotificationMessage(publishRepublishNotification, assessmentSettings.getTitle(), assessmentSettings.getReleaseTo(), assessmentSettings.getStartDateInClientTimezoneString(), assessmentSettings.getPublishedUrl(),
+        assessmentSettings.getDueDateInClientTimezoneString(), assessmentSettings.getTimedHours(), assessmentSettings.getTimedMinutes(), 
+        assessmentSettings.getUnlimitedSubmissions(), assessmentSettings.getSubmissionsAllowed(), assessmentSettings.getScoringType(), assessmentSettings.getFeedbackDelivery(), assessmentSettings.getFeedbackDateInClientTimezoneString(), assessmentSettings.getFeedbackEndDateInClientTimezoneString(), assessmentSettings.getFeedbackScoreThreshold());
        
-       if (sendNotification) {
-    	   sendNotification(pub, publishedAssessmentService, subject, notificationMessage, 
-    			   assessmentSettings.getReleaseTo());
-       }
+      if (sendNotification) {
+        sendNotification(pub, publishedAssessmentService, subject, notificationMessage, 
+          assessmentSettings.getReleaseTo());
+      }
 
-       ExtendedTimeFacade extendedTimeFacade = PersistenceService.getInstance().getExtendedTimeFacade();
-       extendedTimeFacade.copyEntriesToPub(pub.getData(), assessmentSettings.getExtendedTimes());
+      ExtendedTimeFacade extendedTimeFacade = PersistenceService.getInstance().getExtendedTimeFacade();
+      extendedTimeFacade.copyEntriesToPub(pub.getData(), assessmentSettings.getExtendedTimes());
 
-       EventTrackingService.post(EventTrackingService.newEvent(SamigoConstants.EVENT_ASSESSMENT_PUBLISH, "siteId=" + AgentFacade.getCurrentSiteId() + ", assessmentId=" + assessment.getAssessmentId() + ", publishedAssessmentId=" + pub.getPublishedAssessmentId(), true));
+      EventTrackingService.post(EventTrackingService.newEvent(SamigoConstants.EVENT_ASSESSMENT_PUBLISH, "siteId=" + AgentFacade.getCurrentSiteId() + ", assessmentId=" + assessment.getAssessmentId() + ", publishedAssessmentId=" + pub.getPublishedAssessmentId(), true));
 
-		Iterator<PublishedSectionData> sectionDataIterator = pub.getSectionSet().iterator();
-		while (sectionDataIterator.hasNext()){
-			PublishedSectionData sectionData = sectionDataIterator.next();
-			Iterator<ItemDataIfc> itemDataIfcIterator = sectionData.getItemSet().iterator();
-			while (itemDataIfcIterator.hasNext()){
-				ItemDataIfc itemDataIfc = itemDataIfcIterator.next();
-				EventTrackingService.post(EventTrackingService.newEvent(SamigoConstants.EVENT_PUBLISHED_ASSESSMENT_SAVEITEM, "/sam/" + AgentFacade.getCurrentSiteId() + "/publish, publishedItemId=" + itemDataIfc.getItemIdString(), true));
-			}
-		}
+      for (Object sectionObj : pub.getSectionSet()){
+        PublishedSectionData sectionData = (PublishedSectionData) sectionObj;
+        for (Object itemObj : sectionData.getItemSet()){
+          PublishedItemData itemData = (PublishedItemData) itemObj;
+          EventTrackingService.post(EventTrackingService.newEvent(SamigoConstants.EVENT_PUBLISHED_ASSESSMENT_SAVEITEM, "/sam/" + AgentFacade.getCurrentSiteId() + "/publish, publishedItemId=" + itemData.getItemIdString(), true));
 
-		//update Calendar Events
-       boolean addDueDateToCalendar = FacesContext.getCurrentInstance().getExternalContext().getRequestParameterMap().get("publishAssessmentForm:calendarDueDate") != null;
-       calendarService.updateAllCalendarEvents(pub, assessmentSettings.getReleaseTo(), assessmentSettings.getGroupsAuthorized(), rl.getString("calendarDueDatePrefix") + " ", addDueDateToCalendar, notificationMessage);
+          try {
+            Optional<ToolItemRubricAssociation> rubricAssociation = rubricsService.getRubricAssociation(RubricsConstants.RBCS_TOOL_SAMIGO, assessmentSettings.getAssessmentId().toString() + "." + itemData.getOriginalItemId().toString());
+            if (rubricAssociation.isPresent()) {
+              rubricsService.saveRubricAssociation(RubricsConstants.RBCS_TOOL_SAMIGO, RubricsConstants.RBCS_PUBLISHED_ASSESSMENT_ENTITY_PREFIX + pub.getPublishedAssessmentId().toString() + "." + itemData.getItemIdString(), rubricAssociation.get().getFormattedAssociation());
+            }
+          } catch(HttpClientErrorException hcee) {
+            log.debug("Current user doesn't have permission to get a rubric: {}", hcee.getMessage());
+          }
+        }
+      }
+
+		  //update Calendar Events
+      boolean addDueDateToCalendar = FacesContext.getCurrentInstance().getExternalContext().getRequestParameterMap().get("publishAssessmentForm:calendarDueDate") != null;
+      calendarService.updateAllCalendarEvents(pub, assessmentSettings.getReleaseTo(), assessmentSettings.getGroupsAuthorized(), rl.getString("calendarDueDatePrefix") + " ", addDueDateToCalendar, notificationMessage);
     } catch (AssignmentHasIllegalPointsException gbe) {
        // Right now gradebook can only accept assessements with totalPoints > 0 
        // this  might change later
@@ -231,6 +284,12 @@ public class PublishAssessmentListener
         // Add a global message (not bound to any component) to the faces context indicating the failure
         String err=(String)ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.AuthorMessages",
                                                  "gradebook_exception_min_points");
+        FacesContext.getCurrentInstance().addMessage(null, new FacesMessage(err));
+        throw new AbortProcessingException(gbe);
+    } catch (InvalidGradeItemNameException gbe) {
+        log.warn(gbe.getMessage(), gbe);
+        String err=(String)ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.AuthorMessages",
+                                                 "gradebook_exception_title_invalid");
         FacesContext.getCurrentInstance().addMessage(null, new FacesMessage(err));
         throw new AbortProcessingException(gbe);
     } catch (Exception e) {
@@ -297,14 +356,6 @@ public class PublishAssessmentListener
 		  String releaseTo) {
 	  TotalScoresBean totalScoresBean = (TotalScoresBean) ContextUtil.lookupBean("totalScores");
 	  
-	  AgentFacade instructor = new AgentFacade();
-	  InternetAddress fromIA = null;
-	  try {
-		  fromIA = new InternetAddress(instructor.getEmail(), instructor.getDisplayName());
-	  } catch (UnsupportedEncodingException e) {
-		  log.warn("UnsupportedEncodingException encountered when constructing instructor's email.");
-	  }
-
 	  boolean groupRelease = AssessmentAccessControlIfc.RELEASE_TO_SELECTED_GROUPS.equals(releaseTo);
 	  if (groupRelease) {
 		  totalScoresBean.setSelectedSectionFilterValue(TotalScoresBean.RELEASED_SECTIONS_GROUPS_SELECT_VALUE);
@@ -317,6 +368,7 @@ public class PublishAssessmentListener
 	  Map useridMap= totalScoresBean.getUserIdMap(TotalScoresBean.CALLED_FROM_NOTIFICATION_LISTENER); 
 	  AgentFacade agent = null;
 
+	  AgentFacade instructor = new AgentFacade();
 	  ArrayList<InternetAddress> toIAList = new ArrayList<>();
 	  try {
 		  toIAList.add(new InternetAddress(instructor.getEmail())); // send one copy to instructor
@@ -346,21 +398,22 @@ public class PublishAssessmentListener
 		  toIA[count++] = (InternetAddress) iter2.next();
 	  }
 
-
 	  String noReplyEmaillAddress =  ServerConfigurationService.getString("setup.request","no-reply@" + ServerConfigurationService.getServerName());
       InternetAddress[] noReply = new InternetAddress[1];
+      InternetAddress from = null;
       try {
-    	  noReply[0] = new InternetAddress(noReplyEmaillAddress);
+          from = new InternetAddress(noReplyEmaillAddress);
+          noReply[0] = from;
       } catch (AddressException e) {
-              log.warn("AddressException encountered when constructing no_reply@serverName email.");
+          log.warn("AddressException encountered when constructing no_reply@serverName email.");
       }
 	  
 	  List<String> headers = new  ArrayList<String>();
 	  headers.add("Content-Type: text/html");
-	  EmailService.sendMail(fromIA, toIA, subject, message, noReply, noReply, headers);
+	  EmailService.sendMail(from, toIA, subject, message, noReply, noReply, headers);
   }
   
-  public String getNotificationMessage(PublishRepublishNotificationBean publishRepublishNotification, String title, String releaseTo, String startDateString, String publishedURL, String releaseToGroupsAsString, String dueDateString, Integer timedHours, Integer timedMinutes, String unlimitedSubmissions, String submissionsAllowed, String scoringType, String feedbackDelivery, String feedbackDateString){
+  public String getNotificationMessage(PublishRepublishNotificationBean publishRepublishNotification, String title, String releaseTo, String startDateString, String publishedURL, String dueDateString, Integer timedHours, Integer timedMinutes, String unlimitedSubmissions, String submissionsAllowed, String scoringType, String feedbackDelivery, String feedbackDateString, String feedbackEndDateString, String feedbackScoreThreshold){
 	  String siteTitle = publishRepublishNotification.getSiteTitle();
 	  if(siteTitle == null || "".equals(siteTitle)){
 		  try {
@@ -398,7 +451,7 @@ public class PublishAssessmentListener
 		  message.append(MessageFormat.format(rl.getString("available_anonymously_at"), startDateString, publishedURL));
 	  }
 	  else if (AssessmentAccessControlIfc.RELEASE_TO_SELECTED_GROUPS.equals(releaseTo)) {
-		  message.append(MessageFormat.format(rl.getString("available_group_at"), startDateString, releaseToGroupsAsString, publishedURL));
+		  message.append(MessageFormat.format(rl.getString("available_group_at_email"), startDateString, publishedURL));
 	  }
 	  else {
 		  message.append(MessageFormat.format(rl.getString("available_class_at"), startDateString, publishedURL));
@@ -469,7 +522,25 @@ public class PublishAssessmentListener
 		  message.append(rl.getString("receive_no_feedback"));
 	  }
 	  else {
-		  message.append(MessageFormat.format(rl.getString("feedback_available_on"), feedbackDateString));
+		if(StringUtils.isNotBlank(feedbackScoreThreshold)){
+			//Score threshold is set
+			if(StringUtils.isNotBlank(feedbackEndDateString)){
+				//Ranged availability
+				message.append(MessageFormat.format(rl.getString("feedback_available_ranges_threshold"), feedbackScoreThreshold, feedbackDateString, feedbackEndDateString));
+			} else{
+				//Not ranged availability
+				message.append(MessageFormat.format(rl.getString("feedback_available_on_threshold"), feedbackScoreThreshold, feedbackDateString));
+			}
+		} else{
+			//Score threshold is not set
+			if(StringUtils.isNotBlank(feedbackEndDateString)){
+				//Ranged availability
+				message.append(MessageFormat.format(rl.getString("feedback_available_ranges"), feedbackDateString, feedbackEndDateString));
+			} else{
+				//Not ranged availability
+				message.append(MessageFormat.format(rl.getString("feedback_available_on"), feedbackDateString));
+			}
+		}
 	  }
 	  message.append(newline);
 	  message.append(newline);

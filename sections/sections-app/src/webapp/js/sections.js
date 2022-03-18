@@ -61,8 +61,8 @@ function reEnableLimits(component) {
 
 function updateOptionBoxes(externallyManaged) {
 	if(externallyManaged == null) {
-		var external = document.optionsForm[0];
-		var internal = document.optionsForm[1];
+		var external = document.optionsForm[1];
+		var internal = document.optionsForm[2];
 		if(external.checked) {
 			externallyManaged = external;
 		} else {
@@ -257,5 +257,50 @@ function setSectionPageFocus() {
 				// Now clear the focus element's value
 				document.getElementById(focusElementId).value="";
 		}
+	}
+}
+
+function initManuallyManageDialog() {
+	$( "#dialog-confirm" ).dialog({      
+	  resizable: false,
+	  height: "auto",
+	  width: 400,
+	  modal: true,      
+	  buttons: [
+	     {
+	         text: button_ok,             
+	         click: function() {
+	             $( "#optionsForm\\:confirmExternallyManagedButton" ).click();
+	         }
+	     },
+	     {
+	         text: button_cancel,             
+	         click: function() {
+	             $( this ).dialog( "close" );
+	         }
+	     }
+	  ]
+	});
+}
+
+function update(management) {
+	if(document.optionsForm[2].checked){
+		if(management == 'external'){
+			initManuallyManageDialog();
+			return false;
+		}
+	}else{
+		if(management == 'internal'){
+			document.getElementById('optionsForm:updateSectionsButton').click();
+			return false;
+		}
+	}
+}
+
+function submitSearchText(event) {
+	var charCode = event.charCode;
+	if (event.keyCode === 13) {
+		event.preventDefault();
+		$('#rosterForm\\:searchButton').click();
 	}
 }

@@ -17,6 +17,7 @@ package org.sakaiproject.gradebookng.tool.panels.importExport;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,13 +26,16 @@ import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.Component;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.ajax.markup.html.AjaxLink;
 import org.apache.wicket.ajax.markup.html.form.AjaxButton;
 import org.apache.wicket.ajax.markup.html.form.AjaxCheckBox;
+import org.apache.wicket.markup.head.IHeaderResponse;
+import org.apache.wicket.markup.head.JavaScriptHeaderItem;
+import org.apache.wicket.markup.head.OnDomReadyHeaderItem;
 import org.apache.wicket.markup.html.WebMarkupContainer;
 import org.apache.wicket.markup.html.basic.Label;
 import org.apache.wicket.markup.html.form.Form;
@@ -50,6 +54,7 @@ import org.sakaiproject.gradebookng.tool.component.GbStyleableWebMarkupContainer
 import org.sakaiproject.gradebookng.tool.model.ImportWizardModel;
 import org.sakaiproject.gradebookng.tool.pages.ImportExportPage;
 import org.sakaiproject.gradebookng.tool.panels.BasePanel;
+import org.sakaiproject.portal.util.PortalUtils;
 
 /**
  * Page to allow the user to select which items in the imported file are to be imported
@@ -85,7 +90,11 @@ public class GradeItemImportSelectionStep extends BasePanel {
 
 		// get the count of items that are selectable
 		GradeItemImportSelectionStep.this.selectableItems = importWizardModel.getProcessedGradeItems().stream()
-				.filter(item -> item.getStatus() != Status.SKIP).collect(Collectors.toList()).size();
+				.filter(item -> item.getStatus() != Status.SKIP && item.getStatus() != Status.EXTERNAL)
+				.collect(Collectors.toList()).size();
+
+		omissionsPanel = new GradeItemImportOmissionsPanel("omissionsPanel", model);
+		add(omissionsPanel);
 
 		omissionsPanel = new GradeItemImportOmissionsPanel("omissionsPanel", model);
 		add(omissionsPanel);
@@ -126,6 +135,7 @@ public class GradeItemImportSelectionStep extends BasePanel {
 
 				// toggle elements
 				target.appendJavaScript("$('.no_changes').toggle();");
+				target.appendJavaScript("$('.external').toggle();");
 				if (GradeItemImportSelectionStep.this.selectableItems == 0) {
 					target.appendJavaScript("$('.selection_form').toggle();");
 					// TODO show a message
@@ -142,6 +152,28 @@ public class GradeItemImportSelectionStep extends BasePanel {
 		final List<ProcessedGradeItem> gradeItems = filterListByType(allItems, Type.GB_ITEM);
 		final Map<String, ProcessedGradeItem> commentMap = createCommentMap(allItems);
 		final Map<String, ProcessedGradeItem> gradeItemMap = createGradeItemMap(allItems);
+
+		// Set up the previous selections, if any
+		final List<ProcessedGradeItem> selectedItems = importWizardModel.getSelectedGradeItems() == null ? Collections.emptyList() : importWizardModel.getSelectedGradeItems();
+		for (ProcessedGradeItem prevSelection : selectedItems)
+		{
+			final String title = prevSelection.getItemTitle();
+			ProcessedGradeItem item = null;
+			switch (prevSelection.getType())
+			{
+				case GB_ITEM:
+					item = gradeItemMap.get(title);
+					break;
+				case COMMENT:
+					item = commentMap.get(title);
+					break;
+			}
+
+			if (item != null && item.isSelectable())
+			{
+				item.setSelected(true);
+			}
+		}
 
 		final Form<?> form = new Form("form");
 		add(form);
@@ -217,6 +249,7 @@ public class GradeItemImportSelectionStep extends BasePanel {
 				log.debug("Items to modify: {}", itemsToModify.size());
 
 				// set data for next page
+				importWizardModel.setSelectedGradeItems(itemsToProcess); // This is grades and comments now
 				importWizardModel.setItemsToCreate(itemsToCreate);
 				importWizardModel.setItemsToUpdate(itemsToUpdate);
 				importWizardModel.setItemsToModify(itemsToModify);
@@ -297,6 +330,10 @@ public class GradeItemImportSelectionStep extends BasePanel {
 
 						} else {
 							gbItemWrap.removeStyle(GbStyle.SELECTED);
+							if (commentItem.isSelectable()) {
+								commentItem.setSelected(false);
+								commentWrap.removeStyle(GbStyle.SELECTED);
+							}
 						}
 						gbItemWrap.style();
 						commentWrap.style();
@@ -436,5 +473,14 @@ public class GradeItemImportSelectionStep extends BasePanel {
 		rval.setType(Type.COMMENT);
 		rval.setStatus(Status.SKIP);
 		return rval;
+	}
+
+	@Override
+	public void renderHead(final IHeaderResponse response) {
+		super.renderHead(response);
+
+		final String version = PortalUtils.getCDNQuery();
+		response.render(JavaScriptHeaderItem.forUrl(String.format("/gradebookng-tool/scripts/gradebook-import.js%s", version)));
+		response.render(OnDomReadyHeaderItem.forScript("$('#selectAllNone').click(function(){ GBI.selectAllNone(this); });"));
 	}
 }

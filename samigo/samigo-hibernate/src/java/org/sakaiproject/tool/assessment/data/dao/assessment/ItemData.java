@@ -16,6 +16,7 @@
 package org.sakaiproject.tool.assessment.data.dao.assessment;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -23,11 +24,19 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+
+import org.apache.commons.lang3.BooleanUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.tool.assessment.data.dao.shared.TypeD;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AnswerIfc;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.ItemAttachmentIfc;
@@ -72,11 +81,13 @@ public class ItemData
   private Set<ItemTextIfc> itemTextSet;
   private Set<ItemMetaDataIfc> itemMetaDataSet;
   private Set<ItemFeedbackIfc> itemFeedbackSet;
-  private Set<ItemAttachmentIfc> itemAttachmentSet;
+  @Getter @Setter private Set<ItemAttachmentIfc> itemAttachmentSet;
   private Set<ItemTagIfc> itemTagSet;
   private Double minScore;
   private String hash;
- 
+  private Long originalItemId;
+  @Getter private Boolean isExtraCredit = Boolean.FALSE;
+
   // for EMI question
   private String themeText;
   private String leadInText;
@@ -155,97 +166,40 @@ public ItemData() {}
     this.hash = hash;
   }
 
-    /*
-  public Object clone() throws CloneNotSupportedException{
-
-    ItemData cloned= new ItemData(
-        this.getSection(),this.getSequence(), this.getDuration(), this.getInstruction(),
-	this.getDescription(),this.getTypeId(),this.getGrade(),this.getScore(),
-	this.getHint(),this.getHasRationale(),this.getStatus(),this.getCreatedBy(),
-	this.getCreatedDate(),this.getLastModifiedBy(),this.getLastModifiedDate(),
-        null, null, null, this.getTriesAllowed());
-
-    // perform deep copy, set ItemTextSet, itemMetaDataSet and itemFeedbackSet
-    Set newItemTextSet = copyItemTextSet(cloned, this.getItemTextSet());
-    Set newItemMetaDataSet = copyItemMetaDataSet(cloned, this.getItemMetaDataSet());
-    Set newItemFeedbackSet = copyItemFeedbackSet(cloned, this.getItemFeedbackSet());
-    Set newItemAttachmentSet = copyItemAttachmentSet(cloned, this.getItemAttachmentSet());
-    cloned.setItemTextSet(newItemTextSet);
-    cloned.setItemMetaDataSet(newItemMetaDataSet);
-    cloned.setItemFeedbackSet(newItemFeedbackSet);
-    cloned.setItemAttachmentSet(newItemAttachmentSet);
-
-    return (Object)cloned;
+  public ItemData(SectionDataIfc section, Integer sequence,
+                  Integer duration, String instruction, String description,
+                  Long typeId, String grade, Double score, Boolean scoreDisplayFlag, Double discount, Double minScore, String hint,
+                  Boolean hasRationale, Integer status, String createdBy,
+                  Date createdDate, String lastModifiedBy,
+                  Date lastModifiedDate,
+                  Set<ItemTextIfc> itemTextSet, Set<ItemMetaDataIfc> itemMetaDataSet, Set<ItemFeedbackIfc> itemFeedbackSet,
+                  Integer triesAllowed, Boolean partialCreditFlag, String hash, Long originalItemId) {
+    this.section = section;
+    this.sequence = sequence;
+    this.duration = duration;
+    this.instruction = instruction;
+    this.description = description;
+    this.typeId = typeId;
+    this.grade = grade;
+    this.score = score;
+    this.scoreDisplayFlag = scoreDisplayFlag;
+    this.discount = discount;
+    this.hint = hint;
+    this.hasRationale = hasRationale;
+    this.status = status;
+    this.createdBy = createdBy;
+    this.createdDate = createdDate;
+    this.lastModifiedBy = lastModifiedBy;
+    this.lastModifiedDate = lastModifiedDate;
+    this.itemTextSet = itemTextSet;
+    this.itemMetaDataSet = itemMetaDataSet;
+    this.itemFeedbackSet = itemFeedbackSet;
+    this.triesAllowed = triesAllowed;
+    this.partialCreditFlag=partialCreditFlag;
+    this.minScore = minScore;
+    this.hash = hash;
+    this.originalItemId = originalItemId;
   }
-
-  public Set copyItemTextSet(ItemData cloned, Set itemTextSet) {
-    HashSet h = new HashSet();
-    Iterator k = itemTextSet.iterator();
-    while (k.hasNext()) {
-      ItemText itemText = (ItemText) k.next();
-      ItemText newItemText = new ItemText(cloned, itemText.getSequence(), itemText.getText(), null);
-      Set newAnswerSet = copyAnswerSet(newItemText, itemText.getAnswerSet());
-      newItemText.setAnswerSet(newAnswerSet);
-      h.add(newItemText);
-    }
-    return h;
-  }
-
-  public Set copyAnswerSet(ItemText newItemText, Set answerSet) {
-    HashSet h = new HashSet();
-    Iterator l = answerSet.iterator();
-    while (l.hasNext()) {
-      Answer answer = (Answer) l.next();
-      Answer newAnswer = new Answer(
-          newItemText, answer.getText(), answer.getSequence(),
-          answer.getLabel(),
-          answer.getIsCorrect(), answer.getGrade(), answer.getScore(), null);
-      Set newAnswerFeedbackSet = copyAnswerFeedbackSet(
-          newAnswer, answer.getAnswerFeedbackSet());
-      newAnswer.setAnswerFeedbackSet(newAnswerFeedbackSet);
-      h.add(newAnswer);
-    }
-    return h;
-  }
-
-  public Set copyAnswerFeedbackSet(Answer newAnswer, Set answerFeedbackSet) {
-    HashSet h = new HashSet();
-    Iterator m = answerFeedbackSet.iterator();
-    while (m.hasNext()) {
-      AnswerFeedback answerFeedback = (AnswerFeedback) m.next();
-      AnswerFeedback newAnswerFeedback = new AnswerFeedback(
-          newAnswer, answerFeedback.getTypeId(), answerFeedback.getText());
-      h.add(newAnswerFeedback);
-    }
-    return h;
-  }
-
-  public Set copyItemMetaDataSet(ItemData cloned, Set itemMetaDataSet) {
-    HashSet h = new HashSet();
-    Iterator n = itemMetaDataSet.iterator();
-    while (n.hasNext()) {
-      ItemMetaData itemMetaData = (ItemMetaData) n.next();
-      ItemMetaData newItemMetaData = new ItemMetaData(
-          cloned, itemMetaData.getLabel(), itemMetaData.getEntry());
-      h.add(newItemMetaData);
-    }
-    return h;
-  }
-
-  public Set copyItemFeedbackSet(ItemData cloned, Set itemFeedbackSet) {
-    HashSet h = new HashSet();
-    Iterator o = itemFeedbackSet.iterator();
-    while (o.hasNext()) {
-      ItemFeedback itemFeedback = (ItemFeedback) o.next();
-      ItemFeedback newItemFeedback = new ItemFeedback(
-          cloned, itemFeedback.getTypeId(), itemFeedback.getText());
-      h.add(newItemFeedback);
-    }
-    return h;
-  }
-
-    */
-
 
   public Long getItemId() {
     return this.itemId;
@@ -254,6 +208,10 @@ public ItemData() {}
   public void setItemId(Long itemId) {
     this.itemId = itemId;
     setItemIdString(itemId.toString());
+  }
+
+  public void setIsExtraCredit(Boolean extraCredit) {
+    this.isExtraCredit = BooleanUtils.toBoolean(extraCredit);
   }
 
   public String getItemIdString() {
@@ -428,7 +386,7 @@ public ItemData() {}
 
   public Set<ItemTagIfc> getItemTagSet() { return itemTagSet; }
 
-  public void setItemTagSet(Set<ItemTagIfc> itemTagSet) { this.itemTagSet = itemTagSet; this.tagListToJsonString = convertTagListToJsonString(itemTagSet);}
+  public void setItemTagSet(Set<ItemTagIfc> itemTagSet) { this.itemTagSet = itemTagSet; }
 
   public Set<ItemFeedbackIfc> getItemFeedbackSet() {
     return itemFeedbackSet;
@@ -446,6 +404,14 @@ public ItemData() {}
     this.hash = hash;
   }
 
+  public Long getOriginalItemId() {
+    return this.originalItemId;
+  }
+
+  public void setOriginalItemId(Long originalItemId) {
+    this.originalItemId = originalItemId;
+  }
+  
   private void writeObject(java.io.ObjectOutputStream out) throws IOException {
     out.defaultWriteObject();
   }
@@ -825,30 +791,14 @@ public ItemData() {}
    return false;
   }
 
-  public Set<ItemAttachmentIfc> getItemAttachmentSet() {
-    return itemAttachmentSet;
-  }
-
-  public void setItemAttachmentSet(Set<ItemAttachmentIfc> itemAttachmentSet) {
-    this.itemAttachmentSet = itemAttachmentSet;
-  }
-
   public List<ItemAttachmentIfc> getItemAttachmentList() {
-    if ( this.itemAttachmentSet == null || this.itemAttachmentSet.isEmpty() ) {
-      return new ArrayList<>();
-    }
-    return new ArrayList<>(this.itemAttachmentSet);
+    return Optional.ofNullable(itemAttachmentSet).map(Collection::stream).orElseGet(Stream::empty).collect(Collectors.toList());
   }
 
   public Map<Long, ItemAttachmentIfc> getItemAttachmentMap() {
-    final Map<Long, ItemAttachmentIfc> map = new HashMap<>();
-    if ( this.itemAttachmentSet == null || this.itemAttachmentSet.isEmpty() ) {
-      return map;
-    }
-    for (ItemAttachmentIfc a : this.itemAttachmentSet) {
-      map.put(a.getAttachmentId(), a);
-    }
-    return map;
+    return Optional.ofNullable(itemAttachmentSet)
+            .map(Collection::stream).orElseGet(Stream::empty)
+            .collect(Collectors.toMap(ItemAttachmentIfc::getAttachmentId, Function.identity()));
   }
 
   public void addItemAttachment(ItemAttachmentIfc attachment) {
@@ -1139,6 +1089,10 @@ public ItemData() {}
 	  return getItemMetaDataByLabel(ItemMetaDataIfc.IMAGE_MAP_SRC);	  
   }
 
+  public String getImageMapAltText() {
+      return getItemMetaDataByLabel(ItemMetaDataIfc.IMAGE_MAP_ALT_TEXT);
+  }
+
   public Double getMinScore() {
          return minScore;
  }
@@ -1170,10 +1124,6 @@ public ItemData() {}
   }
 
   public String getTagListToJsonString() {
-    return this.tagListToJsonString;
-  }
-
-  public void setTagListToJsonString(String tagListToJsonString) {
-    this.tagListToJsonString = tagListToJsonString;
+    return convertTagListToJsonString(itemTagSet);
   }
 }

@@ -4,17 +4,12 @@
   <parent>
     <artifactId>common</artifactId>
     <groupId>org.sakaiproject.common</groupId>
-    <version>12.5</version><!-- ProjectVersion -->
+    <version>21-SNAPSHOT</version><!-- ProjectVersion -->
     <relativePath>../pom.xml</relativePath>
   </parent>
   <name>Sakai Common API Composite Component</name>
   <groupId>org.sakaiproject.common</groupId>
   <artifactId>sakai-common-composite-component</artifactId>
-  <organization>
-    <name>Sakai Project</name>
-    <url>http://sakaiproject.org/</url>
-  </organization>
-  <inceptionYear>2003</inceptionYear>
   <packaging>sakai-component</packaging>
   <properties>
     <deploy.target>components</deploy.target>
@@ -66,12 +61,10 @@
       <artifactId>commons-beanutils</artifactId>
     </dependency>
     <dependency>
-		<groupId>commons-lang</groupId>
-		<artifactId>commons-lang</artifactId>
-		<scope>provided</scope>
-	</dependency> 
-   
-
+       <groupId>org.apache.commons</groupId>
+       <artifactId>commons-lang3</artifactId>
+       <scope>provided</scope>
+    </dependency> 
   </dependencies>
   <build>
     <resources>

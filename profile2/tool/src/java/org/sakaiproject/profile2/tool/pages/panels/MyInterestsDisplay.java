@@ -15,8 +15,7 @@
  */
 package org.sakaiproject.profile2.tool.pages.panels;
 
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.wicket.Component;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.ajax.markup.html.AjaxFallbackLink;
@@ -28,6 +27,8 @@ import org.apache.wicket.spring.injection.annot.SpringBean;
 
 import org.sakaiproject.profile2.logic.SakaiProxy;
 import org.sakaiproject.profile2.model.UserProfile;
+
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class MyInterestsDisplay extends Panel {

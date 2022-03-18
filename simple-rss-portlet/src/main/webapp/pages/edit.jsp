@@ -33,7 +33,6 @@
 <fmt:setLocale value="${language}" />
 <fmt:setBundle basename="au.edu.anu.portal.portlets.rss.utils.messages" />
 
-<link type="text/css" rel="stylesheet"  href="<%=request.getContextPath()%>/css/simple-rss-portlet.css" />
 
 <div class="simple-rss-portlet">
 				
@@ -61,9 +60,9 @@
 			<input type="text" name="feedUrl" value="${feedUrl}" size="50" />
 		</c:if>
 		
-		<p>
- 			<input type="submit" value="<fmt:message key='config.button.submit' />">
- 			<a href="${cancelUrl}"><fmt:message key='config.button.cancel' /></a>
+		<p class="act">
+ 			<input type="submit" class="active" value="<fmt:message key='config.button.submit' />">
+ 			<a class="button" href="${cancelUrl}"><fmt:message key='config.button.cancel' /></a>
 		</p>
 	</form>
 	

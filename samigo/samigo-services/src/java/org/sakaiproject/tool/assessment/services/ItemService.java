@@ -31,6 +31,8 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.content.api.ContentResource;
+import org.sakaiproject.rubrics.logic.RubricsConstants;
+import org.sakaiproject.rubrics.logic.RubricsService;
 import org.sakaiproject.tags.api.Tag;
 import org.sakaiproject.tags.api.TagService;
 import org.sakaiproject.tool.assessment.data.dao.assessment.Answer;
@@ -59,14 +61,16 @@ import org.sakaiproject.tool.assessment.services.assessment.AssessmentService;
 @Slf4j
 public class ItemService
 {
-  private static final TagService tagService= (TagService) ComponentManager.get( TagService.class );
-
+  protected TagService tagService;
+  protected RubricsService rubricsService;
 
   /**
    * Creates a new ItemService object.
    */
   public ItemService()
   {
+    rubricsService = ComponentManager.get(RubricsService.class);
+    tagService = ComponentManager.get(TagService.class);
   }
 
 
@@ -98,28 +102,20 @@ public class ItemService
   /**
    * Delete a item
    */
-  public void deleteItem(Long itemId, String agentId)
-  {
-    try
-    {
-      //ItemFacade item= PersistenceService.getInstance().
-        //getItemFacadeQueries().getItem(itemId, agentId);
-
-/*  do not check for owner, anyone who has maintain role can modify items see SAK-2214
-      // you are not allowed to delete item if you are not the owner
-      if (!item.getData().getCreatedBy().equals(agentId))
-        throw new RuntimeException("you are not allowed to delete item if you are not the owner");
-*/
-      PersistenceService.getInstance().getItemFacadeQueries().
-        deleteItem(itemId, agentId);
-    }
-    catch(Exception e)
-    {
+  public void deleteItem(Long itemId, String agentId) {
+    try {
+      // delete rubric association
+      String associationId = getAssessmentId(itemId) + "." + itemId;
+      rubricsService.deleteRubricAssociationsByItemIdPrefix(associationId, RubricsConstants.RBCS_TOOL_SAMIGO);
+	  
+      // do not check for owner, anyone who has maintain role can modify items see SAK-2214
+      PersistenceService.getInstance().getItemFacadeQueries().deleteItem(itemId, agentId);
+	  
+    } catch(Exception e) {
       log.error(e.getMessage(), e);
       throw new RuntimeException(e);
     }
   }
-
 
   /**
    * Delete itemtextset for an item, used for modify
@@ -128,14 +124,7 @@ public class ItemService
   {
     try
     {
-      //ItemFacade item= PersistenceService.getInstance().
-        //getItemFacadeQueries().getItem(itemId, agentId);
-
-/*  do not check for owner, anyone who has maintain role can modify items see SAK-2214
-      // you are not allowed to delete item if you are not the owner
-      if (!item.getData().getCreatedBy().equals(agentId))
-        throw new RuntimeException("you are not allowed to delete item if you are not the owner");
-*/
+      // do not check for owner, anyone who has maintain role can modify items see SAK-2214
       PersistenceService.getInstance().getItemFacadeQueries().
         deleteItemContent(itemId, agentId);
     }
@@ -155,14 +144,7 @@ public class ItemService
   {
     try
     {
-      //ItemFacade item= PersistenceService.getInstance().
-        //getItemFacadeQueries().getItem(itemId, agentId);
-
-/*  do not check for owner, anyone who has maintain role can modify items see SAK-2214
-      // you are not allowed to delete item if you are not the owner
-      if (!item.getData().getCreatedBy().equals(agentId))
-        throw new Error(new Exception());
-*/
+      // do not check for owner, anyone who has maintain role can modify items see SAK-2214
       PersistenceService.getInstance().getItemFacadeQueries().
         deleteItemMetaData(itemId, label);
     }
@@ -181,14 +163,7 @@ public class ItemService
   {
     try
     {
-      //ItemFacade item= PersistenceService.getInstance().
-        //getItemFacadeQueries().getItem(itemId, agentId);
-
-/*  do not check for owner, anyone who has maintain role can modify items see SAK-2214
-      // you are not allowed to delete item if you are not the owner
-      if (!item.getData().getCreatedBy().equals(agentId))
-        throw new Error(new Exception());
-*/
+      // do not check for owner, anyone who has maintain role can modify items see SAK-2214
       PersistenceService.getInstance().getItemFacadeQueries().
         addItemMetaData(itemId, label, value);
     }
@@ -324,6 +299,8 @@ public class ItemService
     cloned.setAnswerOptionsRichCount(item.getAnswerOptionsRichCount());
     cloned.setInstruction(newItemInstruction);
 
+    cloned.setIsExtraCredit(item.getIsExtraCredit());
+
     return cloned;
   }
 
@@ -349,7 +326,7 @@ public class ItemService
     while (l.hasNext()) {
       Answer answer = (Answer) l.next();
       Answer newAnswer = new Answer(
-          newItemText, answer.getText(), answer.getSequence(),
+          newItemText, AssessmentService.copyStringAttachment(answer.getText()), answer.getSequence(),
           answer.getLabel(),
       	  answer.getIsCorrect(), answer.getGrade(), answer.getScore(), answer.getPartialCredit(), answer.getDiscount(), 
       	  //answer.getCorrectOptionLabels(), 
@@ -450,20 +427,6 @@ public class ItemService
 	return h;
   }
 
-  public void deleteSet(Set s)
-  {
-    try
-    {
-      PersistenceService.getInstance().getItemFacadeQueries().
-      deleteSet(s);
-    }
-    catch(Exception e)
-    {
-      log.error(e.getMessage(), e);
-      throw new RuntimeException(e);
-    }
-  }
-  
   /**
    * Save favorite column choices for matrix survey question.
    */

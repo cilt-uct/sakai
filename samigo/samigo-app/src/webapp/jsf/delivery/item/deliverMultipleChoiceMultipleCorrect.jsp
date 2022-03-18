@@ -24,7 +24,7 @@ should be included in file importing DeliveryMessages
 --%>
 -->
 <h:outputText value="<fieldset>" escape="false"/>
-<h:outputText value="<legend class='samigo-legend'> #{question.text} </legend>" escape="false"/>
+<h:outputText value="#{question.text}" escape="false"/>
   <!-- ATTACHMENTS -->
   <%@ include file="/jsf/delivery/item/attachment.jsp" %>
 
@@ -63,8 +63,20 @@ should be included in file importing DeliveryMessages
     </t:column>
   </t:dataTable>
 
+<f:verbatim><br /></f:verbatim>
+<h:panelGroup rendered="#{(delivery.actionString=='previewAssessment'
+                || delivery.actionString=='takeAssessment' 
+                || delivery.actionString=='takeAssessmentViaUrl')
+             && delivery.navigation ne '1' && delivery.displayMardForReview }">
+<h:selectBooleanCheckbox value="#{question.review}" id="mark_for_review" />
+	<h:outputLabel for="mark_for_review" value="#{deliveryMessages.mark}" />
+	<h:outputLink title="#{assessmentSettingsMessages.whats_this_link}" value="#" onclick="javascript:window.open('/samigo-app/jsf/author/markForReviewPopUp.faces','MarkForReview','width=350,height=280,scrollbars=yes, resizable=yes');event.preventDefault();" >
+		<h:outputText  value=" #{assessmentSettingsMessages.whats_this_link}"/>
+	</h:outputLink>
+</h:panelGroup>
+
   <h:panelGroup rendered="#{question.itemData.hasRationale}" >
-    <f:verbatim><br /></f:verbatim>
+    <f:verbatim><br /><br /></f:verbatim>
     <h:outputLabel for="rationale" value="#{deliveryMessages.rationale}" />
     <f:verbatim><br /></f:verbatim>
     <h:inputTextarea id="rationale" value="#{question.rationale}" rows="5" cols="40" 
@@ -74,18 +86,6 @@ should be included in file importing DeliveryMessages
         rendered="#{delivery.actionString=='reviewAssessment'
                  || delivery.actionString=='gradeAssessment'}" escape="false"/>
   </h:panelGroup>
-
-<f:verbatim><br /></f:verbatim>
-<h:panelGroup rendered="#{(delivery.actionString=='previewAssessment'
-                || delivery.actionString=='takeAssessment' 
-                || delivery.actionString=='takeAssessmentViaUrl')
-             && delivery.navigation ne '1' && delivery.displayMardForReview }">
-<h:selectBooleanCheckbox value="#{question.review}" id="mark_for_review" />
-	<h:outputLabel for="mark_for_review" value="#{deliveryMessages.mark}" />
-	<h:outputLink title="#{assessmentSettingsMessages.whats_this_link}" value="#" onclick="javascript:window.open('../author/markForReviewPopUp.faces','MarkForReview','width=300,height=220,scrollbars=yes, resizable=yes');" >
-		<h:outputText  value=" #{assessmentSettingsMessages.whats_this_link}"/>
-	</h:outputLink>
-</h:panelGroup>
 
 <h:panelGroup rendered="#{delivery.feedback eq 'true'}">
   <h:panelGrid rendered="#{delivery.feedbackComponent.showCorrectResponse && !delivery.noFeedback=='true'}" >

@@ -22,23 +22,26 @@
 package org.sakaiproject.tool.assessment.ui.bean.author;
 
 import java.io.Serializable;
+import java.text.Collator;
+import java.text.ParseException;
+import java.text.RuleBasedCollator;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.text.Collator;
-import java.text.ParseException;
-import java.text.RuleBasedCollator;
 import java.util.Map;
 
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.SessionScoped;
 import javax.faces.context.ExternalContext;
 import javax.faces.context.FacesContext;
 import javax.faces.event.ValueChangeEvent;
 import javax.faces.model.SelectItem;
 
-import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.content.api.ContentResource;
 import org.sakaiproject.content.api.FilePickerHelper;
 import org.sakaiproject.entity.api.Reference;
@@ -59,15 +62,20 @@ import org.sakaiproject.tool.assessment.services.assessment.PublishedAssessmentS
 import org.sakaiproject.tool.assessment.ui.listener.author.SavePartAttachmentListener;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 import org.sakaiproject.tool.cover.SessionManager;
-import org.sakaiproject.util.FormattedText;
 import org.sakaiproject.util.ResourceLoader;
+import org.sakaiproject.util.api.FormattedText;
 
+import lombok.extern.slf4j.Slf4j;
+
+/* For author: Section backing bean. */
 @Slf4j
-public class SectionBean implements Serializable
-{
+@ManagedBean(name="sectionBean")
+@SessionScoped
+public class SectionBean implements Serializable {
 
 /** Use serialVersionUID for interoperability. */
 private final static long serialVersionUID = 4216587136245498157L;
+private static final ResourceLoader rb = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AuthorMessages");
 private String assessmentTitle;
 private String assessmentId;
 private String showMetadata;
@@ -273,8 +281,6 @@ private List attachmentList;
     List<SelectItem> list = new ArrayList<SelectItem>();
     // cannot disable only one radio button in a list, so am generating the list again
 
-    ResourceLoader rb = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AuthorMessages");
-
     SelectItem selection = new SelectItem();
     selection.setLabel(rb.getString("type_onebyone"));
     selection.setValue("1");
@@ -371,6 +377,7 @@ private List attachmentList;
     // SAM-2463: Fetch the count of questions for each pool in one query instead of hundreds
     Map<Long, Integer> poolQuestionCounts = delegate.getCountItemsForUser(agentId);
 
+    boolean currentPoolAlreadyAdded = false;
     Iterator pooliter = allPoolsMap.keySet().iterator();
     while (pooliter.hasNext()) {
       QuestionPoolFacade pool = (QuestionPoolFacade) allPoolsMap.get(pooliter.next());
@@ -378,10 +385,13 @@ private List attachmentList;
       int items = poolQuestionCounts.containsKey(poolId) ? poolQuestionCounts.get(poolId) : 0;
       if(items>0){
     	  resultPoolList.add(new SelectItem((poolId.toString()), getPoolTitleValueForRandomDrawDropDown(pool, items, allpoollist, delegate)));
+    	  if(StringUtils.isNotBlank(this.getSelectedPool()) && poolId.compareTo(new Long(this.getSelectedPool())) == 0){
+    	      currentPoolAlreadyAdded = true;
+    	  }
       }
     }
     //  add pool which is currently used in current Part for modify part
-    if (!("".equals(this.getSelectedPool())) && (this.getSelectedPool() !=null)){
+    if (StringUtils.isNotBlank(this.getSelectedPool()) && !currentPoolAlreadyAdded){
 
     //now we need to get the poolid and displayName
      
@@ -443,14 +453,12 @@ private List attachmentList;
   
   private String formatPoolDisplayName(String poolName, int poolCount)
   {
-      ResourceLoader rb = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AuthorMessages");
       String qs = (poolCount == 1) ? rb.getString("q") : rb.getString("qs");
-      return FormattedText.convertFormattedTextToPlaintext(poolName) + " (" + poolCount + " " + qs.toLowerCase() + ")";
+      return ComponentManager.get(FormattedText.class).convertFormattedTextToPlaintext(poolName) + " (" + poolCount + " " + qs.toLowerCase() + ")";
   }
   
   public String getRandomDrawMsg()
   {
-      ResourceLoader rb = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AuthorMessages");
       String msg = rb.getString("random_draw_from_que");
       
       if (hideRandom)
@@ -911,8 +919,6 @@ private List attachmentList;
 
 	    List list = new ArrayList();
 
-	    ResourceLoader rb = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AuthorMessages");
-	    
 	    SelectItem selection = new SelectItem();
 	    selection.setLabel(rb.getString("randomized_per_submission"));
 	    selection.setValue("1");

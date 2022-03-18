@@ -67,6 +67,7 @@ public class DigesterUtil {
 	    digester.addObjectCreate("prefs", PrefsData.class );
 	    digester.addSetProperties("prefs" );
 	    digester.addBeanPropertySetter("prefs/listToolEventsOnlyAvailableInSite", "setListToolEventsOnlyAvailableInSite" );
+	    digester.addBeanPropertySetter("prefs/showOwnStatisticsToStudents", "setShowOwnStatisticsToStudents" );
 	    digester.addBeanPropertySetter("prefs/chartIn3D", "setChartIn3D" );
 	    digester.addBeanPropertySetter("prefs/chartTransparency", "setChartTransparency" );
 	    digester.addBeanPropertySetter("prefs/itemLabelsVisible", "setItemLabelsVisible" );
@@ -90,7 +91,7 @@ public class DigesterUtil {
 	    EventParserTipFactoryImpl eventParserTipFactoryImpl = new EventParserTipFactoryImpl();
 	    digester.addFactoryCreate("toolEventsDef/tool/eventParserTip", eventParserTipFactoryImpl);
 	    digester.addSetNestedProperties("toolEventsDef/tool/eventParserTip");
-	    digester.addSetNext("toolEventsDef/tool/eventParserTip", "setEventParserTip" );
+	    digester.addSetNext("toolEventsDef/tool/eventParserTip", "addEventParserTip" );
 	    
 	    return (List<ToolInfo>) digester.parse( input );
 	}

@@ -34,26 +34,25 @@ import java.util.StringTokenizer;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.TransformerException;
 import javax.xml.transform.Source;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamSource;
 import javax.xml.validation.*;
 
 import lombok.extern.slf4j.Slf4j;
-import org.sakaiproject.tool.assessment.data.dao.assessment.*;
-import org.sakaiproject.tool.assessment.facade.*;
-import org.sakaiproject.tool.assessment.services.assessment.PublishedAssessmentService;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
-
+import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.event.cover.EventTrackingService;
 import org.sakaiproject.samigo.util.SamigoConstants;
-import org.sakaiproject.site.cover.SiteService;
-import org.sakaiproject.tool.assessment.shared.api.assessment.SecureDeliveryServiceAPI;
+import org.sakaiproject.tool.assessment.data.dao.assessment.AssessmentAccessControl;
+import org.sakaiproject.tool.assessment.data.dao.assessment.AssessmentFeedback;
+import org.sakaiproject.tool.assessment.data.dao.assessment.AssessmentMetaData;
+import org.sakaiproject.tool.assessment.data.dao.assessment.EvaluationModel;
+import org.sakaiproject.tool.assessment.data.dao.assessment.ItemMetaData;
 import org.sakaiproject.tool.assessment.data.dao.questionpool.QuestionPoolItemData;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentAccessControlIfc;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentFeedbackIfc;
@@ -63,7 +62,11 @@ import org.sakaiproject.tool.assessment.data.ifc.assessment.ItemDataIfc;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.SectionDataIfc;
 import org.sakaiproject.tool.assessment.data.ifc.questionpool.QuestionPoolItemIfc;
 import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
-import org.sakaiproject.tool.assessment.data.model.Tree;
+import org.sakaiproject.tool.assessment.facade.AgentFacade;
+import org.sakaiproject.tool.assessment.facade.AssessmentFacade;
+import org.sakaiproject.tool.assessment.facade.ItemFacade;
+import org.sakaiproject.tool.assessment.facade.QuestionPoolFacade;
+import org.sakaiproject.tool.assessment.facade.SectionFacade;
 import org.sakaiproject.tool.assessment.integration.helper.integrated.AgentHelperImpl;
 import org.sakaiproject.tool.assessment.qti.asi.Assessment;
 import org.sakaiproject.tool.assessment.qti.asi.Item;
@@ -79,8 +82,11 @@ import org.sakaiproject.tool.assessment.services.ItemService;
 import org.sakaiproject.tool.assessment.services.QuestionPoolService;
 import org.sakaiproject.tool.assessment.services.assessment.AssessmentService;
 import org.sakaiproject.tool.assessment.util.TextFormat;
-import org.sakaiproject.tool.cover.ToolManager;
-import org.sakaiproject.util.FormattedText;
+import org.sakaiproject.util.api.FormattedText;
+
+import org.xml.sax.EntityResolver;
+import org.xml.sax.InputSource;
+
 
 import org.xml.sax.EntityResolver;
 import org.xml.sax.InputSource;
@@ -175,7 +181,7 @@ public class AuthoringHelper
         factory.getAssessmentHelperInstance(this.qtiVersion);
       Assessment assessmentXml = assessmentHelper.readXMLDocument(is);
       assessmentXml.setIdent(assessmentId);
-      assessmentXml.setTitle(FormattedText.convertFormattedTextToPlaintext(assessment.getTitle()));
+      assessmentXml.setTitle(ComponentManager.get(FormattedText.class).convertFormattedTextToPlaintext(assessment.getTitle()));
       assessmentHelper.setDescriptiveText(assessment.getDescription(),
                                           assessmentXml);
 
@@ -744,7 +750,7 @@ public class AuthoringHelper
 
           while (notUnique)
           {
-            title = exHelper.renameDuplicate(title);
+            title = assessmentService.renameDuplicate(title);
             log.debug("renameDuplicate(title): " + title);
             assessment.setTitle(title);
             notUnique =
@@ -845,8 +851,8 @@ public class AuthoringHelper
           // Item Attachment
           exHelper.makeItemAttachmentSet(item);
           
-          section.addItem(item); // many to one
-          itemService.saveItem(item);
+          item = itemService.saveItem(item);
+          section.addItem(item);
           EventTrackingService.post(EventTrackingService.newEvent(SamigoConstants.EVENT_ASSESSMENT_SAVEITEM, "/sam/" + AgentFacade.getCurrentSiteId() + "/saved itemId=" + item.getItemId().toString(), true));
         } // ... end for each item
         
@@ -877,11 +883,6 @@ public class AuthoringHelper
       
       // Assessment Attachment
       exHelper.makeAssessmentAttachmentSet(assessment);
-
-      String siteTitle = SiteService.getSite(ToolManager.getCurrentPlacement().getContext()).getTitle();
-      if(siteTitle != null && !siteTitle.equals(assessment.getAssessmentAccessControl().getReleaseTo())){
-          assessment.getAssessmentAccessControl().setReleaseTo(siteTitle);
-      }
 
       assessmentService.saveAssessment(assessment);
       return assessment;
@@ -956,7 +957,7 @@ public class AuthoringHelper
 
  	          while (!isUnique)
  	          {
- 	        	title = exHelper.renameDuplicate(title);
+ 	        	title = AssessmentService.renameDuplicate(title);
  	            log.debug("renameDuplicate(title): " + title);
  	            questionpool.setTitle(title);
  	            //recheck to confirm that new title is not a dplicate too
@@ -995,7 +996,7 @@ public class AuthoringHelper
                item.setLastModifiedBy(me);
                item.setLastModifiedDate(questionpool.getLastModified());
                item.setStatus(ItemDataIfc.ACTIVE_STATUS);
-               itemService.saveItem(item);
+               item = itemService.saveItem(item);
                EventTrackingService.post(EventTrackingService.newEvent(SamigoConstants.EVENT_ASSESSMENT_SAVEITEM, "/sam/" + AgentFacade.getCurrentSiteId() + "/saved itemId=" + item.getItemId().toString(), true));
                
                QuestionPoolItemData questionPoolItem = new QuestionPoolItemData();
@@ -1038,7 +1039,7 @@ public class AuthoringHelper
       Item itemXml = new Item(document, QTIVersion.VERSION_1_2);
       exHelper.updateItem(item, itemXml);
       ItemService itemService = new ItemService();
-      itemService.saveItem(item);
+      item = itemService.saveItem(item);
     }
     catch (Exception e)
     {
@@ -1071,11 +1072,9 @@ public class AuthoringHelper
               if (systemId != null && systemId.endsWith("/ims_qtiasiv1p2p1.dtd")) {
                   return new InputSource(this.getClass().getClassLoader().getResourceAsStream("xml/author/v1p2/ims_qtiasiv1p2p1.dtd"));
               }
-
               return null;
           }
       });
-
 
       document = documentBuilder.parse(inputStream);
     }

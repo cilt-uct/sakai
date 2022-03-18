@@ -48,12 +48,15 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.xml.bind.DatatypeConverter;
 
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import org.apache.commons.io.IOUtils;
 
+import org.sakaiproject.time.api.UserTimeService;
+import org.sakaiproject.user.api.UserDirectoryService;
 import uk.org.ponder.messageutil.MessageLocator;
-
+import org.apache.commons.io.FilenameUtils;
 import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.authz.api.SecurityAdvisor;
 import org.sakaiproject.authz.api.SecurityService;
@@ -91,7 +94,6 @@ import org.sakaiproject.memory.api.SimpleConfiguration;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.tool.api.SessionManager;
 import org.sakaiproject.tool.api.ToolManager;
-import org.sakaiproject.user.cover.UserDirectoryService;
 import org.sakaiproject.util.Validator;
 import org.sakaiproject.util.Web;
 
@@ -168,6 +170,12 @@ public class LessonBuilderAccessService {
 	public void setSiteService(SiteService s) {
 		siteService = s;
 	}
+
+	@Setter
+	private UserTimeService userTimeService;
+
+	@Setter
+	private UserDirectoryService userDirectoryService;
 
 	LessonEntity forumEntity = null;
 
@@ -519,7 +527,7 @@ public class LessonBuilderAccessService {
 						    usersite = username.substring(0,slash);
 						// normally it is /user/EID, so convert to userid
 						try {
-						    usersite = UserDirectoryService.getUserId(usersite);
+						    usersite = userDirectoryService.getUserId(usersite);
 						} catch (Exception e) {};
 						String itemcreator = item.getAttribute("addedby");
 						// suppose a member of the group adds a resource from another member of
@@ -594,6 +602,9 @@ public class LessonBuilderAccessService {
 						simplePageBean.setCurrentSiteId(currentPage.getSiteId());
 						simplePageBean.setCurrentPage(currentPage);
 						simplePageBean.setCurrentPageId(currentPage.getPageId());
+						simplePageBean.setUserDirectoryService(userDirectoryService);
+						simplePageBean.setUserTimeService(userTimeService);
+						simplePageBean.setAuthzGroupService(authzGroupService);
 						simplePageBean.init();
 
 						if (!simplePageBean.isItemAvailable(item, item.getPageId())) {
@@ -726,7 +737,7 @@ public class LessonBuilderAccessService {
 						else
 						{
 							// use the last part, the file name part of the id, for the download file name
-							String fileName = Web.encodeFileName(req, Validator.getFileName(ref.getId()));
+							String fileName = Web.encodeFileName(req, FilenameUtils.getName(ref.getId()));
 							String disposition = null;
 							
 							boolean inline = false;

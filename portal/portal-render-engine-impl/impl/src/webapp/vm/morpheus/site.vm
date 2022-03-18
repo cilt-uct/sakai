@@ -4,7 +4,13 @@
 
     #parse("/vm/morpheus/includeStandardHead.vm")
 
-    <body #if( !${loggedIn} ) class="Mrphs-portalBody is-logged-out" #else class="Mrphs-portalBody ${logoSiteClass} #if ( ${toolsCollapsed} ) Mrphs-toolMenu-collapsed #end" #end $pageSiteType>
+    <body #if( !${loggedIn} ) class="Mrphs-portalBody is-logged-out" #else class="Mrphs-portalBody ${logoSiteClass} #if ( ${toolsCollapsed} ) Mrphs-toolMenu-collapsed #end #if ( ${toolMaximised} ) tool-maximised #end" #end $pageSiteType>
+
+        <div id="maximised-indicator">
+            <div>
+                <a href="javascript:;">${rloader.sit_fullscreen_message}</a>
+            </div>
+        </div>
 
         <noscript>
             <span id="portal_js_warn" class="Mrphs-noJs js-warn-no-js">${rloader.sit_noscript_message}</span>
@@ -141,13 +147,16 @@
             }
         </script>
         <script src="/library/js/jquery/jquery.clearsearch.js$!{portalCDNQuery}"></script>
-        <script src="${pageSkinRepo}/${pageSkin}/js/morpheus.plugins.min.js$!{portalCDNQuery}"></script>
         <script src="${pageSkinRepo}/${pageSkin}/js/morpheus.scripts.min.js$!{portalCDNQuery}"></script>
-        <script src="${pageWebjarsPath}/pnotify/2.1.0/pnotify.core.min.js$!{portalCDNQuery}"></script>
-	<script src="${pageWebjarsPath}/pnotify/2.1.0/pnotify.buttons.min.js$!{portalCDNQuery}"></script>
-        <script src="${pageScriptPath}jquery/qtip/jquery.qtip-latest.min.js$!{portalCDNQuery}"></script>
+        <script src="${pageWebjarsPath}/pnotify/4.0.0/dist/iife/PNotify.js$!{portalCDNQuery}"></script>
+        <script src="${pageWebjarsPath}/pnotify/4.0.0/dist/iife/PNotifyButtons.js$!{portalCDNQuery}"></script>
+        <script>includeWebjarLibrary("qtip2");</script>
         <script src="${pageScriptPath}jquery/qtip/tutorial.js$!{portalCDNQuery}"></script>
-        <script src="${pageWebjarsPath}cropper/2.3.2/dist/cropper.min.js$!{portalCDNQuery}"></script>
+        <script src="${pageWebjarsPath}cropper/4.0.0/dist/cropper.min.js$!{portalCDNQuery}"></script>
+
+        <script type="module" src="/webcomponents/sakai-permissions.js$!{portalCDNQuery}"></script>
+        <script type="module" src="/webcomponents/sakai-search.js$!{portalCDNQuery}"></script>
+        <script type="module" src="/webcomponents/sakai-maximise-button.js$!{portalCDNQuery}"></script>
 
         <script type="text/javascript" src="${pageScriptPath}settings-renamer.js$!{portalCDNQuery}"></script>
 
@@ -189,12 +198,13 @@
         </script>
 
         <script>
-        PNotify.prototype.options.styling = "jqueryui";
         function portal_check_pnotify() {
             ${d}PBJQ.getJSON( "/direct/portal/notify.json", function( data ) {
                 for(i=0; i<data.error.length; i++ ) {
                      ${d}PBJQ(function(){
-                        new PNotify({
+                        PNotify.defaults.styling = 'bootstrap3';
+                        PNotify.defaults.icons = 'fontawesome4';
+                        PNotify.alert({
                             title: '${rloader.getString("pnotify_notice")}',
                             text: data.error[i],
                             type: 'notice'
@@ -219,13 +229,15 @@
         <script src="${pageScriptPath}caps-lock-checker.js$!{portalCDNQuery}"></script>
 
         <script src="$!{portalCDNPath}/portal/scripts/jumptotop.js$!{portalCDNQuery}"></script>
-
+    #if (${sakaiThemesEnabled})
+        <script src="$!{portalCDNPath}/portal/scripts/themeswitcher.js$!{portalCDNQuery}"></script>
+    #end
         #parse("/vm/morpheus/includeAnalytics.vm")
         #parse("/vm/morpheus/includePASystem.vm")
 
         #parse("/vm/morpheus/includeCookieNotice.vm")
 
-        #parse("/vm/morpheus/includeGoogleTagManager.vm")
+        #parse("/vm/morpheus/includeGoogleTM-NoScript.vm")
 
         ${includeExtraHead}
 
@@ -236,8 +248,8 @@
                 <div class="modal-content">
                     <div class="modal-header"><h2>${rloader.getString("pic_changer_title")}</h2></div>
                     <div class="modal-body">
-                        <div id="remove-error" class="alert alert-danger">${rloader.getString("pic_changer_remove_error")}</div>
-                        <div id="upload-error" class="alert alert-danger">${rloader.getString("pic_changer_upload_error")}</div>
+                        <div id="remove-error" class="sak-banner-error">${rloader.getString("pic_changer_remove_error")}</div>
+                        <div id="upload-error" class="sak-banner-error">${rloader.getString("pic_changer_upload_error")}</div>
                         <label for="file">${rloader.getString("pic_changer_upload")}</label>
                         <input type="file" id="file" value="${rloader.getString("pic_changer_choose")}" accept="image/*" aria-required="true">
                         <div id="cropme">
@@ -268,76 +280,6 @@
             </div>
         </div>
         #parse("/vm/morpheus/connection-manager.vm")
-        #end
-
-        #if ($nyuAllowedToMigrate)
-          <link rel="stylesheet" href="$!{portalCDNPath}/portal/styles/brightspace-migrator.css$!{portalCDNQuery}"/>
-          <script src="$!{portalCDNPath}/portal/scripts/brightspace-migrator.js$!{portalCDNQuery}"></script>
-          <script type="text/template" id="nyuBrightspaceMigratorModalTemplate">
-            <div class="modal" tabindex="-1" role="dialog" id="nyuBrightspaceMigratorModal">
-              <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                  <div class="modal-header">
-                    <strong class="modal-title">Move NYU Classes Content to NYU LMS (Brightspace)</strong>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                      <span aria-hidden="true">&times;</span>
-                    </button>
-                  </div>
-                  <div class="modal-body">
-                    <p>Use this self-service tool to copy your existing NYU Classes course content over to NYU LMS (Brightspace). Once moved, you will find corresponding "Reference Sites" in NYU LMS for each of the NYU Classes course sites you move. You will then be able to copy desired content into your current and future courses.</p>
-                    <p>Note: If a site is marked as "queued," no action is needed on your part. Additionally, student-created content (e.g., discussion board entries or messages), submissions, or grades will <strong>not</strong> be moved to NYU LMS.</p>
-                    <p>For more info, see the <a href="https://www.nyu.edu/life/information-technology/instructional-technology-support/instructional-technology-tools-and-services/nyu-lms-brightspace/reusing-course-content.html" target="_blank">Reusing NYU Classes Content in NYU LMS website</a>.</p>
-                    <table class="table table-striped">
-                      <thead>
-                        <tr>
-                          <th>
-                            Site
-                          </th>
-                          <th style="width: 140px">
-                            Term
-                          </th>
-                          <th style="width: 400px;">
-                            <span class="sr-only">Status and Actions</span>
-                          </th>
-                        </tr>
-                        <tr class="active">
-                          <td>
-                            <input type="text" class="form-control brightspace-migrator-filter-query"/>
-                          </td>
-                          <td>
-                            <select class="brightspace-migrator-filter-term"></select>
-                          </td>
-                          <td>
-                            <a class="brightspace-migrator-filter-clear" href="javascript:void(0);" style="display: none;">Clear filters</a>
-                          </td>
-                        </tr>
-                      </thead>
-                      <tbody><tr><td colspan="3" class="brightspace-migrator-loading-indicator"><div class="brightspace-migrator-loader"></div> Loading your sites...</td></tr></tbody>
-                    </table>
-                    <div class="brightspace-migrator-pagination" style="text-align: center;">
-                      <button class="brightspace-migrator-previous" style="width: 80px;">Previous</button>
-                      <button class="brightspace-migrator-next" style="width: 80px;">Next</button>
-                    </div>
-                  </div>
-                  <div class="modal-footer">
-                    <div class="pull-left text-left">
-                      <p>You will receive an email notification once your site(s) has/have been copied to NYU LMS. Note that this may take up to 48 hours.</p>
-                      <p>Once moved, your corresponding reference site(s) can be found in the "My Courses" widget in NYU LMS.</p>
-                    </div>
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </script>
-          <script type="text/template" id="nyuBrightspaceMigratorStateTemplate">
-            <div style="display: none;" class="brightspace-migrator-state progress">
-              <div class="progress-bar brightspace-migrator-state-queued" role="progressbar" style="width: 25%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="1">Queued</div>
-              <div class="progress-bar brightspace-migrator-state-archived inactive" role="progressbar" style="width: 25%;" aria-valuenow="25" aria-valuemin="0" aria-valuemax="1">Archived</div>
-              <div class="progress-bar brightspace-migrator-state-uploaded inactive" role="progressbar" style="width: 25%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="1">Uploaded</div>
-              <div class="progress-bar brightspace-migrator-state-completed inactive" role="progressbar" style="width: 25%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="1">Completed</div>
-            </div>
-          </script>
         #end
 
     </body>

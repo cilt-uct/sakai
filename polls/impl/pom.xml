@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.sakaiproject.polls</groupId>
         <artifactId>polls</artifactId>
-        <version>12.5</version>
+        <version>21-SNAPSHOT</version>
     </parent>
 
     <name>Sakai Polls Implementation Module (polls-impl)</name>
@@ -34,6 +34,10 @@
             <artifactId>sakai-component-manager</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.sakaiproject.kernel</groupId>
+            <artifactId>sakai-kernel-storage-util</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.sakaiproject.entitybroker</groupId>
             <artifactId>entitybroker-api</artifactId>
         </dependency>
@@ -57,15 +61,14 @@
         <dependency>
            <groupId>org.apache.commons</groupId>
            <artifactId>commons-lang3</artifactId>
-       </dependency>
-        <dependency>
-            <groupId>commons-validator</groupId>
-            <artifactId>commons-validator</artifactId>
         </dependency>
         <dependency>
-            <groupId>dom4j</groupId>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-collections4</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.dom4j</groupId>
             <artifactId>dom4j</artifactId>
-            <version>1.6.1</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -83,14 +86,14 @@
             <artifactId>jta</artifactId>
         </dependency>
         <dependency>
+            <groupId>javax</groupId>
+            <artifactId>javaee-api</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.hibernate</groupId>
             <artifactId>hibernate-core</artifactId>
         </dependency>
         <!-- needed by hibernate unit tests -->
-        <dependency>
-            <groupId>org.hibernate</groupId>
-            <artifactId>hibernate-ehcache</artifactId>
-        </dependency>
         <dependency>
             <groupId>org.javassist</groupId>
             <artifactId>javassist</artifactId>
@@ -126,6 +129,10 @@
             <groupId>oro</groupId>
             <artifactId>oro</artifactId>
             <version>2.0.8</version>
+        </dependency>
+        <dependency>
+            <groupId>org.quartz-scheduler</groupId>
+            <artifactId>quartz</artifactId>
         </dependency>
     </dependencies>
 

@@ -42,7 +42,12 @@ import javax.faces.event.ValueChangeEvent;
 import javax.faces.event.ValueChangeListener;
 
 import lombok.extern.slf4j.Slf4j;
+
 import org.apache.commons.beanutils.BeanUtils;
+
+import org.sakaiproject.component.cover.ComponentManager;
+import org.sakaiproject.rubrics.logic.RubricsConstants;
+import org.sakaiproject.rubrics.logic.RubricsService;
 import org.sakaiproject.tool.assessment.business.entity.RecordingData;
 import org.sakaiproject.tool.assessment.data.dao.assessment.AssessmentAccessControl;
 import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedAccessControl;
@@ -71,7 +76,7 @@ import org.sakaiproject.tool.assessment.ui.bean.evaluation.TotalScoresBean;
 import org.sakaiproject.tool.assessment.ui.bean.util.EmailBean;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 import org.sakaiproject.tool.assessment.util.BeanSort;
-import org.sakaiproject.util.FormattedText;
+import org.sakaiproject.util.api.FormattedText;
 
 /**
  * <p>
@@ -89,6 +94,8 @@ import org.sakaiproject.util.FormattedText;
   implements ActionListener, ValueChangeListener
 {
   private static BeanSort bs;
+
+  private RubricsService rubricsService = ComponentManager.get(RubricsService.class);
 
   //private SectionAwareness sectionAwareness;
   // private List availableSections;
@@ -195,7 +202,9 @@ import org.sakaiproject.util.FormattedText;
     	questionbean.setOtherMaxDisplayedScoreRows(0);
     	questionbean.setAudioMaxDisplayedScoreRows(5);
     }
-    
+
+    submissionbean.setRbcsToken(rubricsService.generateJsonWebToken(RubricsConstants.RBCS_TOOL_SAMIGO));
+
     if (!totalScores(pubAssessment, bean, false))
     {
       throw new RuntimeException("failed to call totalScores.");
@@ -343,12 +352,10 @@ import org.sakaiproject.util.FormattedText;
         boolean isAutoScored = true;
         boolean hasFileUpload = false;
 		while (sectionIter.hasNext()) {
-			if (!isAutoScored) {
+			if (!isAutoScored && hasFileUpload) {
 				break;
 			}
-			if (hasFileUpload) {
-				break;
-			}
+
 			PublishedSectionData section = (PublishedSectionData) sectionIter.next();
 			Set itemSet = section.getItemSet();
 			Iterator itemIter = itemSet.iterator();
@@ -360,7 +367,6 @@ import org.sakaiproject.util.FormattedText;
 				{ 
 					bean.setIsAutoScored(false); 
 					isAutoScored = false;
-					break; 
 				}
 				
 				if (typeId.equals(TypeIfc.FILE_UPLOAD))
@@ -617,7 +623,7 @@ log.debug("totallistener: firstItem = " + bean.getFirstItem());
       else
         results.setTimeElapsed(Integer.valueOf(0));      
       
-      results.setComments(FormattedText.convertFormattedTextToPlaintext(gdata.getComments()));
+      results.setComments(ComponentManager.get(FormattedText.class).convertFormattedTextToPlaintext(gdata.getComments()));
       
       results.setIsLate(gdata.getIsLate());
       

@@ -44,6 +44,7 @@ public class UserProfile implements Serializable {
 	private Date dateOfBirth;
 	private String birthday;
 	private String birthdayDisplay;
+	private String formattedBirthday;
 	private String email;
 	private String position;
 	private String department;
@@ -66,6 +67,10 @@ public class UserProfile implements Serializable {
 	private String academicProfileUrl; 
 	private String publications;
 	private String businessBiography;
+	private String phoneticPronunciation;
+	private String pronounsSelected;
+	private String pronounsInput;
+	private String pronouns;
 	
 	private List<TypeInputEntry> phoneNumbers;
 	private List<TypeInputEntry> socialMedia;

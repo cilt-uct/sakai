@@ -24,14 +24,20 @@ package org.sakaiproject.tool.assessment.ui.bean.evaluation;
 import java.io.Serializable;
 import java.util.Map;
 
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.SessionScoped;
+
 import lombok.extern.slf4j.Slf4j;
 import org.sakaiproject.tool.assessment.data.dao.grading.StudentGradingSummaryData;
+import org.sakaiproject.tool.assessment.facade.PublishedAssessmentFacade;
+import org.sakaiproject.tool.assessment.services.assessment.PublishedAssessmentService;
+import org.sakaiproject.tool.assessment.ui.bean.delivery.DeliveryBean;
+import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 
-/**
- * <p>Description: class form for evaluating total scores</p>
- *
- */
+/* For evaluation: Retake Assessment backing bean. */
 @Slf4j
+@ManagedBean(name="retakeAssessment")
+@SessionScoped
 public class RetakeAssessmentBean implements Serializable {
 
 	private Long publishedAssessmentId;
@@ -91,5 +97,13 @@ public class RetakeAssessmentBean implements Serializable {
 
 	public void setStudentGradingSummaryDataMap(Map studentGradingSummaryDataMap) {
 		this.studentGradingSummaryDataMap = studentGradingSummaryDataMap;
+	}
+
+	public boolean isAvailable() {
+		PublishedAssessmentService pubAssessmentService = new PublishedAssessmentService();
+		PublishedAssessmentFacade pubAssessment = pubAssessmentService.getPublishedAssessment(publishedAssessmentId.toString());
+		DeliveryBean deliveryBean = (DeliveryBean) ContextUtil.lookupBean("delivery");
+		deliveryBean.setPublishedAssessment(pubAssessment);
+		return deliveryBean.isAvailable() && !deliveryBean.pastDueDate();
 	}
 }

@@ -20,6 +20,8 @@
  **********************************************************************************/
 package org.sakaiproject.web.impl;
 
+import static org.sakaiproject.tool.api.ToolManager.PORTAL_VISIBLE;
+
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -395,7 +397,7 @@ public class WebServiceImpl implements WebService, EntityTransferrer
 		return toolIds;
 	}
 
-	public void transferCopyEntities(String fromContext, String toContext, List<String> ids)
+	public Map<String, String> transferCopyEntities(String fromContext, String toContext, List<String> ids, List<String> transferOptions)
 	{
 		log.debug("web content transferCopyEntities");
 		try
@@ -421,6 +423,7 @@ public class WebServiceImpl implements WebService, EntityTransferrer
 							final boolean pagePopup = currPage.isPopUp();
 							final String height = toolConfig.getPlacementConfig().getProperty(HEIGHT_PROP);
 							final String customIcon = toolConfig.getPlacementConfig().getProperty(CUSTOM_ICON_PROP);
+							final String visibility = toolConfig.getPlacementConfig().getProperty(PORTAL_VISIBLE);
 
 							// in some cases the new site already has all of this. so make
 							// sure we don't make a duplicate
@@ -460,6 +463,9 @@ public class WebServiceImpl implements WebService, EntityTransferrer
 								if (customIcon != null) {
 									tool.getPlacementConfig().setProperty(CUSTOM_ICON_PROP, customIcon);
 								}
+								if (visibility != null) {
+									tool.getPlacementConfig().setProperty(PORTAL_VISIBLE, visibility);
+								}
 							}
 						}
 					}
@@ -479,6 +485,7 @@ public class WebServiceImpl implements WebService, EntityTransferrer
 			log.warn("transferCopyEntities(): exception in handling webcontent data: ", any);
 		}
 
+		return null;
 	}
 
 	public String trimToNull(String value)
@@ -495,7 +502,7 @@ public class WebServiceImpl implements WebService, EntityTransferrer
 		return null;
 	}
 
-	public void transferCopyEntities(String fromContext, String toContext, List<String> ids, boolean cleanup) {
+	public Map<String, String> transferCopyEntities(String fromContext, String toContext, List<String> ids, List<String> transferOptions, boolean cleanup) {
 		try {
 			if (cleanup) {
 				Vector<String> removePageIds = new Vector<>();
@@ -531,11 +538,12 @@ public class WebServiceImpl implements WebService, EntityTransferrer
 					}
 				}
 			}
-			transferCopyEntities(fromContext, toContext, ids);
+			return transferCopyEntities(fromContext, toContext, ids, transferOptions);
 		}
 		catch (Exception e) {
 			log.info("WebContent transferCopyEntities Error" + e);
 		}
-	}
 
+		return null;
+	}
 }

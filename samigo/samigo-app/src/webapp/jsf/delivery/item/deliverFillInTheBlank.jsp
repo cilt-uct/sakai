@@ -63,7 +63,7 @@ should be included in file importing DeliveryMessages
              && delivery.navigation ne '1' && delivery.displayMardForReview }">
 <h:selectBooleanCheckbox value="#{question.review}" id="mark_for_review" />
 	<h:outputLabel for="mark_for_review" value="#{deliveryMessages.mark}" />
-	<h:outputLink title="#{assessmentSettingsMessages.whats_this_link}" value="#" onclick="javascript:window.open('../author/markForReviewPopUp.faces','MarkForReview','width=300,height=220,scrollbars=yes, resizable=yes');" >
+	<h:outputLink title="#{assessmentSettingsMessages.whats_this_link}" value="#" onclick="javascript:window.open('/samigo-app/jsf/author/markForReviewPopUp.faces','MarkForReview','width=350,height=280,scrollbars=yes, resizable=yes');event.preventDefault();" >
 		<h:outputText  value=" #{assessmentSettingsMessages.whats_this_link}"/>
 	</h:outputLink>
 </h:panelGroup>
@@ -74,7 +74,7 @@ should be included in file importing DeliveryMessages
   <h:panelGrid rendered="#{delivery.feedbackComponent.showCorrectResponse && !delivery.noFeedback=='true'}" >
     <h:panelGroup>
       <h:outputLabel for="answerKeyMC" styleClass="answerkeyFeedbackCommentLabel" value="#{deliveryMessages.ans_key}: " />
-      <h:outputText id="answerKeyMC" value="#{question.key}" escape="false"/>
+      <h:outputText id="answerKeyMC" value="#{question.key}" escape="true"/>
     </h:panelGroup>
     <h:outputText value=" "/>
   </h:panelGrid>

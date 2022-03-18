@@ -1,12 +1,7 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://myfaces.apache.org/tomahawk" prefix="t" %>
-
-
-
-
-
 
 <jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
    <jsp:setProperty name="msgs" property="baseName" value="org.sakaiproject.api.app.messagecenter.bundle.Messages"/>
@@ -14,9 +9,9 @@
 
 <f:view>
   <sakai:view id="synopticView">
-<script type="text/javascript">includeLatestJQuery("msgcntr");</script>
-<script type="text/javascript" src="/library/js/jquery/tablesorter/2.0.3/jquery.tablesorter-2.0.3.min.js"></script>
-<f:verbatim>
+<script>includeLatestJQuery("msgcntr");</script>
+<script>includeWebjarLibrary('jquery.tablesorter');</script>
+
  <%
   	String thisId = request.getParameter("panel");
   	if (thisId == null) 
@@ -24,7 +19,7 @@
     	thisId = "Main" + org.sakaiproject.tool.cover.ToolManager.getCurrentPlacement().getId();
  	}
 %>
-<script type="text/javascript">
+<script>
 
 //this function (setupTableParsers) setting has to be in the jsp page b/c of the msgs.syn_no_messages string.
 var SynMainLite = SynMainLite || {};
@@ -217,10 +212,8 @@ function mySetMainFrameHeightViewCell(id)
 	}
 }
 </script> 
- 
- 
- </f:verbatim>
-<sakai:script contextBase="/messageforums-tool" path="/js/synopticLite.js"/>
+
+<script src="/messageforums-tool/js/synopticLite.js"></script>
 <link rel="stylesheet" type="text/css" href="css/TableSorter.css" />
 <link rel="stylesheet" type="text/css" href="css/msgcntr.css" />
 
@@ -243,7 +236,7 @@ function mySetMainFrameHeightViewCell(id)
 		  	<f:verbatim>
 	 			<div class="hideInfo" style="display: none;"> 			
 	 		</f:verbatim> 
-				<h:outputText styleClass="information" value="#{msgs.syn_hide_info}"/><h:outputText styleClass="highlight" value="#{msgs.syn_hide_info_hidden_msg}"/>
+				<h:outputText styleClass="instruction" value="#{msgs.syn_hide_info}"/><h:outputText styleClass="sak-banner-info" value="#{msgs.syn_hide_info_hidden_msg}"/>
 		  	<f:verbatim>
 		  		</div>
 		  	</f:verbatim>
@@ -351,12 +344,10 @@ function mySetMainFrameHeightViewCell(id)
 		 		</t:dataTable>
 		 	</t:div>
 		 	
-	 		<f:verbatim>
-	 			<div class="optionsTable" style="display: none;"> 			
-	 			<br>
-	 			<br>
-	 		</f:verbatim>
-	 		<h:commandButton id="update" value="#{msgs.syn_update}" action="#{mfSynopticBeanLite.proccessActionSaveChanges}"/>	 		
+			<f:verbatim>
+				<div class="act optionsTable" style="display: none;">
+			</f:verbatim>
+			<h:commandButton id="update" value="#{msgs.syn_update}" action="#{mfSynopticBeanLite.proccessActionSaveChanges}" styleClass="active" />
 	 		<f:verbatim>
 	 			<input type="button" id="cancel" value='</f:verbatim><h:outputText value="#{msgs.syn_cancel}"/><f:verbatim>' onclick="$('.optionsTable').fadeOut(resize);$('.optionLink').parent().parent().toggle();SynMainLite.resetCheckboxes();$('.hideInfo').fadeOut();if(SynMainLite.getCount() == 1){$('.noActivity').fadeIn();$('.workspaceTable').fadeOut();};">
 	 		</f:verbatim> 		
@@ -426,7 +417,7 @@ function mySetMainFrameHeightViewCell(id)
 
     </h:form> 
     
-	<script type="text/javascript">
+	<script>
 		//Put this code in the jsp page since IE8 was having trouble with $(document).ready() function.
 		SynMainLite.setupTableParsers();
 		SynMainLite.setupTableHeaders();

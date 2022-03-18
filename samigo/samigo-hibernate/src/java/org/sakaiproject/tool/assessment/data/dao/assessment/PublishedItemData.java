@@ -32,8 +32,12 @@ import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.Set;
 
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+
+import org.apache.commons.lang3.BooleanUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.tool.assessment.data.dao.grading.ItemGradingData;
 import org.sakaiproject.tool.assessment.data.dao.shared.TypeD;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AnswerIfc;
@@ -53,6 +57,7 @@ public class PublishedItemData
   private static final long serialVersionUID = 7526471155622776147L;
 
   private Long itemId;
+  private Long originalItemId;
   private String itemIdString;
   private SectionDataIfc section;
   private Integer sequence;
@@ -72,6 +77,7 @@ public class PublishedItemData
   private Date createdDate;
   private String lastModifiedBy;
   private Date lastModifiedDate;
+  @Getter private Boolean isExtraCredit = Boolean.FALSE;
   private Set itemTextSet;
   private Set itemMetaDataSet;
   private Set itemFeedbackSet;
@@ -166,6 +172,43 @@ public class PublishedItemData
     this.itemHash = itemHash;
   }
 
+  public PublishedItemData(SectionDataIfc section, Integer sequence,
+                  Integer duration, String instruction, String description,
+                  Long typeId, String grade, Double score, Boolean scoreDisplayFlag, Double discount, Double minScore, String hint,
+                  Boolean hasRationale, Integer status, String createdBy,
+                  Date createdDate, String lastModifiedBy,
+                  Date lastModifiedDate,
+                  Set itemTextSet, Set itemMetaDataSet, Set itemFeedbackSet,
+                  Integer triesAllowed, Boolean partialCreditFlag, String hash, String itemHash,
+                  Long originalItemId) {
+    this.section = section;
+    this.sequence = sequence;
+    this.duration = duration;
+    this.instruction = instruction;
+    this.description = description;
+    this.typeId = typeId;
+    this.grade = grade;
+    this.score = score;
+    this.scoreDisplayFlag = scoreDisplayFlag;
+    this.discount = discount;
+    this.hint = hint;
+    this.hasRationale = hasRationale;
+    this.status = status;
+    this.createdBy = createdBy;
+    this.createdDate = createdDate;
+    this.lastModifiedBy = lastModifiedBy;
+    this.lastModifiedDate = lastModifiedDate;
+    this.itemTextSet = itemTextSet;
+    this.itemMetaDataSet = itemMetaDataSet;
+    this.itemFeedbackSet = itemFeedbackSet;
+    this.triesAllowed = triesAllowed;
+    this.partialCreditFlag=partialCreditFlag;
+    this.minScore = minScore;
+    this.hash = hash;
+    this.itemHash = itemHash;
+    this.originalItemId = originalItemId;
+  }
+
   public Long getItemId() {
     return this.itemId;
   }
@@ -175,12 +218,24 @@ public class PublishedItemData
     setItemIdString(itemId.toString());
   }
 
+  public void setIsExtraCredit(Boolean extraCredit) {
+    this.isExtraCredit = BooleanUtils.toBoolean(extraCredit);
+  }
+
   public String getItemIdString() {
     return this.itemIdString;
   }
 
   public void setItemIdString(String itemIdString) {
     this.itemIdString = itemIdString;
+  }
+
+  public Long getOriginalItemId() {
+    return this.originalItemId;
+  }
+
+  public void setOriginalItemId(Long originalItemId) {
+    this.originalItemId = originalItemId;
   }
 
   public SectionDataIfc getSection() {
@@ -362,7 +417,7 @@ public class PublishedItemData
 
   public Set<ItemTagIfc> getItemTagSet() { return itemTagSet; }
 
-  public void setItemTagSet(Set<ItemTagIfc> itemTagSet) { this.itemTagSet = itemTagSet; this.tagListToJsonString = convertTagListToJsonString(itemTagSet);}
+  public void setItemTagSet(Set<ItemTagIfc> itemTagSet) { this.itemTagSet = itemTagSet; }
 
   public Set getItemFeedbackSet() {
     return itemFeedbackSet;
@@ -1058,6 +1113,10 @@ public class PublishedItemData
 	  return getItemMetaDataByLabel(ItemMetaDataIfc.IMAGE_MAP_SRC);
   }
 
+  public String getImageMapAltText() {
+      return getItemMetaDataByLabel(ItemMetaDataIfc.IMAGE_MAP_ALT_TEXT);
+  }
+
  public Double getMinScore() {
          return minScore;
  }
@@ -1089,10 +1148,6 @@ public class PublishedItemData
   }
 
   public String getTagListToJsonString() {
-    return this.tagListToJsonString;
-  }
-
-  public void setTagListToJsonString(String tagListToJsonString) {
-    this.tagListToJsonString = tagListToJsonString;
+    return convertTagListToJsonString(itemTagSet);
   }
 }

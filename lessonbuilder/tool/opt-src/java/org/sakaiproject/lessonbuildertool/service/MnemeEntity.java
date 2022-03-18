@@ -19,7 +19,6 @@ package org.sakaiproject.lessonbuildertool.service;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -284,28 +283,6 @@ public class MnemeEntity implements LessonEntity, QuizEntity {
 	if (assessment == null)
 	    return null;
 	return assessment.getDates().getDueDate();
-    }
-
-    // the following methods all take references. So they're in effect static.
-    // They ignore the entity from which they're called.
-    // The reason for not making them a normal method is that many of the
-    // implementations seem to let you set access control and find submissions
-    // from a reference, without needing the actual object. So doing it this
-    // way could save some database activity
-
-    // access control
-    public boolean addEntityControl(String siteId, String groupId) throws IOException {
-	return true;
-    }
-
-    public boolean removeEntityControl(String siteId, String groupId) throws IOException {
-	return true;
-    }
-
-    // submission
-    // do we need the data from submission?
-    public boolean needSubmission(){
-	return true;
     }
 
     public LessonSubmission getSubmission(String user) {

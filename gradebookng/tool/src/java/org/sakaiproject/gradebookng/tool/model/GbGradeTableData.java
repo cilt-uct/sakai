@@ -30,6 +30,10 @@ import org.sakaiproject.service.gradebook.shared.GradebookInformation;
 import org.sakaiproject.service.gradebook.shared.SortType;
 import org.sakaiproject.tool.gradebook.Gradebook;
 
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+
+@EqualsAndHashCode @Getter
 public class GbGradeTableData {
 	private List<Assignment> assignments;
 	private List<GbStudentGradeInfo> grades;
@@ -39,8 +43,11 @@ public class GbGradeTableData {
 	private GbRole role;
 	private Map<String, String> toolNameToIconCSS;
 	private String defaultIconCSS;
+	private boolean isUserAbleToEditAssessments;
 	private Map<String, Double> courseGradeMap;
+	private Map<String, Boolean> hasAssociatedRubricMap;
 	private boolean isStudentNumberVisible;
+	private boolean isSectionsVisible;
 
 	public GbGradeTableData(final GradebookNgBusinessService businessService,
 			final GradebookUiSettings settings) {
@@ -61,6 +68,7 @@ public class GbGradeTableData {
 			throw new RuntimeException(e);
 		}
 
+		isUserAbleToEditAssessments = businessService.isUserAbleToEditAssessments();
 		assignments = businessService.getGradebookAssignments(sortBy);
 		stopwatch.time("getGradebookAssignments", stopwatch.getTime());
 
@@ -82,46 +90,10 @@ public class GbGradeTableData {
 		final Gradebook gradebook = businessService.getGradebook();
 		courseGradeMap = gradebook.getSelectedGradeMapping().getGradeMap();
 
+		hasAssociatedRubricMap = businessService.buildHasAssociatedRubricMap(assignments);
+
 		isStudentNumberVisible = businessService.isStudentNumberVisible();
-	}
 
-	public List<Assignment> getAssignments() {
-		return assignments;
-	}
-
-	public List<GbStudentGradeInfo> getGrades() {
-		return grades;
-	}
-
-	public List<CategoryDefinition> getCategories() {
-		return categories;
-	}
-
-	public GradebookInformation getGradebookInformation() {
-		return gradebookInformation;
-	}
-
-	public GradebookUiSettings getUiSettings() {
-		return uiSettings;
-	}
-
-	public GbRole getRole() {
-		return role;
-	}
-
-	public Map<String, String> getToolNameToIconCSS() {
-		return toolNameToIconCSS;
-	}
-
-	public String getDefaultIconCSS() {
-		return defaultIconCSS;
-	}
-
-	public Map<String, Double> getCourseGradeMap() {
-		return courseGradeMap;
-	}
-
-	public boolean isStudentNumberVisible() {
-		return isStudentNumberVisible;
+		isSectionsVisible = businessService.isSectionsVisible();
 	}
 }

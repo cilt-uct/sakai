@@ -51,8 +51,10 @@ import org.sakaiproject.tool.assessment.ui.bean.author.AssessmentBean;
 import org.sakaiproject.tool.assessment.ui.bean.author.AuthorBean;
 import org.sakaiproject.tool.assessment.ui.bean.author.PublishRepublishNotificationBean;
 import org.sakaiproject.tool.assessment.ui.bean.author.PublishedAssessmentSettingsBean;
+import org.sakaiproject.tool.assessment.ui.bean.authz.AuthorizationBean;
 import org.sakaiproject.tool.assessment.ui.bean.delivery.DeliveryBean;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
+import org.sakaiproject.tool.assessment.util.TextFormat;
 import org.sakaiproject.util.ResourceLoader;
 
 @Slf4j
@@ -64,7 +66,7 @@ public class RepublishAssessmentListener implements ActionListener {
 	    IntegrationContextFactory.getInstance().isIntegrated();
 	
 	private CalendarServiceHelper calendarService = IntegrationContextFactory.getInstance().getCalendarServiceHelper();
-	private ResourceLoader rl= new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AssessmentSettingsMessages");
+	private static final ResourceLoader rl = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AssessmentSettingsMessages");
 	  
 	public void processAction(ActionEvent ae) throws AbortProcessingException {
 		AssessmentBean assessmentBean = (AssessmentBean) ContextUtil
@@ -83,6 +85,7 @@ public class RepublishAssessmentListener implements ActionListener {
 		publishedAssessmentService.saveAssessment(assessment);
 
 		AuthorBean author = (AuthorBean) ContextUtil.lookupBean("author");
+		AuthorizationBean authorization = (AuthorizationBean) ContextUtil.lookupBean("authorization");
 		// If there are submissions, need to regrade them
 		if (author.getIsRepublishAndRegrade() && hasGradingData) {
 			regradeRepublishedAssessment(publishedAssessmentService, assessment);
@@ -99,8 +102,8 @@ public class RepublishAssessmentListener implements ActionListener {
 		PublishAssessmentListener publishAssessmentListener = new PublishAssessmentListener();
 		String subject = publishRepublishNotification.getNotificationSubject();
 		String notificationMessage = publishAssessmentListener.getNotificationMessage(publishRepublishNotification, publishedAssessmentSettings.getTitle(), publishedAssessmentSettings.getReleaseTo(), publishedAssessmentSettings.getStartDateString(), publishedAssessmentSettings.getPublishedUrl(),
-				publishedAssessmentSettings.getReleaseToGroupsAsString(), publishedAssessmentSettings.getDueDateString(), publishedAssessmentSettings.getTimedHours(), publishedAssessmentSettings.getTimedMinutes(), 
-				publishedAssessmentSettings.getUnlimitedSubmissions(), publishedAssessmentSettings.getSubmissionsAllowed(), publishedAssessmentSettings.getScoringType(), publishedAssessmentSettings.getFeedbackDelivery(), publishedAssessmentSettings.getFeedbackDateString());
+				publishedAssessmentSettings.getDueDateString(), publishedAssessmentSettings.getTimedHours(), publishedAssessmentSettings.getTimedMinutes(), 
+				publishedAssessmentSettings.getUnlimitedSubmissions(), publishedAssessmentSettings.getSubmissionsAllowed(), publishedAssessmentSettings.getScoringType(), publishedAssessmentSettings.getFeedbackDelivery(), publishedAssessmentSettings.getFeedbackDateString(), publishedAssessmentSettings.getFeedbackEndDateString(), publishedAssessmentSettings.getFeedbackScoreThreshold());
 		if (publishRepublishNotification.getSendNotification()) {
 		    publishAssessmentListener.sendNotification(assessment, publishedAssessmentService, subject, notificationMessage, publishedAssessmentSettings.getReleaseTo());
 		}
@@ -108,7 +111,7 @@ public class RepublishAssessmentListener implements ActionListener {
 		GradingService gradingService = new GradingService();
 		AssessmentService assessmentService = new AssessmentService();
 		AuthorActionListener authorActionListener = new AuthorActionListener();
-		authorActionListener.prepareAssessmentsList(author, assessmentService, gradingService, publishedAssessmentService);
+		authorActionListener.prepareAssessmentsList(author, authorization, assessmentService, gradingService, publishedAssessmentService);
 		
 		// Tell AuthorBean that we just published an assessment
 		// This will allow us to jump directly to published assessments tab
@@ -184,19 +187,22 @@ public class RepublishAssessmentListener implements ActionListener {
 			Integer scoringType = evaluation.getScoringType();
 			if (evaluation.getToGradeBook() != null	&& evaluation.getToGradeBook().equals(EvaluationModelIfc.TO_DEFAULT_GRADEBOOK.toString())) {
 
-				Long categoryId = null;
+				String assessmentName = TextFormat.convertPlaintextToFormattedTextNoHighUnicode(assessment.getTitle().trim());
+				boolean gbItemExists = false;
 				try {
-					log.debug("before gbsHelper.removeGradebook()");
-					categoryId = gbsHelper.getExternalAssessmentCategoryId(GradebookFacade.getGradebookUId(), assessment.getPublishedAssessmentId().toString(), g);
-					gbsHelper.removeExternalAssessment(GradebookFacade.getGradebookUId(), assessment.getPublishedAssessmentId().toString(), g);
+					gbItemExists = gbsHelper.isAssignmentDefined(assessmentName, g);
 				} catch (Exception e1) {
-					// Should be the external assessment doesn't exist in GB. So we quiet swallow the exception. Please check the log for the actual error.
-					log.info("Exception thrown in updateGB():" + e1.getMessage());
+					log.info("assessment does not exist: {}", assessmentName);
 				}
 				
 				try {
-					log.debug("before gbsHelper.addToGradebook()");
-					gbsHelper.addToGradebook((PublishedAssessmentData) assessment.getData(), categoryId, g);
+					if (!gbItemExists) {
+						log.debug("before gbsHelper.addToGradebook()");
+						gbsHelper.addToGradebook((PublishedAssessmentData) assessment.getData(), null, g);
+					} else {
+						log.debug("before gbsHelper.updateGradebook()");
+						gbsHelper.updateGradebook((PublishedAssessmentData) assessment.getData(), g);
+					}
 					
 					// any score to copy over? get all the assessmentGradingData and copy over
 					GradingService gradingService = new GradingService();
@@ -209,11 +215,11 @@ public class RepublishAssessmentListener implements ActionListener {
 						list = gradingService.getLastSubmittedOrGradedAssessmentGradingList(assessment.getPublishedAssessmentId());
 					}
 					
-					log.debug("list size =" + list.size());
+					log.debug("list size = {}", list.size());
 					for (int i = 0; i < list.size(); i++) {
 						try {
 							AssessmentGradingData ag = (AssessmentGradingData) list.get(i);
-							log.debug("ag.scores " + ag.getTotalAutoScore());
+							log.debug("ag.scores={}", ag.getTotalAutoScore());
 							// Send the average score if average was selected for multiple submissions
 							if (scoringType.equals(EvaluationModelIfc.AVERAGE_SCORE)) {
 								// status = 5: there is no submission but grader update something in the score page

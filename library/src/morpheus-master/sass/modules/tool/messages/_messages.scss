@@ -16,17 +16,16 @@
 
  	.searchNav{
  		.button_search{
- 			margin: 0 0.5em;
- 			padding: 5px 10px 5px 12px;
+ 			margin: 0 0 0 $standard-space;
  		}
  	}
 
  	#adv_input{
- 		background: darken( $tool-background-color, 5% );
+ 		background: var(--sakai-color-gray--lighter-7);
  		margin: 1em 0em 1em 0em;
  		padding: 0 0 1em 0;
  		.header{
- 			background: darken( $tool-background-color, 10% );
+ 			background: var(--sakai-color-gray--lighter-7);
  			display: block;
  			font-size: 1em;
  			font-weight: 600;
@@ -71,19 +70,17 @@
  		h1{
  			margin: 2em 0 0.8em 0;
  			padding: 0 0 0.5em 0;
- 			border-bottom: 1px solid darken( $tool-background-color, 10% );
+ 			border-bottom: 1px solid var(--sakai-border-color);
  		}
  		h2{
- 			border-bottom: 1px solid darken( $tool-background-color, 10% );
+ 			border-bottom: 1px solid var(--sakai-border-color);
  			margin: 2em 0 0.8em 0;
  			padding: 0 0 0.5em 0;
  		}
  	}
  	
  	#prefs_pvt_form{
- 		&\:pvtmsgs{
- 			max-width: 1200px;
- 			
+ 		&\:pvtmsgs, &\:threaded_pvtmsgs{
  			th{
  				min-width: 32px;
  			}
@@ -170,4 +167,42 @@
 	    }
 	}
 
+	.dataTable {
+		thead {
+			.sorting:after {
+				opacity: 1;
+				color: var(--sakai-text-color-dimmed);
+			}
+			.sorting_asc, .sorting_desc {
+				a {
+					position: relative;
+					margin-right: 11px;
+
+					&::after {
+						content: " ";
+						width: 11px;
+						height: 11px;
+						position: absolute;
+						bottom: 2px;
+						right: -14px;
+					}
+				}
+			}
+
+			.sorting_asc {
+				a::after {
+					background: url(/library/image/sakai/sortascending.gif?panel=Main);
+				}
+			}
+
+			.sorting_desc {
+				a::after {
+					background: url(/library/image/sakai/sortdescending.gif?panel=Main);
+				}
+			}
+		}
+	}
+	.ToggleBulkDisabled {
+		color: var(--sakai-text-color-disabled);
+	}
 }

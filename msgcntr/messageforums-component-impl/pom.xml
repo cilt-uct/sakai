@@ -4,16 +4,11 @@
   <parent>
     <groupId>org.sakaiproject.msgcntr</groupId>
     <artifactId>msgcntr</artifactId>
-    <version>12.5</version>
+    <version>21-SNAPSHOT</version>
   </parent>
   <name>Sakai Message Forums Component Implementation</name>
   <groupId>org.sakaiproject.msgcntr</groupId>
   <artifactId>messageforums-component-impl</artifactId>
-  <organization>
-    <name>Sakai Project</name>
-    <url>http://sakaiproject.org/</url>
-  </organization>
-  <inceptionYear>2005</inceptionYear>
   <packaging>sakai-component</packaging>
   <properties>
     <deploy.target>components</deploy.target>
@@ -80,12 +75,12 @@
       <artifactId>commons-codec</artifactId>
     </dependency>
     <dependency>
-      <groupId>commons-collections</groupId>
-      <artifactId>commons-collections</artifactId>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-collections4</artifactId>
     </dependency>
     <dependency>
-        <groupId>com.sun.mail</groupId>
-        <artifactId>javax.mail</artifactId>
+      <groupId>com.sun.mail</groupId>
+      <artifactId>jakarta.mail</artifactId>
     </dependency>
     <dependency>
     	<groupId>org.sakaiproject.search</groupId>
@@ -98,6 +93,18 @@
     <dependency>
         <groupId>org.sakaiproject.scheduler</groupId>
         <artifactId>scheduler-api</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.sakaiproject.kernel</groupId>
+        <artifactId>sakai-kernel-private</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.sakaiproject.rubrics</groupId>
+      <artifactId>rubrics-service-api</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-lang3</artifactId>
     </dependency>
   </dependencies>
   <build>

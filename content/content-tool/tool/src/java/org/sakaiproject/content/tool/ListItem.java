@@ -63,6 +63,7 @@ import org.sakaiproject.content.api.ResourceToolActionPipe;
 import org.sakaiproject.content.api.ResourceType;
 import org.sakaiproject.content.api.ResourceTypeRegistry;
 import org.sakaiproject.content.api.ServiceLevelAction;
+import org.sakaiproject.content.copyright.api.CopyrightManager;
 import org.sakaiproject.content.cover.ContentHostingService;
 import org.sakaiproject.content.cover.ContentTypeImageService;
 import org.sakaiproject.content.metadata.logic.MetadataService;
@@ -89,10 +90,11 @@ import org.sakaiproject.time.api.Time;
 import org.sakaiproject.time.cover.TimeService;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.cover.UserDirectoryService;
-import org.sakaiproject.util.FormattedText;
 import org.sakaiproject.util.ParameterParser;
 import org.sakaiproject.util.ResourceLoader;
 import org.sakaiproject.util.Validator;
+import org.sakaiproject.util.api.FormattedText;
+import org.sakaiproject.util.comparator.GroupTitleComparator;
 
 /**
  * ListItem
@@ -145,17 +147,8 @@ public class ListItem
 	private static SecurityService securityService  = ComponentManager.get(SecurityService.class);
 	private static final org.sakaiproject.tool.api.ToolManager toolManager = (org.sakaiproject.tool.api.ToolManager) ComponentManager.get(org.sakaiproject.tool.api.ToolManager.class.getCanonicalName());
 
-	/** 
-	 ** Comparator for sorting Group objects
-	 **/
-	private static class GroupComparator implements Comparator {
-		public int compare(Object o1, Object o2) {
-			return ((Group)o1).getTitle().compareToIgnoreCase( ((Group)o2).getTitle() );
-		}
-	}
-	
 	// sort groups before display
-	private static GroupComparator groupComparator = new GroupComparator();
+	private static GroupTitleComparator groupComparator = new GroupTitleComparator();
 	
 	/**
 	 * @param entity
@@ -1608,34 +1601,6 @@ public class ListItem
 		this.notificationId = notificationId;
 	}
 
-	protected void captureCopyright(ParameterParser params, String index) 
-	{
-		// rights
-		String copyright = params.getString("copyright" + index);
-		if(copyright == null || copyright.trim().length() == 0)
-		{
-			// do nothing -- there must be no copyright dialog
-		}
-		else
-		{
-			this.copyrightInfo = copyright;
-			
-			String newcopyright = params.getString("newcopyright" + index);
-			
-			if(newcopyright == null || newcopyright.trim().length() == 0)
-			{
-				this.copyrightStatus = null;
-			}
-			else
-			{
-				this.copyrightStatus = newcopyright;
-			}
-			
-			boolean copyrightAlert = params.getBoolean("copyrightAlert" + index);
-			this.copyrightAlert = copyrightAlert;
-		}
-	}
-
 	protected void captureDescription(ParameterParser params, String index) 
 	{
 		// description
@@ -1643,7 +1608,7 @@ public class ListItem
 		if(description != null)
 		{
 			StringBuilder errorMessages = new StringBuilder();
-			description = FormattedText.processFormattedText(description, errorMessages);
+			description = ComponentManager.get(FormattedText.class).processFormattedText(description, errorMessages);
 			// what to do with errorMessages
 			if(errorMessages.length() > 0)
 			{
@@ -1665,7 +1630,9 @@ public class ListItem
 		captureCHHMountpoint(params, index);
 		captureDisplayName(params, index);
 		captureDescription(params, index);
-		captureCopyright(params, index);
+
+		(new CopyrightDelegate()).captureCopyright(params, this);
+
 		captureAccess(params, index);
 		captureAvailability(params, index);
 		if (isAdmin) {
@@ -3477,36 +3444,6 @@ public class ListItem
 		}
 	}
 
-
-	protected void setCopyrightOnEntity(ResourcePropertiesEdit props) 
-	{
-		if(copyrightInfo == null || copyrightInfo.trim().length() == 0)
-		{
-			props.removeProperty(ResourceProperties.PROP_COPYRIGHT_CHOICE);
-		}
-		else
-		{
-			props.addProperty (ResourceProperties.PROP_COPYRIGHT_CHOICE, copyrightInfo);
-		}
-		if(copyrightStatus == null || copyrightStatus.trim().length() == 0)
-		{
-			props.removeProperty(ResourceProperties.PROP_COPYRIGHT);
-		}
-		else
-		{
-			props.addProperty (ResourceProperties.PROP_COPYRIGHT, copyrightStatus);
-		}
-		if (copyrightAlert)
-		{
-			props.addProperty (ResourceProperties.PROP_COPYRIGHT_ALERT, Boolean.TRUE.toString());
-		}
-		else
-		{
-			props.removeProperty (ResourceProperties.PROP_COPYRIGHT_ALERT);
-		}
-		
-	}
-
 	protected void setAccessOnEntity(GroupAwareEdit edit) 
 	{
 		try 
@@ -3585,7 +3522,9 @@ public class ListItem
 		setDisplayNameOnEntity(props);
 		setDescriptionOnEntity(props);
 		setConditionalReleaseOnEntity(props);
-		setCopyrightOnEntity(props);
+
+		(new CopyrightDelegate()).setCopyrightOnEntity(props, this);
+
 		setHtmlFilterOnEntity(props);
 		setAccessOnEntity(edit);
 		setAvailabilityOnEntity(props, edit);
@@ -3638,6 +3577,19 @@ public class ListItem
 	public void setCopyrightStatus(String copyrightStatus) 
 	{
 		this.copyrightStatus = copyrightStatus;
+	}
+
+	public boolean isCopyrightApplicable()
+	{
+		if (resourceType == null)
+		{
+			// return here to avoid possible false positive because if resourceType is null here,
+			// the call to getResourceTypeDef() will set it to type UPLOAD, which would return true
+			return false;
+		}
+
+		ResourceType rtype = getResourceTypeDef();
+		return rtype != null && rtype.hasRightsDialog();
 	}
 
 	public boolean isUserSite() 
@@ -3847,6 +3799,23 @@ public class ListItem
 		
 	    return alerts;
     }
+
+	/*
+	 * Provides server side copyright check (on top of name and date checks provided above)
+	 */
+	public List<String> checkRequiredProperties(CopyrightManager copyrightManager)
+	{
+		List<String> alerts = checkRequiredProperties();
+
+		// If require choice is set (sakai.properties), the item is copyright applicable (not folder, dropbox, etc.), and the selection is 'Please select...', give appropriate error message
+		boolean requireChoice = ServerConfigurationService.getBoolean(ResourcesAction.SAK_PROP_COPYRIGHT_REQ_CHOICE, ResourcesAction.SAK_PROP_COPYRIGHT_REQ_CHOICE_DEFAULT);
+		if (requireChoice && isCopyrightApplicable() && rb.getString(ResourcesAction.MSG_KEY_COPYRIGHT_REQ_CHOICE).equals(copyrightManager.getCopyrightString(copyrightInfo)))
+		{
+			alerts.add(rb.getString(ResourcesAction.MSG_KEY_COPYRIGHT_REQ_CHOICE_ERROR));
+		}
+
+		return alerts;
+	}
 
 	/**
      * @return the expandable

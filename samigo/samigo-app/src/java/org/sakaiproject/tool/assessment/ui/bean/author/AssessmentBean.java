@@ -28,10 +28,13 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.SessionScoped;
 import javax.faces.model.SelectItem;
 
 import lombok.extern.slf4j.Slf4j;
 import org.sakaiproject.component.cover.ServerConfigurationService;
+import org.sakaiproject.portal.util.PortalUtils;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentIfc;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.SectionDataIfc;
 import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
@@ -45,16 +48,11 @@ import org.sakaiproject.tool.assessment.ui.bean.delivery.ItemContentsBean;
 import org.sakaiproject.tool.assessment.ui.bean.delivery.SectionContentsBean;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 
-/**
- * @author rshastri
- *
- * To change the template for this generated type comment go to
- * Window&gt;Preferences&gt;Java&gt;Code Generation&gt;Code and Comments
- *
- * Used to be org.navigoproject.ui.web.asi.author.assessment.AssessmentActionForm.java
- */
- @Slf4j
- public class AssessmentBean  implements Serializable {
+/* For author: Assessment backing bean.*/
+@Slf4j
+@ManagedBean(name="assessmentBean")
+@SessionScoped
+public class AssessmentBean  implements Serializable {
 
   /** Use serialVersionUID for interoperability. */
   private final static long serialVersionUID = -630950053380808339L;
@@ -163,7 +161,7 @@ import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
    
    for(int i=0;i<this.sections.size();i++){
       SectionContentsBean sectionBean = (SectionContentsBean) sections.get(i);
-      List items = sectionBean.getItemContents();
+      List<ItemContentsBean> items = sectionBean.getItemContents();
 
       int itemsInThisSection =0;
       if (sectionBean.getSectionAuthorType().equals(SectionDataIfc.RANDOM_DRAW_FROM_QUESTIONPOOL)) {
@@ -177,9 +175,11 @@ import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 
       this.questionSize += itemsInThisSection;
       for (int j=0; j<itemsInThisSection; j++){
-          ItemContentsBean item = (ItemContentsBean)items.get(j);
+          ItemContentsBean item = items.get(j);
           if (item.getItemData().getScore()!=null){
-            this.totalScore += item.getItemData().getScore().doubleValue();
+            if(!item.getItemData().getIsExtraCredit()) {
+              this.totalScore += item.getItemData().getScore();
+            }
           }
       }
     }
@@ -342,5 +342,9 @@ import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 		  result =  assessmentService.isExportable(assessment);
 	  }
 	  return result;
+  }
+
+  public String getCDNQuery() {
+		return PortalUtils.getCDNQuery();
   }
 }

@@ -1,31 +1,48 @@
+/**
+ * Copyright (c) 2003-2020 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.assignment.impl;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.sakaiproject.assignment.api.AssignmentReferenceReckoner;
 import org.sakaiproject.assignment.api.AssignmentService;
 import org.sakaiproject.assignment.api.model.Assignment;
 import org.sakaiproject.assignment.api.model.AssignmentSubmission;
 import org.sakaiproject.assignment.api.model.AssignmentSubmissionSubmitter;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.content.util.ZipContentUtil;
+import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.entity.api.EntityManager;
 import org.sakaiproject.entity.api.Reference;
 import org.sakaiproject.entity.api.ResourceProperties;
-import org.sakaiproject.entitybroker.DeveloperHelperService;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserNotDefinedException;
 import org.sakaiproject.util.ResourceLoader;
-import org.sakaiproject.util.Validator;
 import org.sakaiproject.util.api.FormattedText;
 
 @Slf4j
@@ -38,7 +55,6 @@ public class EmailUtil {
     private static final String INDENT = "    ";
 
     @Setter private AssignmentService assignmentService;
-    @Setter private DeveloperHelperService developerHelperService;
     @Setter private EntityManager entityManager;
     @Setter private FormattedText formattedText;
     @Setter private ResourceLoader resourceLoader;
@@ -159,7 +175,10 @@ public class EmailUtil {
         buffer.append(resourceLoader.getString("noti.site.url")).append(" <a href=\"").append(siteUrl).append("\">").append(siteUrl).append("</a>").append(NEW_LINE);
         // assignment title and due date
         buffer.append(resourceLoader.getString("assignment.title")).append(" ").append(assignment.getTitle()).append(NEW_LINE);
-        buffer.append(resourceLoader.getString("noti.assignment.duedate")).append(" ").append(assignment.getDueDate().toString()).append(NEW_LINE).append(NEW_LINE);
+        if(!assignment.getHideDueDate()) {
+            String formattedDueDate = assignmentService.getUsersLocalDateTimeString(assignment.getDueDate());
+            buffer.append(resourceLoader.getString("noti.assignment.duedate")).append(" ").append(formattedDueDate).append(NEW_LINE).append(NEW_LINE);
+        }
         // submitter name and id
         String submitterNames = "";
         String submitterIds = "";
@@ -178,7 +197,7 @@ public class EmailUtil {
         }
         buffer.append(resourceLoader.getString("noti.student")).append(" ").append(submitterNames);
         if (submitterIds.length() != 0 && !isAnon) {
-            buffer.append("( ").append(submitterIds).append(" )");
+            buffer.append(" ( ").append(submitterIds).append(" )");
         }
         buffer.append(NEW_LINE).append(NEW_LINE);
 
@@ -186,12 +205,13 @@ public class EmailUtil {
         buffer.append(resourceLoader.getString("submission.id")).append(" ").append(submission.getId()).append(NEW_LINE);
 
         // submit time
-        buffer.append(resourceLoader.getString("noti.submit.time")).append(" ").append(submission.getDateSubmitted().toString()).append(NEW_LINE).append(NEW_LINE);
+	String formattedSubDate = assignmentService.getUsersLocalDateTimeString(submission.getDateSubmitted());
+        buffer.append(resourceLoader.getString("noti.submit.time")).append(" ").append(formattedSubDate).append(NEW_LINE).append(NEW_LINE);
 
         // submit text
         String text = StringUtils.trimToNull(submission.getSubmittedText());
         if (text != null) {
-            buffer.append(resourceLoader.getString("gen.submittedtext")).append(NEW_LINE).append(NEW_LINE).append(Validator.escapeHtmlFormattedText(text)).append(NEW_LINE).append(NEW_LINE);
+            buffer.append(resourceLoader.getString("gen.submittedtext")).append(NEW_LINE).append(NEW_LINE).append(formattedText.escapeHtmlFormattedText(text)).append(NEW_LINE).append(NEW_LINE);
         }
 
         // attachment if any
@@ -230,8 +250,9 @@ public class EmailUtil {
 
         String siteTitle;
         String siteUrl;
+        Site site = null;
         try {
-            Site site = siteService.getSite(context);
+            site = siteService.getSite(context);
             siteTitle = site.getTitle();
             siteUrl = site.getUrl();
         } catch (Exception e) {
@@ -243,9 +264,9 @@ public class EmailUtil {
         StringBuilder buffer = new StringBuilder();
         // site title and id
         buffer.append(resourceLoader.getString("noti.site.title")).append(" ").append(siteTitle).append(NEW_LINE);
-        buffer.append(resourceLoader.getString("noti.site.url")).append(" <a href=\"").append(siteUrl).append("\">").append(siteUrl).append("</a>").append(NEW_LINE);
+        buffer.append(resourceLoader.getString("noti.site.url")).append(" <a href=\"").append(siteUrl).append("\">").append(siteUrl).append("</a>").append(NEW_LINE).append(NEW_LINE);
         // notification text
-        String linkToToolInSite = "<a href=\"" + developerHelperService.getToolViewURL("sakai.assignment.grades", null, null, null) + "\">" + siteTitle + "</a>";
+        String linkToToolInSite = "<a href=\"" + getAssignmentUrl(assignment) + "\">" + siteTitle + "</a>";
         buffer.append(resourceLoader.getFormattedMessage("noti.releasegrade.text", assignment.getTitle(), linkToToolInSite));
 
         return buffer.toString();
@@ -270,7 +291,7 @@ public class EmailUtil {
         StringBuilder buffer = new StringBuilder();
         // site title and id
         buffer.append(resourceLoader.getString("noti.site.title")).append(" ").append(siteTitle).append(NEW_LINE);
-        buffer.append(resourceLoader.getString("noti.site.url")).append(" <a href=\"").append(siteUrl).append("\">").append(siteUrl).append("</a>").append(NEW_LINE);
+        buffer.append(resourceLoader.getString("noti.site.url")).append(" <a href=\"").append(siteUrl).append("\">").append(siteUrl).append("</a>").append(NEW_LINE).append(NEW_LINE);
         // notification text
         //Get the actual person that submitted, for a group submission just get the first person from that group (This is why the array is used)
         String userId = null;
@@ -280,8 +301,8 @@ public class EmailUtil {
             }
         }
 
-        String linkToToolInSite = "<a href=\"" + developerHelperService.getToolViewURL("sakai.assignment.grades", null, null, null) + "\">" + siteTitle + "</a>";
-        if (assignmentService.canSubmit(context, assignment, userId)) {
+        String linkToToolInSite = "<a href=\"" + getAssignmentUrl(assignment) + "\">" + siteTitle + "</a>";
+        if (assignmentService.canSubmit(assignment, userId)) {
             buffer.append(resourceLoader.getFormattedMessage("noti.releaseresubmission.text", assignment.getTitle(), linkToToolInSite));
         } else {
             buffer.append(resourceLoader.getFormattedMessage("noti.releaseresubmission.noresubmit.text", assignment.getTitle(), linkToToolInSite));
@@ -302,19 +323,43 @@ public class EmailUtil {
             }
             body.append(NEW_LINE);
 
-            feedbackAttachments.stream().map(feedbackAttachment -> entityManager.newReference(feedbackAttachment)).forEach(reference -> {
-                ResourceProperties properties = reference.getProperties();
-                String attachmentName = properties.getProperty(ResourceProperties.PROP_DISPLAY_NAME);
-                String attachmentSize = properties.getPropertyFormatted(ResourceProperties.PROP_CONTENT_LENGTH);
-                body.append("<a href=\"").append(reference.getUrl()).append("\">").append(attachmentName).append(" (").append(attachmentSize).append(")").append("</a>");
-                body.append(NEW_LINE);
-            });
+            feedbackAttachments.stream()
+                    .filter(Objects::nonNull)
+                    .map(feedbackAttachment -> entityManager.newReference(feedbackAttachment))
+                    .forEach(reference -> {
+                        ResourceProperties properties = reference.getProperties();
+                        if (properties != null) {
+                            String attachmentName = StringUtils.defaultIfBlank(properties.getProperty(ResourceProperties.PROP_DISPLAY_NAME), reference.getId());
+                            String attachmentSize = StringUtils.defaultString(properties.getPropertyFormatted(ResourceProperties.PROP_CONTENT_LENGTH));
+                            body.append("<a href=\"").append(reference.getUrl()).append("\">").append(attachmentName).append(" (").append(attachmentSize).append(")").append("</a>");
+                            body.append(NEW_LINE);
+                        }
+                    });
         }
         return body.toString();
     }
 
     public String getPlainTextNotificationMessage(AssignmentSubmission s, String submissionOrReleaseGrade) {
         return plainTextContent(s, submissionOrReleaseGrade);
+    }
+
+    private String getAssignmentUrl(Assignment assignment) {
+
+        String ref = AssignmentReferenceReckoner.reckoner()
+                        .id(assignment.getId())
+                        .context(assignment.getContext())
+                        .subtype("a")
+                        .reckon()
+                        .getReference();
+
+        Optional<String> url = entityManager.getUrl(ref, Entity.UrlType.PORTAL);
+
+        if (url.isPresent()) {
+            return url.get();
+        } else {
+            log.warn("Failed to get url for assignment {}", assignment.getId());
+            return "";
+        }
     }
 
     private String formatFileSize(long size) {

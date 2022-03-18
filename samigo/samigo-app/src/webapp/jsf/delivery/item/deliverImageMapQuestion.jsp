@@ -56,20 +56,17 @@ should be included in file importing DeliveryMessages
 		</div> 
 	</f:verbatim>
 </h:panelGroup>
-<f:verbatim> 
-	<div id="imageMapContainer_</f:verbatim><h:outputText value="#{part.number}_#{question.sequence}"/><f:verbatim>" class='studentImageContainer'>
-		<img id='img' src='</f:verbatim><h:outputText value="#{question.imageSrc}" /><f:verbatim>' />
-	</div>
-</f:verbatim>
-
-<f:verbatim><br /></f:verbatim>
+    <div id="imageMapContainer_<h:outputText value="#{part.number}_#{question.sequence}"/>" class='studentImageContainer'>
+        <img id='img' src='<h:outputText value="#{question.imageSrc}" />' alt='<h:outputText value="#{question.imageAltText}" />'>
+    </div>
+    <br />
 <h:panelGroup rendered="#{(delivery.actionString=='previewAssessment'
                 || delivery.actionString=='takeAssessment' 
                 || delivery.actionString=='takeAssessmentViaUrl')
              && delivery.navigation ne '1' && delivery.displayMardForReview }">
 <h:selectBooleanCheckbox value="#{question.review}" id="mark_for_review" />
 	<h:outputLabel for="mark_for_review" value="#{deliveryMessages.mark}" />
-	<h:outputLink title="#{assessmentSettingsMessages.whats_this_link}" value="#" onclick="javascript:window.open('../author/markForReviewPopUp.faces','MarkForReview','width=300,height=220,scrollbars=yes, resizable=yes');" >
+	<h:outputLink title="#{assessmentSettingsMessages.whats_this_link}" value="#" onclick="javascript:window.open('/samigo-app/jsf/author/markForReviewPopUp.faces','MarkForReview','width=350,height=280,scrollbars=yes, resizable=yes');event.preventDefault();" >
 		<h:outputText  value=" #{assessmentSettingsMessages.whats_this_link}"/>
 	</h:outputLink>
 </h:panelGroup>
@@ -77,7 +74,7 @@ should be included in file importing DeliveryMessages
 <!-- Donï¿½t needed KEY in this question type or key should be the image with some sqares on it -->
 <h:panelGroup rendered="#{delivery.feedback eq 'true'}">
   <h:panelGrid rendered="#{delivery.feedbackComponent.showCorrectResponse && !delivery.noFeedback=='true'}" >
-	<h:outputLabel for="answerKeyMC" styleClass="answerkeyFeedbackCommentLabel" value="#{deliveryMessages.ans_key}: " />
+	<h:outputLabel styleClass="answerkeyFeedbackCommentLabel" value="#{deliveryMessages.ans_key}: " />
 	
 	<h:dataTable value="#{question.matchingArray}" var="matching">
 		<h:column>
@@ -106,11 +103,9 @@ should be included in file importing DeliveryMessages
 			</h:column>
 		</h:dataTable>
 
-		<f:verbatim> 
-			<div id="answerImageMapContainer_</f:verbatim><h:outputText value="#{part.number}_#{question.sequence}"/><f:verbatim>" class='authorImageContainer'>
-				<img id='img' src='</f:verbatim><h:outputText value="#{question.imageSrc}" /><f:verbatim>' />
-			</div>
-		</f:verbatim>
+        <div id="answerImageMapContainer_<h:outputText value="#{part.number}_#{question.sequence}"/>" class='authorImageContainer'>
+            <img id='img' src='<h:outputText value="#{question.imageSrc}" />' alt='<h:outputText value="#{question.imageAltText}" />'/>
+         </div>
     </h:panelGroup>
     <h:outputText value=" "/>
   </h:panelGrid>

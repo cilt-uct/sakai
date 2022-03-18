@@ -1,6 +1,6 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://sakaiproject.org/jsf/messageforums" prefix="mf" %>
 <jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
 	<jsp:setProperty name="msgs" property="baseName" value="org.sakaiproject.api.app.messagecenter.bundle.Messages"/>	
@@ -9,24 +9,37 @@
   <sakai:view >
   	<h:form id="dfStatisticsForm" rendered="#{ForumTool.instructor}">
 <!-- discussionForum/statistics/dfStatisticsList.jsp-->
-       		<script type="text/javascript">includeLatestJQuery("msgcntr");</script>
-       		<sakai:script contextBase="/messageforums-tool" path="/js/sak-10625.js"/>
+       		<script>includeLatestJQuery("msgcntr");</script>
+       		<script src="/messageforums-tool/js/sak-10625.js"></script>
+			<script>
+				$(document).ready(function() {
+					var menuLink = $('#forumsStatisticsMenuLink');
+					var menuLinkSpan = menuLink.closest('span');
+					menuLinkSpan.addClass('current');
+					menuLinkSpan.html(menuLink.text());
+				});
+			</script>
+
+			<%@ include file="/jsp/discussionForum/menu/forumsMenu.jsp" %>
   		<h:panelGrid columns="2" width="100%" styleClass="navPanel  specialLink">
           <h:panelGroup>
-          	 <f:verbatim><h3></f:verbatim>
-			      <h:commandLink action="#{ForumTool.processActionHome}" value="#{msgs.cdfm_message_forums}" title=" #{msgs.cdfm_message_forums}"
-			      		rendered="#{ForumTool.messagesandForums}" />
-			      <h:commandLink action="#{ForumTool.processActionHome}" value="#{msgs.cdfm_discussion_forums}" title=" #{msgs.cdfm_discussion_forums}"
-			      		rendered="#{ForumTool.forumsTool}" />
-			      <f:verbatim><h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " /></f:verbatim>
-			      <h:outputText value="#{msgs.stat_list}" />
-			    <f:verbatim></h3></f:verbatim>
+			  <div class="page-header">
+			 	<f:verbatim><h1></f:verbatim>
+				  <h:commandLink action="#{ForumTool.processActionHome}" value="#{msgs.cdfm_message_forums}" title=" #{msgs.cdfm_message_forums}"
+						rendered="#{ForumTool.messagesandForums}" />
+				  <h:commandLink action="#{ForumTool.processActionHome}" value="#{msgs.cdfm_discussion_forums}" title=" #{msgs.cdfm_discussion_forums}"
+						rendered="#{ForumTool.forumsTool}" />
+				  <h:outputText value=" " />
+				  <h:outputText value=" / " /><h:outputText value=" " />
+				  <h:outputText value="#{msgs.stat_list}" />
+				<f:verbatim></h1></f:verbatim>
+			  </div>
           </h:panelGroup>
           <h:panelGroup styleClass="itemNav specialLink">        
           	<h:commandLink action="#{ForumTool.processActionStatistics}" value="#{msgs.cdfm_statistics} #{msgs.stat_byUser}" title="#{msgs.cdfm_statistics} #{msgs.stat_byUser}"/>
 			<h:outputText value=" #{msgs.cdfm_toolbar_separator} " />
-			<h:outputText value="#{msgs.cdfm_statistics} #{msgs.stat_byTopic}"/>				
-		  </h:panelGroup>		  
+			<h:outputText value="#{msgs.cdfm_statistics} #{msgs.stat_byTopic}"/>
+		  </h:panelGroup>
         </h:panelGrid>
   	
   	

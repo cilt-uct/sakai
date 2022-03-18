@@ -17,16 +17,14 @@
 
 package org.sakaiproject.commons.impl;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
+import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.sakaiproject.assignment.api.AssignmentService;
 import org.sakaiproject.assignment.api.AssignmentServiceConstants;
-import org.sakaiproject.authz.api.Role;
 import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.commons.api.datamodel.Post;
 import org.sakaiproject.commons.api.CommonsConstants;
@@ -141,18 +139,18 @@ public class CommonsSecurityManagerImpl implements CommonsSecurityManager {
     public List<Post> filter(List<Post> posts, String siteId, String embedder) {
 
         if (posts != null && posts.size() > 0) {
-            long now = (new Date()).getTime();
+            long now = Instant.now().toEpochMilli();
             posts = posts.stream().filter(p -> p.getReleaseDate() <= now).collect(Collectors.toList());
             if (embedder.equals(CommonsConstants.SITE)) {
                 boolean readAny = securityService.unlock(CommonsFunctions.POST_READ_ANY, "/site/" + siteId);
-                return (readAny) ? posts : new ArrayList();
+                return (readAny) ? posts : new ArrayList<>();
             } else if (embedder.equals(CommonsConstants.ASSIGNMENT)) {
                 boolean readAny = securityService.unlock(AssignmentServiceConstants.SECURE_ADD_ASSIGNMENT_SUBMISSION, "/site/" + siteId);
-                return (readAny) ? posts : new ArrayList();
-            } else if (embedder.equals(CommonsConstants.SOCIAL)) {
+                return (readAny) ? posts : new ArrayList<>();
+            } else if (embedder.equals(CommonsConstants.SOCIAL) || embedder.equals(CommonsConstants.SEARCH)) {
                 return posts;
             } else {
-                return new ArrayList();
+                return new ArrayList<>();
             }
         } else {
             return posts;

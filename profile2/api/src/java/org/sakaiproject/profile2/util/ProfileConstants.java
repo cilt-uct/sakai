@@ -103,7 +103,9 @@ public class ProfileConstants {
 	public static final String ONLINE_STATUS_OFFLINE_IMG = "/library/image/silk/bullet_black.png";
 	public static final String ONLINE_STATUS_AWAY_IMG = "/library/image/silk/bullet_yellow.png";
 
-	
+	//css classes for fontawsome icons
+	public static final String INFO_ICON = "infoIcon";
+
 	//profile picture settings for use in API and tool and their values for sakai.properties
 	//and the default if not specified or invalid one specified
 	public static final int PICTURE_SETTING_UPLOAD = 1;
@@ -217,6 +219,7 @@ public class ProfileConstants {
 	public static final boolean SAKAI_PROP_PROFILE2_PROFILE_STAFF_ENABLED = true; //profile2.profile.staff.enabled
 	public static final boolean SAKAI_PROP_PROFILE2_PROFILE_STUDENT_ENABLED = true; //profile2.profile.student.enabled
 	public static final boolean SAKAI_PROP_PROFILE2_PROFILE_INTERESTS_ENABLED = true; //profile2.profile.interests.enabled
+	public static final boolean SAKAI_PROP_PROFILE2_PROFILE_PRONUNCIATION_ENABLED = true; //profile2.profile.name.pronunciation.enabled
 	public static final boolean SAKAI_PROP_PROFILE2_OFFICIAL_IMAGE_ENABLED = false; //profile2.official.image.enabled
 	public static final boolean SAKAI_PROP_PROFILE2_GRAVATAR_IMAGE_ENABLED = true; //profile2.gravatar.image.enabled
 	public static final boolean SAKAI_PROP_PROFILE2_WALL_ENABLED = false; //profile2.wall.enabled
@@ -261,7 +264,7 @@ public class ProfileConstants {
 	 */
 	
 	//date format display
-	public static final String DEFAULT_DATE_FORMAT = "dd MMMM yyyy"; 
+	public static final String DEFAULT_DATE_FORMAT = "dd MM yyyy";
 	public static final String DEFAULT_DATE_FORMAT_HIDE_YEAR = "dd MMMM";
 	
 	//max number of connections to show per page
@@ -313,6 +316,7 @@ public class ProfileConstants {
 	public static final String EVENT_PROFILE_NEW = "profile.new";
 		
 	public static final String EVENT_PROFILE_INFO_UPDATE = "profile.info.update";
+	public static final String EVENT_PROFILE_NAME_PRONUN_UPDATE = "profile.name.pronunciation.update";
 	public static final String EVENT_PROFILE_CONTACT_UPDATE = "profile.contact.update";
 	public static final String EVENT_PROFILE_INTERESTS_UPDATE = "profile.interests.update";
 	public static final String EVENT_PROFILE_STAFF_UPDATE = "profile.staff.update";

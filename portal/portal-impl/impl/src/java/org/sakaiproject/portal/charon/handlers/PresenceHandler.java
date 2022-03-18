@@ -30,6 +30,7 @@ import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.portal.api.Portal;
 import org.sakaiproject.portal.api.PortalHandlerException;
+import org.sakaiproject.presence.api.PresenceService;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.cover.SiteService;
 import org.sakaiproject.tool.api.ActiveTool;
@@ -98,10 +99,10 @@ public class PresenceHandler extends BasePortalHandler
 		}
 		catch (PermissionException e)
 		{
-			// if not logged in, give them a chance
+			// if not logged in, just send a 401 dont attempt a relogin
 			if (session.getUserId() == null)
 			{
-				portal.doLogin(req, res, session, URLUtils.getSafePathInfo(req), false);
+				res.sendError(HttpServletResponse.SC_UNAUTHORIZED);
 			}
 			else
 			{
@@ -125,7 +126,7 @@ public class PresenceHandler extends BasePortalHandler
 		// site's presence...
 		// Note: the placement is transient, but will always have the same id
 		// and context based on the siteId
-		Placement placement = new org.sakaiproject.util.Placement(siteId + "-presence",
+		Placement placement = new org.sakaiproject.util.Placement(siteId + PresenceService.PRESENCE_SUFFIX,
 				tool.getId(), tool, null, siteId, null);
 
 		portal

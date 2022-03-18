@@ -27,10 +27,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
-import lombok.extern.slf4j.Slf4j;
-
-import org.apache.commons.lang.StringUtils;
-
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.authz.api.AuthzGroup;
 import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.authz.api.GroupNotDefinedException;
@@ -47,6 +44,9 @@ import org.sakaiproject.tool.api.ToolManager;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserNotDefinedException;
+import org.sakaiproject.util.comparator.UserSortNameComparator;
+
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class ComposeLogicImpl implements ComposeLogic
@@ -487,7 +487,7 @@ public class ComposeLogicImpl implements ComposeLogic
 				log.warn("Unable to retrieve user: " + userId);
 			}
 		}
-		Collections.sort(users, new UserComparator());
+		Collections.sort(users, new UserSortNameComparator());
 	}
 
 	/**
@@ -543,22 +543,4 @@ public class ComposeLogicImpl implements ComposeLogic
 		}
 	}
 
-	/**
-	 * Sorts users by last name, first name, display id
-	 * 
-	 * @author <a href="mailto:carl.hall@et.gatech.edu">Carl Hall</a>
-	 */
-	private static class UserComparator implements Comparator<User>
-	{
-		Collator collator = Collator.getInstance();
-
-		public int compare(User user1, User user2)
-		{
-			String displayName1 = user1.getLastName() + ", " + user1.getFirstName() + " ("
-					+ user1.getDisplayId() + ")";
-			String displayName2 = user2.getLastName() + ", " + user2.getFirstName() + " ("
-					+ user2.getDisplayId() + ")";
-			return collator.compare(displayName1, displayName2);
-		}
-	}
 }

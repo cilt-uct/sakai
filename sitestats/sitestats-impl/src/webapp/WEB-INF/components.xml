@@ -24,6 +24,7 @@
 		  class="org.sakaiproject.sitestats.impl.StatsManagerImpl"
 		  depends-on="org.sakaiproject.sitestats.api.DBHelper"
 		  init-method="init"
+		  destroy-method="destroy"
 		  lazy-init="true">
 
 		<!-- OPTIONS: -->
@@ -40,6 +41,9 @@
 
 		<!-- Enable/disable Resource statistics for Overview page -->
 		<!-- <property name="enableResourceStats" value="true" /> -->
+
+		<!-- Enable/disable Lessons statistics for Overview page -->
+		<!-- <property name="enableLessonsStats" value="true" /> -->
 
 		<!-- Enable/disable sakai-wide statistics -->
 		<!-- <property name="serverWideStatsEnabled" value="false" /> -->
@@ -80,6 +84,7 @@
 		<!-- Hibernate related -->
 		<property name="sessionFactory" ref="org.sakaiproject.sitestats.SiteStatsSessionFactory" />
 	</bean>
+
 	<!-- Transaction proxy: StatsManager -->
 	<bean id="org.sakaiproject.sitestats.api.StatsManager"
 		  class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean"
@@ -91,6 +96,42 @@
 		</property>
 	</bean>
 
+	<!-- DetailedEventsManager ______________________________________________________________________ -->
+	<bean id="org.sakaiproject.sitestats.api.event.detailed.DetailedEventsManager.target"
+		  class = "org.sakaiproject.sitestats.impl.event.detailed.DetailedEventsManagerImpl"
+		  lazy-init="true" init-method="init">
+
+		<!-- Sakai services -->
+		<property name="statMan" ref="org.sakaiproject.sitestats.api.StatsManager" />
+		<property name="asnServ" ref="org.sakaiproject.assignment.api.AssignmentService" />
+		<property name="regServ" ref="org.sakaiproject.sitestats.api.event.EventRegistryService"/>
+		<property name="siteServ" ref="org.sakaiproject.site.api.SiteService"/>
+		<property name="lsnServ" ref="org.sakaiproject.lessonbuildertool.model.SimplePageToolDao" />
+		<property name="forumMan" ref="org.sakaiproject.api.app.messageforums.ui.DiscussionForumManager" />
+		<property name="forumPermMan" ref="org.sakaiproject.api.app.messageforums.ui.UIPermissionsManager" />
+		<property name="contentHostServ" ref="org.sakaiproject.content.api.ContentHostingService" />
+		<property name="broker" ref="org.sakaiproject.entitybroker.EntityBroker" />
+		<property name="devHlprServ" ref="org.sakaiproject.entitybroker.DeveloperHelperService" />
+		<property name="pollServ" ref="org.sakaiproject.poll.logic.PollListManager" />
+		<property name="anncServ" ref="org.sakaiproject.announcement.api.AnnouncementService" />
+		<property name="calServ" ref="org.sakaiproject.calendar.api.CalendarService" />
+		<property name="podServ" ref="org.sakaiproject.api.app.podcasts.PodcastService" />
+		<property name="statsAuthz" ref="org.sakaiproject.sitestats.api.StatsAuthz" />
+		<property name="wikiAuthz" ref="uk.ac.cam.caret.sakai.rwiki.service.api.RWikiSecurityService" />
+		<property name="authzServ" ref="org.sakaiproject.authz.api.AuthzGroupService" />
+		<!-- Hibernate related -->
+		<property name="sessionFactory" ref="org.sakaiproject.sitestats.SiteStatsSessionFactory" />
+	</bean>
+	<!-- Transaction proxy: DetailedEventsManager -->
+	<bean id="org.sakaiproject.sitestats.api.event.detailed.DetailedEventsManager"
+		  class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean"
+		  lazy-init="true">
+		<property name="transactionManager" ref="org.sakaiproject.sitestats.SiteStatsTransactionManager" />
+		<property name="target" ref="org.sakaiproject.sitestats.api.event.detailed.DetailedEventsManager.target"/>
+		<property name="transactionAttributes">
+			<props><prop key="*">PROPAGATION_REQUIRED</prop></props>
+		</property>
+	</bean>
 
 	<!-- EventRegistryService ______________________________________________________________________________ -->
 	<bean id="org.sakaiproject.sitestats.api.event.EventRegistryService"
@@ -98,18 +139,13 @@
 		  lazy-init="true"
 		  init-method="init">
 
-		<!-- Event Registries -->
-		<property name="fileEventRegistry" ref="org.sakaiproject.sitestats.api.event.FileEventRegistry"/>
 		<property name="entityBrokerEventRegistry" ref="org.sakaiproject.sitestats.api.event.EntityBrokerEventRegistry"/>
-
-		<!-- Server Event Registry -->
-		<property name="serverEventIds" ref="org.sakaiproject.sitestats.api.serverevents.List" />
-
-		<!-- Sakai services -->
-		<property name="siteService" ref="org.sakaiproject.site.api.SiteService"/>
-		<property name="toolManager" ref="org.sakaiproject.tool.api.ToolManager"/>
+		<property name="fileEventRegistry" ref="org.sakaiproject.sitestats.api.event.FileEventRegistry"/>
 		<property name="memoryService" ref="org.sakaiproject.memory.api.MemoryService" />
 		<property name="serverConfigurationService" ref="org.sakaiproject.component.api.ServerConfigurationService" />
+		<property name="serverEventIds" ref="org.sakaiproject.sitestats.api.serverevents.List" />
+		<property name="siteService" ref="org.sakaiproject.site.api.SiteService"/>
+		<property name="toolManager" ref="org.sakaiproject.tool.api.ToolManager"/>
 	</bean>
 	<bean id="org.sakaiproject.sitestats.api.event.FileEventRegistry"
 		  class="org.sakaiproject.sitestats.impl.event.FileEventRegistry"
@@ -151,10 +187,10 @@
 		<property name="statsAuthz" ref="org.sakaiproject.sitestats.api.StatsAuthz" />
 		<property name="eventRegistryService" ref="org.sakaiproject.sitestats.api.event.EventRegistryService"/>
 		<property name="siteService" ref="org.sakaiproject.site.api.SiteService"/>
-		<property name="userService" ref="org.sakaiproject.user.api.UserDirectoryService"/>
-		<property name="contentService" ref="org.sakaiproject.content.api.ContentHostingService"/>
+		<property name="userDirectoryService" ref="org.sakaiproject.user.api.UserDirectoryService"/>
+		<property name="contentHostingService" ref="org.sakaiproject.content.api.ContentHostingService"/>
 		<property name="toolManager" ref="org.sakaiproject.tool.api.ToolManager"/>
-		<property name="timeService" ref="org.sakaiproject.time.api.TimeService" />
+		<property name="userTimeService" ref="org.sakaiproject.time.api.UserTimeService" />
 		<property name="eventTrackingService" ref="org.sakaiproject.event.api.EventTrackingService"/>
 		<property name="memoryService" ref="org.sakaiproject.memory.api.MemoryService" />
 		<property name="sessionFactory" ref="org.sakaiproject.sitestats.SiteStatsSessionFactory" />
@@ -182,7 +218,7 @@
 	<bean id="org.sakaiproject.sitestats.api.report.ReportDefEntityProducer"
 		  class="org.sakaiproject.sitestats.impl.report.ReportDefEntityProducer"
 		  init-method="init">
-		<!-- Sakai services -->
+		<property name="entityManager" ref="org.sakaiproject.entity.api.EntityManager"/>
 		<property name="reportManager" ref="org.sakaiproject.sitestats.api.report.ReportManager" />
 	</bean>
 
@@ -209,7 +245,7 @@
 
 		<!-- OPTIONS: -->
 		<!-- Enable/disable collect thread -->
-		<property name="collectThreadEnabled" value="false"/>
+		<property name="collectThreadEnabled" value="true"/>
 
 		<!-- Db update interval for collect thread -->
 		<property name="collectThreadUpdateInterval" value="4000"/>
@@ -268,10 +304,11 @@
 	<bean id="org.sakaiproject.sitestats.api.StatsAuthz"
 		  class="org.sakaiproject.sitestats.impl.StatsAuthzImpl"
 		  init-method="init">
+		<property name="functionManager" ref="org.sakaiproject.authz.api.FunctionManager"/>
 		<property name="securityService" ref="org.sakaiproject.authz.api.SecurityService"/>
-		<property name="userService" ref="org.sakaiproject.user.api.UserDirectoryService"/>
 		<property name="sessionManager" ref="org.sakaiproject.tool.api.SessionManager"/>
 		<property name="toolManager" ref="org.sakaiproject.tool.api.ToolManager"/>
+		<property name="statsManager" ref="org.sakaiproject.sitestats.api.StatsManager"/>
 	</bean>
 
 
@@ -309,7 +346,7 @@
 		<property name="sqlService" ref="org.sakaiproject.db.api.SqlService" />
 	</bean>
 	<bean id="org.sakaiproject.sitestats.api.StatsUpdateJobBeanWrapper"
-		  class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
+		  class="org.sakaiproject.component.app.scheduler.jobs.SpringStatefulJobBeanWrapper"
 		  init-method="init">
 		<property name="jobName" value="SiteStats Event Aggregator" />
 		<property name="beanId" value="org.sakaiproject.sitestats.api.StatsAggregateJob" />
@@ -325,7 +362,7 @@
 		<property name="eventRegistryService" ref="org.sakaiproject.sitestats.api.event.EventRegistryService"/>
 	</bean>
 	<bean id="org.sakaiproject.sitestats.api.ConvOldPrefsJobBeanWrapper"
-		  class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
+		  class="org.sakaiproject.component.app.scheduler.jobs.SpringStatefulJobBeanWrapper"
 		  init-method="init">
 		<property name="jobName" value="SiteStats old SST_PREFS table conversion" />
 		<property name="beanId" value="org.sakaiproject.sitestats.api.ConvOldPrefsJob" />
@@ -338,6 +375,7 @@
 		  class="org.sakaiproject.sitestats.impl.DBHelper"
 		  lazy-init="true"
 		  init-method="init">
+		<property name="serverConfigurationService" ref="org.sakaiproject.component.api.ServerConfigurationService"/>
 		<property name="sessionFactory" ref="org.sakaiproject.sitestats.SiteStatsSessionFactory" />
 	</bean>
 	<!-- Transaction proxy: ReportManager -->
@@ -390,6 +428,9 @@
 	</bean>
 	<bean id="org.sakaiproject.sitestats.api.SiteActivity"
 		  class="org.sakaiproject.sitestats.impl.SiteActivityImpl">
+	</bean>
+	<bean id="org.sakaiproject.sitestats.api.event.detailed.DetailedEvent"
+		  class="org.sakaiproject.sitestats.impl.DetailedEventImpl">
 	</bean>
 
 	<!-- server events -->

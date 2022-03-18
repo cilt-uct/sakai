@@ -15,16 +15,19 @@
  */
 package org.sakaiproject.gradebookng.tool.panels.importExport;
 
-import au.com.bytecode.opencsv.CSVWriter;
+import com.opencsv.CSVWriter;
 
 import java.io.File;
-import java.io.FileWriter;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.wicket.Component;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.ajax.form.AjaxFormComponentUpdatingBehavior;
@@ -35,7 +38,7 @@ import org.apache.wicket.markup.html.link.DownloadLink;
 import org.apache.wicket.model.LoadableDetachableModel;
 import org.apache.wicket.model.Model;
 import org.apache.wicket.util.time.Duration;
-
+import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.gradebookng.business.GbCategoryType;
 import org.sakaiproject.gradebookng.business.model.GbCourseGrade;
 import org.sakaiproject.gradebookng.business.model.GbGradeInfo;
@@ -46,9 +49,11 @@ import org.sakaiproject.gradebookng.business.util.FormatHelper;
 import org.sakaiproject.gradebookng.tool.model.GradebookUiSettings;
 import org.sakaiproject.gradebookng.tool.panels.BasePanel;
 import org.sakaiproject.service.gradebook.shared.Assignment;
+import org.sakaiproject.service.gradebook.shared.CategoryDefinition;
 import org.sakaiproject.service.gradebook.shared.CourseGrade;
-import org.sakaiproject.util.FormattedText;
+import org.sakaiproject.service.gradebook.shared.SortType;
 import org.sakaiproject.util.Validator;
+import org.sakaiproject.util.api.FormattedText;
 
 public class ExportPanel extends BasePanel {
 
@@ -57,6 +62,7 @@ public class ExportPanel extends BasePanel {
 	private static final String IGNORE_COLUMN_PREFIX = "#";
 	private static final String COMMENTS_COLUMN_PREFIX = "*";
 	private static final char CSV_SEMICOLON_SEPARATOR = ';';
+	private static final String BOM = "\uFEFF";
 
 	enum ExportFormat {
 		CSV
@@ -67,9 +73,11 @@ public class ExportPanel extends BasePanel {
 	boolean includeStudentName = true;
 	boolean includeStudentId = true;
 	boolean includeStudentNumber = false;
+	private boolean includeSectionMembership = false;
 	boolean includeStudentDisplayId = false;
 	boolean includeGradeItemScores = true;
 	boolean includeGradeItemComments = true;
+	boolean includeCategoryAverages = false;
 	boolean includeCourseGrade = false;
 	boolean includePoints = false;
 	boolean includeLastLogDate = false;
@@ -134,6 +142,16 @@ public class ExportPanel extends BasePanel {
 			}
 		});
 
+		add(new AjaxCheckBox("includeSectionMembership", Model.of(this.includeSectionMembership)) {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			protected void onUpdate(final AjaxRequestTarget ajaxRequestTarget) {
+				ExportPanel.this.includeSectionMembership = !ExportPanel.this.includeSectionMembership;
+				setDefaultModelObject(ExportPanel.this.includeSectionMembership);
+			}
+		});
+
 		add(new AjaxCheckBox("includeGradeItemScores", Model.of(this.includeGradeItemScores)) {
 			private static final long serialVersionUID = 1L;
 
@@ -175,6 +193,20 @@ public class ExportPanel extends BasePanel {
 			protected void onUpdate(final AjaxRequestTarget ajaxRequestTarget) {
 				ExportPanel.this.includeLastLogDate = !ExportPanel.this.includeLastLogDate;
 				setDefaultModelObject(ExportPanel.this.includeLastLogDate);
+			}
+		});
+		add(new AjaxCheckBox("includeCategoryAverages", Model.of(this.includeCategoryAverages)) {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			protected void onUpdate(final AjaxRequestTarget ajaxRequestTarget) {
+				ExportPanel.this.includeCategoryAverages = !ExportPanel.this.includeCategoryAverages;
+				setDefaultModelObject(ExportPanel.this.includeCategoryAverages);
+			}
+
+			@Override
+			public boolean isVisible() {
+				return ExportPanel.this.businessService.categoriesAreEnabled();
 			}
 		});
 		add(new AjaxCheckBox("includeCourseGrade", Model.of(this.includeCourseGrade)) {
@@ -272,27 +304,36 @@ public class ExportPanel extends BasePanel {
 			tempFile = File.createTempFile("gradebookTemplate", ".csv");
 
 			//CSV separator is comma unless the comma is the decimal separator, then is ;
-			try (FileWriter fw = new FileWriter(tempFile);
-					CSVWriter csvWriter = new CSVWriter(fw, ".".equals(FormattedText.getDecimalSeparator()) ? CSVWriter.DEFAULT_SEPARATOR : CSV_SEMICOLON_SEPARATOR)) {
-
+			try (OutputStreamWriter fstream = new OutputStreamWriter(new FileOutputStream(tempFile), StandardCharsets.ISO_8859_1.name())){
+				FormattedText formattedText = ComponentManager.get(FormattedText.class);
+				CSVWriter csvWriter = new CSVWriter(fstream, ".".equals(formattedText.getDecimalSeparator()) ? CSVWriter.DEFAULT_SEPARATOR : CSV_SEMICOLON_SEPARATOR, CSVWriter.DEFAULT_QUOTE_CHARACTER, CSVWriter.DEFAULT_ESCAPE_CHARACTER, CSVWriter.RFC4180_LINE_END);
+				
 				// Create csv header
 				final List<String> header = new ArrayList<>();
 				if (!isCustomExport || this.includeStudentId) {
 					header.add(getString("importExport.export.csv.headers.studentId"));
 				}
-				if (isCustomExport && this.includeStudentDisplayId) {
-					header.add(getString("importExport.export.csv.headers.studentDisplayId"));
-				}
 				if (!isCustomExport || this.includeStudentName) {
 					header.add(getString("importExport.export.csv.headers.studentName"));
 				}
+				if (isCustomExport && this.includeStudentDisplayId) {
+					header.add(String.join(" ", IGNORE_COLUMN_PREFIX, getString("importExport.export.csv.headers.studentDisplayId")));
+				}
 				if (isCustomExport && this.includeStudentNumber) {
-					header.add(String.join(" ", IGNORE_COLUMN_PREFIX, getString("importExport.export.csv.headers.studentNumber")));
+					header.add(String.join(" ", IGNORE_COLUMN_PREFIX, getString("column.header.studentNumber")));
+				}
+				if (isCustomExport && this.includeSectionMembership) {
+					header.add(String.join(" ", IGNORE_COLUMN_PREFIX, getString("column.header.section")));
 				}
 
 				// get list of assignments. this allows us to build the columns and then fetch the grades for each student for each assignment from the map
-				final List<Assignment> assignments = this.businessService.getGradebookAssignments();
-				
+				SortType sortBy = SortType.SORT_BY_SORTING;
+				if (this.businessService.categoriesAreEnabled()) {
+					sortBy = SortType.SORT_BY_CATEGORY;
+				}
+				final List<Assignment> assignments = this.businessService.getGradebookAssignments(sortBy);
+				final List<CategoryDefinition> categories = this.businessService.getGradebookCategories();
+
 				// no assignments, give a template
 				if (assignments.isEmpty()) {
 					// with points
@@ -307,17 +348,38 @@ public class ExportPanel extends BasePanel {
 					// ignore
 					header.add(String.join(" ", IGNORE_COLUMN_PREFIX, getString("importExport.export.csv.headers.example.ignore")));
 				}
+				else {
+					for (int i = 0; i < assignments.size(); i++) {
+						// Pull the next assignment to see if we need to print out a category name 
+						final Assignment a1 = assignments.get(i);
+						final Assignment a2 = ((i + 1) < assignments.size()) ? assignments.get(i + 1) : null;
 
-				// build column header
-				assignments.forEach(assignment -> {
-					final String assignmentPoints = FormatHelper.formatGradeForDisplay(assignment.getPoints().toString());
-					if (!isCustomExport || this.includeGradeItemScores) {
-						header.add(assignment.getName() + " [" + StringUtils.removeEnd(assignmentPoints, FormattedText.getDecimalSeparator() + "0") + "]");
+						final String assignmentPoints = FormatHelper.formatGradeForDisplay(a1.getPoints().toString());
+						if (!isCustomExport || this.includeGradeItemScores) {
+							header.add(a1.getName() + " [" + StringUtils.removeEnd(assignmentPoints, formattedText.getDecimalSeparator() + "0") + "]");
+						}
+						if (!isCustomExport || this.includeGradeItemComments) {
+							header.add(String.join(" ", COMMENTS_COLUMN_PREFIX, a1.getName()));
+						}
+						
+						if (isCustomExport && this.includeCategoryAverages
+								&& a1.getCategoryId() != null && (a2 == null || !a1.getCategoryId().equals(a2.getCategoryId()))) {
+							// Find the correct category in the ArrayList to extract the points
+							final CategoryDefinition cd = categories.stream().filter(cat -> a1.getCategoryId().equals(cat.getId())).findAny().orElse(null);
+							String catWeightString = "";
+							if (cd != null && this.businessService.getGradebookCategoryType() == GbCategoryType.WEIGHTED_CATEGORY) {
+								if (cd.getWeight() != null) {
+									catWeightString = "(" + FormatHelper.formatDoubleAsPercentage(cd.getWeight() * 100) + ")";
+								}
+							}
+
+							// Add the category name plus weight if available
+							header.add(String.join(" ", IGNORE_COLUMN_PREFIX, getString("label.category"), a1.getCategoryName(), catWeightString));
+
+						}
 					}
-					if (!isCustomExport || this.includeGradeItemComments) {
-						header.add(String.join(" ", COMMENTS_COLUMN_PREFIX, assignment.getName()));
-					}
-				});
+				}
+
 
 				if (isCustomExport && this.includePoints) {
 					header.add(String.join(" ", IGNORE_COLUMN_PREFIX, getString("importExport.export.csv.headers.points")));
@@ -352,23 +414,32 @@ public class ExportPanel extends BasePanel {
 					if (!isCustomExport || this.includeStudentId) {
 						line.add(studentGradeInfo.getStudentEid());
 					}
+					if (!isCustomExport || this.includeStudentName) {
+						line.add(FormatHelper.htmlUnescape(studentGradeInfo.getStudentLastName()) + ", " + FormatHelper.htmlUnescape(studentGradeInfo.getStudentFirstName()));
+					}
 					if (isCustomExport && this.includeStudentDisplayId) {
 						line.add(studentGradeInfo.getStudentDisplayId());
-					}
-					if (!isCustomExport || this.includeStudentName) {
-						line.add(studentGradeInfo.getStudentLastName() + ", " + studentGradeInfo.getStudentFirstName());
 					}
 					if (isCustomExport && this.includeStudentNumber)
 					{
 						line.add(studentGradeInfo.getStudentNumber());
 					}
-					if (!isCustomExport || this.includeGradeItemScores || this.includeGradeItemComments) {
-						assignments.forEach(assignment -> {
-							final GbGradeInfo gradeInfo = studentGradeInfo.getGrades().get(assignment.getId());
+					List<String> userSections = studentGradeInfo.getSections();
+					if (isCustomExport && this.includeSectionMembership) {
+						line.add((userSections.size() > 0) ? userSections.get(0) : getString("sections.label.none"));
+					}
+					if (!isCustomExport || this.includeGradeItemScores || this.includeGradeItemComments || this.includeCategoryAverages) {
+						final Map<Long, Double> categoryAverages = studentGradeInfo.getCategoryAverages();
+
+						for (int i = 0; i < assignments.size(); i++) {
+							final Assignment a1 = assignments.get(i);
+							final Assignment a2 = ((i + 1) < assignments.size()) ? assignments.get(i + 1) : null;
+							final GbGradeInfo gradeInfo = studentGradeInfo.getGrades().get(a1.getId());
+
 							if (gradeInfo != null) {
 								if (!isCustomExport || this.includeGradeItemScores) {
 									String grade = FormatHelper.formatGradeForDisplay(gradeInfo.getGrade());
-									line.add(StringUtils.removeEnd(grade, FormattedText.getDecimalSeparator() + "0"));
+									line.add(StringUtils.removeEnd(grade, formattedText.getDecimalSeparator() + "0"));
 								}
 								if (!isCustomExport || this.includeGradeItemComments) {
 									line.add(gradeInfo.getGradeComment());
@@ -382,7 +453,16 @@ public class ExportPanel extends BasePanel {
 									line.add(null);
 								}
 							}
-						});
+
+							if (isCustomExport && this.includeCategoryAverages
+									&& a1.getCategoryId() != null && (a2 == null || !a1.getCategoryId().equals(a2.getCategoryId()))) {
+								final Double average = categoryAverages.get(a1.getCategoryId());
+								
+								final String formattedAverage = FormatHelper.formatGradeForDisplay(average);
+								line.add(StringUtils.removeEnd(formattedAverage, formattedText.getDecimalSeparator() + "0"));
+							}
+
+						}
 					}
 
 					final GbCourseGrade gbCourseGrade = studentGradeInfo.getCourseGrade();
@@ -404,12 +484,13 @@ public class ExportPanel extends BasePanel {
 						if (courseGrade.getDateRecorded() == null) {
 							line.add(null);
 						} else {
-							line.add(FormatHelper.formatDateTime(courseGrade.getDateRecorded()));
+							line.add(this.businessService.formatDateTime(courseGrade.getDateRecorded()));
 						}
 					}
 
 					csvWriter.writeNext(line.toArray(new String[] {}));
 				});
+				csvWriter.close();
 			}
 		} catch (final IOException e) {
 			throw new RuntimeException(e);

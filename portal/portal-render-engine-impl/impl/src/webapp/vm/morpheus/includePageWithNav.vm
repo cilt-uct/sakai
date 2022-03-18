@@ -15,7 +15,7 @@
 
     #end ## END of IF ( $sitePages.pageNavToolsCount > 1 || ! $sitePages.pageMaxIfSingle )
 
-    <div class="Mrphs-pagebody #if ( $sitePages.hideBreadcrumbOnDesktop ) nyu-hide-breadcrumb-on-desktop #end">
+    <div class="Mrphs-pagebody">
         #parse("/vm/morpheus/snippets/siteStatus-snippet.vm")
 
         #parse("/vm/morpheus/includeSiteHierarchy.vm")

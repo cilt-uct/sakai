@@ -28,7 +28,6 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -46,6 +45,9 @@ import javax.servlet.ServletInputStream;
 
 import lombok.extern.slf4j.Slf4j;
 
+import org.sakaiproject.component.cover.ComponentManager;
+import org.sakaiproject.component.api.ServerConfigurationService;
+import org.sakaiproject.tool.api.SessionManager;
 import org.sakaiproject.tool.assessment.data.dao.grading.AssessmentGradingData;
 import org.sakaiproject.tool.assessment.data.dao.grading.ItemGradingData;
 import org.sakaiproject.tool.assessment.data.dao.grading.MediaData;
@@ -53,8 +55,6 @@ import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedItemData;
 import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedItemText;
 import org.sakaiproject.tool.assessment.services.assessment.PublishedAssessmentService;
 import org.sakaiproject.tool.assessment.services.GradingService;
-import org.sakaiproject.util.DateFormatterUtil;
-import org.sakaiproject.util.ResourceLoader;
 
 /**
  * <p>Title: Samigo</p>
@@ -73,8 +73,6 @@ public class UploadAudioMediaServlet extends HttpServlet
 	 */
 	private static final long serialVersionUID = 8389831837152012411L;
 
-	ResourceLoader rb = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.DeliveryMessages");
-
   public UploadAudioMediaServlet()
   {
   }
@@ -90,8 +88,28 @@ public class UploadAudioMediaServlet extends HttpServlet
   {
     boolean mediaIsValid = true;
     ServletContext context = super.getServletContext();
-    String repositoryPath = (String)context.getAttribute("FILEUPLOAD_REPOSITORY_PATH");
-    String saveToDb = (String)context.getAttribute("FILEUPLOAD_SAVE_MEDIA_TO_DB");
+    ServerConfigurationService serverConfigurationService = ComponentManager.get(ServerConfigurationService.class);
+    SessionManager sessionManager = ComponentManager.get(SessionManager.class);
+    String mediaParameter = req.getParameter("media");
+    String agentId  = req.getParameter("agent");
+
+    // A media parameter has this format jsf/upload_tmp/assessmentXX/questionYY/USEREID/audio_ZZ_WW, the 4th part is the userEid.
+    String mediaUser = null;
+    String[] mediaParts = mediaParameter.split("/");
+    if (mediaParts.length == 6) {
+        mediaUser = mediaParts[4];
+    } else {
+        res.sendError(HttpServletResponse.SC_FORBIDDEN, "You do not have permissions on the requested folder.");
+    }
+
+    // Check that there is a session, check the session user and agent matches, check the session userEid and media folder matches.
+    if (sessionManager.getCurrentSessionUserId() == null || 
+        !sessionManager.getCurrentSessionUserId().equals(agentId) ||
+        !sessionManager.getCurrentSession().getUserEid().equals(mediaUser) ) {
+        res.sendError(HttpServletResponse.SC_FORBIDDEN, "The assessment agent and the session user does not match.");
+    }
+
+    String repositoryPath = serverConfigurationService.getString("samigo.answerUploadRepositoryPath", "${sakai.home}/samigo/answerUploadRepositoryPath/");
 
     log.debug("req content length ="+req.getContentLength());
     log.debug("req content type ="+req.getContentType());
@@ -100,7 +118,7 @@ public class UploadAudioMediaServlet extends HttpServlet
     String suffix = req.getParameter("suffix");
     if (suffix == null || ("").equals(suffix))
       suffix = "au";
-    String mediaLocation = req.getParameter("media")+"."+suffix;
+    String mediaLocation = mediaParameter + "." + suffix;
     log.debug("****media location="+mediaLocation);
     JsonObject json = null;
 
@@ -135,7 +153,7 @@ public class UploadAudioMediaServlet extends HttpServlet
       // note that this delivery bean is empty. this is not the same one created for the
       // user during take assessment.
       try{
-        json = submitMediaAsAnswer(req, mediaLocation, saveToDb);
+        json = submitMediaAsAnswer(req, mediaLocation);
         log.info("Audio has been saved and submitted as answer to the question. Any old recordings have been removed from the system.");
       }
       catch (Exception ex){
@@ -309,8 +327,7 @@ public class UploadAudioMediaServlet extends HttpServlet
     return outputStream;
   }
 
-  private JsonObject submitMediaAsAnswer(HttpServletRequest req,
-                                   String mediaLocation, String saveToDb)
+  private JsonObject submitMediaAsAnswer(HttpServletRequest req, String mediaLocation)
     throws Exception{
     // read parameters passed in
     String mimeType = req.getContentType();
@@ -396,45 +413,26 @@ public class UploadAudioMediaServlet extends HttpServlet
     log.debug("****2. attemptsRemaining="+attemptsRemaining);
     log.debug("****3. itemGradingDataId="+itemGrading.getItemGradingId());
     // 3. save Media and fix up itemGrading
-    return saveMedia(attemptsRemaining, mimeType, agentId, mediaLocation, itemGrading, saveToDb, duration);
+    return saveMedia(attemptsRemaining, mimeType, agentId, mediaLocation, itemGrading, duration);
   }
 
-  private JsonObject saveMedia(int attemptsRemaining, String mimeType, String agent,
-                         String mediaLocation, ItemGradingData itemGrading,
-                        String saveToDb, String duration){
-    boolean SAVETODB = false;
-    if ("true".equals(saveToDb))
-      SAVETODB = true;
+  private JsonObject saveMedia(int attemptsRemaining, String mimeType, String agent, String mediaLocation, ItemGradingData itemGrading, String duration) {
 
-    log.debug("****4. saveMedia, saveToDB"+SAVETODB);
-    log.debug("****5. saveMedia, mediaLocation"+mediaLocation);
+    log.debug("****5. saveMedia, mediaLocation: {}", mediaLocation);
 
     GradingService gradingService = new GradingService();
     // 1. create a media record
     File media = new File(mediaLocation);
-    log.debug("**** SAVETODB=" + SAVETODB);
     MediaData mediaData = null;
 
-    if (SAVETODB)
-    { // put the byte[] in
-      byte[] mediaByte = getMediaStream(mediaLocation);
-      mediaData = new MediaData(itemGrading, mediaByte,
+    // put the byte[] in
+    byte[] mediaByte = getMediaStream(mediaLocation);
+    mediaData = new MediaData(itemGrading, mediaByte,
                                 Long.valueOf(mediaByte.length + ""),
                                 mimeType, "description", null,
-                                media.getName(), false, false, Integer.valueOf(1),
+                                media.getName(), false, Integer.valueOf(1),
                                 agent, new Date(),
                                 agent, new Date(), duration);
-    }
-    else
-    { // put the location in
-      mediaData = new MediaData(itemGrading, null,
-                                Long.valueOf(media.length() + ""),
-                                mimeType, "description", mediaLocation,
-                                media.getName(), false, false, Integer.valueOf(1),
-                                agent, new Date(),
-                                agent, new Date(), duration);
-
-    }
     Long mediaId = gradingService.saveMedia(mediaData);
     mediaData.setMediaId(mediaId);
     log.debug("mediaId=" + mediaId);
@@ -448,11 +446,9 @@ public class UploadAudioMediaServlet extends HttpServlet
 
     // 3. if saveToDB, remove file from file system
     try{
-      if (SAVETODB) {
-	boolean success = media.delete();
-	if (!success)
-		log.error ("Delete Failed for media. mediaid = " + mediaId);
-      }
+      boolean success = media.delete();
+      if (!success)
+      log.error ("Delete Failed for media. mediaid = " + mediaId);
     }
     catch(Exception e){
       log.warn(e.getMessage());
@@ -460,7 +456,8 @@ public class UploadAudioMediaServlet extends HttpServlet
     JsonObject json = new JsonObject();
     json.addProperty("mediaId", mediaId);
     json.addProperty("duration", mediaData.getDuration());
-    json.addProperty("createdDate", DateFormatterUtil.format(mediaData.getCreatedDate(), rb.getString("delivery_date_format"), rb.getLocale()));
+    json.addProperty("createdDate", mediaData.getCreatedDate().toString());
+    json.addProperty("attemptsRemaining", attemptsRemaining);
     return json;
   }
 

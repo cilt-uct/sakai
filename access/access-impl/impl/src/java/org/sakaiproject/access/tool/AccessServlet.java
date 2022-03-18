@@ -63,6 +63,7 @@ import org.sakaiproject.util.ParameterParser;
 import org.sakaiproject.util.ResourceLoader;
 import org.sakaiproject.util.Validator;
 import org.sakaiproject.util.Web;
+import org.sakaiproject.util.api.FormattedText;
 
 /**
  * <p>
@@ -116,6 +117,7 @@ public class AccessServlet extends VmServlet
 	protected EntityManager entityManager;
 	protected ActiveToolManager activeToolManager;
 	protected SessionManager sessionManager;
+	protected FormattedText formattedText;
 
 	/** init thread - so we don't wait in the actual init() call */
 	public class AccessServletInit extends Thread
@@ -157,6 +159,7 @@ public class AccessServlet extends VmServlet
 		entityManager = ComponentManager.get(EntityManager.class);
 		activeToolManager = ComponentManager.get(ActiveToolManager.class);
 		sessionManager = ComponentManager.get(SessionManager.class);
+		formattedText = ComponentManager.get(FormattedText.class);
 	}
 
 	/**
@@ -281,11 +284,12 @@ public class AccessServlet extends VmServlet
 			}
 
 			setVmReference("validator", new Validator(), req);
+			setVmReference("formattedText", formattedText, req);
 			setVmReference("props", props, req);
 			setVmReference("tlang", rb, req);
 
-			String acceptPath = Web.returnUrl(req, COPYRIGHT_ACCEPT + "?" + COPYRIGHT_ACCEPT_REF + "=" + Validator.escapeUrl(aRef.getReference()) + "&"
-					+ COPYRIGHT_ACCEPT_URL + "=" + Validator.escapeUrl(returnPath));
+			String acceptPath = Web.returnUrl(req, COPYRIGHT_ACCEPT + "?" + COPYRIGHT_ACCEPT_REF + "=" + formattedText.escapeUrl(aRef.getReference()) + "&"
+					+ COPYRIGHT_ACCEPT_URL + "=" + formattedText.escapeUrl(returnPath));
 
 			setVmReference("accept", acceptPath, req);
 			res.setContentType("text/html; charset=UTF-8");
@@ -311,7 +315,7 @@ public class AccessServlet extends VmServlet
 			accepted.add(aRef.getReference());
 
 			// redirect to the original URL
-			String returnPath =  Validator.escapeUrl( req.getParameter(COPYRIGHT_ACCEPT_URL) );
+			String returnPath =  formattedText.escapeUrl( req.getParameter(COPYRIGHT_ACCEPT_URL) );
 
 			try
 			{
@@ -370,12 +374,7 @@ public class AccessServlet extends VmServlet
 
 			// otherwise reject the request
 			log.debug("dispatch(): ref: " + ref.getReference(), e);
-			res.setStatus(HttpServletResponse.SC_FORBIDDEN);
-
-                        try {
-                            res.setContentType("text/html");
-                            res.getWriter().write("<html><body><h1>Content unavailable</h1><p>The content you requested is not available.</p></body></html>");
-                        } catch (IOException e2) {}
+			sendError(res, HttpServletResponse.SC_FORBIDDEN);
 		}
 
 		catch (EntityAccessOverloadException e)
@@ -391,8 +390,8 @@ public class AccessServlet extends VmServlet
 			{
 				// TODO: send back using a form of the request URL, encoding the real reference, and the requested reference
 				// Note: refs / requests with servlet parameters (?x=y...) are NOT supported -ggolden
-				String redirPath = COPYRIGHT_REQUIRE + "?" + COPYRIGHT_ACCEPT_REF + "=" + Validator.escapeUrl(e.getReference()) + "&" + COPYRIGHT_ACCEPT_URL
-						+ "=" + Validator.escapeUrl(req.getPathInfo());
+				String redirPath = COPYRIGHT_REQUIRE + "?" + COPYRIGHT_ACCEPT_REF + "=" + formattedText.escapeUrl(e.getReference()) + "&" + COPYRIGHT_ACCEPT_URL
+						+ "=" + formattedText.escapeUrl(req.getPathInfo());
 				res.sendRedirect(Web.returnUrl(req, redirPath));
 			}
 			catch (IOException ee)
@@ -443,6 +442,7 @@ public class AccessServlet extends VmServlet
 		ResourceProperties props = new BaseResourceProperties();
 		setVmReference("props", props, req);
 		setVmReference("validator", new Validator(), req);
+		setVmReference("formattedText", formattedText, req);
 		setVmReference("sample", Boolean.TRUE.toString(), req);
 		setVmReference("tlang", rb, req);
 		res.setContentType("text/html; charset=UTF-8");
@@ -493,7 +493,7 @@ public class AccessServlet extends VmServlet
 		if (path != null)
 		{
 			// where to go after
-			session.setAttribute(Tool.HELPER_DONE_URL, Web.returnUrl(req, Validator.escapeUrl(path)));
+			session.setAttribute(Tool.HELPER_DONE_URL, Web.returnUrl(req, formattedText.escapeUrl(path)));
 		}
 
 		// check that we have a return path set; might have been done earlier

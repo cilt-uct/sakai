@@ -24,10 +24,10 @@ package org.sakaiproject.util;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import lombok.extern.slf4j.Slf4j;
-
+import org.apache.commons.lang3.Range;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang.math.IntRange;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * <p>
@@ -242,9 +242,9 @@ public class PasswordCheck {
 		int length = passwd.length();
 		
 		//check range
-		IntRange range = new IntRange(min, max);
+		Range<Integer> range = Range.between(min, max);
 		
-		if(range.containsInteger(length))
+		if(range.contains(length))
 		{
 			log.debug("Range ok");
 			return true;
@@ -260,6 +260,7 @@ public class PasswordCheck {
 	 * capitals D, O, numbers 1, 0, and lower case o, and l.
 	 * 
 	 * @return generated password
+	 * @deprecated {@link org.sakaiproject.util.api.PasswordFactory#generatePassword()}
 	 */
 	public static String generatePassword()
 	{
@@ -274,6 +275,7 @@ public class PasswordCheck {
 	 * 
 	 * @param passwordLength the length of password desired
 	 * @return generated password
+	 * @deprecated {@link org.sakaiproject.util.api.PasswordFactory#generatePassword()}
 	 */
 	public static String generatePassword(int passwordLength)
 	{

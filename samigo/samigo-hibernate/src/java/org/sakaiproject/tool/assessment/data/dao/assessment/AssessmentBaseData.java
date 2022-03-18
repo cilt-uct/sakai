@@ -27,6 +27,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Set;
 
+import org.apache.commons.collections4.CollectionUtils;
+
 import org.sakaiproject.tool.assessment.data.dao.shared.TypeD;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentAccessControlIfc;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentFeedbackIfc;
@@ -53,7 +55,10 @@ public class AssessmentBaseData
   private Integer status;
   private String createdBy;
   private Date createdDate;
+  private Date startDate;
+  private Date dueDate;
   private String lastModifiedBy;
+  private String releaseTo;
   private Date lastModifiedDate;
   private AssessmentAccessControlIfc assessmentAccessControl;
   private EvaluationModelIfc evaluationModel;
@@ -63,6 +68,7 @@ public class AssessmentBaseData
   private HashMap assessmentFeedbackMap = new HashMap();
   private Set securedIPAddressSet;
   private Integer questionSize;
+  private Long categoryId;
 
   public AssessmentBaseData() {}
 
@@ -94,11 +100,14 @@ public class AssessmentBaseData
    * lastModifiedDate. This object is merely used for display. It is not used
    * for persistence.
    */
-  public AssessmentBaseData(Long assessmentBaseId, String title,Date lastModifiedDate, String lastModifiedBy){
+  public AssessmentBaseData(Long assessmentBaseId, String title,Date lastModifiedDate, String lastModifiedBy, Date startDate, Date dueDate, String releaseTo){
 	    this.assessmentBaseId = assessmentBaseId;
 	    this.title = title;
 	    this.lastModifiedDate = lastModifiedDate;
 	    this.lastModifiedBy = lastModifiedBy;
+	    this.startDate = startDate;
+	    this.dueDate = dueDate;
+	    this.releaseTo = releaseTo;
 	  }
   
   public AssessmentBaseData(Long assessmentBaseId, String title,Date lastModifiedDate, String lastModifiedBy, Integer questionSize){
@@ -243,12 +252,36 @@ public class AssessmentBaseData
     this.createdDate = createdDate;
   }
 
+  public Date getStartDate() {
+    return this.startDate;
+  }
+
+  public void setStartDate(Date startDate) {
+    this.startDate = startDate;
+  }
+
+  public Date getDueDate() {
+    return this.dueDate;
+  }
+
+  public void setDueDate(Date dueDate) {
+    this.dueDate = dueDate;
+  }
+
   public String getLastModifiedBy() {
     return this.lastModifiedBy;
   }
 
   public void setLastModifiedBy(String lastModifiedBy) {
     this.lastModifiedBy = lastModifiedBy;
+  }
+
+  public String getReleaseTo() {
+    return this.releaseTo;
+  }
+
+  public void setReleaseTo(String releaseTo) {
+    this.releaseTo = releaseTo;
   }
 
   public Date getLastModifiedDate() {
@@ -297,29 +330,25 @@ public class AssessmentBaseData
 
   public void setAssessmentMetaDataSet(Set assessmentMetaDataSet) {
     this.assessmentMetaDataSet = assessmentMetaDataSet;
-    this.assessmentMetaDataMap = getAssessmentMetaDataMap(assessmentMetaDataSet);
+    try{
+        this.assessmentMetaDataMap = this.getAssessmentMetaDataMap(assessmentMetaDataSet);
+    } catch (Exception ex) {
+        this.assessmentMetaDataMap = new HashMap();
+    }
   }
 
   public HashMap getAssessmentMetaDataMap(Set assessmentMetaDataSet) {
     HashMap assessmentMetaDataMap = new HashMap();
-    if (assessmentMetaDataSet != null){
-      for (Iterator i = assessmentMetaDataSet.iterator(); i.hasNext(); ) {
-        AssessmentMetaData assessmentMetaData = (AssessmentMetaData) i.next();
-        assessmentMetaDataMap.put(assessmentMetaData.getLabel(), assessmentMetaData.getEntry());
-      }
+    if (CollectionUtils.isNotEmpty(assessmentMetaDataSet)) {
+         for (AssessmentMetaData assessmentMetaData : (Set<AssessmentMetaData>) assessmentMetaDataSet) {
+             assessmentMetaDataMap.put(assessmentMetaData.getLabel(), assessmentMetaData.getEntry());
+         }
     }
     return assessmentMetaDataMap;
   }
 
   public HashMap getAssessmentMetaDataMap() {
-    HashMap assessmentMetaDataMap = new HashMap();
-    if (this.assessmentMetaDataSet != null){
-      for (Iterator i = this.assessmentMetaDataSet.iterator(); i.hasNext(); ) {
-        AssessmentMetaData assessmentMetaData = (AssessmentMetaData) i.next();
-        assessmentMetaDataMap.put(assessmentMetaData.getLabel(), assessmentMetaData.getEntry());
-      }
-    }
-    return assessmentMetaDataMap;
+    return this.getAssessmentMetaDataMap(this.assessmentMetaDataSet);
   }
 
   public String getAssessmentMetaDataByLabel(String label) {
@@ -377,5 +406,13 @@ public class AssessmentBaseData
 
   public void setQuestionSize(Integer questionSize) {
     this.questionSize = questionSize;
+  }
+
+  public Long getCategoryId() {
+    return categoryId;
+  }
+
+  public void setCategoryId(Long categoryId) {
+    this.categoryId = categoryId;
   }
 }

@@ -38,9 +38,6 @@ import org.sakaiproject.api.app.messageforums.Topic;
 import org.sakaiproject.component.app.messageforums.dao.hibernate.util.comparator.AttachmentByCreatedDateDesc;
 import org.sakaiproject.component.app.messageforums.dao.hibernate.util.comparator.TopicBySortIndexAscAndCreatedDateDesc;
 
-import org.hibernate.Hibernate;
-import org.hibernate.proxy.HibernateProxy;
-
 @Slf4j
 public class BaseForumImpl extends MutableEntityImpl implements BaseForum {
 
@@ -50,7 +47,7 @@ public class BaseForumImpl extends MutableEntityImpl implements BaseForum {
     private String typeUuid;
     private SortedSet attachmentsSet;// = new HashSet();
     private SortedSet topicsSet;// = new HashSet();
-    private Set membershipItemSet;
+    private Set<DBMembershipItem> membershipItemSet;
     private Area area;
     private Integer sortIndex; 
     private Boolean moderated;
@@ -159,11 +156,11 @@ public class BaseForumImpl extends MutableEntityImpl implements BaseForum {
         this.topicsSet = topicsSet;
     }
     
-    public Set getMembershipItemSet() {
+    public Set<DBMembershipItem> getMembershipItemSet() {
   		return membershipItemSet;
   	}
 
-  	public void setMembershipItemSet(Set membershipItemSet) {
+  	public void setMembershipItemSet(Set<DBMembershipItem> membershipItemSet) {
   		this.membershipItemSet = membershipItemSet;
   	}
 

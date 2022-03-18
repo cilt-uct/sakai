@@ -22,6 +22,7 @@
 package org.sakaiproject.poll.logic.test;
 
 import java.util.Date;
+import java.util.UUID;
 
 import lombok.extern.slf4j.Slf4j;
 import org.junit.Assert;
@@ -83,16 +84,16 @@ public class PollListManagerTest extends AbstractTransactionalJUnit4SpringContex
     	//we shouldNot find this poll
     	Poll pollFail = pollListManager.getPollById(Long.valueOf(9999999));
     	Assert.assertNull(pollFail);
-    	
+
     	//this one should exist -- the preload saves one poll and remembers its ID
     	externalLogicStubb.currentUserId = TestDataPreload.USER_UPDATE;
     	Poll poll1 = pollListManager.getPollById(tdp.getFirstPollId());
     	Assert.assertNotNull(poll1);
-    	
+
     	//it should have options
-    	Assert.assertNotNull(poll1.getPollOptions());
-    	Assert.assertTrue(poll1.getPollOptions().size() > 0);
-    	
+    	Assert.assertNotNull(poll1.getOptions());
+    	Assert.assertTrue(poll1.getOptions().size() > 0);
+
     	//we expect this one to fails
 		externalLogicStubb.currentUserId = TestDataPreload.USER_NO_ACCEESS;
 		try {
@@ -121,15 +122,19 @@ public class PollListManagerTest extends AbstractTransactionalJUnit4SpringContex
 		
 		//If this has a value something is wrong without POJO
 		Assert.assertNull(poll1.getPollId());
-		
-		pollListManager.savePoll(poll1);
+		try {
+			pollListManager.savePoll(poll1);
+		}
+		catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
 		
 		//if this is null we have a problem
 		Assert.assertNotNull(poll1.getPollId());
 		
 		Poll poll2 = pollListManager.getPollById(poll1.getPollId());
 		Assert.assertNotNull(poll2);
-		Assert.assertEquals(poll1.getPollText(), poll2.getPollText());
+		Assert.assertEquals(poll1.getText(), poll2.getText());
 		
 		//TODO add failure cases - null parameters
 		
@@ -182,9 +187,7 @@ public class PollListManagerTest extends AbstractTransactionalJUnit4SpringContex
 		poll1.setText("something");
 		poll1.setOwner(TestDataPreload.USER_UPDATE);
 		poll1.setSiteId(TestDataPreload.LOCATION1_ID);
-		
-		
-		
+
 		//we should not be able to delete a poll that hasn't been saved
 		try {
 			pollListManager.deletePoll(poll1);
@@ -196,16 +199,22 @@ public class PollListManagerTest extends AbstractTransactionalJUnit4SpringContex
 			// Successful tests should be quiet. IllegalArgumentException is actually expected on a null ID.
 			//log.error(e.getMessage(), e);
 		}
-		
-		pollListManager.savePoll(poll1);
+		try {
+			pollListManager.savePoll(poll1);
+		}
+		catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
 		
 	    Option option1 = new Option();
 	    option1.setPollId(poll1.getPollId());
-	    option1.setOptionText("asdgasd");
-	    
+	    option1.setText("asdgasd");
+	    option1.setOptionOrder(0);
+
 	    Option option2 = new Option();
 	    option2.setPollId(poll1.getPollId());
-	    option2.setOptionText("zsdbsdfb");
+	    option2.setText("zsdbsdfb");
+	    option2.setOptionOrder(1);
 	    
 	    pollListManager.saveOption(option2);
 	    pollListManager.saveOption(option1);
@@ -214,8 +223,10 @@ public class PollListManagerTest extends AbstractTransactionalJUnit4SpringContex
 	    vote.setIp("Localhost");
 	    vote.setPollId(poll1.getPollId());
 	    vote.setPollOption(option1.getOptionId());
-	    
-	    
+	    vote.setUserId(TestDataPreload.USER_UPDATE);
+	    vote.setVoteDate(new Date());
+	    vote.setSubmissionId(TestDataPreload.USER_UPDATE + ":" + UUID.randomUUID());
+
 	    pollVoteManager.saveVote(vote);
 	    
 	    Long option1Id = option1.getOptionId();

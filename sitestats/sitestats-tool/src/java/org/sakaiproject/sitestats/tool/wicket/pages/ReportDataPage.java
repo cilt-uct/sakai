@@ -29,6 +29,7 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.Component;
+import org.apache.wicket.Session;
 import org.apache.wicket.request.mapper.parameter.PageParameters;
 import org.apache.wicket.request.cycle.RequestCycle;
 import org.apache.wicket.extensions.markup.html.repeater.data.table.IColumn;
@@ -74,6 +75,7 @@ import org.sakaiproject.sitestats.tool.wicket.components.Menus;
 import org.sakaiproject.sitestats.tool.wicket.components.SakaiDataTable;
 import org.sakaiproject.sitestats.tool.wicket.models.ReportDefModel;
 import org.sakaiproject.sitestats.tool.wicket.providers.ReportsDataProvider;
+import org.sakaiproject.time.api.UserTimeService;
 import org.sakaiproject.user.api.UserNotDefinedException;
 
 /**
@@ -96,7 +98,10 @@ public class ReportDataPage extends BasePage {
 	private byte[]						chartImage			= null;
 	private int							selectedWidth		= 0;
 	private int							selectedHeight		= 0;
-	
+
+	// namespace for sakai icons see _icons.scss
+	public static final String ICON_SAKAI = "icon-sakai--";
+
 	public ReportDataPage(final ReportDefModel reportDef) {
 		this(reportDef, null, null);
 	}
@@ -256,7 +261,7 @@ public class ReportDataPage extends BasePage {
 		trReportUserSelection.add(new Label("reportUserSelection"));
 		add(trReportUserSelection);
 		
-		add(new Label("report.localizedReportGenerationDate"));
+		add(new Label("reportGenerationDate"));
 		
 		
 		// buttons
@@ -376,11 +381,9 @@ public class ReportDataPage extends BasePage {
 					if(!"".equals(toolId)){
 						toolName = Locator.getFacade().getEventRegistryService().getToolName(toolId);
 					}
-					Label toolLabel = new Label(componentId, toolName);
-					String toolIconClass = "toolIcon";
-					String toolIconPath = "url(" + Locator.getFacade().getEventRegistryService().getToolIcon(toolId) + ")";
-					toolLabel.add(new AttributeModifier("class", new Model(toolIconClass)));
-					toolLabel.add(new AttributeModifier("style", new Model("background-image: "+toolIconPath)));
+					Label toolLabel = new Label(componentId, " " + toolName);
+					String hclass = ICON_SAKAI + toolId.replace('.', '-');
+					toolLabel.add(new AttributeModifier("class", new Model(hclass)));
 					toolLabel.add(new AttributeModifier("title", new Model(toolName)));
 					item.add(toolLabel);
 				}
@@ -396,15 +399,13 @@ public class ReportDataPage extends BasePage {
 					if(!"".equals(eventId)){
 						eventName = Locator.getFacade().getEventRegistryService().getEventName(eventId);
 					}
-					Label eventLabel = new Label(componentId, eventName);
+					Label eventLabel = new Label(componentId, " " + eventName);
 					ToolInfo toolInfo = eventIdToolMap.get(eventId);
 					if(toolInfo != null) {
 						String toolId = toolInfo.getToolId();
 						String toolName = Locator.getFacade().getEventRegistryService().getToolName(toolId);
-						String toolIconClass = "toolIcon";
-						String toolIconPath = "url(" + Locator.getFacade().getEventRegistryService().getToolIcon(toolId) + ")";
-						eventLabel.add(new AttributeModifier("class", new Model(toolIconClass)));
-						eventLabel.add(new AttributeModifier("style", new Model("background-image: "+toolIconPath)));
+						String hclass = ICON_SAKAI + toolId.replace('.', '-');
+						eventLabel.add(new AttributeModifier("class", new Model(hclass)));
 						eventLabel.add(new AttributeModifier("title", new Model(toolName)));
 					}
 					item.add(eventLabel);
@@ -484,7 +485,12 @@ public class ReportDataPage extends BasePage {
 			});
 		}
 		if(Locator.getFacade().getReportManager().isReportColumnAvailable(reportParams, StatsManager.T_DATE)) {
-			columns.add(new PropertyColumn(new ResourceModel("th_date"), columnsSortable ? ReportsDataProvider.COL_DATE : null, ReportsDataProvider.COL_DATE));
+			columns.add(new PropertyColumn(new ResourceModel("th_date"), columnsSortable ? ReportsDataProvider.COL_DATE : null, ReportsDataProvider.COL_DATE) {
+				@Override
+				public void populateItem(Item item, String componentId, IModel model) {
+					item.add(new Label(componentId, getLocalizedDate((Stat) model.getObject())));
+				}
+			});
 		}
 		if(Locator.getFacade().getReportManager().isReportColumnAvailable(reportParams, StatsManager.T_DATEMONTH)) {
 			columns.add(new PropertyColumn(new ResourceModel("th_date"), columnsSortable ? ReportsDataProvider.COL_DATE : null, ReportsDataProvider.COL_DATE) {
@@ -507,7 +513,12 @@ public class ReportDataPage extends BasePage {
 			});
 		}
 		if(Locator.getFacade().getReportManager().isReportColumnAvailable(reportParams, StatsManager.T_LASTDATE)) {
-			columns.add(new PropertyColumn(new ResourceModel("th_lastdate"), columnsSortable ? ReportsDataProvider.COL_DATE : null, ReportsDataProvider.COL_DATE));
+			columns.add(new PropertyColumn(new ResourceModel("th_lastdate"), columnsSortable ? ReportsDataProvider.COL_DATE : null, ReportsDataProvider.COL_DATE) {
+				@Override
+				public void populateItem(Item item, String componentId, IModel model) {
+					item.add(new Label(componentId, getLocalizedDate((Stat) model.getObject())));
+				}
+			});
 		}
 		if(Locator.getFacade().getReportManager().isReportColumnAvailable(reportParams, StatsManager.T_TOTAL)) {
 			columns.add(new PropertyColumn(new ResourceModel("th_total"), columnsSortable ? ReportsDataProvider.COL_TOTAL : null, "count"));
@@ -532,6 +543,12 @@ public class ReportDataPage extends BasePage {
 			});
 		}
 		return columns;
+	}
+
+	private static String getLocalizedDate(Stat stat) {
+		java.sql.Date sqlDate = (java.sql.Date) stat.getDate();
+		UserTimeService timeServ = Locator.getFacade().getUserTimeService();
+		return timeServ.shortLocalizedDate(sqlDate.toLocalDate(), Session.get().getLocale());
 	}
 	
 	private byte[] getChartImage() {

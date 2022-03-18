@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2003-2019 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.assignment.impl.conversion;
 
 import java.io.ByteArrayInputStream;
@@ -63,10 +78,6 @@ import org.sakaiproject.site.api.Group;
 import org.sakaiproject.util.BasicConfigItem;
 import static org.sakaiproject.assignment.api.AssignmentServiceConstants.*;
 
-import java.util.HashSet;
-
-import org.sakaiproject.exception.IdUnusedException;
-
 @Slf4j
 public class AssignmentConversionServiceImpl implements AssignmentConversionService {
 
@@ -118,8 +129,8 @@ public class AssignmentConversionServiceImpl implements AssignmentConversionServ
     }
 
     @Override
-    public void runConversion(int numberOfAttributes, int lengthOfAttribute, List<String> convertAssignments, boolean dryRun) {
-        int assignmentsTotal;
+    public void runConversion(int numberOfAttributes, int lengthOfAttribute) {
+        int assignmentsTotal, progress = 0;
         assignmentsConverted = submissionsConverted = submissionsFailed = assignmentsFailed = 0;
 
         SimpleModule module = new SimpleModule().addDeserializer(String.class, new StdDeserializer<String>(String.class) {
@@ -134,6 +145,8 @@ public class AssignmentConversionServiceImpl implements AssignmentConversionServ
         // woodstox xml parser defaults we don't allow values smaller than the default
         if (numberOfAttributes < ReaderConfig.DEFAULT_MAX_ATTRIBUTES_PER_ELEMENT) numberOfAttributes = ReaderConfig.DEFAULT_MAX_ATTRIBUTES_PER_ELEMENT;
         if (lengthOfAttribute < ReaderConfig.DEFAULT_MAX_ATTRIBUTE_LENGTH) lengthOfAttribute = ReaderConfig.DEFAULT_MAX_ATTRIBUTE_LENGTH;
+
+        log.info("<===== Assignments conversion xml parser limits: number of attributes={}, attribute size={} =====>", numberOfAttributes, lengthOfAttribute);
 
         XMLInputFactory xmlInputFactory = XMLInputFactory.newFactory();
         xmlInputFactory.setProperty(WstxInputProperties.P_MAX_ATTRIBUTES_PER_ELEMENT, numberOfAttributes);
@@ -154,15 +167,24 @@ public class AssignmentConversionServiceImpl implements AssignmentConversionServ
                 true);
         serverConfigurationService.registerConfigItem(configItem);
 
+        List<String> preAssignments = dataProvider.fetchAssignmentsToConvert();
+        List<String> postAssignments = assignmentRepository.findAllAssignmentIds();
+        List<String> convertAssignments = new ArrayList<>(preAssignments);
+        convertAssignments.removeAll(postAssignments);
         assignmentsTotal = convertAssignments.size();
 
-        log.info("<===== Assignments to convert {} =====>", assignmentsTotal);
+        log.info("<===== Assignments pre 12 [{}] and post 12 [{}] to convert {} =====>", preAssignments.size(), postAssignments.size(), assignmentsTotal);
 
         for (String assignmentId : convertAssignments) {
             try {
-                convert(assignmentId, dryRun);
+                convert(assignmentId);
             } catch (Exception e) {
                 log.warn("Assignment conversion exception for {}", assignmentId, e);
+            }
+            int percent = new Double(((assignmentsConverted + assignmentsFailed) / (double) assignmentsTotal) * 100).intValue();
+            if (progress != percent) {
+                progress = percent;
+                log.info("<===== Assignments conversion completed {}% =====>", percent);
             }
         }
 
@@ -171,6 +193,11 @@ public class AssignmentConversionServiceImpl implements AssignmentConversionServ
                 StringUtils.trimToEmpty(currentValue),
                 AssignmentConversionServiceImpl.class.getName());
         serverConfigurationService.registerConfigItem(configItem);
+
+        log.info("<===== Assignments converted {} =====>", assignmentsConverted);
+        log.info("<===== Submissions converted {} =====>", submissionsConverted);
+        log.info("<===== Assignments that failed to be converted {} =====>", assignmentsFailed);
+        log.info("<===== Submissions that failed to be converted {} =====>", submissionsFailed);
     }
 
     private String adjustXmlForGroups(String xml) {
@@ -215,7 +242,7 @@ public class AssignmentConversionServiceImpl implements AssignmentConversionServ
         }
         return null;
     }
-    private void convert(String assignmentId, boolean dryRun) {
+    private void convert(String assignmentId) {
         String aXml = dataProvider.fetchAssignment(assignmentId);
         if (StringUtils.isNotBlank(aXml)) {
             O11Assignment o11a = (O11Assignment) serializeFromXml(aXml, O11Assignment.class);
@@ -234,20 +261,18 @@ public class AssignmentConversionServiceImpl implements AssignmentConversionServ
                             for (String xml : sXml) {
                                 O11Submission o11s = (O11Submission) serializeFromXml(xml, O11Submission.class);
                                 if (o11s != null) {
-                                    SubmissionReintegrationResult result = submissionReintegration(assignment, o11s);
-                                    if (result.succeeded) {
-                                        AssignmentSubmission submission = result.submission;
+                                    AssignmentSubmission submission = submissionReintegration(assignment, o11s);
+                                    if (submission != null) {
                                         submission.setAssignment(assignment);
                                         assignment.getSubmissions().add(submission);
                                         if (Assignment.Access.SITE.equals(assignment.getTypeOfAccess()) && assignment.getIsGroup()) {
-                                            String submissionGrp = "/site/"+assignment.getContext()+"/group/"+submission.getGroupId(); 
-                                            if (!submissionGroups.contains(submissionGrp)) {
-                                                submissionGroups.add(submissionGrp);
-                                            }
+                                        	String submissionGrp = "/site/"+assignment.getContext()+"/group/"+submission.getGroupId(); 
+                                        	if (!submissionGroups.contains(submissionGrp)) {
+                                        		submissionGroups.add(submissionGrp);
+                                        	}
                                         }
                                     } else {
-                                        log.warn("reintegration of submission {} in assignment {} failed skipping submission.  Reason: {}",
-                                                 o11s.getId(), assignmentId, result.failureCode);
+                                        log.warn("reintegration of submission {} in assignment {} failed skipping submission", o11s.getId(), assignmentId);
                                         submissionsFailed++;
                                     }
                                 } else {
@@ -263,13 +288,11 @@ public class AssignmentConversionServiceImpl implements AssignmentConversionServ
                             // at this point everything has been added to the persistence context
                             // so we just need to merge and flush so that every assignment is persisted
                             try {
-                                if (!dryRun) {
-                                    assignmentRepository.merge(assignment);
-                                }
+                                assignmentRepository.merge(assignment);
                                 assignmentsConverted++;
                                 submissionsConverted += assignment.getSubmissions().size();
-                            } catch (Exception e) {
-                                log.warn("could not persist assignment {}, {}", assignmentId, e.getMessage());
+                            } catch (HibernateException he) {
+                                log.warn("could not persist assignment {}, {}", assignmentId, he.getMessage());
                                 assignmentsFailed++;
                                 submissionsFailed += assignment.getSubmissions().size();
                             }
@@ -394,60 +417,7 @@ public class AssignmentConversionServiceImpl implements AssignmentConversionServ
         return a;
     }
 
-    private String determineMismatchCause(O11Submission s, Assignment a) {
-        Site assignmentSite = null;
-        try {
-            assignmentSite = siteService.getSite(a.getContext());
-        } catch (IdUnusedException e) {
-            return "GROUP_ACCESS_SITE_GONE";
-        }
-
-        Group submissionGroup = assignmentSite.getGroup(s.getSubmitterid());
-
-        if (submissionGroup != null && submissionGroup.getProviderGroupId() != null) {
-            return "GROUP_ACCESS_SECTION_GROUP_CHANGE_BUG";
-        } else if (submissionGroup != null) {
-            return "GROUP_ACCESS_GROUP_CHANGE_BUG";
-        } else {
-            try {
-                if (org.sakaiproject.user.cover.UserDirectoryService.getUser(s.getSubmitterid()) != null) {
-                    return "GROUP_ACCESS_SUBMITTER_IS_USER_NOT_GROUP";
-                }
-            } catch (org.sakaiproject.user.api.UserNotDefinedException e) {
-                // Not a user I guess...
-            }
-
-            return "GROUP_ACCESS_GROUP_GONE";
-        }
-    }
-
-    static class SubmissionReintegrationResult {
-        public boolean succeeded;
-
-        // Success
-        public AssignmentSubmission submission;
-
-        // Failure
-        public String failureCode = "UNKNOWN";
-
-        public static SubmissionReintegrationResult success(AssignmentSubmission submission) {
-            SubmissionReintegrationResult result = new SubmissionReintegrationResult();
-            result.succeeded = true;
-            result.submission = submission;
-
-            return result;
-        }
-
-        public static SubmissionReintegrationResult failed(String failureCode) {
-            SubmissionReintegrationResult result = new SubmissionReintegrationResult();
-            result.succeeded = false;
-            result.failureCode = failureCode;
-
-            return result;
-        }
-    }
-
-    private SubmissionReintegrationResult submissionReintegration(Assignment assignment, O11Submission submission) {
+    private AssignmentSubmission submissionReintegration(Assignment assignment, O11Submission submission) {
         Map<String, Object> submissionAny = submission.getAny();
         String[] submissionAnyKeys = submissionAny.keySet().toArray(new String[submissionAny.size()]);
 
@@ -498,95 +468,22 @@ public class AssignmentConversionServiceImpl implements AssignmentConversionServ
             			if (assignment.getGroups().contains("/site/"+assignment.getContext()+"/group/"+submission.getSubmitterid())) {
             				s.setGroupId(submission.getSubmitterid());
             			} else {
-                                    log.warn(String.format("%sFailed to find matching group '%s' in assignment %s",
-                                                           ((submission.getIsUserSubmission() != null && !submission.getIsUserSubmission()) ? "IGNORABLE " : determineMismatchCause(submission, assignment)),
-                                                           ("/site/"+assignment.getContext()+"/group/"+submission.getSubmitterid()),
-                                                           assignment.getId()));
-
-                                    if (!submission.getAny().containsKey("log0") &&
-                                        (submission.getSubmittedtext() == null || "".equals(submission.getSubmittedtext())) &&
-                                        (submission.getSubmittedtextHtml() == null || "".equals(submission.getSubmittedtextHtml())) &&
-                                        (submission.getFeedbacktext() == null || "".equals(submission.getFeedbacktext())) &&
-                                        (submission.getFeedbacktextHtml() == null || "".equals(submission.getFeedbacktextHtml())) &&
-                                        (submission.getGraded() == null || !submission.getGraded()) &&
-                                        (submission.getDatesubmitted() == null || "".equals(submission.getDatesubmitted()))) {
-                                        return SubmissionReintegrationResult.failed("BLANK_DUMMY_SUBMISSION");
-                                    }
-
-                                    if (submission.getIsUserSubmission() != null && !submission.getIsUserSubmission()) {
-                                        // Dummy submission
-                                        return SubmissionReintegrationResult.failed("DUMMY_SUBMISSION");
-                                    } else {
-                                        return SubmissionReintegrationResult.failed(determineMismatchCause(submission, assignment));
-                                    }
+            				return null;
             			}
             		} else {
             			Site assignmentSite = siteService.getSite(assignment.getContext());
             			if (assignmentSite.getGroup(submission.getSubmitterid())!=null) {
             				s.setGroupId(submission.getSubmitterid());
             			} else {
-                                    log.warn(String.format("%sFailed to find group in site %s for assignment %s: %s",
-                                                           ((submission.getIsUserSubmission() != null && !submission.getIsUserSubmission()) ? "IGNORABLE " : ""),
-                                                           assignmentSite.getId(),
-                                                           assignment.getId(),
-                                                           submission.getSubmitterid()));
-
-                                    if (!submission.getAny().containsKey("log0") &&
-                                        (submission.getSubmittedtext() == null || "".equals(submission.getSubmittedtext())) &&
-                                        (submission.getSubmittedtextHtml() == null || "".equals(submission.getSubmittedtextHtml())) &&
-                                        (submission.getFeedbacktext() == null || "".equals(submission.getFeedbacktext())) &&
-                                        (submission.getFeedbacktextHtml() == null || "".equals(submission.getFeedbacktextHtml())) &&
-                                        (submission.getGraded() == null || !submission.getGraded()) &&
-                                        (submission.getDatesubmitted() == null || "".equals(submission.getDatesubmitted()))) {
-                                        return SubmissionReintegrationResult.failed("BLANK_DUMMY_SUBMISSION");
-                                    }
-
-
-                                    if (submission.getIsUserSubmission() != null && !submission.getIsUserSubmission()) {
-                                        // Dummy submission
-                                        return SubmissionReintegrationResult.failed("DUMMY_SUBMISSION");
-                                    } else {
-                                        // User or group?
-                                        try {
-                                            if (org.sakaiproject.user.cover.UserDirectoryService.getUser(submission.getSubmitterid()) != null) {
-                                                return SubmissionReintegrationResult.failed("SITE_ACCESS_SUBMITTER_IS_USER_NOT_GROUP");
-                                            }
-                                        } catch (org.sakaiproject.user.api.UserNotDefinedException e) {
-                                            return SubmissionReintegrationResult.failed("SITE_ACCESS_GROUP_GONE");
-                                        }
-                                    }
+            				return null;
             			}
             		}
             	} catch (Exception ex) {
-			log.warn("Got exception while reintegrating assignment %s: %s",
-				 assignment.getId(),
-				 ex);
-			ex.printStackTrace();
-            		return SubmissionReintegrationResult.failed("CAUGHT_EXCEPTION: " + ex);
+            		return null;
             	}
             } else {
-                if (submission.getIsUserSubmission() != null && !submission.getIsUserSubmission()) {
-                    // Dummy submission
-                    return SubmissionReintegrationResult.failed("DUMMY_SUBMISSION");
-                }
-
-                if (!submission.getAny().containsKey("log0") &&
-                    (submission.getSubmittedtext() == null || "".equals(submission.getSubmittedtext())) &&
-                    (submission.getSubmittedtextHtml() == null || "".equals(submission.getSubmittedtextHtml())) &&
-                    (submission.getFeedbacktext() == null || "".equals(submission.getFeedbacktext())) &&
-                    (submission.getFeedbacktextHtml() == null || "".equals(submission.getFeedbacktextHtml())) &&
-                    (submission.getGraded() == null || !submission.getGraded()) &&
-                    (submission.getDatesubmitted() == null || "".equals(submission.getDatesubmitted()))) {
-                    return SubmissionReintegrationResult.failed("BLANK_DUMMY_SUBMISSION");
-                }
-
-
                 // the submitterid must not be blank for a group submission
-                log.warn("%sthe submitterid must not be blank for a group submission.  assignment %s, submission %s",
-                         ((submission.getIsUserSubmission() != null && !submission.getIsUserSubmission()) ? "IGNORABLE " : ""),
-                         assignment.getId(), submission.getId());
-
-                return SubmissionReintegrationResult.failed("GROUP_ASSIGNMENT_BLANK_SUBMITTER");
+                return null;
             }
 
             // support for a list of submitter0, grade0
@@ -654,59 +551,13 @@ public class AssignmentConversionServiceImpl implements AssignmentConversionServ
             }
             submitter.setSubmitter(submitterId);
             submitter.setSubmittee(true);
-            submitter.setGrade(submission.getScaled_grade());
+            submitter.setGrade(null);
             submitter.setSubmission(s);
             submitters.add(submitter);
         }
-
         if (s.getSubmitters().isEmpty()) {
             // every submission must have at least one submitter
-            if (submission.getIsUserSubmission() != null && !submission.getIsUserSubmission()) {
-                // Dummy submission
-                return SubmissionReintegrationResult.failed("DUMMY_SUBMISSION");
-            }
-
-            if (!submission.getAny().containsKey("log0") &&
-                (submission.getSubmittedtext() == null || "".equals(submission.getSubmittedtext())) &&
-                (submission.getSubmittedtextHtml() == null || "".equals(submission.getSubmittedtextHtml())) &&
-                (submission.getFeedbacktext() == null || "".equals(submission.getFeedbacktext())) &&
-                (submission.getFeedbacktextHtml() == null || "".equals(submission.getFeedbacktextHtml())) &&
-                (submission.getGraded() == null || !submission.getGraded()) &&
-                (submission.getDatesubmitted() == null || "".equals(submission.getDatesubmitted()))) {
-                return SubmissionReintegrationResult.failed("BLANK_DUMMY_SUBMISSION");
-            }
-
-
-            // If we don't have a submitter0 try to extract one from the CHEF:creator property
-            boolean fixed = false;
-            for (O11Property property : submission.getProperties()) {
-                if (ResourceProperties.PROP_CREATOR.equals(property.getName())) {
-                    String creatorUserId = property.getDecodedValue();
-
-                    try {
-                        if (org.sakaiproject.user.cover.UserDirectoryService.getUser(creatorUserId) != null) {
-                            AssignmentSubmissionSubmitter submitter = new AssignmentSubmissionSubmitter();
-
-                            submitter.setSubmitter(creatorUserId);
-                            submitter.setSubmittee(true);
-                            submitter.setGrade(submission.getScaled_grade());
-                            submitter.setSubmission(s);
-                            submitters.add(submitter);
-
-                            log.info("Added user {} as submitter for submission: {}", creatorUserId, submission.getId());
-                            fixed = true;
-                        }
-                    } catch (org.sakaiproject.user.api.UserNotDefinedException e) {
-                        log.warn("Tried to add user {} as submitter for submission: {} but the user wasn't found.", creatorUserId, submission.getId());
-                    }
-
-                    break;
-                }
-            }
-
-            if (!fixed) {
-                return SubmissionReintegrationResult.failed("USER_ASSIGNMENT_BLANK_SUBMITTER");
-            }
+            return null;
         }
 
         for (O11Property property : submission.getProperties()) {
@@ -730,7 +581,7 @@ public class AssignmentConversionServiceImpl implements AssignmentConversionServ
         // remove any properties that are null or blank
         properties.values().removeIf(StringUtils::isBlank);
 
-        return SubmissionReintegrationResult.success(s);
+        return s;
     }
 
     private Instant convertStringToTime(String time) {

@@ -35,11 +35,11 @@
 </style>
 
 <div id="citationsPortletBody" class="portletBody">
-    <div id="messageSuccess" class="messageSuccess" style="display:none">
+    <div id="messageSuccess" class="sak-banner-success" style="display:none">
     </div>
-    <div id="messageValidation" class="messageValidation" style="display:none">
+    <div id="messageValidation" class="sak-banner-success" style="display:none">
     </div>
-    <div id="messageError" class="messageError" style="display:none; height: 6.3em;">
+    <div id="messageError" class="sak-banner-error" style="display:none; height: 6.3em;">
     </div>
 	<h3>
 		#if($resourceAdd)
@@ -176,7 +176,7 @@
  
 	</div>
 	<form id="fossils">
-		<input type="hidden" name="displayName" id="displayName_fossil" value="$validator.escapeHtml("$!resourceTitle")" />
+		<input type="hidden" name="displayName" id="displayName_fossil" value="$formattedText.escapeHtml("$!resourceTitle")" />
 		<input type="hidden" name="access_mode" id="access_mode_fossil" value="$!{contentProperties.accessMode}" />
 #foreach ($group in $!{contentProperties.possibleGroups})
 		<input type="hidden" name="access_groups" id="access_groups_${group.Id}_fossil" value="$group.Id" />	

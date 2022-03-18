@@ -405,7 +405,7 @@ public interface ContentReviewService {
 	 * @param isInstructor
 	 * @return
 	 */
-	public String getReviewReportRedirectUrl(String contentId, String assignmentRef, String userId, boolean isInstructor);
+	public String getReviewReportRedirectUrl(String contentId, String assignmentRef, String userId, String contextId, boolean isInstructor);
 	
 	/**
 	 * Webhook event listener that can be used to get messages sent from the provider to Sakai
@@ -414,4 +414,14 @@ public interface ContentReviewService {
 	 * @param providerId
 	 */
 	public void webhookEvent(HttpServletRequest request, int providerId, Optional<String> customParam);
+
+	/**
+	 * Gets the ContentReviewItem's last error localized for the current user session
+	 */
+	public String getLocalizedLastError(ContentReviewItem item);
+	
+	/**
+	 * Flag to determine whether the service accepts submissions on behalf of users
+	 */
+	public boolean allowSubmissionsOnBehalf();
 }

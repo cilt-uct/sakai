@@ -17,12 +17,10 @@ package org.sakaiproject.gradebookng.tool.pages;
 
 import lombok.extern.slf4j.Slf4j;
 
-import org.apache.commons.lang.RandomStringUtils;
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.wicket.markup.html.basic.Label;
 import org.apache.wicket.model.StringResourceModel;
-
-import org.sakaiproject.component.cover.ServerConfigurationService;
 
 /**
  * Page displayed when an internal error occurred.
@@ -55,7 +53,7 @@ public class ErrorPage extends BasePage {
 		add(error);
 
 		// Display the stack trace only if the application is configured to do so
-		boolean showStackTraces = ServerConfigurationService.getBoolean(SAK_PROP_PORTAL_SHOW_ERROR, SAK_PROP_PORTAL_SHOW_ERROR_DEFAULT);
+		boolean showStackTraces = serverConfigService.getBoolean(SAK_PROP_PORTAL_SHOW_ERROR, SAK_PROP_PORTAL_SHOW_ERROR_DEFAULT);
 		Label trace = new Label("stacktrace", stacktrace);
 		if (!showStackTraces && !businessService.isSuperUser()) {
 			trace.setVisible(false);

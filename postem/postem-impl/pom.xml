@@ -4,17 +4,12 @@
   <parent>
     <artifactId>postem-base</artifactId>
     <groupId>org.sakaiproject</groupId>
-    <version>12.5</version>
+    <version>21-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
   <name>sakai-postem-impl</name>
   <groupId>org.sakaiproject</groupId>
   <artifactId>sakai-postem-impl</artifactId>
-  <organization>
-    <name>Sakai Project</name>
-    <url>http://sakaiproject.org/</url>
-  </organization>
-  <inceptionYear>2004</inceptionYear>
   <packaging>sakai-component</packaging>
   <properties>
     <deploy.target>components</deploy.target>
@@ -44,8 +39,6 @@
       <groupId>org.sakaiproject</groupId>
       <artifactId>sakai-postem-hbm</artifactId>
     </dependency>
-<!--${sakai.hibernate.groupId}${sakai.hibernate.artifactId}${sakai.hibernate.version}-->
-<!--${sakai.spring.groupId}${sakai.spring.artifactId}${sakai.spring.version}-->
   </dependencies>
   <build>
     <resources>

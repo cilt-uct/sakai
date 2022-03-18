@@ -124,7 +124,7 @@ function doDisablePage(clickedLink) {
 				$(clickedLink).closest(".item_control_box").find(".item_control.hide_link").hide();
 				$(clickedLink).closest(".item_control_box").find(".item_control.show_link").show();
 				$(clickedLink).closest(".sortable_item").find(".item-locked-flag").show();
-				$(clickedLink).closest(".sortable_item").find(".item-hidden-flag").show();
+				$(clickedLink).closest(".sortable_item").find(".item-hidden-flag").hide();
 				$("#call-results").fadeIn('400');
 			}
 			else if (status == "fail") {
@@ -195,18 +195,30 @@ function doSaveEdit(clickedLink) {
 
 		var status = $("#call-results").find("#value").text();
 		if (status == 'pass') {
-			li = clone.data("source");
-			li.find(".item_label_box").html(newTitle.val());
-			li.show();
-			clone.remove();
+			$(li).find(".item_edit_box").hide();
+			newTitle = $("#call-results").find("#pageId strong").html();	
+			$(li).find(".item_label_box").empty();
+			$(li).find(".item_label_box").append(newTitle);
+			$(li).find(".item_label_box").show();
+			$(li).find(".item_label_box").attr("style", "display: inline");
+			$(li).find(".item_control_box").show();
+			$(li).find(".item_control_box").attr("style", "display: inline");
+			$(li).addClass("sortable_item reorder-element");
+			$(li).removeClass("editable_item");
 		}
   	});
 }
 
 function doCancelEdit(clickedLink) {
-	clone = $(clickedLink).closest(".sortable_item");
-	clone.data("source").show();
-	clone.remove();
+	li = $(clickedLink).closest(".sortable_item");
+	$(li).find(".item_edit_box").hide();
+	$(li).find(".item_label_box").show();
+	$(li).find(".item_label_box").attr("style", "display: inline");
+	$(li).find(".item_control_box").show();
+	$(li).find(".item_control_box").attr("style", "display: inline");
+	$(li).addClass("sortable_item reorder-element");
+	$(li).removeClass("editable_item");
+	$(li).find(".new_title").val($(li).find(".item_label_box").text());
 }
 
 function checkReset() {

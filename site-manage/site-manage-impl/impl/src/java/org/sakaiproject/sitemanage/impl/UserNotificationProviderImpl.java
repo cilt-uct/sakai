@@ -20,25 +20,22 @@ import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Date;
-import java.util.HashMap;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
 
 import org.sakaiproject.component.api.ServerConfigurationService;
-import org.sakaiproject.coursemanagement.api.AcademicSession;
 import org.sakaiproject.email.api.EmailService;
 import org.sakaiproject.entitybroker.DeveloperHelperService;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.sitemanage.api.UserNotificationProvider;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
-import org.sakaiproject.user.api.UserNotDefinedException;
 import org.sakaiproject.util.ResourceLoader;
 
 @Slf4j
 public class UserNotificationProviderImpl implements UserNotificationProvider {
 
+	private static final ResourceLoader rb = new ResourceLoader("UserNotificationProvider");
 	private EmailService emailService; 
 	
 	public void setEmailService(EmailService es) {
@@ -69,13 +66,11 @@ public class UserNotificationProviderImpl implements UserNotificationProvider {
 		log.info("init()");
 	}
 	
-	/**
-	 * {@inheritDoc}
-	 */
+	@Override
 	public void notifyAddedParticipant(boolean newNonOfficialAccount,
 			User user, Site site) {
-		ResourceLoader rb = new ResourceLoader(user.getId(), "UserNotificationProvider");
-		
+		rb.setContextLocale(rb.getLocale(user.getId()));
+
 		String from = serverConfigurationService.getBoolean(NOTIFY_FROM_CURRENT_USER, false)?
 				getCurrentUserEmailAddress():getSetupRequestEmailAddress();
 		if (from != null) {
@@ -138,12 +133,9 @@ public class UserNotificationProviderImpl implements UserNotificationProvider {
 
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
+	@Override
 	public void notifyNewUserEmail(User user, String newUserPassword,
 			Site site) {
-		ResourceLoader rb = new ResourceLoader("UserNotificationProvider");
 		// set the locale to individual receipient's setting
 		rb.setContextLocale(rb.getLocale(user.getId()));
 		
@@ -183,9 +175,7 @@ public class UserNotificationProviderImpl implements UserNotificationProvider {
 		}
 	}
 	
-	/**
-	 * {@inheritDoc}
-	 */
+	@Override
 	public void notifyTemplateUse(Site templateSite, User currentUser, Site site) {
 		// send an email to track who are using the template
 		String from = getSetupRequestEmailAddress();
@@ -221,10 +211,8 @@ public class UserNotificationProviderImpl implements UserNotificationProvider {
 		}
 	}
 	
-	/**
-	 * {@inheritDoc}
-	 */
-	public void notifySiteCreation(Site site, List notifySites, boolean courseSite, String termTitle, String requestEmail) {
+	@Override
+	public void notifySiteCreation(Site site, List<String> notifySites, boolean courseSite, String termTitle, String requestEmail, boolean sendToRequestEmail, boolean sendToUser) {
 		// send emails
 		String id = site.getId();
 		String title = site.getTitle();
@@ -237,8 +225,6 @@ public class UserNotificationProviderImpl implements UserNotificationProvider {
 		String currentUserName = currentUser.getDisplayName();
 		String currentUserId = currentUser.getId();
 		String currentUserEmail = currentUser.getEmail();
-		
-		ResourceLoader rb = new ResourceLoader("UserNotificationProvider");
 		
 		String message_subject = courseSite ? rb.getString("java.official") + " "
 				+ currentUserName
@@ -278,29 +264,33 @@ public class UserNotificationProviderImpl implements UserNotificationProvider {
 				buf.append(rb.getString("java.course2") + " " + course + "\n");
 			}
 		}
-		emailService.send(from, to, message_subject, buf.toString(), headerTo, replyTo, null);
-		
-		// send a confirmation email to site creator
-		from = requestEmail;
-		to = currentUserEmail;
-		headerTo = currentUserEmail;
-		replyTo = serverConfigurationService.getString("setup.request","no-reply@" + serverConfigurationService.getServerName());
-		String content = rb.getFormattedMessage("java.siteCreation.confirmation", new Object[]{title, serverConfigurationService.getServerName()});
-		content += "\n\n" + buf.toString();
-		emailService.send(from, to, message_subject, content, headerTo, replyTo, null);
-		
+
+		if (sendToRequestEmail)
+		{
+			emailService.send(from, to, message_subject, buf.toString(), headerTo, replyTo, null);
+		}
+
+		if (sendToUser)
+		{
+			// send a confirmation email to site creator
+			from = requestEmail;
+			to = currentUserEmail;
+			headerTo = currentUserEmail;
+			replyTo = serverConfigurationService.getString("setup.request","no-reply@" + serverConfigurationService.getServerName());
+			String content = rb.getFormattedMessage("java.siteCreation.confirmation", new Object[]{title, serverConfigurationService.getServerName()});
+			content += "\n\n" + buf.toString();
+			emailService.send(from, to, message_subject, content, headerTo, replyTo, null);
+		}
 	}
 	
-	/**
-	 * {@inheritDoc}
-	 */
+	@Override
 	public boolean notifyCourseRequestAuthorizer(String instructorId, String requestEmail, String replyToEmail, String termTitle, String requestSectionInfo, String siteTitle, String siteId, String additionalInfo, String serverName)
 	{
 		try {
 			User instructor = userDirectoryService.getUserByEid(instructorId);
-			
-			ResourceLoader rb = new ResourceLoader(instructorId, "UserNotificationProvider");
-			
+
+			rb.setContextLocale(rb.getLocale(instructorId));
+
 			StringBuffer buf = new StringBuffer();
 			
 			String to = instructor.getEmail();	
@@ -362,15 +352,10 @@ public class UserNotificationProviderImpl implements UserNotificationProvider {
 		}
 	}
 	
-	/**
-	 * {@inheritDoc}
-	 */
+	@Override
 	public String notifyCourseRequestSupport(String requestEmail, String serverName, String request, String termTitle, int requestListSize, String requestSectionInfo,
 			String officialAccountName, String siteTitle, String siteId, String additionalInfo, boolean requireAuthorizer, String authorizerNotified, String authorizerNotNotified)
 	{
-		ResourceLoader rb = new ResourceLoader("UserNotificationProvider");
-			
-
 		User currentUser = userDirectoryService.getCurrentUser();
 		String currentUserDisplayName = currentUser!=null?currentUser.getDisplayName():"";
 		String currentUserDisplayId = currentUser!=null?currentUser.getDisplayId():"";
@@ -458,19 +443,12 @@ public class UserNotificationProviderImpl implements UserNotificationProvider {
 		}
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
+	@Override
 	public void notifyCourseRequestRequester(String requestEmail, String supportEmailContent, String termTitle)
 	{
 		User currentUser = userDirectoryService.getCurrentUser();
 		String currentUserDisplayName = currentUser!=null?currentUser.getDisplayName():"";
-		String currentUserDisplayId = currentUser!=null?currentUser.getDisplayId():"";
-		String currentUserId = currentUser!=null?currentUser.getId():"";
 		String currentUserEmail = currentUser!=null?currentUser.getEmail():"";
-		
-
-		ResourceLoader rb = new ResourceLoader(currentUserId, "UserNotificationProvider");
 		
 		String from = requestEmail;
 		String to = currentUserEmail;
@@ -510,13 +488,12 @@ public class UserNotificationProviderImpl implements UserNotificationProvider {
 		}
 		return from;
 	}
-	
+	@Override
 	public void notifySiteImportCompleted(String toEmail, Locale locale, String siteId, String siteTitle){
 		if(toEmail != null && !"".equals(toEmail)){
 			String headerTo = toEmail;
 			String replyTo = toEmail;
 			String link = developerHelperService.getLocationReferenceURL(SITE_REF_PREFIX + siteId);
-			ResourceLoader rb = new ResourceLoader("UserNotificationProvider");
 			String message_subject = rb.getFormattedMessage("java.siteImport.confirmation.subject", new Object[]{siteTitle});
 			String message_body = rb.getFormattedMessage("java.siteImport.confirmation", new Object[]{siteTitle, link});
 			emailService.send(getSetupRequestEmailAddress(), toEmail, message_subject, message_body, headerTo, replyTo, null);

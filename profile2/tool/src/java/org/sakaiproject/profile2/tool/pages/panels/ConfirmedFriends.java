@@ -15,8 +15,7 @@
  */
 package org.sakaiproject.profile2.tool.pages.panels;
 
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.ajax.markup.html.AjaxLink;
@@ -55,6 +54,8 @@ import org.sakaiproject.profile2.tool.pages.windows.RemoveFriend;
 import org.sakaiproject.profile2.types.PrivacyType;
 import org.sakaiproject.profile2.util.ProfileConstants;
 import org.sakaiproject.profile2.util.ProfileUtils;
+
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class ConfirmedFriends extends Panel {
@@ -133,24 +134,7 @@ public class ConfirmedFriends extends Panel {
 		createWorksitePanel.setVisible(false);
 				
 		confirmedFriendsButtonForm.add(createWorksitePanel);
-		
-		final AjaxButton createWorksiteButton = new AjaxButton("createWorksiteButton", confirmedFriendsButtonForm) {
 
-			private static final long serialVersionUID = 1L;
-
-			@Override
-			protected void onSubmit(AjaxRequestTarget target, Form<?> form) {
-				createWorksitePanel.setVisible(true);
-				target.add(createWorksitePanel);
-				target.appendJavaScript("fixWindowVertical();");
-			}
-
-		};
-		createWorksiteButton.setModel(new ResourceModel("link.worksite.create"));
-		createWorksiteButton.add(new AttributeModifier("title", true, new ResourceModel("link.title.worksite.create")));
-		createWorksiteButton.setVisible(sakaiProxy.isUserAllowedAddSite(userUuid));
-		confirmedFriendsButtonForm.add(createWorksiteButton);
-		
 		//search for connections
 		AjaxButton searchConnectionsButton = new AjaxButton("searchConnectionsButton", confirmedFriendsButtonForm) {
 			private static final long serialVersionUID = 1L;

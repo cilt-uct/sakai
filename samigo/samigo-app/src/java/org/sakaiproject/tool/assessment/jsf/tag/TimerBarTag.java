@@ -28,6 +28,8 @@ package org.sakaiproject.tool.assessment.jsf.tag;
 import javax.faces.component.UIComponent;
 import javax.faces.webapp.UIComponentTag;
 
+import org.sakaiproject.jsf2.util.TagUtil;
+
 /**
  * <p> </p>
  * <p>Description:<br />
@@ -129,11 +131,4 @@ public class TimerBarTag
   {
     this.expireScript = expireScript;
   }
-  public void setTimeUpMessage(String timeUpMessage) {
-	this.timeUpMessage = timeUpMessage;
-  }
-  public String getTimeUpMessage() {
-	return timeUpMessage;
-  }
-  
 }

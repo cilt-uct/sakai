@@ -42,18 +42,18 @@ import javax.faces.context.FacesContext;
 import javax.faces.event.ActionEvent;
 import javax.faces.model.SelectItem;
 
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.myfaces.custom.sortheader.HtmlCommandSortHeader;
-
-import org.sakaiproject.jsf.spreadsheet.SpreadsheetDataFileWriterXlsx;
-import org.sakaiproject.jsf.spreadsheet.SpreadsheetUtil;
+import org.sakaiproject.jsf2.spreadsheet.SpreadsheetDataFileWriterXlsx;
+import org.sakaiproject.jsf2.spreadsheet.SpreadsheetUtil;
 import org.sakaiproject.section.api.coursemanagement.CourseSection;
 import org.sakaiproject.section.api.coursemanagement.EnrollmentRecord;
 import org.sakaiproject.section.api.coursemanagement.ParticipationRecord;
 import org.sakaiproject.section.api.coursemanagement.SectionEnrollments;
 import org.sakaiproject.tool.section.decorator.EnrollmentDecorator;
 import org.sakaiproject.tool.section.jsf.JsfUtil;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Controls the roster page.
@@ -233,7 +233,6 @@ public class RosterBean extends CourseDependentBean implements Serializable {
 
                 HtmlCommandSortHeader sortHeader = new HtmlCommandSortHeader();
                 sortHeader.setId(CAT_COLUMN_PREFIX + "sorthdr_" + colpos);
-                sortHeader.setRendererType("org.apache.myfaces.SortHeader");
                 sortHeader.setArrow(true);
                 sortHeader.setColumnName(category);
                 //sortHeader.setActionListener(app.createMethodBinding("#{rosterBean.sort}", new Class[] {ActionEvent.class}));

@@ -53,10 +53,10 @@ public class SitePermsService {
 
     private static int DEFAULT_PAUSE_TIME_MS = 100; // 100ms
     private static int DEFAULT_MAX_UPDATE_TIME_SECS = 60*60*24; // 1 day
-    private static int DEFAULT_SITES_BEFORE_PAUSE = 100;
+    private static int DEFAULT_SITES_BEFORE_PAUSE = 10;
 
     private int pauseTimeMS = DEFAULT_PAUSE_TIME_MS;
-    private long maxUpdateTimeMS = Long.MAX_VALUE;
+    private long maxUpdateTimeMS = DEFAULT_MAX_UPDATE_TIME_SECS * 1000L;
     private int sitesUntilPause = DEFAULT_SITES_BEFORE_PAUSE;
 
     public static final String SITE_TEMPLATE_PREFIX = "!site.template";
@@ -98,7 +98,7 @@ public class SitePermsService {
         }
         // get the configurable values
         pauseTimeMS = serverConfigurationService.getConfig("site.adminperms.pause.ms", pauseTimeMS);
-        // maxUpdateTimeMS = serverConfigurationService.getConfig("site.adminperms.maxrun.secs", DEFAULT_MAX_UPDATE_TIME_SECS) * 1000L;
+        maxUpdateTimeMS = serverConfigurationService.getConfig("site.adminperms.maxrun.secs", DEFAULT_MAX_UPDATE_TIME_SECS) * 1000L;
         sitesUntilPause = serverConfigurationService.getConfig("site.adminperms.sitesuntilpause", sitesUntilPause);
         // get the current state
         final User currentUser = userDirectoryService.getCurrentUser();
@@ -164,7 +164,7 @@ public class SitePermsService {
         updateStarted = System.currentTimeMillis();
         // update the session with a status message
         String msg = getMessage("siterole.message.processing."+(add?"add":"remove"), 
-                new Object[] {permsString, realmsString, rolesString, 0});
+                new Object[] {permsString, typesString, rolesString, 0});
         log.info("STARTED: {} :: pauseTimeMS={}, sitesUntilPause={}, maxUpdateTimeMS={}",
             msg, pauseTimeMS, sitesUntilPause, maxUpdateTimeMS);
         updateStatus = "RUNNING";
@@ -217,7 +217,7 @@ public class SitePermsService {
                             authzGroupService.save(ag);
                             updatesCount++;
                             log.info("{} Permissions ({}) for roles ({}) to group: {}", (add)?"Added":"Removed",
-                                    realm, permsString, rolesString, realm);
+                                    siteRef, permsString, rolesString, siteRef);
                         }
                         successCount++;
                         if (updatesCount > 0 && updatesCount % sitesUntilPause == 0) {
@@ -229,12 +229,12 @@ public class SitePermsService {
                             currentSession.setActive();
                         }
                     } else {
-                        log.warn("Cannot update authz group: {} unable to apply any perms change", realm);
+                        log.warn("Cannot update authz group: {} unable to apply any perms change", siteRef);
                     }
                 } catch (GroupNotDefinedException e) {
-                    log.error("Could not find authz group: {} unable to apply any perms change", realm);
+                    log.error("Could not find authz group: {} unable to apply any perms change", siteRef);
                 } catch (AuthzPermissionException e) {
-                    log.error("Could not save authz group: {} unable to apply any perms change", realm);
+                    log.error("Could not save authz group: {} unable to apply any perms change", siteRef);
                 }
                 sitesCounter++;
                 if (!isLockedForUpdates()) {

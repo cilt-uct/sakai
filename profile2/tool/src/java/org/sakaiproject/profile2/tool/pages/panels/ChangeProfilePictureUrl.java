@@ -15,8 +15,7 @@
  */
 package org.sakaiproject.profile2.tool.pages.panels;
 
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.wicket.RestartResponseException;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.extensions.ajax.markup.html.IndicatingAjaxButton;
@@ -45,6 +44,8 @@ import org.sakaiproject.profile2.tool.components.CloseButton;
 import org.sakaiproject.profile2.tool.models.StringModel;
 import org.sakaiproject.profile2.tool.pages.MyProfile;
 import org.sakaiproject.profile2.util.ProfileConstants;
+
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class ChangeProfilePictureUrl extends Panel{

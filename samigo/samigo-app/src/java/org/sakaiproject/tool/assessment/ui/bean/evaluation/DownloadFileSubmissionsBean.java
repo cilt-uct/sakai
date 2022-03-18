@@ -23,10 +23,13 @@ package org.sakaiproject.tool.assessment.ui.bean.evaluation;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.SessionScoped;
 import javax.faces.context.FacesContext;
 import javax.faces.context.ExternalContext;
 import javax.faces.event.ActionEvent;
@@ -46,9 +49,13 @@ import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 import org.sakaiproject.tool.assessment.util.DownloadFileUtil;
 import org.sakaiproject.util.ResourceLoader;
 
+/* For evaluation: Download File Submissions backing bean */
 @Slf4j
+@ManagedBean(name="downloadFileSubmissions")
+@SessionScoped
 public class DownloadFileSubmissionsBean implements Serializable {
 
+	private static final ResourceLoader rb = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.EvaluationMessages");
 	private String assessmentId;
 	private String assessmentName;
 	private String firstTargetSelected;
@@ -94,7 +101,7 @@ public class DownloadFileSubmissionsBean implements Serializable {
 		List sectionList = totalScores.getSectionFilterSelectItems();
 		int numSection = availableSectionItems.size();
 		SelectItem[] target = new SelectItem[2];
-		ResourceLoader rb = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.EvaluationMessages");
+
 		target[0] = new SelectItem(this.SITE, rb.getString("for_all_sections_groups"));
 
 		if (numSection == 1) {
@@ -117,6 +124,20 @@ public class DownloadFileSubmissionsBean implements Serializable {
 
 	public void setFileUploadQuestionList(ArrayList<ItemDataIfc> fileUploadQuestionList){
 		this.fileUploadQuestionList = fileUploadQuestionList;
+		this.fileUploadQuestionList.sort(new Comparator<ItemDataIfc>() {
+			//We need to compare to order sections and, in each section its questions
+			@Override
+			public int compare(ItemDataIfc it1, ItemDataIfc it2) {
+				if(it1 == null) return -1;
+				if(it2 == null) return 1;
+				if(it1 == it2 ) return 0;
+				if(it1.getSection().getSequence() > it2.getSection().getSequence()) return 1;
+				else if(it1.getSection().getSequence().equals(it2.getSection().getSequence())) {
+					return it1.getSequence().compareTo(it2.getSequence());
+				}
+				return -1;
+			}
+		});
 	}
 
 	public ArrayList<ItemDataIfc> getFileUploadQuestionList(){
@@ -156,7 +177,6 @@ public class DownloadFileSubmissionsBean implements Serializable {
 		HttpServletRequest req = (HttpServletRequest) context.getExternalContext().getRequest();
 		HttpServletResponse res = (HttpServletResponse) context.getExternalContext().getResponse();
 
-		ResourceLoader rb = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.EvaluationMessages");
 		TotalScoresBean totalScores = (TotalScoresBean) ContextUtil.lookupBean("totalScores");
 		StringBuilder zipFilename = new StringBuilder();
 		zipFilename.append(totalScores.getAssessmentName());

@@ -15,10 +15,27 @@
  */
 package org.sakaiproject.search.elasticsearch;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringEscapeUtils;
+import static org.elasticsearch.common.settings.ImmutableSettings.settingsBuilder;
+import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
+
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.security.GeneralSecurityException;
+import java.security.MessageDigest;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
+
+import org.apache.commons.text.StringEscapeUtils;
 import org.elasticsearch.action.admin.cluster.node.info.NodeInfo;
 import org.elasticsearch.action.admin.cluster.node.info.NodesInfoRequest;
 import org.elasticsearch.action.admin.cluster.node.info.NodesInfoResponse;
@@ -54,7 +71,6 @@ import org.sakaiproject.search.api.SearchService;
 import org.sakaiproject.search.api.SearchStatus;
 import org.sakaiproject.search.api.SiteSearchIndexBuilder;
 import org.sakaiproject.search.api.TermFrequency;
-import org.sakaiproject.search.elasticsearch.ElasticSearchConstants;
 import org.sakaiproject.search.elasticsearch.filter.SearchItemFilter;
 import org.sakaiproject.search.model.SearchBuilderItem;
 import org.sakaiproject.thread_local.api.ThreadLocalManager;
@@ -62,25 +78,10 @@ import org.sakaiproject.tool.api.SessionManager;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.security.GeneralSecurityException;
-import java.security.MessageDigest;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
-import static org.elasticsearch.common.settings.ImmutableSettings.settingsBuilder;
-import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * <p>Drop in replacement for sakai's legacy search service which uses {@link <a href="http://elasticsearch.org">elasticsearch</a>}.
@@ -506,15 +507,15 @@ import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
             sb.append("<fault>"); //$NON-NLS-1$
             sb.append("<request>"); //$NON-NLS-1$
             sb.append("<![CDATA["); //$NON-NLS-1$
-            sb.append(" userid = ").append(StringEscapeUtils.escapeXml(userid)).append("\n"); //$NON-NLS-1$ //$NON-NLS-2$
+            sb.append(" userid = ").append(StringEscapeUtils.escapeXml11(userid)).append("\n"); //$NON-NLS-1$ //$NON-NLS-2$
             sb
-                    .append(" searchTerms = ").append(StringEscapeUtils.escapeXml(searchTerms)).append("\n"); //$NON-NLS-1$ //$NON-NLS-2$
+                    .append(" searchTerms = ").append(StringEscapeUtils.escapeXml11(searchTerms)).append("\n"); //$NON-NLS-1$ //$NON-NLS-2$
             sb
-                    .append(" checksum = ").append(StringEscapeUtils.escapeXml(checksum)).append("\n"); //$NON-NLS-1$ //$NON-NLS-2$
+                    .append(" checksum = ").append(StringEscapeUtils.escapeXml11(checksum)).append("\n"); //$NON-NLS-1$ //$NON-NLS-2$
             sb
-                    .append(" contexts = ").append(StringEscapeUtils.escapeXml(contexts)).append("\n"); //$NON-NLS-1$ //$NON-NLS-2$
-            sb.append(" ss = ").append(StringEscapeUtils.escapeXml(ss)).append("\n"); //$NON-NLS-1$ //$NON-NLS-2$
-            sb.append(" se = ").append(StringEscapeUtils.escapeXml(se)).append("\n"); //$NON-NLS-1$ //$NON-NLS-2$
+                    .append(" contexts = ").append(StringEscapeUtils.escapeXml11(contexts)).append("\n"); //$NON-NLS-1$ //$NON-NLS-2$
+            sb.append(" ss = ").append(StringEscapeUtils.escapeXml11(ss)).append("\n"); //$NON-NLS-1$ //$NON-NLS-2$
+            sb.append(" se = ").append(StringEscapeUtils.escapeXml11(se)).append("\n"); //$NON-NLS-1$ //$NON-NLS-2$
             sb.append("]]>"); //$NON-NLS-1$
             sb.append("</request>"); //$NON-NLS-1$
             sb.append("<error>"); //$NON-NLS-1$
@@ -690,7 +691,8 @@ import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
                 List<Object[]> workers = new ArrayList();
 
                 for (NodeStats nodeStat : nodesStatsResponse.getNodes()) {
-                    workers.add(new Object[]{nodeStat.getNode().getName() + "(" + nodeStat.getHostname() + ")",
+                    if (nodeStat.getNode().isDataNode()) {
+                        workers.add(new Object[]{nodeStat.getNode().getName() + "(" + nodeStat.getHostname() + ")",
                             null, // No way to get a meaningful "start" time per node, so now just set a null Date.
                             // Historically used an index builder starttime, which was always meaningless in this
                             // context since it's always going to refer to the local node. And we now have
@@ -698,7 +700,7 @@ import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
                             // hints at same problem with the results of 'getStatus()'
                             //TODO will show same status for each node, need to deal with that
                             getStatus()});
-
+                    }
                 }
                 return workers;
             }

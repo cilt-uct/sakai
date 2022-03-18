@@ -2,7 +2,7 @@
                  javax.faces.el.*, org.sakaiproject.tool.messageforums.*"%>
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://sakaiproject.org/jsf/messageforums" prefix="mf" %>
 <jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
    <jsp:setProperty name="msgs" property="baseName" value="org.sakaiproject.api.app.messagecenter.bundle.Messages"/>
@@ -16,11 +16,11 @@
 <link rel="stylesheet" href="/library/webjars/jquery-ui/1.12.1/jquery-ui.min.css" type="text/css" />
 <link rel="stylesheet" href="/messageforums-tool/css/forum_rank.css" type="text/css" />
 
-<script type="text/javascript">includeLatestJQuery("msgcntr");</script>
-<script type="text/javascript" src="/messageforums-tool/js/json2.js"></script>
-<script type="text/javascript" src="/messageforums-tool/js/fluidframework-min.js"></script>
-<script type="text/javascript" src="/messageforums-tool/js/Scroller.js"></script>
-<script type="text/javascript" src="/messageforums-tool/js/forum.js"></script>
+<script>includeLatestJQuery("msgcntr");</script>
+<script src="/messageforums-tool/js/json2.js"></script>
+<script src="/messageforums-tool/js/fluidframework-min.js"></script>
+<script src="/messageforums-tool/js/Scroller.js"></script>
+<script src="/messageforums-tool/js/forum.js"></script>
 
 
     <h:form id="addRank">
@@ -30,7 +30,10 @@
 		<f:verbatim><br/></f:verbatim>
 		<h:graphicImage id="iamgespacer" url="/images/ranksSpaceFiller.jpg" height="10"/>
 		<sakai:tool_bar separator="#{msgs.cdfm_toolbar_separator}" >
-			<sakai:tool_bar_item value="#{msgs.add_rank}" action="#{ForumTool.processActionAddRank}" rendered="#{ForumTool.instructor}" />
+			<h:commandLink id="addRank" rendered="#{ForumTool.instructor}"
+				action="#{ForumTool.processActionAddRank}" immediate="true">
+					<h:outputText value="#{msgs.add_rank}" />
+			</h:commandLink>
 		</sakai:tool_bar>
         <f:verbatim><br/></f:verbatim>
 
@@ -83,7 +86,8 @@
             </h:dataTable>
         </div>
             <f:verbatim><br/></f:verbatim>
-		    <h:graphicImage id="iamgespacer" url="/images/ranksSpaceFiller.jpg" height="20"/>
+
+            <h:graphicImage id="iamgespacer1" url="/images/ranksSpaceFiller.jpg" height="20"/>
 			<div class="act">
           		<h:commandButton type="submit" id="delete_submit" immediate="true" rendered="#{! empty ForumTool.rankBeanList}" action="#{ForumTool.processActionConfirmDeleteRanks}" value="#{msgs.delete_rank}" styleClass="active" />
 			    <h:commandButton action="#{ForumTool.processActionHome}" type="submit" immediate="true"  id="delete_cancel" rendered="#{! empty ForumTool.rankBeanList}" value="#{msgs.cdfm_cancel}" />
@@ -95,13 +99,13 @@
                         thisId = "Main" + org.sakaiproject.tool.cover.ToolManager.getCurrentPlacement().getId();
                 }
             %>
-            <script type="text/javascript">
+            <script>
                 function resize(){
                     mySetMainFrameHeight('<%=org.sakaiproject.util.Web.escapeJavascript(thisId)%>');
                 }
             </script>
 
-            <script type="text/javascript">
+            <script>
                 resize();
                 //find the anchor
                 document.location.href=document.location.href + "#boldMsg";

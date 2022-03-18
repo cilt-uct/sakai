@@ -1,6 +1,12 @@
+@import "_assignments_variables.scss";
+
 .#{$namespace}sakai-assignment-grades {
+
+  .checkbox-label {
+    margin-left: 20px;
+  }
 	#req-new_assignment_grade_points{
-		color: $error-color;
+		color: var(--errorBanner-color);
 	    margin: 9px 0 0 -13px;
 		position: absolute;
 	}
@@ -22,7 +28,7 @@
 		label{
 			&:after{
 				content: "*";
-				color: $error-color;
+				color: var(--errorBanner-color);
 				position: relative;
 				top: 3px;
 			}
@@ -32,9 +38,9 @@
 	#gradeOverridePanel{
 		margin-left: 50px;
 		width:100%;
-		background-color: $tool-background-color;
+		background-color: var(--tool-background-color);
 		.row-override:nth-child(odd){
-			background: darken($tool-background-color, 5%);
+			background: var(--sakai-color-gray--lighter-7);
 		}
 		.row-override{
 			padding: 0.5em 0 0.5em;
@@ -55,10 +61,23 @@
 		margin-left: 20px;
 	}
 
+	a#infoImg{
+		color: var(--infoBanner-color);
+		font-size: 1.2em;
+		margin-right: 5px;
+		vertical-align: middle;
+		text-decoration: none;
+		cursor: pointer;
+	}
+
 	#sendFeedbackPanel, #allowResubmissionPanel{
 		.discTria{
 			font-weight: bold;
-			background-color: #cef;
+			background-color: $assignments-disclosure-bg;
+
+			a {
+				color: var(--infoBanner-color);
+			}
 		}
 	}
 
@@ -115,22 +134,23 @@
 	}
 
 	.toggleAnchor {
-	  border: 1px solid #cef;
-	  background: #cef  !important;
+	  border: 1px solid $assignments-disclosure-bg;
+	  background: $assignments-disclosure-bg  !important;
+	  color: var(--infoBanner-color); 
 	  padding: 5px !important;
 	  cursor: pointer;
 	  margin-bottom: 0;
 	  &:hover {
-	    border: 1px solid #9cf;
+	    border: 1px solid var(--infoBanner-bordercolor);
 	  }
 	}
 
 	.toggleAnchorOpen {
 	  &:hover {
-	    border: 1px solid #9cf;
+	    border: 1px solid var(--infoBanner-bordercolor);
 	  }
-	  border: 1px solid #cef;
-	  background: #cef !important;
+	  border: 1px solid $assignments-disclosure-bg;
+	  background: $assignments-disclosure-bg !important;
 	  padding: 5px !important;
 	  cursor: pointer;
 	}
@@ -151,15 +171,15 @@
 
 	.toggledContent {
 	  margin: 0;
-	  border: 2px solid #cef;
+	  border: 2px solid $assignments-disclosure-bg;
 	  border-top: none;
 	  padding: 1em;
 	  h4 {
-	    color: #000 !important;
+	    color: var(--sakai-text-color-1) !important;
 	    width: 40em;
 	    margin: .5em 0 !important;
 	    padding: .3em 0;
-	    border-bottom: 2px solid #ccc;
+	    border-bottom: 2px solid var(--sakai-border-color);
 	  }
 	}
 
@@ -176,12 +196,12 @@
 	}
 
 	.highLightBlock {
-	  background: #eee;
+	  background: var(--sakai-background-color-3);
 	}
 
 	.popupMessage {
-	  background-color: #ffffcb !important;
-	  border: 1px solid lightgray;
+	  background-color: var(--warnBanner-bgcolor) !important;
+	  border: 1px solid var(--warnBanner-bordercolor);
 	  padding: 0.4em;
 	  width: 475px;
 	  position: absolute;
@@ -191,6 +211,7 @@
 	.reportIcon {
 	  display: inline-block;
 	  width: 20px;
+	  text-align: center;
 	}
 
 	.disclosureTriangle {
@@ -202,28 +223,28 @@
 	}
 
 	.assignmentUnsubmittable {
-	  background-color: #900;
-	  color: #fff;
+	  background-color: var(--errorBanner-bgcolor);
+	  color: var(--errorBanner-color);
 	}
 
 	.assignmentUnsubmittableAttachments {
-	  background-color: #fdd;
+	  background-color: var(--errorBanner-bgcolor);
 	}
 
 	.assignmentUnsubmittable, .assignmentUnsubmittableAttachments {
-	  border: 1px solid #900;
+	  border: 1px solid var(--errorBanner-bordercolor);
 	  padding: 0 10px 10px;
 	  margin: 1em 0;
 	}
 
 	.assignmentUnsubmittable {
 	  h3 {
-	    color: #fff;
+	    color: var(--errorBanner-color);
 	  }
 	  .assignmentInline {
-	    background-color: #fff;
-	    border: 1px solid #eee;
-	    color: #000;
+	    background-color: var(--sakai-background-color-1);
+	    border: 1px solid var(--sakai-border-color);
+	    color: var(--sakai-text-color-1);
 	    margin-top: 10px;
 	    max-height: 300px;
 	    overflow-y: auto;
@@ -246,11 +267,11 @@
 	}
 
 	.assignmentAttachmentHighlight {
-	  background-color: #ffe;
+	  background-color: var(--warnBanner-bgcolor);
 	}
 
 	.assignmentAttachBox {
-	  background-color: #eee;
+	  background-color: var(--sakai-background-color-2);
 	  padding: 10px;
 	  h3 {
 	    margin: 0;
@@ -267,19 +288,24 @@
 	  strong {
 	    font-weight: normal;
 	    cursor: pointer;
-	    padding-left: 1em !important;
 	  }
 	  .expand {
-	    background: url('/library/image/sakai/collapse.gif') no-repeat left !important;
+		&:before {
+			@extend .fa;
+			@extend .fa-chevron-down;
+		}
 	  }
 	  .collapse {
-	    background: url('/library/image/sakai/expand.gif') no-repeat left !important;
-	    display: block !important;
+		&:before {
+			@extend .fa;
+			@extend .fa-chevron-right;
+		}
+	    display: inline-block;
 	  }
 	}
 
 	label.disabled {
-	  color: #aaa;
+	  color: var(--sakai-text-color-disabled);
 	}
 
 	/* start SAK-29314 */
@@ -288,22 +314,22 @@
 	  width: 100%;
 	  display: table;
 	  fieldset.roundedBorder {
-	    border: 2px solid #c8c8c8;
+	    border: 2px solid var(--sakai-border-color);
 	    border-radius: 5px;
 	    padding: 1em;
 	    margin-bottom: 1em;
 	    legend {
 	      padding-left: 6px;
 	      padding-right: 6px;
-	      background: rgba(255, 255, 255, 0);
-	      color: #444444;
+	      background: var(--sakai-background-color-1);
+	      color: var(--sakai-text-color-2);
 	    }
 	  }
 	}
 
 	td.specialLink a {
 	  &:link, &:visited {
-	    color: #197FA8;
+	    color: var(--link-color);
 	  }
 	}
 
@@ -324,7 +350,7 @@
 	}
 
 	.extraNode {
-	  border: 1px solid #69d;
+	  border: 1px solid var(--sakai-border-color);
 	  padding: 0  1.5em 1em 1.5em;
 	  width: 100%;
 	  max-width: 1200px;
@@ -339,7 +365,7 @@
 
 	.extraNode legend {
 	  padding: 0 .5em;
-	  color: #555;
+	  color: var(--sakai-text-color-2);
 	}
 
 	.members {
@@ -349,13 +375,13 @@
 	.userList {
 	  margin-left: 36px !important;
 	  .selectedItem {
-	    background: #def;
-	    color: #000;
+	    background-color: var(--sakai-active-color-3);
+	    color: var(--sakai-text-color-3);
 	    font-weight: bold;
 	  }
 	  li label:hover {
 	    cursor: pointer;
-	    background: #ffe;
+	    background: var(--sakai-active-color-1);
 	  }
 	}
 
@@ -366,10 +392,10 @@
 	}
 
 	.smallMatches {
-	  background-color: lightyellow;
+	  background-color: var(--warnBanner-bgcolor);
 	  border-style: solid;
 	  border-width: 1px;
-	  border-color: lightgray;
+	  border-color: var(--warnBanner-bordercolor);
 	  padding: 1em 1em 1em 2em;
 	}
 
@@ -382,6 +408,10 @@
 	  }
 	}
 
+	.contentReviewColumn {
+		width: 320px;
+	}
+
 	.contentReviewIcon {
 		@extend .fa, .fa-flag;
 	}
@@ -392,77 +422,110 @@
 
 	.contentReviewIconWarn {
 		@extend .fa, .fa-exclamation-triangle;
-		color: #FFC107;
+		color: var(--warnBanner-color);
 	}
 
 	.contentReviewIconPending {
 		@extend .fa, .fa-hourglass-half;
-		color: #2196F3;
+		color: var(--infoBanner-color);
 	}
 
 	.contentReviewIconNoService {
 		@extend .fa, .fa-cog;
-		color: #212121;
+		color: var(--sakai-text-color-1);
 	}
 
 	.contentReviewIconThreshold-1 {
 		@extend .contentReviewIcon;
-		color: #F44336;
+		color: var(--errorBanner-color);
 	}
 
 	.contentReviewIconThreshold-1-draft {
 		@extend .contentReviewIconDraft;
-		color: #F44336;
+		color: var(--errorBanner-color);
 	}
 
 	.contentReviewIconThreshold-2 {
 		@extend .contentReviewIcon;
-		color: #FF9800;
+		color: var(--sakai-color-orange--darker-4);
 	}
 
 	.contentReviewIconThreshold-2-draft {
 		@extend .contentReviewIconDraft;
-		color: #FF9800;
+		color: var(--sakai-color-orange--darker-4);
 	}
 
 	.contentReviewIconThreshold-3 {
 		@extend .contentReviewIcon;
-		color: #FFD600;
+		color: var(--warnBanner-color);
 	}
 
 	.contentReviewIconThreshold-3-draft {
 		@extend .contentReviewIconDraft;
-		color: #FFD600;
+		color: var(--warnBanner-color);
 	}
 
 	.contentReviewIconThreshold-4 {
 		@extend .contentReviewIcon;
-		color: #4CAF50;
+		color: var(--successBanner-color);
 	}
 
 	.contentReviewIconThreshold-4-draft {
 		@extend .contentReviewIconDraft;
-		color: #4CAF50;
+		color: var(--successBanner-color);
 	}
 
 	.contentReviewIconThreshold-5 {
 		@extend .contentReviewIcon;
-		color: #2196F3;
+		color: var(--infoBanner-color);
 	}
 
 	.contentReviewIconThreshold-5-draft {
 		@extend .contentReviewIconDraft;
-		color: #2196F3;
+		color: var(--infoBanner-color);
 	}
 
 	.contentReviewIconThreshold-6 {
 		@extend .contentReviewIcon;
-		color: #9E9E9E;
+		color: var(--sakai-text-color-2);
 	}
 
 	.contentReviewIconThreshold-6-draft {
 		@extend .contentReviewIconDraft;
-		color: #9E9E9E;
+		color: var(--sakai-text-color-2);
+	}
+
+	.contentReviewDisclosure {
+		position: relative;
+		display: flex;
+		margin-right: $standard-space;
+		align-items: baseline;
+	}
+
+	.contentReviewDisclosure:focus {
+		outline-offset: -1px;
+	}
+
+	.contentReviewMessage {
+		position: relative;
+		border: 1px solid;
+		border-radius: 5px;
+		margin: 7px 24px 4px 24px;
+		padding: 4px 8px;
+		background-color: $assignments-disclosure-bg;
+		border-color: $assignments-disclosure-bg;
+		color: var(--sakai-primary-color-1);
+
+		&::before {
+			content: "";
+			position: absolute;
+			top: -#{$standard-space-4x}; // -2 x the border
+			left: 5px;
+			width: $standard-spacing;
+			height: $standard-spacing;
+			border: 7px solid transparent;
+			border-bottom-color: $assignments-disclosure-bg;
+		}
 	}
 
 	div#pagingHeader {
@@ -473,10 +536,119 @@
 		@include justify-content(center);
 	}
 
-	// CLASSES-2690 NYU style disabled checkboxes as greyed out
-	#allowResToggle:disabled,
-	#new_assignment_use_review_service:disabled {
-		background-color: #f3f3f3;
-		border-color: #CCC;
+	#groupTable, #filterByGroupDiv{
+		button.multiselect-clear-filter{
+			padding: 6px 12px;
+			font-size: 14px;
+			line-height: 1.42857143;
+			background-color: var(--sakai-background-color-2);
+		}
 	}
+
+	.borderPanel {
+		border: 1px solid var(--sakai-border-color);
+		padding: 0.6em;
+	}
+
+	.sakai-asn-controlRow {
+		@include justify-content(space-between);
+		@include align-items(flex-end);
+		-webkit-flex-wrap: wrap;
+		flex-wrap: wrap;
+		grader-toggle { margin-left: 20px; }
+	}
+
+	#honor-pledge-agreement {
+		h4 {
+			font-size: $jumbotron-heading-font-size;
+			margin: 0 0 0.5em 0;
+		}
+		margin-bottom: 0;
+	}
+
+	.progress-container {
+		position: relative;
+
+		.progress-cols {
+			position: absolute;
+			width: 100%;
+			background: no-repeat;
+		}
+
+		.progress-bar-empty {
+			background-color: transparent;
+			color: var(--sakai-text-color-1);
+		}
+
+
+	}
+
+	.student-picture {
+		background-position: center center;
+		background-size: cover;
+		border-radius: 80px;
+		border: 1px solid var(--sakai-border-color);
+		float: left;
+		height: 80px;
+		padding: 5px 0px;
+		margin: 0.8em $standard-spacing 0 0;
+		width: 80px;
+	}
+
+  #submissionList sakai-rubric-student-button {
+    float: right;
+  }
+
+  #msgNoMembersInCommonError {
+	  max-height: 300px;
+	  overflow-y: auto;
+  }
+
+  #checkNowButton {
+	  margin-top: $standard-spacing;
+  }
+
+  #groupTableContainer .multiselect-native-select::after
+  {
+	  content: "*";
+	  color: var(--errorBanner-color);
+	  position: relative;
+	  top: 3px;
+	  margin-left: 4px;
+  }
+
+  #categoryList label {
+	  margin-bottom: 0; /* kill off bootstrap margin to reduce jitter during animation transitions */
+  }
+
+  #assignmentGradingPointsPanel label {
+	  font-weight: normal;
+  }
+
+  #assignmentGradingPointsPanel .radio, #assignmentGradingPointsPanel .checkbox {
+	  margin-top: 0;
+	  margin-bottom: 0;
+  }
+
+  #assignmentGradingPointsPanel sakai-rubric-association {
+	  display: block;
+  }
+
+  #assignmentGradingPointsPanel sakai-rubric-association h4 {
+	  display: none;
+  }
+
+  #assignmentGradingPointsPanel sakai-rubric-association .rubrics-list {
+	  margin-left: 3em; /* match indnt3 */
+	  padding-left: 0;
+  }
+
+  #msgNoMembersInCommon.is-hidden,
+  #msgNoMembersInCommonSuccess.is-hidden,
+  #msgNoMembersInCommonError.is-hidden,
+  #checkGroupsError.is-hidden,
+  #checkGroupFailed.is-hidden,
+  #checkGroupsErrorReport.is-hidden {
+	  display: none;
+  }
 }

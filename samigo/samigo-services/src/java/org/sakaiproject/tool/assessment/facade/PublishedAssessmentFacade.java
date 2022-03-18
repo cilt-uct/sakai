@@ -31,6 +31,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import org.sakaiproject.tool.assessment.data.dao.assessment.AssessmentData;
@@ -93,6 +95,8 @@ public class PublishedAssessmentFacade
   private Integer feedbackComponentOption;
   private Integer feedbackAuthoring;
   private Date feedbackDate;
+  @Getter @Setter private Date feedbackEndDate;
+  @Getter @Setter private Double feedbackScoreThreshold;
   private String ownerSiteName;
   private Set publishedAssessmentAttachmentSet;
   private boolean hasAssessmentGradingData;
@@ -100,13 +104,15 @@ public class PublishedAssessmentFacade
   private int submittedCount;
   private Date lastNeedResubmitDate;
   private boolean activeStatus;
-  private String releaseToGroups;
-  private List<String> releaseToGroupsList = new ArrayList<String>();
+  private Map releaseToGroups;
   private int enrolledStudentCount;
   private Integer timeLimit;
   private String lastModifiedDateForDisplay;
   private int groupCount;
-  
+  private boolean selected;
+  private Long categoryId;
+  private boolean pastDue = false;
+
   public PublishedAssessmentFacade() {
   }
 
@@ -119,22 +125,22 @@ public class PublishedAssessmentFacade
 
   // constructor that whole min. info, used for listing
   public PublishedAssessmentFacade(Long id, String title, String releaseTo,
-                                 Date startDate, Date dueDate, String releaseToGroups){
+                                 Date startDate, Date dueDate, Map releaseToGroups){
 	  this(id, title, releaseTo, startDate, dueDate, releaseToGroups, null, null);
   }
   
   public PublishedAssessmentFacade(Long id, String title, String releaseTo,
-		  Date startDate, Date dueDate, String releaseToGroups, Date lastModifiedDate, String lastModifiedBy){
+		  Date startDate, Date dueDate, Map releaseToGroups, Date lastModifiedDate, String lastModifiedBy){
 	  this(id, title, releaseTo, startDate, dueDate, null, null, releaseToGroups, lastModifiedDate, lastModifiedBy, null, null, null);
   }
 
   public PublishedAssessmentFacade(Long id, String title, String releaseTo,
-		  Date startDate, Date dueDate, Integer status, String releaseToGroups, Date lastModifiedDate, String lastModifiedBy){
+		  Date startDate, Date dueDate, Integer status, Map releaseToGroups, Date lastModifiedDate, String lastModifiedBy){
 	  this(id, title, releaseTo, startDate, dueDate, null, status, releaseToGroups, lastModifiedDate, lastModifiedBy, null, null, null);
   }
 
   public PublishedAssessmentFacade(Long id, String title, String releaseTo,
-		  Date startDate, Date dueDate, Date retractDate, Integer status, String releaseToGroups, 
+		  Date startDate, Date dueDate, Date retractDate, Integer status, Map releaseToGroups, 
 		  Date lastModifiedDate, String lastModifiedBy, Integer lateHandling,
 		  Boolean unlimitedSubmissions, Integer submissionsAllowed){
 	  this.publishedAssessmentId = id;
@@ -147,9 +153,6 @@ public class PublishedAssessmentFacade
 	  this.lastModifiedDate = lastModifiedDate;
 	  this.lastModifiedBy = lastModifiedBy;
 	  this.releaseToGroups = releaseToGroups;
-	  if (releaseToGroups != null && !releaseToGroups.trim().equals("")) {
-		  setReleaseToGroupsList();
-	  }
 	  this.lateHandling = lateHandling;
 	  this.unlimitedSubmissions = unlimitedSubmissions;
 	  this.submissionsAllowed = submissionsAllowed;
@@ -162,29 +165,29 @@ public class PublishedAssessmentFacade
                                  Date startDate, Date dueDate, Date retractDate,
                                  Date feedbackDate, Integer feedbackDelivery, Integer feedbackComponentOption, Integer feedbackAuthoring,
                                  Integer lateHandling, Boolean unlimitedSubmissions,
-                                 Integer submissionsAllowed){
+                                 Integer submissionsAllowed, Date feedbackEndDate, Double feedbackScoreThreshold){
     
 	  this(id, title, releaseTo, startDate, dueDate, retractDate, feedbackDate,
-			  feedbackDelivery, feedbackComponentOption, feedbackAuthoring, lateHandling, unlimitedSubmissions, submissionsAllowed, null, null, null);  
+			  feedbackDelivery, feedbackComponentOption, feedbackAuthoring, lateHandling, unlimitedSubmissions, submissionsAllowed, null, null, null, feedbackEndDate, feedbackScoreThreshold);  
   }
   
   public PublishedAssessmentFacade(Long id, String title, String releaseTo,
           Date startDate, Date dueDate, Date retractDate,
           Date feedbackDate, Integer feedbackDelivery,  Integer feedbackComponentOption,Integer feedbackAuthoring,
           Integer lateHandling, Boolean unlimitedSubmissions,
-          Integer submissionsAllowed, Integer scoringType){
+          Integer submissionsAllowed, Integer scoringType, Date feedbackEndDate, Double feedbackScoreThreshold){
 
 	  this(id, title, releaseTo, startDate, dueDate, retractDate, feedbackDate,
-			  feedbackDelivery, feedbackComponentOption, feedbackAuthoring, lateHandling, unlimitedSubmissions, submissionsAllowed, scoringType, null, null);  
+			  feedbackDelivery, feedbackComponentOption, feedbackAuthoring, lateHandling, unlimitedSubmissions, submissionsAllowed, scoringType, null, null, feedbackEndDate, feedbackScoreThreshold);  
   }
   
   public PublishedAssessmentFacade(Long id, String title, String releaseTo,
 			Date startDate, Date dueDate, Date retractDate, Date feedbackDate,
 			Integer feedbackDelivery, Integer feedbackComponentOption, Integer feedbackAuthoring,
 			Integer lateHandling, Boolean unlimitedSubmissions,
-			Integer submissionsAllowed, Integer scoringType, Integer status) {
+			Integer submissionsAllowed, Integer scoringType, Integer status, Date feedbackEndDate, Double feedbackScoreThreshold) {
 	  this(id, title, releaseTo, startDate, dueDate, retractDate, feedbackDate,
-			  feedbackDelivery,feedbackComponentOption, feedbackAuthoring, lateHandling, unlimitedSubmissions, submissionsAllowed, scoringType, status, null);  
+			  feedbackDelivery,feedbackComponentOption, feedbackAuthoring, lateHandling, unlimitedSubmissions, submissionsAllowed, scoringType, status, null, feedbackEndDate, feedbackScoreThreshold);  
 	  
   }
   
@@ -192,16 +195,16 @@ public class PublishedAssessmentFacade
 			Date startDate, Date dueDate, Date retractDate, Date feedbackDate,
 			Integer feedbackDelivery,  Integer feedbackComponentOption,Integer feedbackAuthoring,
 			Integer lateHandling, Boolean unlimitedSubmissions,
-			Integer submissionsAllowed, Integer scoringType, Integer status, Date lastModifiedDate) {
+			Integer submissionsAllowed, Integer scoringType, Integer status, Date lastModifiedDate, Date feedbackEndDate, Double feedbackScoreThreshold) {
 	  this(id, title, releaseTo, startDate, dueDate, retractDate, feedbackDate,
-			  feedbackDelivery,feedbackComponentOption, feedbackAuthoring, lateHandling, unlimitedSubmissions, submissionsAllowed, scoringType, status, lastModifiedDate, null);  
+			  feedbackDelivery,feedbackComponentOption, feedbackAuthoring, lateHandling, unlimitedSubmissions, submissionsAllowed, scoringType, status, lastModifiedDate, null, feedbackEndDate, feedbackScoreThreshold);  
 	  
   }
   public PublishedAssessmentFacade(Long id, String title, String releaseTo,
 			Date startDate, Date dueDate, Date retractDate, Date feedbackDate,
 			Integer feedbackDelivery,  Integer feedbackComponentOption,Integer feedbackAuthoring,
 			Integer lateHandling, Boolean unlimitedSubmissions,
-			Integer submissionsAllowed, Integer scoringType, Integer status, Date lastModifiedDate, Integer timeLimit) {
+			Integer submissionsAllowed, Integer scoringType, Integer status, Date lastModifiedDate, Integer timeLimit, Date feedbackEndDate, Double feedbackScoreThreshold) {
 		this.publishedAssessmentId = id;
 		this.title = title;
 		this.releaseTo = releaseTo;
@@ -225,6 +228,8 @@ public class PublishedAssessmentFacade
 		this.status = status;
 		this.lastModifiedDate = lastModifiedDate;
 	    this.timeLimit = timeLimit;
+	    this.feedbackEndDate = feedbackEndDate;
+	    this.feedbackScoreThreshold = feedbackScoreThreshold;
 	}
 
 
@@ -245,14 +250,14 @@ public class PublishedAssessmentFacade
     this.publishedSectionSet = data.getSectionSet();
   }
   
-  public PublishedAssessmentFacade(PublishedAssessmentIfc data, String releaseToGroups) {
-	    setProperties(data);
-	    this.publishedSectionSet = data.getSectionSet();
-	    this.releaseToGroups = releaseToGroups;
-	  }
+  public PublishedAssessmentFacade(PublishedAssessmentIfc data, Map releaseToGroups) {
+    setProperties(data);
+    this.publishedSectionSet = data.getSectionSet();
+    this.releaseToGroups = releaseToGroups;
+  }
   
   public PublishedAssessmentFacade(AssessmentIfc data) {
-	this((PublishedAssessmentIfc) data);
+    this((PublishedAssessmentIfc) data);
   }
 
   private void setProperties(PublishedAssessmentIfc data){
@@ -748,7 +753,9 @@ public class PublishedAssessmentFacade
 
       while (iter2.hasNext()){
         ItemDataIfc item = (ItemDataIfc)iter2.next();
-        total = total.add(BigDecimal.valueOf(item.getScore().doubleValue()));
+        if (!item.getIsExtraCredit()) {
+          total = total.add(BigDecimal.valueOf(item.getScore()));
+        }
       }
     }
     return  Double.valueOf(total.doubleValue());
@@ -789,7 +796,7 @@ public class PublishedAssessmentFacade
 	    return (String)this.publishedMetaDataMap.get(HASMETADATAFORQUESTIONS);
   }
 
-  public String getReleaseToGroups() {
+  public Map getReleaseToGroups() {
 	    return this.releaseToGroups;
   }
   
@@ -800,24 +807,10 @@ public class PublishedAssessmentFacade
   public void setHasAssessmentGradingData(boolean hasAssessmentGradingData) {
 	  this.hasAssessmentGradingData = hasAssessmentGradingData;
   }
-
-  public void setReleaseToGroupsList() {
-          
-          // SAM-2382
-          releaseToGroupsList = new ArrayList<String>();
-          for (String group : releaseToGroups.split(",")) {
-              releaseToGroupsList.add( group.trim());
-	  }
-          Collections.sort(releaseToGroupsList);
-  }
-  
-  public List<String> getReleaseToGroupsList() {
-	    return releaseToGroupsList;
-  }
   
   public void setGroupCount() {
-      if (releaseToGroupsList != null) {
-          groupCount = releaseToGroupsList.size();
+      if (releaseToGroups != null) {
+          groupCount = releaseToGroups.size();
       }
       else {
           groupCount = 0;
@@ -892,4 +885,29 @@ public class PublishedAssessmentFacade
   public void setLateHandling(Integer lateHandling) {
 	  this.lateHandling = lateHandling;
   }
+
+  public boolean isSelected() {
+	  return this.selected;
+  }
+
+  public void setSelected(boolean selected) {
+	  this.selected = selected;
+  }
+
+  public Long getCategoryId() {
+    return categoryId;
+  }
+
+  public void setCategoryId(Long categoryId) {
+    this.categoryId = categoryId;
+  }
+
+  public boolean getPastDue() {
+    return pastDue;
+  }
+
+  public void setPastDue(boolean pastDue) {
+    this.pastDue = pastDue;
+  }
+
 }

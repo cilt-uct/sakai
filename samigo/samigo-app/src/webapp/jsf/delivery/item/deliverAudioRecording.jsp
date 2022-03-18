@@ -25,21 +25,22 @@ should be included in file importing DeliveryMessages
 --%>
 -->
 
-<samigo:script path="/../library/js/swfobject/swfobject.js"/>
-<samigo:script path="/../library/js/recorder/recorder.js"/>
-<samigo:script path="/../library/js/recorder/jRecorder.js"/>
-<samigo:script path="/../library/js/sakai-recorder.js"/>
-<samigo:script path="/../library/js/sakai-recorder.js"/>
-<script type="text/javascript">includeWebjarLibrary('featherlight');</script>
+<script src="/library/webjars/wavesurfer.js/3.3.1/dist/wavesurfer.min.js"></script>
+<script src="/library/webjars/wavesurfer.js/3.3.1/dist/plugin/wavesurfer.microphone.min.js"></script>
+<script src="/library/js/recorder/recorder.js"></script>
+<script src="/library/js/sakai-recorder.js"></script>
+<script>includeWebjarLibrary('featherlight');</script>
 <script>
   $(document).ready(function() {
     if (typeof initiatedFeatherlight === "undefined") {
       var $elems = $("a[id$='deliverAudioRecording:openRecord']");
       $elems.each(function(index, elem) {
-        var questionId = $(elem).parent().find("input[name=questionId]").val();
-        elem.dataset.featherlight = ".audioRecordingPopup-" + questionId;
-        elem.dataset.featherlightPersist = true;
-        elem.dataset.featherlightBeforeClose = "$('.audioRecordingPopup-" + questionId + " #audio-stop:enabled').click();";
+        setTimeout(function() {
+          var questionId = $(elem).parent().find("input[name=questionId]").val();
+          elem.dataset.featherlight = ".audioRecordingPopup-" + questionId;
+          elem.dataset.featherlightPersist = true;
+          elem.dataset.featherlightBeforeClose = "$('.audioRecordingPopup-" + questionId + " .audio-stop:enabled').click();";
+        }, 0);
       });
       initiatedFeatherlight = true;
     }
@@ -64,7 +65,7 @@ should be included in file importing DeliveryMessages
 
   <h:panelGrid cellpadding="10" columns="1">
     <h:panelGroup>
-      <script type="text/javascript">
+      <script>
         var audio = new Audio();
         var deliveryProtocol = <h:outputText value="'#{delivery.protocol}'"/>;
         var hasNoMedia = <h:outputText value="'#{question.hasNoMedia}'"/>;
@@ -83,7 +84,7 @@ should be included in file importing DeliveryMessages
 		<h:outputText styleClass="recordedOn#{question.itemData.itemId}" value="#{question.mediaArray[0].duration} #{deliveryMessages.secs}, #{deliveryMessages.recorded_on} " rendered="#{!question.mediaArray[0].durationIsOver}" />
 		<h:outputText value="#{question.mediaArray[0].duration} #{deliveryMessages.secs}, #{deliveryMessages.recorded_on} " rendered="#{question.mediaArray[0].durationIsOver}" />
       <h:outputText value="#{question.mediaArray[0].createdDate}">
-        <f:convertDateTime pattern="#{deliveryMessages.delivery_date_format}" />
+        <f:convertDateTime dateStyle="medium" timeStyle="short" timeZone="#{delivery.userTimeZone}" />
       </h:outputText>
       <f:verbatim></span></f:verbatim>
       <h:outputText value="#{deliveryMessages.close_bracket}"/>
@@ -95,6 +96,7 @@ should be included in file importing DeliveryMessages
   </h:panelGrid>
 <f:verbatim></div></f:verbatim>
 
+<f:verbatim><div id="</f:verbatim><h:outputText value="attempts#{question.itemData.itemId}" /><f:verbatim>"></f:verbatim>
 <h:panelGroup rendered="#{question.attemptsRemaining == null || question.attemptsRemaining > 0}">
   <h:outputLink id="openRecord" title="#{assessmentSettingsMessages.record_your_answer}" value="#" rendered="#{delivery.actionString!='reviewAssessment'}">
     <h:outputText value="#{assessmentSettingsMessages.record_your_answer}"/>
@@ -106,6 +108,7 @@ should be included in file importing DeliveryMessages
     </f:subview>
   </h:panelGroup>
 </h:panelGroup>
+<f:verbatim></div></f:verbatim>
 
 <h:panelGroup rendered="#{question.attemptsRemaining != null && question.attemptsRemaining < 1}">
   <h:outputText value=" #{assessmentSettingsMessages.record_no_more_attempts}"/>
@@ -117,7 +120,7 @@ should be included in file importing DeliveryMessages
              && delivery.navigation ne '1' && delivery.displayMardForReview }">
 <h:selectBooleanCheckbox value="#{question.review}" id="mark_for_review" />
 	<h:outputLabel for="mark_for_review" value="#{deliveryMessages.mark}" />
-	<h:outputLink title="#{assessmentSettingsMessages.whats_this_link}" value="#" onclick="javascript:window.open('/portal/tool/#{requestScope['sakai.tool.placement.id']}/jsf/author/markForReviewPopUp.faces','MarkForReview','width=300,height=220,scrollbars=yes, resizable=yes');" >
+	<h:outputLink title="#{assessmentSettingsMessages.whats_this_link}" value="#" onclick="javascript:window.open('/portal/tool/#{requestScope['sakai.tool.placement.id']}/jsf/author/markForReviewPopUp.faces','MarkForReview','width=300,height=220,scrollbars=yes, resizable=yes');event.preventDefault();" >
 		<h:outputText  value=" #{assessmentSettingsMessages.whats_this_link}"/>
 	</h:outputLink>
 </h:panelGroup>

@@ -313,6 +313,7 @@ public class UserPageSiteSearch extends BasePage {
 			}
 			
 		};
+		Map<String, String> realmRoleDisplay = projectLogic.getRealmRoleDisplay(false);
 		final Form<?> form = new Form("form"){
 			@Override
 			protected void onSubmit() {
@@ -320,6 +321,11 @@ public class UserPageSiteSearch extends BasePage {
 				if(provider != null){
 					provider.detachManually();
 				}
+			}
+
+			@Override
+			public boolean isVisible() {
+				return !realmRoleDisplay.isEmpty();
 			}
 		};
 		form.add(new TextField<String>("search", searchModel));
@@ -762,7 +768,12 @@ public class UserPageSiteSearch extends BasePage {
 					}
 				});
 				String access = isShoppingPeriodTool() ? siteSearchResult.getAccessRoleString() :siteSearchResult.getAccessString(); 
-				item.add(new Label("access", access));
+				item.add(new Label("access", access) {
+					@Override
+					public boolean isVisible() {
+						return !realmRoleDisplay.isEmpty();
+					}
+				});
 				item.add(new Label("startDate", siteSearchResult.getShoppingPeriodStartDateStr()){
 					@Override
 					public boolean isVisible() {

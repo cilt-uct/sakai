@@ -19,13 +19,8 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -39,22 +34,22 @@ import javax.faces.model.SelectItem;
 
 import lombok.extern.slf4j.Slf4j;
 
+import org.sakaiproject.component.cover.ComponentManager;
+import org.sakaiproject.section.api.coursemanagement.EnrollmentRecord;
 import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedAssessmentData;
+import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedSectionData;
 import org.sakaiproject.tool.assessment.data.dao.grading.AssessmentGradingData;
+import org.sakaiproject.tool.assessment.data.ifc.assessment.EvaluationModelIfc;
 import org.sakaiproject.tool.assessment.facade.AgentFacade;
-
-import org.sakaiproject.tool.assessment.services.PersistenceService;
-
 import org.sakaiproject.tool.assessment.services.assessment.PublishedAssessmentService;
+import org.sakaiproject.tool.assessment.services.PersistenceService;
 import org.sakaiproject.tool.assessment.shared.api.grading.GradingSectionAwareServiceAPI;
 import org.sakaiproject.tool.assessment.shared.impl.grading.GradingSectionAwareServiceImpl;
 import org.sakaiproject.tool.assessment.ui.bean.author.SectionActivityBean;
 import org.sakaiproject.tool.assessment.ui.bean.util.Validator;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 import org.sakaiproject.tool.assessment.util.BeanSort;
-import org.sakaiproject.section.api.coursemanagement.EnrollmentRecord;
-import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedSectionData;
-import org.sakaiproject.tool.assessment.data.ifc.assessment.EvaluationModelIfc;
+import org.sakaiproject.util.api.FormattedText;
 
 @Slf4j
 public class SectionActivityListener implements ActionListener, ValueChangeListener
@@ -130,7 +125,7 @@ public class SectionActivityListener implements ActionListener, ValueChangeListe
         for (AssessmentGradingData agd : list) {
             Long publishAssessmentId = agd.getPublishedAssessmentId();
             PublishedAssessmentData publishedAssessmentData = assessmentService.getBasicInfoOfPublishedAssessment(publishAssessmentId.toString()); 
-            String title = publishedAssessmentData.getTitle();
+            String title = ComponentManager.get(FormattedText.class).convertFormattedTextToPlaintext(publishedAssessmentData.getTitle());
             Date submitDate = agd.getSubmittedDate();
             Double finalScore = agd.getFinalScore();
             Long assessmentGradingId = agd.getAssessmentGradingId();
@@ -174,28 +169,12 @@ public class SectionActivityListener implements ActionListener, ValueChangeListe
         Map<String, String> nameMap = new HashMap();
         for (EnrollmentRecord enr : list) {
             String uid = enr.getUser().getUserUid();
-            String displayName = enr.getUser().getDisplayName();
+            String displayName = enr.getUser().getSortName() + " (" + enr.getUser().getDisplayId() + ")";
 
-            nameMap.put(uid, displayName);         
+            nameMap.put(uid, displayName);
         }
-        Map sortedMap = sortByValue(nameMap);
+        Map sortedMap = ContextUtil.sortByValue(nameMap);
         return sortedMap;
-    }
-
-    private Map sortByValue(Map map) {
-        List list = new LinkedList(map.entrySet());
-        Collections.sort(list, new Comparator() {
-            public int compare(Object o1, Object o2) {
-                return ((Comparable) ((String)((Map.Entry) (o1)).getValue()).toLowerCase()).compareTo(((String)((Map.Entry) (o2)).getValue()).toLowerCase());
-            }
-        });
-
-        Map result = new LinkedHashMap();
-        for (Iterator it = list.iterator(); it.hasNext();) {
-            Map.Entry entry = (Map.Entry)it.next();
-            result.put(entry.getKey(), entry.getValue());
-        }
-        return result;
     }
 
     public void processValueChange(ValueChangeEvent event)

@@ -15,8 +15,7 @@
  */
 package org.sakaiproject.profile2.tool.pages.panels;
 
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.wicket.Component;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.ajax.markup.html.AjaxFallbackLink;
@@ -35,6 +34,8 @@ import org.apache.wicket.model.Model;
 import org.apache.wicket.markup.html.list.ListItem;
 import org.apache.wicket.markup.html.form.TextField;
 
+
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class MyContactDisplay extends Panel {

@@ -3,7 +3,7 @@
 <%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
 <%@ taglib uri="http://myfaces.apache.org/tomahawk" prefix="t" %>
 
-<f:view locale="#{UserLocale.localeExcludeCountryForIE}">
+<f:view>
 	<jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
 	   <jsp:setProperty name="msgs" property="baseName" value="messages"/>
 	</jsp:useBean>
@@ -12,11 +12,11 @@
 			@import url("/sakai-signup-tool/css/signupStyle.css");
 		</style>	
 
-<h:outputText value="#{Portal.latestJQuery}" escape="false"/>
-        <script type="text/javascript" src="/library/js/lang-datepicker/lang-datepicker.js"></script>
-        <script type="text/javascript" src="/sakai-signup-tool/js/signupScript.js"></script>
-        
-		<script type="text/javascript">
+		<h:outputText value="#{Portal.latestJQuery}" escape="false"/>
+        <script src="/library/js/lang-datepicker/lang-datepicker.js"></script>
+        <script src="/sakai-signup-tool/js/signupScript.js"></script>
+
+		<script>
 			jQuery(document).ready(function(){
 
                 localDatePicker({
@@ -24,7 +24,7 @@
                     useTime: 1,
                     parseFormat: 'YYYY-MM-DD HH:mm:ss',
                     allowEmptyDate: false,
-                    val: '<h:outputText value="#{EditMeetingSignupMBean.signupMeeting.startTime}"><f:convertDateTime pattern="yyyy-MM-dd HH:mm:ss"/></h:outputText>',
+                    val: '<h:outputText value="#{EditMeetingSignupMBean.signupMeeting.startTime}"><f:convertDateTime pattern="yyyy-MM-dd HH:mm:ss" timeZone="#{UserTimeZone.userTimeZone}" /></h:outputText>',
                     ashidden: {
                             iso8601: 'startTimeISO8601',
                             month:"meeting_startTime_month",
@@ -40,7 +40,7 @@
                     useTime: 1,
                     parseFormat: 'YYYY-MM-DD HH:mm:ss',
                     allowEmptyDate: false,
-                    val: '<h:outputText value="#{EditMeetingSignupMBean.signupMeeting.endTime}"><f:convertDateTime pattern="yyyy-MM-dd HH:mm:ss"/></h:outputText>',
+                    val: '<h:outputText value="#{EditMeetingSignupMBean.signupMeeting.endTime}"><f:convertDateTime pattern="yyyy-MM-dd HH:mm:ss" timeZone="#{UserTimeZone.userTimeZone}" /></h:outputText>',
                     ashidden: {
                             iso8601: 'endTimeISO8601',
                             month:"meeting_endTime_month",
@@ -52,6 +52,8 @@
                 });
 
         		sakai.initSignupBeginAndEndsExact();
+				
+
         	});
     	</script>
  
@@ -73,6 +75,10 @@
     			setIframeHeight_DueTo_Ckeditor();
     			initDropDownAndInput('meeting:customLocationLabel','meeting:customLocationLabel_undo','meeting:customLocation','meeting:selectedLocation');
     	        initDropDownAndInput('meeting:customCategoryLabel','meeting:customCategoryLabel_undo','meeting:customCategory','meeting:selectedCategory');
+
+                var menuLink = $('#signupMainMenuLink');
+                menuLink.addClass('current');
+                menuLink.html(menuLink.find('a').text());
 
         	});
 	        
@@ -110,9 +116,12 @@
 		
 		
 		<sakai:view_content>
-			<h:outputText value="#{msgs.event_error_alerts} #{messageUIBean.errorMessage}" styleClass="alertMessage" escape="false" rendered="#{messageUIBean.error}"/>      			
 			<h:form id="meeting">
-			 	<sakai:view_title value="#{msgs.event_modify_meeting_page_title}"/>
+				<%@ include file="/signup/menu/signupMenu.jsp" %>
+				<h:outputText value="#{msgs.event_error_alerts} #{messageUIBean.errorMessage}" styleClass="alertMessage" escape="false" rendered="#{messageUIBean.error}"/>
+				<div class="page-header">
+					<sakai:view_title value="#{msgs.event_modify_meeting_page_title}"/>
+				</div>
 			 	<sakai:doc_section> 
 					<h:panelGrid columns="1" styleClass="instruction">						
 						<h:panelGroup>
@@ -128,7 +137,7 @@
 				<div onmouseover="delayedRecalculateDateTime();" class="container-fluid">
 
 					<div class="form-group row ">
-						<h:outputLabel value="#{msgs.event_modify_option}" escape="false" styleClass="col-lg-2 form-control-label form-required"/>
+						<h:outputLabel value="#{msgs.event_modify_option}" escape="false" styleClass="col-lg-2 form-required"/>
 						<div class="col-lg-10">
 							<h:selectOneRadio  value="#{EditMeetingSignupMBean.convertToNoRecurrent}" layout="pageDirection" styleClass="rs" rendered="#{EditMeetingSignupMBean.signupMeeting.recurredMeeting}">
 								<f:selectItem id="modify_all" itemValue="#{false}" itemLabel="#{msgs.modify_all}"/>
@@ -139,7 +148,7 @@
 
 					<%-- Title --%>
 					<div class="form-group row ">
-						<h:outputLabel value="#{msgs.event_name}" for="title" escape="false" styleClass="col-lg-2 form-control-label form-required"/>
+						<h:outputLabel value="#{msgs.event_name}" for="title" escape="false" styleClass="col-lg-2 form-required"/>
 						<div class="col-lg-10">
 							<h:inputText id="title" value="#{EditMeetingSignupMBean.title}" size="40" 
 										styleClass="editText form-control">
@@ -151,7 +160,7 @@
 					
 					<%-- Organiser --%>
 					<div class="form-group row">
-						<h:outputLabel value="#{msgs.event_owner}" for="creatorUserId" styleClass="col-lg-2 form-control-label" escape="false" />
+						<h:outputLabel value="#{msgs.event_owner}" for="creatorUserId" styleClass="col-lg-2" escape="false" />
 						<div class="col-lg-10">
 						 	<h:selectOneMenu id="creatorUserId" value="#{EditMeetingSignupMBean.creatorUserId}">
 								<f:selectItems value="#{EditMeetingSignupMBean.instructors}"/>
@@ -161,7 +170,8 @@
 					
 					<%-- Location --%>
 					<div class="form-group row ">
-						<h:outputLabel value="#{msgs.event_location}" escape="false" styleClass="col-lg-2 form-control-label form-required"/>
+						<h:outputLabel value="#{msgs.event_location}" escape="false" styleClass="col-lg-2 form-required" for="selectedLocation" />
+
 						<div class="col-lg-10">
 							<!-- Displays all the locations in the dropdown -->
 							<h:selectOneMenu id="selectedLocation" value="#{EditMeetingSignupMBean.selectedLocation}">
@@ -172,11 +182,11 @@
 								<f:validateLength maximum="255" />
 							</h:inputText>
 							<h:outputLabel id="customLocationLabel" for="customLocation" styleClass="activeTag"  onclick="handleDropDownAndInput('meeting:customLocationLabel','meeting:customLocationLabel_undo','meeting:customLocation','meeting:selectedLocation')">
-								<h:graphicImage value="/images/plus.gif"  alt="open" title="#{msgs.tab_event_location_custom}" style="border:none;vertical-align: middle; padding:0 5px 0 15px;" styleClass="openCloseImageIcon"/>
+								<h:graphicImage value="/images/plus.gif" alt="#{msgs.tab_event_location_custom}" title="#{msgs.tab_event_location_custom}" style="border:none;vertical-align: middle; padding:0 5px 0 15px;" styleClass="openCloseImageIcon"/>
 								<h:outputText value="#{msgs.tab_event_location_custom}" escape="false" style="vertical-align: middle;"/>
 							</h:outputLabel>
 							<h:outputLabel id="customLocationLabel_undo" for="customLocation" styleClass="activeTag" style="display:none" onclick="handleDropDownAndInput('meeting:customLocationLabel','meeting:customLocationLabel_undo','meeting:customLocation','meeting:selectedLocation')">
-								<h:graphicImage value="/images/minus.gif"  alt="undo" title="#{msgs.event_custom_undo_tip}" style="border:none;vertical-align: middle;padding:0 5px 0 15px;" styleClass="openCloseImageIcon"/>
+								<h:graphicImage value="/images/minus.gif" alt="#{msgs.event_custom_undo_tip}" title="#{msgs.event_custom_undo_tip}" style="border:none;vertical-align: middle;padding:0 5px 0 15px;" styleClass="openCloseImageIcon"/>
 								<h:outputText value="#{msgs.event_custom_undo}" escape="false" style="vertical-align: middle;"/>
 							</h:outputLabel>
 							<h:outputText value="&nbsp;" escape="false" />
@@ -186,7 +196,8 @@
 					
 					<%-- Category --%>
 					<div class="form-group row">
-						<h:outputLabel value="#{msgs.event_category}" escape="false" styleClass="col-lg-2 form-control-label"/>
+						<h:outputLabel value="#{msgs.event_category}" escape="false" styleClass="col-lg-2" for="selectedCategory" />
+
 						<div class="col-lg-10">
 							<!-- Displays all the categories in the dropdown -->
 							<h:selectOneMenu id="selectedCategory" value="#{EditMeetingSignupMBean.selectedCategory}">
@@ -198,11 +209,11 @@
 							</h:inputText>
 
 							<h:outputLabel id="customCategoryLabel" for="customLocation" styleClass="activeTag"  onclick="handleDropDownAndInput('meeting:customCategoryLabel','meeting:customCategoryLabel_undo','meeting:customCategory','meeting:selectedCategory')" >
-								<h:graphicImage value="/images/plus.gif"  alt="open" title="#{msgs.event_category_custom}" style="border:none;vertical-align: middle; padding:0 5px 0 15px;" styleClass="openCloseImageIcon"/>
+								<h:graphicImage value="/images/plus.gif" alt="#{msgs.event_category_custom}" title="#{msgs.event_category_custom}" style="border:none;vertical-align: middle; padding:0 5px 0 15px;" styleClass="openCloseImageIcon"/>
 								<h:outputText value="#{msgs.event_category_custom}" escape="false" style="vertical-align: middle;"/>
 							</h:outputLabel>
 							<h:outputLabel id="customCategoryLabel_undo" for="customLocation" styleClass="activeTag" style="display:none" onclick="handleDropDownAndInput('meeting:customCategoryLabel','meeting:customCategoryLabel_undo','meeting:customCategory','meeting:selectedCategory')">
-								<h:graphicImage value="/images/minus.gif"  alt="undo" title="#{msgs.event_custom_undo_tip}" style="border:none;vertical-align: middle;padding:0 5px 0 15px;" styleClass="openCloseImageIcon"/>
+								<h:graphicImage value="/images/minus.gif" alt="#{msgs.event_custom_undo_tip}" title="#{msgs.event_custom_undo_tip}" style="border:none;vertical-align: middle;padding:0 5px 0 15px;" styleClass="openCloseImageIcon"/>
 								<h:outputText value="#{msgs.event_custom_undo}" escape="false" style="vertical-align: middle;"/>
 							</h:outputLabel>
 							<h:outputText value="&nbsp;" escape="false"/>
@@ -212,7 +223,7 @@
 					
 					<%-- Description --%>
 					<div class="form-group row">
-						<h:outputLabel value="#{msgs.event_description}" styleClass="col-lg-12 form-control-label" escape="false"/>
+						<h:outputLabel value="#{msgs.event_description}" styleClass="col-lg-12" escape="false"/>
 					</div>
 					<sakai:rich_text_area value="#{EditMeetingSignupMBean.signupMeeting.description}" rows="5"  />
 					
@@ -242,28 +253,22 @@
 
 					<%-- Start time --%>
 					<div class="form-group row ">
-						<h:outputLabel value="#{msgs.event_start_time}"  styleClass="col-lg-2 form-control-label form-required" escape="false"/>
+						<h:outputLabel value="#{msgs.event_start_time}"  styleClass="col-lg-2 form-required" escape="false"/>
 						<h:panelGroup styleClass="col-lg-10" rendered="#{!EditMeetingSignupMBean.customTsType}" layout="block">
 							<h:inputText value="#{EditMeetingSignupMBean.startTimeString}" size="28" id="startTime" 
 								onfocus="showRescheduleWarning();" onkeyup="getSignupDuration(); sakai.updateSignupBeginsExact(); return false;" onchange="sakai.updateSignupBeginsExact();"/>
 							<h:message for="startTime" errorClass="alertMessageInline"/>
 						</h:panelGroup>
 						<h:panelGroup rendered="#{EditMeetingSignupMBean.customTsType}" styleClass="col-lg-6" layout="block">
-							<h:outputText value="#{EditMeetingSignupMBean.signupMeeting.startTime}" styleClass="longtext">
-								<f:convertDateTime pattern="EEEEEEEE, " timeZone="#{UserTimeZone.userTimeZone}"/>
-							</h:outputText>
-							<h:outputText value="#{EditMeetingSignupMBean.signupMeeting.startTime}" styleClass="longtext">
-								<f:convertDateTime dateStyle="long" timeZone="#{UserTimeZone.userTimeZone}"/>
-							</h:outputText>
 								<h:outputText value="#{EditMeetingSignupMBean.signupMeeting.startTime}" styleClass="longtext">
-									<f:convertDateTime pattern=", h:mm a" timeZone="#{UserTimeZone.userTimeZone}"/>
+									<f:convertDateTime pattern="#{UserLocale.fullDateTimeFormat}" timeZone="#{UserTimeZone.userTimeZone}"/>
 							</h:outputText>
 						</h:panelGroup>
 					</div>
 
 					<%-- End time --%>
 					<div class="form-group row ">
-						<h:outputLabel value="#{msgs.event_end_time}" styleClass="col-lg-2 form-control-label form-required" escape="false"/>
+						<h:outputLabel value="#{msgs.event_end_time}" styleClass="col-lg-2 form-required" escape="false"/>
 						<h:panelGroup styleClass="col-lg-10" rendered="#{!EditMeetingSignupMBean.customTsType}" layout="block">
 							<h:inputText value="#{EditMeetingSignupMBean.endTimeString}" size="28" id="endTime" 
 								onfocus="showRescheduleWarning();" onkeyup="getSignupDuration(); sakai.updateSignupEndsExact(); return false;" onchange="sakai.updateSignupEndsExact();"/>
@@ -271,13 +276,7 @@
 						</h:panelGroup>
 						<h:panelGroup rendered="#{EditMeetingSignupMBean.customTsType}" layout="block" styleClass="col-lg-6">
 							<h:outputText value="#{EditMeetingSignupMBean.signupMeeting.endTime}" styleClass="longtext">
-								<f:convertDateTime pattern="EEEEEEEE, " timeZone="#{UserTimeZone.userTimeZone}"/>
-							</h:outputText>
-							<h:outputText value="#{EditMeetingSignupMBean.signupMeeting.endTime}" styleClass="longtext">
-								<f:convertDateTime dateStyle="long" timeZone="#{UserTimeZone.userTimeZone}"/>
-							</h:outputText>
-							<h:outputText value="#{EditMeetingSignupMBean.signupMeeting.endTime}" styleClass="longtext">
-								<f:convertDateTime pattern=", h:mm a" timeZone="#{UserTimeZone.userTimeZone}"/>
+								<f:convertDateTime pattern="#{UserLocale.fullDateTimeFormat}" timeZone="#{UserTimeZone.userTimeZone}"/>
 							</h:outputText>
 						</h:panelGroup>
 					</div>
@@ -285,7 +284,7 @@
 					<%-- Signup begin --%>
 					<div class="form-group row">
 						<h:panelGroup styleClass="signupBDeadline col-lg-2" id="signup_beginDeadline_1" layout="block">
-							<h:outputLabel value="#{msgs.event_signup_start}" escape="false" styleClass="form-control-label "/>
+							<h:outputLabel value="#{msgs.event_signup_start}" escape="false" />
 						</h:panelGroup>
 						<h:panelGroup styleClass="signupBDeadline col-lg-10" id="signup_beginDeadline_2" layout="block">
 							<h:inputText id="signupBegins" value="#{EditMeetingSignupMBean.signupBegins}" size="5" required="true" onkeyup="sakai.updateSignupBeginsExact();">
@@ -308,7 +307,7 @@
 					<%-- Signup end --%>
 					<div class="form-group row">
 						<h:panelGroup styleClass="signupBDeadline col-lg-2" id="signup_beginDeadline_3" layout="block">
-							<h:outputLabel value="#{msgs.event_signup_deadline}" escape="false" styleClass="form-control-label"/>
+							<h:outputLabel value="#{msgs.event_signup_deadline}" escape="false" />
 						</h:panelGroup>
 						<h:panelGroup styleClass="signupBDeadline col-lg-10" id="signup_beginDeadline_4" layout="block">
 							<h:inputText id="signupDeadline" value="#{EditMeetingSignupMBean.deadlineTime}" size="5" required="true" onkeyup="sakai.updateSignupEndsExact();">
@@ -336,10 +335,10 @@
 							<h:outputText value="#{msgs.attend_track_selected}" escape="false" styleClass="textPanelFooter"/>
 						</div>
 					</h:panelGroup>
-					
+
 					<%-- Handle meeting types --%>
 					<h:panelGroup styleClass="form-group row "  layout="block">
-						<h:outputLabel value ="#{msgs.event_type_title}"  styleClass="col-lg-2 form-control-label form-required"/>
+						<h:outputLabel value ="#{msgs.event_type_title}"  styleClass="col-lg-2 form-required"/>
 						<h:panelGroup layout="block" styleClass="col-lg-6" rendered="#{EditMeetingSignupMBean.customTsType}">
 							<h:outputText value="#{msgs.label_custom_timeslots}"  escape="false"/>
 						</h:panelGroup>
@@ -347,48 +346,66 @@
 							<h:panelGroup id="radios" styleClass="rs">
 								<h:selectOneRadio id="meetingType" value="#{EditMeetingSignupMBean.signupMeeting.meetingType}" layout="pageDirection" styleClass="rs" >
 									<f:selectItems value="#{EditMeetingSignupMBean.meetingTypeRadioBttns}"/>
-								</h:selectOneRadio> 
+								</h:selectOneRadio>
 							</h:panelGroup>
-							<div class="table-responsive">
-								<h:panelGrid columns="1" columnClasses="miCol1">
-									<%-- multiple: --%>
-									<h:panelGroup rendered="#{EditMeetingSignupMBean.individualType}">
-										<h:panelGrid columns="2" id="multipleCh" styleClass="mi" columnClasses="miCol1,miCol2"> 
-											<h:outputText id="maxAttendeesPerSlot" style="display:none" value="#{EditMeetingSignupMBean.maxAttendeesPerSlot}"></h:outputText>
-											<h:outputText id="maxSlots" style="display:none" value="#{EditMeetingSignupMBean.maxSlots}"></h:outputText>   
-											<h:outputText value="#{msgs.event_num_slot_avail_for_signup}" />
-											<h:inputText  id="numberOfSlot" value="#{EditMeetingSignupMBean.numberOfSlots}" size="2" styleClass="editText" onfocus="showRescheduleWarning();" onkeyup="getSignupDuration(); delayedValidMimimunTs('#{EditMeetingSignupMBean.numberOfSlots}','#{msgs.event_warning_no_lower_than_cur_ts_num}'); return false;" style="margin-left:12px" />
-											<h:outputText value="#{msgs.event_num_participant_per_timeslot}" styleClass="titleText" escape="false"/>                    
-											<h:inputText id="numberOfAttendees" value="#{EditMeetingSignupMBean.maxNumOfAttendees}" styleClass="editText" size="2" style="margin-left:12px" onkeyup="validateAttendee();return false;" />
-											<h:outputText value="#{msgs.event_duration_each_timeslot_not_bold}" styleClass="titleText" escape="false"/>
-											<h:inputText id='currentTimeslotDuration' value="0" styleClass='longtext_red' size="2" onfocus="this.blur();" style="margin-left:12px;" />             
-										</h:panelGrid>
+
+							<%-- multiple: --%>
+							<h:panelGroup rendered="#{EditMeetingSignupMBean.individualType}" id="multipleCh" styleClass="mi" layout="block">
+								<h:outputText id="maxAttendeesPerSlot" style="display:none" value="#{EditMeetingSignupMBean.maxAttendeesPerSlot}" />
+								<h:outputText id="maxSlots" style="display:none" value="#{EditMeetingSignupMBean.maxSlots}" />
+
+								<div class="form-group row">
+									<h:outputLabel value="#{msgs.event_num_slot_avail_for_signup}" for="numberOfSlot" styleClass="col-lg-4" />
+									<h:panelGroup styleClass="col-lg-8" layout="block">
+										<h:inputText id="numberOfSlot" value="#{EditMeetingSignupMBean.numberOfSlots}" size="2" styleClass="editText" onfocus="showRescheduleWarning();" onkeyup="getSignupDuration(); delayedValidMimimunTs('#{EditMeetingSignupMBean.numberOfSlots}','#{msgs.event_warning_no_lower_than_cur_ts_num}'); return false;" />
 									</h:panelGroup>
-									<%-- single: --%>
-									<h:panelGroup rendered="#{EditMeetingSignupMBean.groupType}">
-										<h:panelGrid columns="2" id="singleCh" rendered="true" styleClass="si" columnClasses="miCol1,miCol2">                
-											<h:selectOneRadio id="groupSubradio" value="#{EditMeetingSignupMBean.unlimited}"  onclick="switchSingle(value)" styleClass="meetingRadioBtn" layout="pageDirection" >
-												<f:selectItem itemValue="#{false}" itemLabel="#{msgs.tab_max_attendee}"/>
-												<f:selectItem itemValue="#{true}" itemLabel="#{msgs.unlimited_num_attendee}"/>
-											</h:selectOneRadio>
-											<h:panelGrid columns="1" columnClasses="miCol1">
-												<h:panelGroup  styleClass="meetingMaxAttd">
-													<h:inputText id="maxAttendee" value="#{EditMeetingSignupMBean.maxNumOfAttendees}" size="2" styleClass="editText" onkeyup="validateParticipants();return false;"/>	                                 
-												</h:panelGroup>
-												<h:outputText value="&nbsp;" styleClass="titleText" escape="false"/>
-											</h:panelGrid>
-										</h:panelGrid>
+								</div>
+
+								<div class="form-group row">
+									<h:outputLabel value="#{msgs.event_num_participant_per_timeslot}" for="numberOfAttendees" styleClass="col-lg-4 titleText" escape="false" />
+									<h:panelGroup styleClass="col-lg-8" layout="block">
+										<h:inputText id="numberOfAttendees" value="#{EditMeetingSignupMBean.maxNumOfAttendees}" styleClass="editText" size="2" onkeyup="validateAttendee();return false;" />
 									</h:panelGroup>
-									<h:outputText id="announ" value="&nbsp;" rendered="#{EditMeetingSignupMBean.announcementType}" styleClass="titleText" escape="false"/>
-								</h:panelGrid>
-							</div>
+								</div>
+
+								<div class="form-group row">
+									<h:outputLabel value="#{msgs.event_duration_each_timeslot_not_bold}" for="currentTimeslotDuration" styleClass="col-lg-4 titleText" escape="false" />
+									<h:panelGroup styleClass="col-lg-8" layout="block">
+										<h:inputText id='currentTimeslotDuration' value="0" styleClass='longtext_red' size="2" disabled="true" />
+									</h:panelGroup>
+								</div>
+							</h:panelGroup>
+
+							<%-- single: --%>
+							<h:panelGroup rendered="#{EditMeetingSignupMBean.groupType}" styleClass="si" layout="block">
+								<div class="form-group row">
+									<t:selectOneRadio id="groupSubradio" value="#{EditMeetingSignupMBean.unlimited}" onclick="switchSingle(value)" styleClass="meetingRadioBtn" layout="spread">
+										<f:selectItem itemValue="#{false}" itemLabel="#{msgs.tab_max_attendee}"/>
+										<f:selectItem itemValue="#{true}" itemLabel="#{msgs.unlimited_num_attendee}"/>
+									</t:selectOneRadio>
+									<div class="form-group row">
+										<h:panelGroup styleClass="col-lg-4">
+											<t:radio for="groupSubradio" id="radioMaxAttendee" index="0" />
+										</h:panelGroup>
+										<h:panelGroup styleClass="col-lg-8 meetingMaxAttd" layout="block">
+											<h:inputText id="maxAttendee" value="#{EditMeetingSignupMBean.maxNumOfAttendees}" size="2" styleClass="editText" onkeyup="validateParticipants();return false;"/>
+										</h:panelGroup>
+									</div>
+									<div class="form-group row">
+										<h:panelGroup styleClass="col-lg-4">
+											<t:radio for="groupSubradio" id="radioUnlimitedAttendee" index="1" />
+										</h:panelGroup>
+									</div>
+								</div>
+							</h:panelGroup>
+							<h:outputText id="announ" value="&nbsp;" rendered="#{EditMeetingSignupMBean.announcementType}" styleClass="titleText" escape="false"/>
 						</h:panelGroup>
 					</h:panelGroup>
 					
 					<%-- User can switch from individual type to custom_ts type --%>
 					<h:panelGroup styleClass="form-group row" layout="block"
 							rendered="#{!EditMeetingSignupMBean.customTsType && !EditMeetingSignupMBean.announcementType}">
-							<h:outputLabel id="userDefTsChoice_1" value="" styleClass="form-control-label col-lg-2"/>
+							<h:outputLabel id="userDefTsChoice_1" value="" styleClass="col-lg-2"/>
 							<div class="col-lg-10" id="userDefTsChoice_2">
 								<h:panelGroup>
 									<h:selectBooleanCheckbox id="userDefTsChoice" value="#{EditMeetingSignupMBean.userDefinedTS}" onclick="userDefinedTsChoice();" />
@@ -397,7 +414,7 @@
 								<h:panelGroup id="createEditTS" style="display:none;">
 									<h:panelGroup>
 										<h:commandLink action="#{EditMeetingSignupMBean.editUserDefTimeSlots}" >
-											<h:graphicImage value="/images/cal.gif" alt="close" style="border:none;cursor:pointer; padding-right:5px;" styleClass="openCloseImageIcon" />
+											<h:graphicImage value="/images/cal.gif" alt="" style="border:none;cursor:pointer; padding-right:5px;" styleClass="openCloseImageIcon" />
 											<h:outputText value="#{msgs.label_edit_timeslots}" escape="false" styleClass="activeTag"/>
 										</h:commandLink>
 									</h:panelGroup>
@@ -407,10 +424,10 @@
 					
 					<%-- Edit custom defined TS --%>
 					<h:panelGroup rendered="#{EditMeetingSignupMBean.customTsType}" layout="block" styleClass="form-group row">
-						<h:outputLabel value="#{msgs.event_show_schedule}" styleClass="form-control-label col-lg-2" />
+						<h:outputLabel value="#{msgs.event_show_schedule}" styleClass="col-lg-2" />
 						<div class="col-lg-10">
 							<h:commandLink action="#{EditMeetingSignupMBean.editUserDefTimeSlots}" >
-								<h:graphicImage value="/images/cal.gif" alt="close" style="border:none;cursor:pointer; padding-right:5px;" styleClass="openCloseImageIcon" />
+								<h:graphicImage value="/images/cal.gif" alt="" style="border:none;cursor:pointer; padding-right:5px;" styleClass="openCloseImageIcon" />
 								<h:outputText value="#{msgs.label_view_edit_ts}" escape="false" styleClass="activeTag"/>
 							</h:commandLink>
 						</div>
@@ -418,7 +435,7 @@
 
 					<%-- Show Participants To Public --%>
 					<h:panelGroup rendered="#{!EditMeetingSignupMBean.announcementType}" layout="block" styleClass="form-group row">
-						<h:outputLabel value="#{msgs.event_show_attendee_public}" styleClass="form-control-label col-lg-2" escape="false"/>
+						<h:outputLabel value="#{msgs.event_show_attendee_public}" styleClass="col-lg-2" escape="false"/>
 						<div class="col-lg-10">
 							<h:selectBooleanCheckbox value="#{EditMeetingSignupMBean.showAttendeeName}"/>
 							<h:outputText value="#{msgs.event_yes_show_attendee_public}" escape="false"/>
@@ -427,7 +444,7 @@
 					
 					<%--  Notifications of participant actions --%>
 					<h:panelGroup rendered="#{!EditMeetingSignupMBean.announcementType}" layout="block" styleClass="form-group row">
-						<h:outputLabel value="#{msgs.event_receive_notification}" styleClass="form-control-label col-lg-2" escape="false"/>
+						<h:outputLabel value="#{msgs.event_receive_notification}" styleClass="col-lg-2" escape="false"/>
 						<div class="col-lg-10">
 							<h:selectBooleanCheckbox id="receiveemailbyowner" value="#{EditMeetingSignupMBean.signupMeeting.receiveEmailByOwner}"/>
 							<h:outputLabel for="receiveemailbyowner" value="#{msgs.event_yes_receive_notification}" escape="false"/>						
@@ -436,12 +453,12 @@
 					
 					<%-- Meeting Coordinators --%>
 					<h:panelGroup  layout="block" styleClass="form-group row">
-						<h:outputLabel value="#{msgs.event_select_coordinators}" escape="false"  styleClass="form-control-label col-lg-2"/>
+						<h:outputLabel value="#{msgs.event_select_coordinators}" escape="false"  styleClass="col-lg-2"/>
 						<div class="col-lg-10">
 							<h:dataTable id="meeting_coordinators" value="#{EditMeetingSignupMBean.allPossibleCoordinators}" var="coUser">
 								<h:column>
 									<h:selectBooleanCheckbox id="meetingcoorduser" value="#{coUser.checked}"/>
-									<h:outputLabel for="meetingcoorduser" value="&nbsp;#{coUser.displayName}" escape="false" styleClass="longtext"/>
+									<h:outputLabel for="meetingcoorduser" value="#{coUser.displayName}" styleClass="longtext"/>
 								</h:column>
 							</h:dataTable>
 						</div>
@@ -449,7 +466,7 @@
 					
 					<%-- Email notification  --%>
 					<div class="form-group row">
-						<h:outputLabel value="#{msgs.event_email_notification}" styleClass="col-lg-2 form-control-label" escape="false"/>
+						<h:outputLabel value="#{msgs.event_email_notification}" styleClass="col-lg-2" escape="false"/>
 						<h:panelGroup layout="block" styleClass="col-lg-10" rendered="#{EditMeetingSignupMBean.publishedSite}">
 							<h:panelGroup layout="block" >
 								<h:selectBooleanCheckbox id="emailChoice" value="#{EditMeetingSignupMBean.sendEmail}" onclick="isShowEmailChoice()"/>
@@ -472,14 +489,14 @@
 					
 					<%--  Other Default Settings --%>
 					<h:panelGroup styleClass="form-group row" layout="block" rendered="#{!EditMeetingSignupMBean.announcementType}">
-						<h:outputLabel value="#{msgs.event_other_default_setting}" escape="false" styleClass="col-lg-2 form-control-label" />
+						<h:outputLabel value="#{msgs.event_other_default_setting}" escape="false" styleClass="col-lg-2" />
 						<div class="col-lg-10">
 							<h:outputLabel  id="imageOpen_otherSetting" style="display:none" styleClass="activeTag" onclick="showDetails('meeting:imageOpen_otherSetting','meeting:imageClose_otherSetting','meeting:otherSetting');">
-								<h:graphicImage value="/images/open.gif"  alt="open" title="#{msgs.event_tool_tips_hide_details}" style="border:none;vertical-align:middle;" styleClass="openCloseImageIcon"/>
+								<h:graphicImage value="/images/open.gif" alt="#{msgs.event_tool_tips_hide_details}" title="#{msgs.event_tool_tips_hide_details}" style="border:none;vertical-align:middle;" styleClass="openCloseImageIcon"/>
 								<h:outputText value="#{msgs.event_close_other_default_setting}" escape="false" style="vertical-align: middle;"/>
 							</h:outputLabel>
 							<h:outputLabel id="imageClose_otherSetting" styleClass="activeTag" onclick="showDetails('meeting:imageOpen_otherSetting','meeting:imageClose_otherSetting','meeting:otherSetting');">
-								<h:graphicImage value="/images/closed.gif" alt="close" title="#{msgs.event_tool_tips_show_details}" style="border:none;vertical-align:middle;" styleClass="openCloseImageIcon"/>
+								<h:graphicImage value="/images/closed.gif" alt="#{msgs.event_tool_tips_show_details}" title="#{msgs.event_tool_tips_show_details}" style="border:none;vertical-align:middle;" styleClass="openCloseImageIcon"/>
 								<h:outputText value="#{msgs.event_show_other_default_setting}" escape="false" style="vertical-align: middle;"/>
 							</h:outputLabel>
 						</div>
@@ -488,7 +505,7 @@
 					<%-- Allow wait list --%>
 					<h:panelGroup styleClass="form-group row" layout="block" rendered="#{!EditMeetingSignupMBean.announcementType}">
 						<h:outputLabel id="otherSetting_1" style="display:none"  value="#{msgs.event_allow_waitList}" 
-									styleClass="col-lg-2 form-control-label" escape="false"/>
+									styleClass="col-lg-2" escape="false"/>
 						<h:panelGroup id="otherSetting_2" style="display:none" styleClass="col-lg-10" layout="block">
 							<h:selectBooleanCheckbox value="#{EditMeetingSignupMBean.signupMeeting.allowWaitList}"/>
 							<h:outputText value="#{msgs.event_yes_to_allow_waitList}" escape="false"/>
@@ -498,7 +515,7 @@
 					<%-- Allow adding comment --%>
 					<h:panelGroup styleClass="form-group row" layout="block" rendered="#{!EditMeetingSignupMBean.announcementType}">
 						<h:outputLabel id="otherSetting_3" style="display:none"  value="#{msgs.event_allow_addComment}" 
-									styleClass="col-lg-2 form-control-label" escape="false"/>
+									styleClass="col-lg-2" escape="false"/>
 						<h:panelGroup id="otherSetting_4" style="display:none"  styleClass="col-lg-10" layout="block">
 							<h:selectBooleanCheckbox id="allowcomment" value="#{EditMeetingSignupMBean.signupMeeting.allowComment}"/>
 							<h:outputLabel for="allowcomment" value="#{msgs.event_yes_to_allow_addComment}" escape="false"/>
@@ -509,7 +526,7 @@
 					<h:panelGroup styleClass="form-group row" layout="block" 
 						rendered="#{!EditMeetingSignupMBean.announcementType && EditMeetingSignupMBean.userIdInputModeOptionChoice}">
 						<h:outputLabel id="otherSetting_5" style="display:none"  value="#{msgs.event_use_eid_input_mode}" 
-									styleClass="col-lg-2 form-control-label" escape="false" />
+									styleClass="col-lg-2" escape="false" />
 						<h:panelGroup id="otherSetting_6" style="display:none"  styleClass="col-lg-10" layout="block">
 							<h:selectBooleanCheckbox id="eidinputmode" value="#{EditMeetingSignupMBean.signupMeeting.eidInputMode}"/>
 							<h:outputLabel for="eidinputmode" value="#{msgs.event_yes_to_use_eid_input_mode}" escape="false"/>
@@ -519,7 +536,7 @@
 					<%--  Auto Reminder --%>
 					<h:panelGroup styleClass="form-group row" layout="block">
 						<h:outputLabel id="otherSetting_7" style="display:none" value="#{msgs.event_email_autoReminder}" 
-								styleClass="col-lg-2 form-control-label" escape="false" />
+								styleClass="col-lg-2" escape="false" />
 						<h:panelGroup id="otherSetting_8" style="display:none"	styleClass="col-lg-10" layout="block">
 							<h:selectBooleanCheckbox id="autoreminder" value="#{EditMeetingSignupMBean.signupMeeting.autoReminder}"/>
 							<h:outputLabel for="autoreminder" value="#{msgs.event_yes_email_autoReminer_to_attendees}" escape="false"/>
@@ -529,7 +546,7 @@
 					<%--  Publish to Calendar --%>
 					<h:panelGroup styleClass="form-group row" layout="block">
 						<h:outputLabel id="otherSetting_9" style="display:none" value="#{msgs.event_publish_to_calendar}" 
-								styleClass="col-lg-2 form-control-label" escape="false" />
+								styleClass="col-lg-2" escape="false" />
 						<h:panelGroup id="otherSetting_10" style="display:none"	styleClass="col-lg-10" layout="block">
 							<h:selectBooleanCheckbox id="publishtocalendar" value="#{EditMeetingSignupMBean.publishToCalendar}"/>
 							<h:outputLabel for="publishtocalendar" value="#{msgs.event_yes_publish_to_calendar}" escape="false"/>
@@ -539,7 +556,7 @@
 					<%-- Create groups for timeslots --%>
 					<h:panelGroup styleClass="form-group row" layout="block">
 						<h:outputLabel id="otherSetting_11" style="display:none" value="#{msgs.event_create_groups}" 
-								styleClass="col-lg-2 form-control-label" escape="false" />
+								styleClass="col-lg-2" escape="false" />
 						<h:panelGroup id="otherSetting_12" style="display:none" styleClass="col-lg-10" layout="block">
 							<h:selectBooleanCheckbox id="creategroups" value="#{EditMeetingSignupMBean.signupMeeting.createGroups}"/>
 							<h:outputLabel for="creategroups" value="#{msgs.event_yes_create_groups}" escape="false"/>
@@ -549,7 +566,7 @@
 					<%--Default Notification setting --%>
 					<h:panelGroup styleClass="form-group row" layout="block">
 						<h:outputLabel id="otherSetting_13" style="display:none" 
-							value="#{msgs.event_meeting_default_notify_setting}" styleClass="col-lg-2 form-control-label" escape="false"/>
+							value="#{msgs.event_meeting_default_notify_setting}" styleClass="col-lg-2" escape="false"/>
 						<h:panelGroup id="otherSetting_14" style="display:none" styleClass="col-lg-10" layout="block" >
 							<h:selectBooleanCheckbox id="sendemailbyowner" value="#{EditMeetingSignupMBean.sendEmailByOwner}"/>
 							<h:outputLabel for="sendemailbyowner" value="#{msgs.event_yes_meeting_default_notify_setting}" escape="false"/>
@@ -559,7 +576,7 @@
 					<%-- Max # of time slots per participant --%>
 					<h:panelGroup styleClass="form-group row" layout="block">
 						<h:outputLabel id="otherSetting_15" style="display:none" value="#{msgs.event_allowed_slots }" 
-									styleClass="col-lg-2 form-control-label" escape="false" />
+									styleClass="col-lg-2" escape="false" />
 						<h:panelGroup id="otherSetting_16" style="display:none" styleClass="col-lg-10" layout="block">
 							<h:selectOneMenu id="signupslots" value="#{ EditMeetingSignupMBean.signupMeeting.maxNumOfSlots}">  
 								 <f:selectItems value="#{EditMeetingSignupMBean.slots}" /> 
@@ -570,7 +587,7 @@
 				</div>
 
 				<sakai:button_bar>
-					<h:commandButton id="goNextPage" action="#{EditMeetingSignupMBean.processSaveModify}" actionListener="#{EditMeetingSignupMBean.validateModifyMeeting}" value="#{msgs.public_modify_button}"/> 			
+					<h:commandButton id="goNextPage" styleClass="active" action="#{EditMeetingSignupMBean.processSaveModify}" actionListener="#{EditMeetingSignupMBean.validateModifyMeeting}" value="#{msgs.public_modify_button}"/> 			
 					<h:commandButton id="Cancel" action="#{EditMeetingSignupMBean.doCancelAction}" value="#{msgs.cancel_button}" />  
 				</sakai:button_bar>
 

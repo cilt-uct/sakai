@@ -19,9 +19,7 @@
  *
  **********************************************************************************/
 package uk.ac.cam.caret.sakai.rwiki.tool;
-import org.sakaiproject.component.cover.ServerConfigurationService;
 import java.io.IOException;
-import java.util.Enumeration;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletContext;
@@ -30,20 +28,18 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
-import org.springframework.web.context.WebApplicationContext;
-import org.springframework.web.context.support.WebApplicationContextUtils;
-
+import org.apache.commons.lang3.StringUtils;
+import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.tool.api.Tool;
 import org.sakaiproject.tool.api.ToolSession;
 import org.sakaiproject.tool.cover.SessionManager;
 
+import lombok.extern.slf4j.Slf4j;
+import uk.ac.cam.caret.sakai.rwiki.service.exception.PermissionException;
 import uk.ac.cam.caret.sakai.rwiki.tool.api.HttpCommand;
 import uk.ac.cam.caret.sakai.rwiki.tool.bean.PrePopulateBean;
 import uk.ac.cam.caret.sakai.rwiki.tool.bean.ViewBean;
 import uk.ac.cam.caret.sakai.rwiki.tool.command.Dispatcher;
-import uk.ac.cam.caret.sakai.rwiki.tool.command.SaveCommand;
 import uk.ac.cam.caret.sakai.rwiki.tool.util.WikiPageAction;
 import uk.ac.cam.caret.sakai.rwiki.utils.TimeLogger;
 
@@ -194,12 +190,14 @@ public class RWikiServlet extends HttpServlet
 		RequestScopeSuperBean rssb = RequestScopeSuperBean.createAndAttach(
 				request, wac);
 		
-		
-		
 
 		PrePopulateBean ppBean = rssb.getPrePopulateBean();
 
-		ppBean.doPrepopulate();
+		try {
+			ppBean.doPrepopulate();
+		} catch (PermissionException pe) {
+			log.debug("No permission to create subspace default pages");
+		}
 	}
 
 	public void addWikiStylesheet(HttpServletRequest request)
@@ -256,21 +254,10 @@ public class RWikiServlet extends HttpServlet
 	// functionality.
 	private boolean isPageToolDefault(HttpServletRequest request)
 	{
-		// SAK-13408 - Tomcat and WAS have different URL structures; Attempting to add a 
-		// link or image would lead to site unavailable errors in websphere if the tomcat
-		// URL structure is used.
-		if("websphere".equals(ServerConfigurationService.getString("servlet.container"))){
-			String tid = org.sakaiproject.tool.cover.ToolManager.getCurrentPlacement().getId();
-			if ( request.getPathInfo() != null && request.getPathInfo().startsWith("/tool/" + tid + "/helper/") ) {
-				return false;
-			}
+		if ( request.getPathInfo() != null && request.getPathInfo().startsWith("/helper/") ) {
+			return false;
 		}
-		else {
-			if ( request.getPathInfo() != null && request.getPathInfo().startsWith("/helper/") ) {
-				return false;
-			}
-		}
-		
+
 		String action = request.getParameter(RequestHelper.ACTION);
 		if (action != null && action.length() > 0) {
 			return false;

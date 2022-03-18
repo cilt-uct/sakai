@@ -5,18 +5,13 @@
     <parent>
         <artifactId>portal</artifactId>
         <groupId>org.sakaiproject.portal</groupId>
-        <version>12.5</version>
+        <version>21-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
     <name>sakai-portal-render-engine-impl</name>
     <groupId>org.sakaiproject.portal</groupId>
     <artifactId>sakai-portal-render-engine-impl</artifactId>
-    <organization>
-        <name>Sakai project</name>
-        <url>http://sakaiproject.org/</url>
-    </organization>
-    <inceptionYear>2003</inceptionYear>
     <packaging>war</packaging>
 
     <dependencies>
@@ -46,8 +41,10 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <!--TODO Move to javax.servlet-api version of master-->
             <groupId>javax.servlet</groupId>
             <artifactId>servlet-api</artifactId>
+            <version>2.5</version>
         </dependency>
         <dependency>
             <groupId>org.apache.velocity</groupId>

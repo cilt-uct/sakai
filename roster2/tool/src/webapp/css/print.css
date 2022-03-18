@@ -1,0 +1,173 @@
+#skipNav, .Mrphs-mainHeader, #toolMenuWrap, #footer, #selectSiteModal, .Mrphs-siteHierarchy,
+#roster_navbar, .sakai-table-toolBar, .roster-filter-totals, .roster-connections-cell, #roster-loading-image,
+#profileImageUpload, #connection-manager, .Mrphs-container--toolTitleNav {
+    display: none;
+}
+
+.page-header {
+    display: none;
+}
+
+.roster-member {
+    margin-bottom: 5px;
+}
+
+.roster-user-properties {
+    list-style: none;
+    max-width: 100px;
+    word-wrap: break-word;
+}
+
+.roster-no-groups-label {
+    font-size: smaller;
+    font-weight: bold
+}
+
+.roster-last-visit-time-cell {
+    font-size: 0.9em;
+}
+
+/* CARDS AND PHOTOGRID START */
+.roster-members-grid {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 300px);
+    grid-template-rows: repeat(auto, 1fr);
+    grid-gap: 5px;
+}
+
+.roster-members-grid.photogrid {
+    grid-template-columns: repeat(auto-fill, 120px);
+}
+
+.roster-member-card {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    grid-gap: 5px;
+    border: 1px solid #ccc;
+    @include border-radius(5px);
+    padding: 5px;
+    width: 290px;
+}
+
+.roster-picture-card .roster-picture {
+    object-fit: cover;
+    width: 74px;
+    height: 94px;
+    border: 1px solid #BBB;
+}
+
+.roster-member-card .roster-picture-card {
+    margin-right: 10px;
+    min-width: 76px;
+    max-width: 76px;
+}
+
+.roster-member-card .roster-picture-card .roster-picture {
+    width: 100%;
+    border: 1px solid #BBB;
+}
+
+.roster-member-card .roster-info-card {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-gap: 3px;
+    align-content: start;
+    font-size: 10px;
+}
+.roster-member-card .roster-info-card .roster-card-value {
+    word-wrap: break-word;
+}
+/* CARDS AND PHOTOGRID END */
+
+/* PHOTOGRID START */
+.roster-member-card.photogrid {
+    display: block;
+    width: 110px;
+}
+.roster-member-card.photogrid .roster-picture-card {
+    margin-right: 0;
+    width: 100%;
+    max-width: none;
+}
+.roster-member-card.photogrid .roster-picture-card .roster-picture {
+    width: 100%;
+    border: 1px solid #BBB;
+}
+.roster-member-card.photogrid .roster-info-card {
+    display: block;
+    text-align: center;
+}
+
+.roster-member-card.photogrid .roster-picture-card {
+    margin-right: 0;
+    width: 100%;
+    max-width: none;
+}
+
+.roster-member-card.photogrid .roster-picture {
+    width: 74px;
+    height: 94px;
+    object-fit: cover;
+    border: 1px solid #BBB;
+}
+
+.roster-member-card.photogrid .roster-info-card {
+    display: block;
+    text-align: center;
+}
+
+.view_mode_photogrid .roster-groups-cell,
+.view_mode_photogrid .roster-email-cell,
+.view_mode_photogrid .roster-hide-names {
+    display: none;
+}
+/* PHOTOGRID END */
+
+.view_mode_cards .roster-picture,
+.view_mode_photogrid .roster-picture {
+    width: 74px;
+    height: 94px;
+    /*object-fit: cover;*/
+    border: 1px solid #BBB;
+}
+.view_mode_cards .roster-status-cell,
+.view_mode_cards .roster-credits-cell,
+.view_mode_cards .roster-total-visits-cell,
+.view_mode_cards .roster-last-visit-cell,
+.view_mode_cards .roster-user-props-cell {
+    display: none;
+}
+.view_mode_cards .roster-groups-cell .roster-group-cell .roster-groups-selector {
+    max-width: 174px;
+}
+@media all and (max-width: 375px) {
+    .view_mode_cards .roster-groups-cell .roster-group-cell .roster-groups-selector {
+        max-width:95px;
+    }
+}
+
+/* SPREADSHEET START */
+#roster-members-table {
+    border-spacing: 5px;
+}
+
+.view_mode_spreadsheet .roster-hide-pictures {
+    display: none;
+}
+.view_mode_spreadsheet .roster-picture {
+    width: 30px;
+    height: 24px;
+    padding: 0;
+}
+.view_mode_spreadsheet .roster-picture-cell {
+    text-align:center;
+}
+.view_mode_spreadsheet .roster-hide-pictures {
+    display: none;
+}
+/* SPREADSHEET END */
+
+.namePronunciation .nameAudioPlayer, .namePronunciation .audioPlayer {
+    display: none;
+}

@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) 2003-2019 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.sitemanage.api;
 
 import java.util.List;
@@ -25,7 +40,7 @@ public interface SiteManageService {
      * @return true if the site was successfully queued by the executor, false if there is already another
      * import/copy being performed for this site.
      */
-    boolean importToolsIntoSiteThread(final Site site, final List<String> toolIds, final Map<String, List<String>> toolsToImport, final boolean cleanup, List<String> importFromSiteIds);
+    boolean importToolsIntoSiteThread(final Site site, final List<String> toolIds, final Map<String, List<String>> toolsToImport, Map<String, List<String>> toolOptions, final boolean cleanup);
 
     /**
      * Contains the actual workflow for tools to be imported and their references to be updated
@@ -34,7 +49,7 @@ public interface SiteManageService {
      * @param importTools the tools selected to be imported
      * @param cleanup     true if content should be removed before the tool is copied
      */
-    void importToolsIntoSite(Site site, List<String> toolIds, Map<String, List<String>> importTools, boolean cleanup);
+    void importToolsIntoSite(Site site, List<String> toolIds, Map<String, List<String>> importTools, Map<String, List<String>> toolOptions, boolean cleanup);
 
     /**
      * Copy tool content from old site
@@ -43,7 +58,7 @@ public interface SiteManageService {
      * @param site           destination site
      * @param bypassSecurity use SecurityAdvisor if true
      */
-    void importToolContent(String oSiteId, Site site, boolean bypassSecurity);
+    void importToolContent(String oSiteId, Site site, Map<String, List<String>> toolOptions, boolean bypassSecurity);
 
     /**
      * Configuration setting for adding missing tools while importing

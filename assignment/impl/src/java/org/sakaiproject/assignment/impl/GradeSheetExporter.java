@@ -18,10 +18,14 @@ package org.sakaiproject.assignment.impl;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.text.NumberFormat;
+import java.text.Collator;
+import java.text.ParseException;
+import java.text.RuleBasedCollator;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,7 +34,7 @@ import java.util.TreeMap;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.builder.CompareToBuilder;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.CellType;
@@ -41,20 +45,20 @@ import org.apache.poi.ss.util.WorkbookUtil;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.sakaiproject.assignment.api.AssignmentReferenceReckoner;
 import org.sakaiproject.assignment.api.AssignmentService;
-import org.sakaiproject.assignment.api.AssignmentServiceConstants;
 import org.sakaiproject.assignment.api.model.Assignment;
 import org.sakaiproject.assignment.api.model.AssignmentSubmission;
 import org.sakaiproject.assignment.api.model.AssignmentSubmissionSubmitter;
 import org.sakaiproject.assignment.impl.sort.AssignmentComparator;
-import org.sakaiproject.assignment.impl.sort.UserComparator;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.user.api.CandidateDetailProvider;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
-import org.sakaiproject.util.FormattedText;
 import org.sakaiproject.util.ResourceLoader;
+import org.sakaiproject.util.api.FormattedText;
+import org.sakaiproject.util.comparator.UserSortNameComparator;
+import org.springframework.util.comparator.NullSafeComparator;
 
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -69,9 +73,31 @@ public class GradeSheetExporter {
     @Setter private CandidateDetailProvider candidateDetailProvider;
     @Setter private SiteService siteService;
     @Setter private UserDirectoryService userDirectoryService;
+    @Setter private FormattedText formattedText;
 
     private ResourceLoader rb = new ResourceLoader("assignment");
+    
+    /**
+    * A comparator that sorts by student sortName
+    */
+    private static final Comparator<Submitter> SUBMITTER_NAME_COMPARATOR = new Comparator<Submitter>() {
+        Collator collator;
+        {
+            this.collator = Collator.getInstance();
+            try {
+                this.collator = new RuleBasedCollator(
+                        ((RuleBasedCollator) this.collator).getRules().replaceAll("<'\u005f'", "<' '<'\u005f'"));
+            } catch (final ParseException e) {
+                log.warn(this + " Cannot init RuleBasedCollator. Will use the default Collator instead.", e);
+            }
+        }
 
+        @Override
+        public int compare(final Submitter s1, final Submitter s2) {            
+            return new NullSafeComparator<>(collator, false).compare(s1.getSortName(), s2.getSortName());
+        }
+    };
+    
     /**
      * Access and output the grades spreadsheet for the reference, either for an assignment or all assignments in a context.
      *
@@ -123,7 +149,7 @@ public class GradeSheetExporter {
                     site != null && candidateDetailProvider.isAdditionalNotesEnabled(site);
             // For details of all the users in the site.
             Map<String, Submitter> submitterMap = new HashMap<>();
-            members.sort(new UserComparator());
+            members.sort(new UserSortNameComparator());
             for (User user : members) {
                 // put user displayid and sortname in the first two cells
                 Submitter submitter = new Submitter(user.getDisplayId(), user.getSortName());
@@ -218,7 +244,7 @@ public class GradeSheetExporter {
                                             int dec = (int) Math.log10(factor);
 
                                             //We get float number no matter the locale it was managed with.
-                                            final NumberFormat nbFormat = FormattedText.getNumberFormat(dec, dec, null);
+                                            final NumberFormat nbFormat = formattedText.getNumberFormat(dec, dec, null);
                                             float f = nbFormat.parse(getGrade(submissionSubmitter)).floatValue();
 
                                             style = wb.createCellStyle();
@@ -274,7 +300,7 @@ public class GradeSheetExporter {
 	                                    int dec = (int) Math.log10(factor);
 	
 	                                    //We get float number no matter the locale it was managed with.
-	                                    NumberFormat nbFormat = FormattedText.getNumberFormat(dec, dec, null);
+	                                    NumberFormat nbFormat = formattedText.getNumberFormat(dec, dec, null);
 	                                    float f = nbFormat.parse(grade).floatValue();
 	
 	                                    String format = "#,##0.";
@@ -309,34 +335,34 @@ public class GradeSheetExporter {
                 }
 
 
-                // The map is already sorted and so we just iterate over it and output rows.
-                for (Map.Entry<Submitter, List<Object>> entry : results.entrySet()) {
-                    Row sheetRow = sheet.createRow(rowNum++);
-                    Submitter submitter = entry.getKey();
-                    List<Object> rowValues = entry.getValue();
+                final List<Submitter> submitters = new ArrayList(results.keySet());
+                Collections.sort(submitters, SUBMITTER_NAME_COMPARATOR);
+
+                for (final Submitter submitter : submitters) {
+                    List<Object> rowValues = results.get(submitter);
                     int column = 0;
-                    if (submitter.anonymous) {
-                        sheetRow.createCell(column++).setCellValue("");
-                        sheetRow.createCell(column++).setCellValue(submitter.id);
-                    } else {
+                    Row sheetRow = null;
+                    if (!submitter.anonymous) {
+                        sheetRow = sheet.createRow(rowNum++);
                         sheetRow.createCell(column++).setCellValue(submitter.sortName);
                         sheetRow.createCell(column++).setCellValue(submitter.id);
-                    }
-                    for (Object rowValue : rowValues) {
-                        if (rowValue instanceof FloatCell) {
-                            FloatCell floatValue = (FloatCell) rowValue;
-                            cell = sheetRow.createCell(column++, CellType.NUMERIC);
-                            cell.setCellValue(floatValue.value);
-                            style = wb.createCellStyle();
-                            style.setDataFormat(wb.createDataFormat().getFormat(floatValue.format));
-                            cell.setCellStyle(style);
-                        } else if (rowValue != null) {
-                            cell = sheetRow.createCell(column++, CellType.STRING);
-                            cell.setCellValue(rowValue.toString());
-                        } else {
-                            cell = sheetRow.createCell(column++, CellType.STRING);
-                            cell.setCellValue(rb.getString("listsub.nosub"));
-                        }
+
+	                    for (Object rowValue : rowValues) {
+	                        if (rowValue instanceof FloatCell) {
+	                            FloatCell floatValue = (FloatCell) rowValue;
+	                            cell = sheetRow.createCell(column++, CellType.NUMERIC);
+	                            cell.setCellValue(floatValue.value);
+	                            style = wb.createCellStyle();
+	                            style.setDataFormat(wb.createDataFormat().getFormat(floatValue.format));
+	                            cell.setCellStyle(style);
+	                        } else if (rowValue != null) {
+	                            cell = sheetRow.createCell(column++, CellType.STRING);
+	                            cell.setCellValue(rowValue.toString());
+	                        } else {
+	                            cell = sheetRow.createCell(column++, CellType.STRING);
+	                            cell.setCellValue(rb.getString("listsub.nosub"));
+	                        }
+	                    }
                     }
                     if (isNotesEnabled) {
                         int col = column;
@@ -423,21 +449,20 @@ public class GradeSheetExporter {
 
         @Override
         public int compareTo(Submitter o) {
-            int value = Boolean.compare(this.anonymous, o.anonymous);
-            if (value == 0) {
-                if (anonymous) {
-                    // Sort by ID for anonymous ones
-                    value = this.id.compareTo(o.id);
-                } else {
-                    // Sort by sortName for normal ones.
-                    value = this.sortName.compareTo(o.sortName);
-                }
-            }
-            return value;
+            // Sort by sortName for normal ones, but id if they're the same
+            return new CompareToBuilder().append(this.sortName, o.sortName).append(this.id, o.id).toComparison();
         }
 
         void setNotes(Optional<List<String>> notes) {
             notes.ifPresent(strings -> this.notes = strings);
+        }
+
+        public String getSortName() {
+            return sortName;
+        }
+
+        public void setSortName(String sortName) {
+            this.sortName = sortName;
         }
     }
 }

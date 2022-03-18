@@ -1,6 +1,6 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://sakaiproject.org/jsf/messageforums" prefix="mf" %>
 <jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
    <jsp:setProperty name="msgs" property="baseName" value="org.sakaiproject.api.app.messagecenter.bundle.Messages"/>
@@ -23,15 +23,15 @@
 			<div class="printBlock">
 				<h2>
 			      <h:outputText value="#{msgs.cdfm_discussion_forums}" />
-      			  <f:verbatim><h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " /></f:verbatim>
+      			  <h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " />
 				  <h:outputText value="#{ForumTool.selectedForum.forum.title}" />
-				  <f:verbatim><h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " /></f:verbatim>
+				  <h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " />
 				  	  <h:outputText value="#{ForumTool.selectedTopic.topic.title}" />
 				</h2>
 		
 	
 		<%--rjlowe: Expanded View to show the message bodies, threaded --%>
-		<div class="table-responsive">
+		<div>
 		<mf:hierDataTable id="expandedThreadedMessages" value="#{ForumTool.pFMessages}" var="message" 
 						noarrows="true" styleClass="table table-hover table-striped table-bordered printTable" cellpadding="0" cellspacing="0" width="100%" columnClasses="bogus">
 			<h:column id="_msg_subject">

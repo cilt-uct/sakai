@@ -108,6 +108,6 @@ public enum CalendarEventType {
 				return et.getType();
 			}
 		}
-		return ACTIVITY.getType();
+		return null;
 	}
 }

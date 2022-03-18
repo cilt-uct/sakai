@@ -24,9 +24,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 
-import org.sakaiproject.component.cover.HotReloadConfigurationService;
-
-import org.springframework.util.FileCopyUtils;
+import org.apache.commons.io.IOUtils;
 
 /**
  * The default implementation of FileSystemHandler, targeting local disk.
@@ -105,18 +103,7 @@ public class DefaultFileSystemHandler implements FileSystemHandler {
         }
 
         // write the file
-        if ("true".equals(HotReloadConfigurationService.getString("nyu.use-fs-telemetry", "false"))) {
-            try {
-                TelemetryFileOutputStream.operationPending();
-                return FileCopyUtils.copy(stream, new TelemetryFileOutputStream(file));
-            } finally {
-                TelemetryFileOutputStream.operationComplete();
-            }
-
-
-        } else {
-            return FileCopyUtils.copy(stream, new FileOutputStream(file));
-        }
+        return IOUtils.copyLarge(stream, new FileOutputStream(file));
     }
 
     @Override

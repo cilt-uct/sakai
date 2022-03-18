@@ -21,50 +21,41 @@
 
 package org.sakaiproject.tool.assessment.facade;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import lombok.extern.slf4j.Slf4j;
-import org.hibernate.Query;
-import org.sakaiproject.tool.assessment.data.dao.assessment.ItemData;
-import org.sakaiproject.tool.assessment.data.dao.assessment.ItemMetaData;
-import org.sakaiproject.tool.assessment.data.dao.shared.TypeD;
-import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentIfc;
-import org.sakaiproject.tool.assessment.data.ifc.assessment.ItemDataIfc;
-import org.sakaiproject.tool.assessment.data.ifc.assessment.ItemMetaDataIfc;
-import org.sakaiproject.tool.assessment.data.ifc.assessment.SectionDataIfc;
-import org.sakaiproject.tool.assessment.integration.helper.ifc.TagServiceHelper;
-import org.sakaiproject.tool.assessment.osid.shared.impl.IdImpl;
-import org.sakaiproject.tool.assessment.services.PersistenceService;
-import org.sakaiproject.tool.assessment.services.assessment.AssessmentService;
-import org.springframework.dao.DataAccessException;
-import org.springframework.orm.hibernate4.HibernateCallback;
-import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
-
 import static org.sakaiproject.tool.assessment.facade.ItemHashUtil.ALL_HASH_BACKFILLABLE_ITEM_IDS_HQL;
 import static org.sakaiproject.tool.assessment.facade.ItemHashUtil.ID_PARAMS_PLACEHOLDER;
 import static org.sakaiproject.tool.assessment.facade.ItemHashUtil.ITEMS_BY_ID_HQL;
 import static org.sakaiproject.tool.assessment.facade.ItemHashUtil.TOTAL_HASH_BACKFILLABLE_ITEM_COUNT_HQL;
 import static org.sakaiproject.tool.assessment.facade.ItemHashUtil.TOTAL_ITEM_COUNT_HQL;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.hibernate.query.Query;
+import org.sakaiproject.tool.assessment.data.dao.assessment.ItemAttachment;
+import org.sakaiproject.tool.assessment.data.dao.assessment.ItemData;
+import org.sakaiproject.tool.assessment.data.dao.assessment.ItemMetaData;
+import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentIfc;
+import org.sakaiproject.tool.assessment.data.ifc.assessment.ItemDataIfc;
+import org.sakaiproject.tool.assessment.data.ifc.assessment.ItemMetaDataIfc;
+import org.sakaiproject.tool.assessment.data.ifc.assessment.SectionDataIfc;
+import org.sakaiproject.tool.assessment.integration.helper.ifc.TagServiceHelper;
+import org.sakaiproject.tool.assessment.osid.shared.impl.IdImpl;
+import org.sakaiproject.tool.assessment.services.assessment.AssessmentService;
+import org.springframework.dao.DataAccessException;
+import org.springframework.orm.hibernate5.HibernateCallback;
+import org.springframework.orm.hibernate5.support.HibernateDaoSupport;
+
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+
 @Slf4j
 public class ItemFacadeQueries extends HibernateDaoSupport implements ItemFacadeQueriesAPI {
 
-    private ItemHashUtil itemHashUtil;
-
-    public void setItemHashUtil(ItemHashUtil itemHashUtil) {
-        this.itemHashUtil = itemHashUtil;
-    }
-
-  public ItemFacadeQueries() {
-  }
+  @Setter private ItemHashUtil itemHashUtil;
 
   public IdImpl getItemId(String id){
     return new IdImpl(id);
@@ -74,17 +65,6 @@ public class ItemFacadeQueries extends HibernateDaoSupport implements ItemFacade
   }
   public IdImpl getItemId(long id){
     return new IdImpl(id);
-  }
-
-
-
-  public List getQPItems(final Long questionPoolId) {
-	    final HibernateCallback<List<ItemData>> hcb = session -> {
-            Query q = session.createQuery("select ab from ItemData ab, QuestionPoolItem qpi where qpi.itemId=ab.itemIdString and qpi.questionPoolId = :id");
-            q.setLong("id", questionPoolId);
-            return q.list();
-        };
-	    return getHibernateTemplate().execute(hcb);
   }
 
   public List list() {
@@ -99,209 +79,61 @@ public class ItemFacadeQueries extends HibernateDaoSupport implements ItemFacade
 	return getItem(itemId);
   }
 
-  public void showType(Long typeId) {
-    getHibernateTemplate().load(TypeD.class, typeId);
-  }
+    public void deleteItem(Long itemId, String agent) {
+        ItemData item = getHibernateTemplate().get(ItemData.class, itemId);
+        // get list of attachment in item
+        if (item != null) {
+            AssessmentService service = new AssessmentService();
+            List itemAttachmentList = service.getItemResourceIdList(item);
+            service.deleteResources(itemAttachmentList);
 
-  public void listType() {
-    TypeFacadeQueriesAPI typeFacadeQueries = PersistenceService.getInstance().getTypeFacadeQueries();
-    TypeFacade f = typeFacadeQueries.getTypeFacadeById(1L);
-    log.debug("***facade: "+f.getAuthority());
-  }
-
-  public void remove(Long itemId) {
-    ItemData item = (ItemData)getHibernateTemplate().load(ItemData.class, itemId);
-
-    // get list of attachment in section
-    AssessmentService service = new AssessmentService();
-    List itemAttachmentList = service.getItemResourceIdList(item);
-    service.deleteResources(itemAttachmentList);
-
-    int retryCount = PersistenceService.getInstance().getPersistenceHelper().getRetryCount();
-    while (retryCount > 0){
-      try {
-        getHibernateTemplate().delete(item);
-        retryCount = 0;
-      }
-      catch (Exception e) {
-        log.warn("problem deleting item : "+e.getMessage());
-        retryCount = PersistenceService.getInstance().getPersistenceHelper().retryDeadlock(e, retryCount);
-      }
-    }
-      if (item != null) {
-        printItem(item);
-      }
-  }
-
-  public void deleteItem(Long itemId, String agent) {
-	ItemData item = null;
-    try { 
-    	item = (ItemData)getHibernateTemplate().load(ItemData.class, itemId); 
-    } catch (DataAccessException e) {
-    	log.warn("unable to retrieve item " + itemId + " due to:" + e);
-    	return; 
-    }
-    // get list of attachment in item
-    AssessmentService service = new AssessmentService();
-    List itemAttachmentList = service.getItemResourceIdList(item);
-    service.deleteResources(itemAttachmentList);
-
-    int retryCount = PersistenceService.getInstance().getPersistenceHelper().getRetryCount();
-    while (retryCount > 0){
-      try {
-	SectionDataIfc section = item.getSection();
-        // section might be null if you are deleting an item created inside a pool, that's not linked to any assessment. 
-        if (section !=null) {
-          Set set = section.getItemSet();
-          set.remove(item);
+            SectionDataIfc section = item.getSection();
+            // section might be null if you are deleting an item created inside a pool, that's not linked to any assessment.
+            if (section != null) {
+                section.getItemSet().remove(item);
+            }
+            getHibernateTemplate().delete(item);
         }
-        getHibernateTemplate().delete(item);
-        retryCount = 0;
-      }
-      catch (Exception e) {
-        log.warn("problem deleting item: "+e.getMessage());
-        retryCount = PersistenceService.getInstance().getPersistenceHelper().retryDeadlock(e, retryCount);
-      }
-    }
-  }
-
-
-
-  // is this used by ItemAddListener to save item? -daisyf
-  public void deleteItemContent(Long itemId, String agent) {
-    ItemData item = (ItemData)getHibernateTemplate().load(ItemData.class, itemId);
-
-    int retryCount = PersistenceService.getInstance().getPersistenceHelper().getRetryCount();
-    while (retryCount > 0){
-      try {
-        if (item!=null){ // need to dissociate with item before deleting in Hibernate 3
-          Set set = item.getItemTextSet();
-          item.setItemTextSet(new HashSet());
-          getHibernateTemplate().deleteAll(set);
-          retryCount = 0;
-	}
-        else retryCount=0;
-      }
-      catch (Exception e) {
-        log.warn("problem deleteItemTextSet: "+e.getMessage());
-        retryCount = PersistenceService.getInstance().getPersistenceHelper().retryDeadlock(e, retryCount);
-      }
     }
 
-    retryCount = PersistenceService.getInstance().getPersistenceHelper().getRetryCount();
-    while (retryCount > 0){
-      try {
-        if (item!=null){ // need to dissociate with item before deleting in Hibernate 3
-          Set set = item.getItemMetaDataSet();
-          item.setItemMetaDataSet(new HashSet());
-          getHibernateTemplate().deleteAll(set);
-          retryCount = 0;
-	}
-        else retryCount=0;
-      }
-      catch (Exception e) {
-        log.warn("problem deleteItemMetaDataSet: "+e.getMessage());
-        retryCount = PersistenceService.getInstance().getPersistenceHelper().retryDeadlock(e, retryCount);
-      }
+    public void deleteItemContent(Long itemId, String agent) {
+        ItemData item = getHibernateTemplate().get(ItemData.class, itemId);
+
+        if (item != null) {
+            item.getItemTextSet().clear();
+            item.getItemMetaDataSet().clear();
+            item.getItemFeedbackSet().clear();
+            getHibernateTemplate().merge(item);
+        }
     }
 
-    retryCount = PersistenceService.getInstance().getPersistenceHelper().getRetryCount();
-    while (retryCount > 0){
-      try {
-        if (item!=null){ // need to dissociate with item before deleting in Hibernate 3
-          Set set = item.getItemFeedbackSet();
-          item.setItemFeedbackSet(new HashSet());
-          getHibernateTemplate().deleteAll(set);
-          retryCount = 0;
-	}
-        else retryCount=0;
-      }
-      catch (Exception e) {
-        log.warn("problem deleting ItemFeedbackSet: "+e.getMessage());
-        retryCount = PersistenceService.getInstance().getPersistenceHelper().retryDeadlock(e, retryCount);
-      }
+    public void deleteItemMetaData(final Long itemId, final String label) {
+        // delete metadata by label
+        ItemData item = getHibernateTemplate().get(ItemData.class, itemId);
+
+        List<ItemMetaDataIfc> itemmetadatalist = (List<ItemMetaDataIfc>) getHibernateTemplate()
+                .findByNamedParam("from ItemMetaData imd where imd.item.itemId = :id and imd.label = :label",
+                        new String[] {"id", "label"},
+                        new Object[] {itemId, label});
+
+        item.getItemMetaDataSet().removeAll(itemmetadatalist);
+        getHibernateTemplate().merge(item);
     }
-  }
 
-  public void deleteItemMetaData(final Long itemId, final String label) {
-    // delete metadata by label
-    ItemData item = getHibernateTemplate().load(ItemData.class, itemId);
-
-    final HibernateCallback<List<ItemMetaData>> hcb = session -> {
-        Query q = session.createQuery("from ItemMetaData imd where imd.item.itemId = :id and imd.label = :label");
-        q.setLong("id", itemId);
-        q.setString("label", label);
-        return q.list();
-    };
-    List<ItemMetaData> itemmetadatalist = getHibernateTemplate().execute(hcb);
-
-    int retryCount = PersistenceService.getInstance().getPersistenceHelper().getRetryCount();
-    while (retryCount > 0){
-      try {
-        if (item!=null){ // need to dissociate with item before deleting in Hibernate 3
-	  Iterator iter = itemmetadatalist.iterator();
-	  while (iter.hasNext()){
-	    ItemMetaDataIfc meta= (ItemMetaDataIfc) iter.next();
-            meta.setItem(null);
-	  }
-          
-          Set set = item.getItemMetaDataSet();
-          set.removeAll(itemmetadatalist);
-          item.setItemMetaDataSet(set);
-          getHibernateTemplate().deleteAll(itemmetadatalist);
-          retryCount = 0;
-	}
-        else retryCount=0;
-      }
-      catch (Exception e) {
-        log.warn("problem delete itemmetadatalist: "+e.getMessage());
-        retryCount = PersistenceService.getInstance().getPersistenceHelper().retryDeadlock(e, retryCount);
-      }
+    public void addItemMetaData(Long itemId, String label, String value) {
+        ItemData item = (ItemData) getHibernateTemplate().get(ItemData.class, itemId);
+        if (item != null) {
+            log.debug("**Id = {}, **score = {}, **grade = {}, **CorrectFeedback is lazy = {}, **Objective not lazy = {}",
+                    item.getItemId(),
+                    item.getScore(),
+                    item.getGrade(),
+                    item.getCorrectItemFeedback(),
+                    item.getItemMetaDataByLabel("ITEM_OBJECTIVE")
+            );
+            item.getItemMetaDataSet().add(new ItemMetaData(item, label, value));
+            getHibernateTemplate().merge(item);
+        }
     }
-  }
-
-
-  public void addItemMetaData(Long itemId, String label, String value) {
-    ItemData item = (ItemData)getHibernateTemplate().load(ItemData.class, itemId);
-      if (item != null) {
-        printItem(item);
-
-    ItemMetaData itemmetadata = new ItemMetaData(item, label, value);
-    int retryCount = PersistenceService.getInstance().getPersistenceHelper().getRetryCount();
-    while (retryCount > 0){
-      try {
-        getHibernateTemplate().save(itemmetadata);
-        retryCount = 0;
-      }
-      catch (Exception e) {
-        log.warn("problem saving itemmetadata: "+e.getMessage());
-        retryCount = PersistenceService.getInstance().getPersistenceHelper().retryDeadlock(e, retryCount);
-      }
-    }
-    //item.addItemMetaData(label, value);
-    //getHibernateTemplate().saveOrUpdate(item);
-      }
-  }
-
-  private void printItem(ItemData item) {
-    log.debug("**Id = " + item.getItemId());
-    log.debug("**score = " + item.getScore());
-    log.debug("**grade = " + item.getGrade());
-    log.debug("**CorrectFeedback is lazy = " +
-                       item.getCorrectItemFeedback());
-    log.debug("**Objective not lazy = " +
-                       item.getItemMetaDataByLabel("ITEM_OBJECTIVE"));
-  }
-
-  public void ifcShow(Long itemId) {
-      ItemDataIfc itemData = (ItemDataIfc) getHibernateTemplate().load(ItemData.class, itemId);
-      if (itemData != null) {
-        printIfcItem(itemData);
-        printFacadeItem(itemData);
-        //exportXml(itemData);
-      }
-  }
-
 
  public ItemFacade saveItem(ItemFacade item) throws DataFacadeException {
     List<ItemFacade> list = new ArrayList<>(1);
@@ -310,71 +142,42 @@ public class ItemFacadeQueries extends HibernateDaoSupport implements ItemFacade
     return list.isEmpty() ? null : list.get(0);
  }
 
-  /**
-   * Similar to saveItem(ItemFacade item), only we can process many items within a single transaction, thereby improving performance
-   * @param items
-   * @return
-   */
-  public List<ItemFacade> saveItems(List<ItemFacade> items) throws DataFacadeException {
-    try {
-      int retryCount;
-      // Track assessments associated with each item
-      List<AssessmentIfc> assessmentsToUpdate = new ArrayList<>();
-      Set<Long> assessmentIds = new HashSet<>();
-
-      for (ItemFacade item : items) {
-        ItemDataIfc itemdata = (ItemDataIfc) item.getData();
-        itemdata.setLastModifiedDate(new Date());
-        itemdata.setLastModifiedBy(AgentFacade.getAgentString());
-        itemdata.setHash(itemHashUtil.hashItem(itemdata));
-        retryCount = PersistenceService.getInstance().getPersistenceHelper().getRetryCount();
-
-        while (retryCount > 0) {
-          try {
-            getHibernateTemplate().saveOrUpdate(itemdata);
-            item.setItemId(itemdata.getItemId());
-            retryCount = 0;
-          } catch (Exception e) {
-            log.warn("saveitems - problem save or update itemdata: {}", e.getMessage());
-            retryCount = PersistenceService.getInstance().getPersistenceHelper().retryDeadlock(e, retryCount);
-          }
+    public void removeItemAttachment(Long itemAttachmentId) {
+        ItemAttachment itemAttachment = getHibernateTemplate().load(ItemAttachment.class, itemAttachmentId);
+        ItemDataIfc item = itemAttachment.getItem();
+        if (item != null) {
+            item.getItemAttachmentSet().remove(itemAttachment);
+            getHibernateTemplate().merge(item);
         }
-
-        // Update the assessment once after all items are updated. So just track them here
-        if (item.getData() != null && item.getData().getSection() != null) {
-          AssessmentIfc assessment = item.getData().getSection().getAssessment();
-          if (!assessmentIds.contains(assessment.getAssessmentId())) {
-            assessmentIds.add(assessment.getAssessmentId());
-            assessmentsToUpdate.add(item.getData().getSection().getAssessment());
-          }
-        }
-      }
-
-      // All items are updated, now mark their associated assessments' "LastModified" properties
-      for (AssessmentIfc assessment : assessmentsToUpdate) {
-        assessment.setLastModifiedBy(AgentFacade.getAgentString());
-        assessment.setLastModifiedDate(new Date());
-        retryCount = PersistenceService.getInstance().getPersistenceHelper().getRetryCount();
-
-        while (retryCount > 0) {
-          try {
-            getHibernateTemplate().update(assessment);
-            retryCount = 0;
-          } catch (Exception e) {
-            log.warn("save items: problem updating assessment: {}", e.getMessage());
-            retryCount = PersistenceService.getInstance().getPersistenceHelper().retryDeadlock(e, retryCount);
-          }
-        }
-      }
-
-      return items;
-    } catch (Exception e) {
-      log.warn(e.getMessage(), e);
-      return Collections.emptyList();
     }
-  }
 
-    private static final Map<String,String> BACKFILL_HASHES_HQL = new HashMap<String,String>() {{
+    public List<ItemFacade> saveItems(final List<ItemFacade> items) throws DataFacadeException {
+        log.debug("Persist items: {}", items);
+        try {
+            for (ItemFacade item : items) {
+                ItemDataIfc itemData = item.getData();
+                itemData.setLastModifiedDate(new Date());
+                itemData.setLastModifiedBy(AgentFacade.getAgentString());
+                itemData.setHash(itemHashUtil.hashItem(itemData));
+                itemData = getHibernateTemplate().merge(itemData);
+                item.setData(itemData);
+                item.setItemId(itemData.getItemId());
+
+                if (itemData.getSection() != null) {
+                    AssessmentIfc assessment = itemData.getSection().getAssessment();
+                    assessment.setLastModifiedBy(AgentFacade.getAgentString());
+                    assessment.setLastModifiedDate(new Date());
+                    getHibernateTemplate().merge(assessment);
+                }
+            }
+            return items;
+        } catch (Exception e) {
+            log.warn("Could not save items, {}", e.getMessage(), e);
+            return Collections.emptyList();
+        }
+    }
+
+      private static final Map<String,String> BACKFILL_HASHES_HQL = new HashMap<String,String>() {{
         this.put(TOTAL_ITEM_COUNT_HQL, "select count(*) from ItemData");
         this.put(TOTAL_HASH_BACKFILLABLE_ITEM_COUNT_HQL, "select count(*) from ItemData as item where item.hash is null");
         this.put(ALL_HASH_BACKFILLABLE_ITEM_IDS_HQL, "select item.id from ItemData as item where item.hash is null");
@@ -394,33 +197,6 @@ public class ItemFacadeQueries extends HibernateDaoSupport implements ItemFacade
                 },
                 getHibernateTemplate());
     }
-
-  private void printIfcItem(ItemDataIfc item) {
-    log.debug("**Id = " + item.getItemId());
-    log.debug("**score = " + item.getScore());
-    log.debug("**grade = " + item.getGrade());
-    log.debug("**CorrectFeedback is lazy = " +
-                       item.getCorrectItemFeedback());
-    log.debug("**Objective not lazy = " +
-                       item.getItemMetaDataByLabel("ITEM_OBJECTIVE"));
-    log.debug("**createdDate = " +
-                       item.getCreatedDate());
-  }
-
-  private void printFacadeItem(ItemDataIfc item) {
-    ItemFacade f = new ItemFacade(item);
-    log.debug("****Id = " + f.getItemId());
-    log.debug("****score = " + f.getScore());
-    log.debug("****grade = " + f.getGrade());
-    log.debug("****CorrectFeedback is lazy = " +
-                       f.getCorrectItemFeedback());
-    log.debug("****Objective not lazy = " +
-                       f.getItemMetaDataByLabel("ITEM_OBJECTIVE"));
-    log.debug("****createdDate = " +
-                       f.getCreatedDate());
-    log.debug("****ItemType = " +
-                       f.getItemType().getKeyword());
-  }
 
   public ItemFacade getItem(Long itemId) {
 	  ItemData item = null;
@@ -446,13 +222,9 @@ public class ItemFacadeQueries extends HibernateDaoSupport implements ItemFacade
     }
 
   public Map<String, ItemFacade> getItemsByHash(String hash) {
-        final HibernateCallback<List<ItemData>> hcb = session -> {
-            Query q = session.createQuery("from ItemData where hash = ? ");
-            q.setString(0, hash);
-            return q.list();
 
-        };
-        List<ItemData> list1 = getHibernateTemplate().execute(hcb);
+        List<ItemData> list1 = (List<ItemData>) getHibernateTemplate()
+                .findByNamedParam("from ItemData where hash = :hash", "hash", hash);
 
         Map<String, ItemFacade> itemFacadeMap = new HashMap();
 
@@ -529,46 +301,30 @@ public class ItemFacadeQueries extends HibernateDaoSupport implements ItemFacade
    * for recording - use the first one (index 0).
    */
   public Long getItemTextId(final Long publishedItemId) {
-	    final HibernateCallback<List<Long>> hcb = session -> {
-            Query q = session.createQuery("select i.id from PublishedItemText i where i.item.itemId = :id");
-            q.setLong("id", publishedItemId);
-            return q.list();
-        };
-	    List<Long> list = getHibernateTemplate().execute(hcb);
-	    log.debug("list.size() = " + list.size());
+      List<Long> list = getHibernateTemplate().execute(session -> session
+            .createQuery("select i.id from PublishedItemText i where i.item.itemId = :id")
+            .setParameter("id", publishedItemId)
+            .list());
+
+	    log.debug("list.size() = {}", list.size());
 	    Long itemTextId = -1l;
 	    if (!list.isEmpty()) itemTextId = list.get(0);
-	    log.debug("itemTextId" + itemTextId);
+	    log.debug("itemTextId {}", itemTextId);
 	    return itemTextId;
   }
-
-  public void deleteSet(Set s) {
-		int retryCount = PersistenceService.getInstance().getPersistenceHelper().getRetryCount();
-		while (retryCount > 0) {
-			try {
-				if (s != null) { // need to dissociate with item before deleting in Hibernate 3
-					getHibernateTemplate().deleteAll(s);
-					retryCount = 0;
-				} else {
-					retryCount = 0;
-				}
-			} catch (Exception e) {
-				log.warn("problem deleteSet: " + e.getMessage());
-				retryCount = PersistenceService.getInstance().getPersistenceHelper().retryDeadlock(e,
-						retryCount);
-			}
-		}
-	}
 
     @Override
     public void updateItemTagBindingsHavingTag(TagServiceHelper.TagView tagView) {
         // TODO when we add item search indexing, this is going to have to change to
         // first read in all the affected item IDs so we can generate events for each
         // (similar to what we do in the tag service)
-        getHibernateTemplate().bulkUpdate("update ItemTag it " +
-                        "set it.tagLabel = ?, it.tagCollectionId = ?, it.tagCollectionName = ? " +
-                        "where it.tagId = ?",
-                tagView.tagLabel, tagView.tagCollectionId, tagView.tagCollectionName, tagView.tagId);
+        getHibernateTemplate().execute(session -> session
+                .createQuery("update ItemTag it set it.tagLabel = ?1, it.tagCollectionId = ?2, it.tagCollectionName = ?3 where it.tagId = ?4")
+                .setParameter(1, tagView.tagLabel)
+                .setParameter(2, tagView.tagCollectionId)
+                .setParameter(3, tagView.tagCollectionName)
+                .setParameter(4, tagView.tagId)
+                .executeUpdate());
     }
 
     @Override
@@ -576,7 +332,10 @@ public class ItemFacadeQueries extends HibernateDaoSupport implements ItemFacade
         // TODO when we add item search indexing, this is going to have to change to
         // first read in all the affected item IDs so we can generate events for each
         // (similar to what we do in the tag service)
-        getHibernateTemplate().bulkUpdate("delete ItemTag it where it.tagId = ?", tagId);
+        getHibernateTemplate().execute(session -> session
+                .createQuery("delete ItemTag it where it.tagId = ?1")
+                .setParameter(1, tagId)
+                .executeUpdate());
     }
 
     @Override
@@ -584,10 +343,11 @@ public class ItemFacadeQueries extends HibernateDaoSupport implements ItemFacade
         // TODO when we add item search indexing, this is going to have to change to
         // first read in all the affected item IDs so we can generate events for each
         // (similar to what we do in the tag service)
-        getHibernateTemplate().bulkUpdate("update ItemTag it " +
-                        "set it.tagCollectionName = ? " +
-                        "where it.tagCollectionId = ?",
-                tagCollectionView.tagCollectionName, tagCollectionView.tagCollectionId);
+        getHibernateTemplate().execute(session -> session
+                .createQuery("update ItemTag it set it.tagCollectionName = ?1 where it.tagCollectionId = ?2")
+                .setParameter(1, tagCollectionView.tagCollectionName)
+                .setParameter(2, tagCollectionView.tagCollectionId)
+                .executeUpdate());
     }
 
     @Override
@@ -595,19 +355,20 @@ public class ItemFacadeQueries extends HibernateDaoSupport implements ItemFacade
         // TODO when we add item search indexing, this is going to have to change to
         // first read in all the affected item IDs so we can generate events for each
         // (similar to what we do in the tag service)
-        getHibernateTemplate().bulkUpdate("delete ItemTag it where it.tagCollectionId = ?", tagCollectionId);
+        getHibernateTemplate().execute(session -> session
+                .createQuery("delete ItemTag it where it.tagCollectionId = ?1")
+                .setParameter(1, tagCollectionId)
+                .executeUpdate());
     }
 
 
     @Override
     public List<Long> getItemsIdsByHash(String hash) {
-        final HibernateCallback<List<Long>> hcb = session -> {
-            Query q = session.createQuery("select ab.itemId from ItemData ab where ab.hash = ? ");
-            q.setString(0, hash);
-            return q.list();
+        List<Long> list1 = getHibernateTemplate().execute(session -> session
+                .createQuery("select ab.itemId from ItemData ab where ab.hash = ?1 ")
+                .setParameter(1, hash)
+                .list());
 
-        };
-        List<Long> list1 = getHibernateTemplate().execute(hcb);
         return list1;
     }
 
@@ -615,20 +376,15 @@ public class ItemFacadeQueries extends HibernateDaoSupport implements ItemFacade
 
     @Override
     public Long getAssessmentId(Long itemId) {
-        final HibernateCallback<List<Long>> hcb = session -> {
-            Query q = session.createQuery("select s.assessment.assessmentBaseId from SectionData s, ItemData i where s.id = i.section AND i.itemId = ?");
-            q.setLong(0, itemId);
-            return q.list();
+        List<Number> list1 = getHibernateTemplate().execute(session -> session
+            .createQuery("select s.assessment.assessmentBaseId from SectionData s, ItemData i where s.id = i.section AND i.itemId = ?1")
+            .setParameter(1, itemId)
+            .list());
 
-        };
-        List<Long> list1 = getHibernateTemplate().execute(hcb);
-        if (list1.isEmpty()){
+        if (list1.isEmpty()) {
             return -1L;
-        }else{
-            return (Long) list1.get(0);
+        } else {
+            return list1.get(0).longValue();
         }
-
     }
-
-
 }

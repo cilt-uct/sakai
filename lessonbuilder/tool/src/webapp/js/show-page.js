@@ -39,7 +39,7 @@ function msg(s) {
 
 function setupdialog(oe) {
 	oe.dialog("option", "width", modalDialogWidth());
-	$('.ui-dialog').zIndex(150000);
+	$('.ui-dialog').css('zIndex', 900);
 }
 
 function checksize(oe) {
@@ -69,32 +69,18 @@ function checkgroups(elt, groups) {
     }
 }
 
-// maxpoints is an Integer. Actually in GB it's float, but
-// our code in SimplePageBean parses the string as Integer, so make
-// sure it's OK. At least according to ecmascript, parseInt will do
-// weird things if the value is >= 2^31. It is impossible to catch
-// this with numerical functions, so I have to do string comparison
-// 2^31 is 2147483648. length is 10
 function safeParseInt(s) {
-    if (!/^[0-9]+$/.test(s))
-	return NaN;
-    if (s.length > 10) {
-	return Infinity;
-    }
-    if (s.length === 10) {
-	if (s >= "2147483648") {
-	    return Infinity;
-	}
-    }
+    if (s.length > 10) return Infinity;
+    if (!/^[0-9.]+$/.test(s)) return NaN;
+    if (parseInt(s) <= 0) return NaN;
     return parseInt(s);
 }
+
 // get the right error message. called when ifFinite(i) returns false
 // that happens if it is not a number or is too big
 function intError(i) {
-    if (isNaN(i))
-	return msg("simplepage.integer-expected");
-    else
-	return msg('simplepage.integer-too-big');
+    if (isNaN(i)) return msg("simplepage.integer-expected");
+    return msg('simplepage.integer-too-big');
 }
 
 var blankRubricTemplate, blankRubricRow;
@@ -383,19 +369,27 @@ $(document).ready(function() {
 			draggable: false
 		});
 
+        $('#layout-dialog').dialog({
+            autoOpen: false,
+            width: modalDialogWidth(),
+            modal: true,
+            resizable: false,
+            draggable: false
+        });
+
 		$('#addContentDiv').dialog({
 			autoOpen: false,
 			modal: false,
 			resizable: false,
 			draggable: false
-                }).parent('.ui-dialog').css('zIndex',150000);
+                }).parent('.ui-dialog').css('zIndex',900);
 
 		$('#moreDiv').dialog({
 			autoOpen: false,
 			modal: false,
 			resizable: false,
 			draggable: false
-		}).parent('.ui-dialog').css('zIndex',150000);
+		}).parent('.ui-dialog').css('zIndex',900);
 
 		$('#column-dialog').dialog({
 			autoOpen: false,
@@ -403,7 +397,7 @@ $(document).ready(function() {
 			width: 'auto',
 			resizable: false,
 			draggable: true
-		}).parent('.ui-dialog').css('zIndex',150000);
+		}).parent('.ui-dialog').css('zIndex',900);
 
 		$('#delete-confirm').dialog({
 			autoOpen: false,
@@ -417,13 +411,13 @@ $(document).ready(function() {
 				      }},{text:msg("simplepage.cancel_message"),
 				          click: function() {
 				          $( this ).dialog( "close" );}}
-				]}).parent('.ui-dialog').css('zIndex',150000);
+				]}).parent('.ui-dialog').css('zIndex',900);
 		
 		$(window).resize(function() {
 			var modalDialogList = ['#subpage-dialog', '#edit-item-dialog', '#edit-multimedia-dialog',
 			'#add-multimedia-dialog', '#edit-title-dialog', '#new-page-dialog', '#remove-page-dialog',
 			'#youtube-dialog', '#movie-dialog', '#import-cc-dialog', '#export-cc-dialog',
-		        '#comments-dialog', '#student-dialog', '#question-dialog', '#delete-confirm'];
+		        '#comments-dialog', '#student-dialog', '#question-dialog', '#layout-dialog', '#delete-confirm'];
 			for (var i = 0; i < modalDialogList.length; i++) {
 				$(modalDialogList[i]).dialog("option", "width", modalDialogWidth());
 			}
@@ -504,11 +498,12 @@ $(document).ready(function() {
 			$("#change-resource-version-p").hide();
 			$("#change-blti-p").hide();
 			$("#change-page-p").hide();
-			$("#pagestuff").hide();
+			$(".pageItem").hide();
 			$("#newwindowstuff").hide();
 			$("#formatstuff").hide();
 			$("#edit-height").hide();
 			$("#prereqstuff").hide();
+			$(".reqCheckbox").hide();
 			$("#pathdiv").hide();
 			$("#editgroups").hide();
 			$("#resource-group-inherited").hide();
@@ -1362,6 +1357,7 @@ $(document).ready(function() {
 			$("#question-prerequisite").prop("checked", false);
 			$("#question-show-poll").prop("checked", false);
 			$("#multipleChoiceSelect").click();
+			$("#multipleChoiceSelect").prop('checked',true);	//the Click above will trigger the right hide/show of things itself, but it will not actually display multipleChoiceSelect as Checked, so we do it explicitly here.
 			resetMultipleChoiceAnswers();
 			resetShortanswers();
 			
@@ -1404,7 +1400,8 @@ $(document).ready(function() {
 			var itemId = row.find(".question-id").text();
 			$("#questionEditId").val(itemId);
 			
-			var questionText = row.find(".questionText").text();
+			$("#activeQuestion").val(row.find(".raw-question-text").prop("name"));
+			var questionText = row.find(".raw-question-text").val();
 			$("#question-text-input").val(questionText);
 			
 			resetMultipleChoiceAnswers();
@@ -1424,7 +1421,7 @@ $(document).ready(function() {
 				for(var index = 0; index < questionAnswers.length - 1; index++) {
 					var answerSlot;
 					if(index === 0) {
-						answerSlot = $("#copyableShortanswerDiv").first();
+						answerSlot = $("#copyableShortanswer").first();
 					}else {
 						answerSlot = addShortanswer();
 					}
@@ -1443,7 +1440,7 @@ $(document).ready(function() {
 					
 					var answerSlot;
 					if(index === 0) {
-						answerSlot = $("#copyableMultipleChoiceAnswerDiv").first();
+						answerSlot = $("#copyableMultipleChoiceAnswer").first();
 					}else {
 						answerSlot = addMultipleChoiceAnswer();
 					}
@@ -1563,6 +1560,77 @@ $(document).ready(function() {
 			$("#grouplist").show();
 		    });
 
+		$('.layout-link').click(function() {
+            oldloc = $(this);
+            closeDropdowns();
+            $('li').removeClass('editInProgress');
+
+            $('#layout-error-container').hide();
+
+            $('#layout-dialog').dialog('open');
+            setupdialog($('#layout-dialog'));
+            return false;
+		});
+
+		$('.layout-option').click(function() {
+			$('.layout-option').each(function(){
+				$(this).css('border-color', '#fff');
+			});
+			$(this).css('border-color', '#025aa5');
+			$(this).find("input:radio").prop('checked', true);
+		});
+
+		$('#layout-color-scheme-selection').on('change', function(){
+			var colorChoice = $(this).val();
+			$('.addSectionTitleExample').each(function(){
+				this.className='addSectionTitleExample col' + colorChoice + '-header';
+			});
+			$('.addSectionColumn').each(function(){
+				this.className='addSectionColumn col' + colorChoice;
+			})
+		});
+
+        $('#layout-section-collapsible').on('change', function(){
+            $('span.collapsible-section').toggle();
+            if(!$(this).is(':checked')) {
+                $('#layout-section-start-collapsed').prop('checked', false);
+            }
+        });
+
+        $('#layout-section-start-collapsed').on('change', function(){
+            if($(this).is(':checked')) {
+                $('#layout-section-collapsible').prop('checked', true);
+                $('span.collapsible-section').show();
+            }
+        });
+
+        $('#layout-section-title').on('keyup', function(){
+            var sectionTitle = $(this).val();
+            var collapsibleInput = $('#layout-section-collapsible');
+            $('.addSectionTitleText').text(sectionTitle);
+            collapsibleInput.prop('disabled', !sectionTitle);
+            $('#layout-section-start-collapsed').prop('disabled', !sectionTitle);
+            if (!sectionTitle) {
+                $('span.collapsible-section').hide();
+            } else if (collapsibleInput.is(':checked')) {
+                $('span.collapsible-section').show();
+            }
+        });
+
+        $('#layout-section-show-borders').on('change', function(){
+            if($(this).is(':checked')) {
+                $('.addSectionColumn').each(function(){
+                    $(this).css('border-color', '#aaa');
+                    $(this).css('border-style', 'solid');
+                });
+            } else {
+                $('.addSectionColumn').each(function(){
+                    $(this).css('border-color', '#ddd');
+                    $(this).css('border-style', 'dashed');
+                });
+            }
+        });
+
 		$('#add-comments-link').click(function() {
 			$("#comments-addBefore").val(addAboveItem);
                         $("#add-comments").click();
@@ -1631,16 +1699,45 @@ $(document).ready(function() {
 			setupdialog($("#movie-dialog"));
 			return false;
 		});
-		
 
-		$('#edit-item').parent().find('.deleteButton').on('click', function () {
-			if ($('#scormstuff').is(':visible')) {
-				return window.confirm("Really delete this item?  This will also remove any associated Gradebook item.");
+        $("#subpage-button").click(function(){
+            if($(this).is(":checked")){
+                if($("#subpage-btncolor-forced").is(":visible")){
+                    //do nothing, color selector still needs hidden.
+                }else{
+                    $("#subpage-buttonColorLabel").removeClass("disabled");
+                    $("#subpage-btncolor-selection").removeClass("disabled");
+                }
+                //remove button warning regardless
+                $("#subpage-needbtn").hide();
+            }else{
+                //if its not checked, make sure "disabled" class is there.
+
+                $("#subpage-buttonColorLabel").addClass("disabled");
+                $("#subpage-btncolor-selection").addClass("disabled");
+                $("#subpage-needbtn").show();
+            }
+        });
+
+		$("#item-button").click(function(){
+			if($(this).is(":checked")){
+				if($("#btncolor-forced").is(":visible")){
+					//do nothing, color selector still needs hidden.
+				}else{
+					$("#buttonColorLabel").removeClass("disabled");
+					$("#btncolor-selection").removeClass("disabled");
+					$("#btncolor-selection").removeProp("disabled");
+				}
+				//remove button warning regardless
+				$("#needbtn").hide();
+			}else{
+				//if its not checked, make sure "disabled" class is there.
+
+                $("#buttonColorLabel").addClass("disabled");
+                $("#btncolor-selection").addClass("disabled");
+				$("#needbtn").show();
 			}
-
-			return true;
 		});
-
 
 		$(".edit-link").click(function(){
 			oldloc = $(this);
@@ -1650,6 +1747,7 @@ $(document).ready(function() {
 			$(this).closest('div.item').addClass('editInProgress');
 			$("#require-label2").hide();
 			$("#item-required2").hide();
+            $(".reqCheckbox").hide();
 			$("#assignment-dropdown-selection").hide();
 			$("#assignment-points").hide();
 			$("#assignment-points").hide();
@@ -1666,31 +1764,62 @@ $(document).ready(function() {
 			$("#change-page-p").hide();	
 			$("#edit-item-object-p").hide();	
 			$("#edit-item-settings-p").hide();	
-			$("#pagestuff").hide();
-			$("#scormstuff").hide();
+			$(".pageItem").hide();
 			$("#newwindowstuff").hide();
 			$("#formatstuff").hide();
 			$("#edit-height").hide();
 			$("#pathdiv").hide();
 			$("#editgroups").after($("#grouplist"));
-
-			$("#prereqstuff input").prop('disabled', false);
-			$("#prereqstuff").show();
+            $("#stylingstuff").show();
+            $("#prereqstuff").show();
+            $("#visibility-header").show();
 
 			var row = $(this).parent().parent().parent();
 			var itemid = row.find(".current-item-id2").text();
 
-			// CLASSES-1859 fix name input not populated when "New Window"
-			// is selected for BLTI items
-			if (row.find(".link-text").length > 0) {
-				$("#name").val(row.find(".link-text").text());
-			} else {
-				$("#name").val(row.find(".itemlink").text().trim());
-			}
+			var linkTextTag = row.find(".link-text");
+
+			// If data-original-name attr is present, use that instead
+			var linkText = 	linkTextTag.attr("data-original-name") 
+			linkText = linkText || linkTextTag.text();
+
+			$("#name").val(linkText);
 			$("#description").val(row.find(".rowdescription").text());
 
 			$("select[name=indent-level-selection]").val(row.find(".indentLevel").text());
 			$("#customCssClass").val(row.find(".custom-css-class").text());
+
+			var colorArray = ["none",
+                "ngray",
+                "nblack",
+                "nblue",
+                "nblue2",
+                "nred",
+                "nnavy",
+                "nnavy2",
+                "ngreen",
+				"norange",
+				"ngold",
+				"nteal",
+				"npurple"];
+			var classList = row.find(".usebutton").attr('class').split(' ');
+
+			var color = null;
+            classList.forEach(function(source){
+            	if(colorArray.indexOf(source) != -1 && color === null){
+            		color = source;
+				}
+			});
+
+            if(color !== null){
+            	$("select[name=btncolor-selection]").val(color);
+			}else{
+            	$("select[name=btncolor-selection]").val("none");
+			}
+
+			var forcedColorSection = row.parent().parent().parent().parent();
+            var forcedColumnColor = row.parent().parent().parent();
+            var forcedColor = (forcedColorSection.hasClass("hasColor")  && !forcedColumnColor.hasClass("noColor"));
 
 			var prereq = row.find(".prerequisite-info").text();
 
@@ -1720,64 +1849,81 @@ $(document).ready(function() {
                         $("#scormstuff :input").prop("disabled", type != "scorm")
 
 			if(type === 'page') {
-	                    $("#pagestuff").show();
+	                    $(".pageItem").show();
+	                    $(".reqCheckbox").hide();
 
 				var sbpgreleasedate = row.find(".subpagereleasedate").text();
-				// Clear the date fields and reset the date picker plugin
-				// so values from previous edit are discarded
-				$("#releaseDate2ISO8601").val("");
-				$("#release_date2").val("");
-				$.removeData($("#release_date2")[0], 'plugin_sakaiDateTimePicker');
-				if(sbpgreleasedate === '') {
+				localDatePicker({
+					input: '#release_date2',
+					useTime: 1,
+					parseFormat: 'YYYY-MM-DD HH:mm:ss',
+					val: sbpgreleasedate,
+					ashidden: { iso8601: 'releaseDate2ISO8601' }
+				});
+				if(sbpgreleasedate === '') {	//if there is no release date set, don't check the box and se the date-related fields blank
 					$("#page-releasedate2").prop('checked', false);
-					localDatePicker({
-						input: '#release_date2',
-						useTime: 1,
-						parseFormat: 'YYYY-MM-DD HH:mm:ss',
-						val: sbpgreleasedate,
-						ashidden: { iso8601: 'releaseDate2ISO8601' }
-					});
-				}
-				else {
+					$("#release_date2").val('');
+					$("#releaseDate2ISO8601").val('');
+				} else {
 					$("#page-releasedate2").prop('checked', true);
-					localDatePicker({
-						input: '#release_date2',
-						useTime: 1,
-						parseFormat: 'YYYY-MM-DD HH:mm:ss',
-						val: sbpgreleasedate,
-						ashidden: { iso8601: 'releaseDate2ISO8601' }
-					});
+					$("#releaseDate2ISO8601").val(sbpgreleasedate);
+					$("#release_date2").val(moment(sbpgreleasedate).format('MM/DD/YYYY h:mm a'));
 				}
 
-			    var pagenext = row.find(".page-next").text();
-			    if(pagenext === "true") {
-				$("#item-next").prop("checked", true);
-				$("#item-next").attr("defaultChecked", true);
-			    }else {
-				$("#item-next").prop("checked", false);
-			    }
-
-			    var pagebutton = row.find(".page-button").text();
-			    if(pagebutton === "true") {
-				$("#item-button").prop("checked", true);
-				$("#item-button").attr("defaultChecked", true);
-			    }else {
-				$("#item-button").prop("checked", false);
-			    }
-
-			    $("#change-page-p").show();
-			    $("#change-page").attr("href", 
-				$("#change-page").attr("href").replace("itemId=-1", "itemId=" + itemid));
-
-			    var groups = row.find(".item-groups").text();
-			    var grouplist = $("#grouplist");
-			    if ($('#grouplist input').size() > 0) {
-				$("#editgroups").show();
-				$("#grouplist").show();
-				if (groups !== null) {
-				    checkgroups(grouplist, groups);
+				let pagenext = row.find(".page-next").text();
+				if(pagenext === "true") {
+					$("#item-next").prop("checked", true);
+					$("#item-next").attr("defaultChecked", true);
+				}else {
+					$("#item-next").prop("checked", false);
 				}
-			    }
+
+				let pagebutton = row.find(".page-button").text();
+				if(pagebutton === "true") {
+					$("#item-button").prop("checked", true);
+					$("#item-button").attr("defaultChecked", true);
+					if(!forcedColor) {
+                        $("#buttonColorLabel").removeClass("disabled");
+                        $("#btncolor-selection").removeClass("disabled");
+                        $("#btncolor-selection").removeProp("disabled");
+                        $("#btncolor-forced").hide();
+                    }else{
+                        $("#buttonColorLabel").addClass("disabled");
+                        $("#btncolor-selection").addClass("disabled");
+                        $("#btncolor-selection").prop("disabled", true);
+                        $("#btncolor-forced").show();
+					}
+					$("#needbtn").hide();
+			    }else{
+                    $("#item-button").prop("checked", false);
+                    $("#buttonColorLabel").addClass("disabled");
+                    $("#btncolor-selection").addClass("disabled");
+                    $("#btncolor-selection").prop("disabled", true);
+					$("#needbtn").show();
+					if(forcedColor){
+						$("#btncolor-forced").show();
+					}
+                }
+
+				let pagehidden = row.find(".page-hidden").text();
+				if(pagehidden === "true") {
+					$("#hide2").prop("checked", true).attr("defaultChecked", true);
+				}else {
+					$("#hide2").prop("checked", false);
+				}
+
+				$("#change-page-p").show();
+				$("#change-page").attr("href", $("#change-page").attr("href").replace("itemId=-1", "itemId=" + itemid));
+
+				let groups = row.find(".item-groups").text();
+				let grouplist = $("#grouplist");
+				if ($('#grouplist input').size() > 0) {
+					$("#editgroups").show();
+					$("#grouplist").show();
+					if (groups !== null) {
+						checkgroups(grouplist, groups);
+					}
+				}
 
 			} else if(type !== '') {
 				// Must be an assignment, assessment, forum
@@ -1876,6 +2022,7 @@ $(document).ready(function() {
 					}
 					
 					$("#item-required2").show();
+                    $(".reqCheckbox").show();
 					
 					$("#assignment-points").show();
 					$("#assignment-points-label").show();
@@ -1892,6 +2039,7 @@ $(document).ready(function() {
 					}
 				}else if(type === '4') {
 					// Pass / Fail
+                    $(".reqCheckbox").show();
 					$("#require-label2").show();
 					$("#require-label2").html(msg("simplepage.require_pass_assignment"));
 					$("#item-required2").show();
@@ -1906,7 +2054,7 @@ $(document).ready(function() {
 					}
 				}else if(type === '2') {
 					// Letter Grade
-					
+					$(".reqCheckbox").show();
 					$("#require-label2").show();
 					$("#require-label2").text(msg("simplepage.require_atleast"));
 					$("#item-required2").show();
@@ -1927,6 +2075,7 @@ $(document).ready(function() {
 					// Nothing more that we need to do
 				}else if(type === '5') {
 					// Checkmark
+                    $(".reqCheckbox").show();
 					$("#require-label2").show();
 					$("#require-label2").text(msg("simplepage.require_checkmark"));
 					$("#item-required2").show();
@@ -2084,7 +2233,7 @@ $(document).ready(function() {
 			oldloc = $(this);
 			closeDropdowns();
 			$('#mm-name-section').addClass('fileTitles');
-			$("#mm-name-section").hide();
+			$("#mm-name-section").show();
 			$("#mm-name").val('');
 			$("#mm-prerequisite").prop('checked',false);
 			if ($(this).hasClass("add-at-end"))
@@ -2155,6 +2304,7 @@ $(document).ready(function() {
 			oldloc = $(".dropdown a");
 			closeDropdowns();
 			mm_test_reset();
+			$('#mm-name-section').addClass('fileTitles');
 			$("#mm-name-section").show();
 			$("#mm-name").val('');
 			$("#mm-prerequisite").prop('checked',false);
@@ -2389,7 +2539,8 @@ $(document).ready(function() {
 				$('#add-twitter-dialog').dialog('isOpen')||
 				$('#column-dialog').dialog('isOpen') ||
 			        $('#student-dialog').dialog('isOpen') ||
-			        $('#question-dialog').dialog('isOpen'))) {
+			        $('#question-dialog').dialog('isOpen') ||
+					$('#layout-dialog').dialog('isOpen'))) {
 		    unhideMultimedia();
                     $('.edit-col').removeClass('edit-colHidden');
                     $('div.item').removeClass('editInProgress');
@@ -2447,7 +2598,7 @@ $(document).ready(function() {
 		var tail_cols = addAboveLI.parent().parent().nextAll();
 		var section = addAboveLI.parent().parent().parent();
 		var sectionId = "sectionid" + (nextid++);
-		section.prev('.sectionHeader').parent().after('<div><h3 class="sectionHeader skip"><span class="sectionHeaderText"></span><span class="sectionCollapsedIcon fa-bars" aria-hidden="true" style="display:none"></span><span class="toggleCollapse">' + msg('simplepage.clickToCollapse') + '</span><span aria-hidden="true" class="collapseIcon fa-toggle-up"></span></h3><div class="section"><div class="column"><div class="editsection"><span class="sectionedit"><h3 class="offscreen">' + msg('simplepage.break-here') + '</h3><a href="/' + newitem + '" title="' + msg('simplepage.join-items') + '" class="section-merge-link" onclick="return false"><span aria-hidden="true" class="fa-compress fa-edit-icon sectioneditfont"></span></a></span><span class="sectionedit sectionedit2"><a href="/lessonbuilder-tool/templates/#" title="' + msg('simplepage.columnopen') + '" class="columnopen"><span aria-hidden="true" class="fa-cog fa-edit-icon sectioneditfont"></span></a></span></div><span class="sectionedit addbottom"><a href="#" title="Add new item at bottom of this column" class="add-bottom"><span aria-hidden="true" class="fa-plus fa-edit-icon plus-edit-icon"></span></a></span><div border="0" role="list" style="z-index: 1;" class="indent mainList"><div class="item breaksection" role="listitem"><span style="display:none" class="item itemid">' + newitem + '</span></div></div></div></div></div>');
+		section.prev('.sectionHeader').parent().after('<div><h3 class="sectionHeader skip"><span aria-hidden="true" class="collapseIcon fa-caret-down"></span><span class="sectionHeaderText"></span><span class="toggleCollapse">' + msg('simplepage.clickToCollapse') + '</span></h3><div class="section"><div class="column"><div class="editsection"><span class="sectionedit"><h3 class="offscreen">' + msg('simplepage.break-here') + '</h3><button type="button" data-merge-id="' + newitem + '" aria-label="' + msg('simplepage.join-items') + '" title="' + msg('simplepage.join-items') + '" class="section-merge-link"><span aria-hidden="true" class="fa-compress fa-edit-icon sectioneditfont"></span></button></span><span class="sectionedit sectionedit2"><a href="/lessonbuilder-tool/templates/#" title="' + msg('simplepage.columnopen') + '" class="columnopen" style="text-decoration: none;"><span aria-hidden="true" class="fa-cog fa-edit-icon sectioneditfont"></span></a></span></div><span class="sectionedit addbottom"><a href="#" title="Add new item at bottom of this column" class="add-bottom"><span aria-hidden="true" class="fa-plus fa-edit-icon plus-edit-icon"></span></a></span><div border="0" role="list" style="z-index: 1;" class="indent mainList"><div class="breakitem breaksection" role="listitem"><span style="display:none" class="itemid">' + newitem + '</span></div></div></div></div></div>');
 		// now go to new section
 		section = section.prev('.sectionHeader').parent().next().children(".section");
 
@@ -2485,7 +2636,8 @@ $(document).ready(function() {
 		// current section DIV
 		var tail_uls = addAboveLI.parent().nextAll();
 		var column = addAboveLI.parent().parent();
-		column.after('<div class="column"><div class="editsection"><span class="sectionedit"><h3 class="offscreen">' + msg('simplepage.break-column-here') + '</h3><a href="/' + newitem + '" title="' + msg('simplepage.join-items') + '" class="column-merge-link" onclick="return false"><span aria-hidden="true" class="fa-compress fa-edit-icon sectioneditfont"></span></a></span><span class="sectionedit sectionedit2"><a href="/lessonbuilder-tool/templates/#" title="' + msg('simplepage.columnopen') + '" class="columnopen"><span aria-hidden="true" class="fa-cog fa-edit-icon sectioneditfont"></span></a></span></div><span class="sectionedit addbottom"><a href="#" title="Add new item at bottom of this column" class="add-bottom"><span aria-hidden="true" class="fa-plus fa-edit-icon plus-edit-icon"></span></a></span><div border="0" role="list" style="z-index: 1;" class="indent mainList"><div class="item breaksection" role="listcolumn"><span style="display:none" class="itemid">' + newitem + '</span></div></div></div>');
+		column.after('<div class="column"><div class="editsection"><span class="sectionedit"><h3 class="offscreen">' + msg('simplepage.break-column-here') + '</h3><button type="button" data-merge-id="' + newitem + '" aria-label="' + msg('simplepage.join-items') + '" title="' + msg('simplepage.join-items') + '" class="column-merge-link"><span aria-hidden="true" class="fa-compress fa-edit-icon sectioneditfont"></span></button></span><span class="sectionedit sectionedit2"><a href="/lessonbuilder-tool/templates/#" title="' + msg('simplepage.columnopen') + '" class="columnopen" style="text-decoration: none;"><span aria-hidden="true" class="fa-cog fa-edit-icon sectioneditfont"></span></a></span></div><span class="sectionedit addbottom"><a href="#" title="Add new item at bottom of this column" class="add-bottom"><span aria-hidden="true" class="fa-plus fa-edit-icon plus-edit-icon"></span></a></span><div border="0" role="list" style="z-index: 1;" class="indent mainList"><div class="breakitem breakcolumn" role="listcolumn"><span style="display:none" class="itemid">' + newitem + '</span></div></div></div>');
+
 		// now go to new section
 		column = column.next();
 		// and move current item and following into the first col of the new section
@@ -2506,7 +2658,7 @@ $(document).ready(function() {
 
 	function sectionMergeLink(e) {
 		e.preventDefault();
-		deleteBreak($(this).attr('href').substring(1));
+		deleteBreak($(this).data('merge-id'));
 		var thisCol = $(this).parents('.column');
 		// in first column all li's except the break
 		var tail_lis = thisCol.find('.mainList').children().first().nextAll();
@@ -2534,7 +2686,7 @@ $(document).ready(function() {
 
 	function columnMergeLink(e) {
 		e.preventDefault();
-		deleteBreak($(this).attr('href').substring(1));
+		deleteBreak($(this).data("merge-id"));
 		var thisCol = $(this).parents('.column');
 		// all li's expect break
 		var tail_lis = thisCol.find('.mainList').children().first().nextAll();
@@ -2551,21 +2703,60 @@ $(document).ready(function() {
 
 	$('.columnopen').click(columnOpenLink);
 	function columnOpenLink(e) {
-	    var itemid = $(this).closest('.editsection').find('.column-merge-link,.section-merge-link').attr('href').substring(1);
+	    var itemid = $(this).closest('.editsection').find('.column-merge-link,.section-merge-link').data("merge-id");
+	    var sectionSettings = $('#sectionSettings');
+	    var columnLabel = $('#columnColorLabel');
+	    var sectionLabel = $('#sectionColorLabel');
+	    var columnStyling = $('#column-styling-header');
+	    var sectionStyling = $('#section-styling-header');
+	    if ($(this).closest('.editsection').find('.section-merge-link').length > 0) {
+            sectionSettings.show();
+            sectionLabel.show();
+            sectionStyling.show();
+            columnLabel.hide();
+            columnStyling.hide();
+            $('#isSection').val('true');
+		} else {
+            sectionSettings.hide();
+            sectionLabel.hide();
+            sectionStyling.hide();
+            columnLabel.show();
+            columnStyling.show();
+            $('#isSection').val('false');
+		}
 	    $('.currentlyediting').removeClass('currentlyediting');
 	    var col = $(this).closest('.column');
 	    col.addClass('currentlyediting');
 	    $('#columndouble').prop('checked', col.hasClass('double'));
 	    $('#columnsplit').prop('checked', col.hasClass('split'));
 	    $('#columnitem').val(itemid);
-	    $('#columntrans').prop('selected', col.hasClass('coltrans'));
-	    $('#columngray').prop('selected', col.hasClass('colgray'));
-	    $('#columnred').prop('selected', col.hasClass('colred'));
-	    $('#columnblue').prop('selected', col.hasClass('colblue'));
-	    $('#columngreen').prop('selected', col.hasClass('colgreen'));
-	    $('#columnyellow').prop('selected', col.hasClass('colyellow'));
+	    $('#columnbackground > option').each(function() {
+	    	var checkClass = 'col' + $(this).val();
+            var hasColClass = col.hasClass(checkClass);
+            if (hasColClass) {
+                $(this).prop('selected', true);
+                $('#show-borders').prop('checked', true);
+            } else if (col.hasClass(checkClass + '-trans')) {
+                $(this).prop('selected', true);
+                $('#show-borders').prop('checked', false);
+            } else if (checkClass === 'colnone' && col.hasClass('coltrans')){
+                $(this).prop('selected', true);
+                $('#show-borders').prop('checked', false);
+            } else if (checkClass === 'colnone' && !col.hasClass('coltrans')) {
+                $(this).prop('selected', true);
+                $('#show-borders').prop('checked', true);
+            } else {
+                $(this).prop('selected', false);
+            }
+		});
 	    $('#collapsible').prop('checked', col.parent('.section').hasClass('collapsible'));
 	    $('#defaultClosed').prop('checked', col.parent('.section').hasClass('defaultClosed'));
+	    if(col.hasClass('noColor')){
+            $('#force-button-color').prop('checked', false);
+		}else {
+            $('#force-button-color').prop('checked', col.parent('.section').hasClass("hasColor"));
+        }
+
 	    $('#sectionTitle').val(col.parent('.section').prev().find('.sectionHeaderText').text());
 		if(!$("#sectionTitle").val()) {
 			$("#collapsible").prop('checked', false);
@@ -2591,23 +2782,31 @@ $(document).ready(function() {
 
 	$('#column-submit').click(function(){
 		var itemid = $('#columnitem').val();
+		var isSection = $('#isSection').val() === 'true';
 		var width = $('#columndouble').prop('checked') ? 2 : 1;
 		var split = $('#columnsplit').prop('checked') ? 2 : 1;
 		var col =  $('.currentlyediting');
 		var section = col.parent('.section');
 		var header = section.prev('.sectionHeader');
-
-		var color = $('#columnbackground').val();
-
-		if (color == 'none') {
-			color = '';
+		var color_index = $('#columnbackground')[0].selectedIndex; 
+		var color = '';
+		var forceBtnColor = $("#force-button-color").prop('checked');
+		if (color_index !== 0) {
+            color = $('#columnbackground').val();
 		}
 
 		var collapsible = $('#collapsible').prop('checked') ? 1 : 0;
 		var defaultClosed = $('#defaultClosed').prop('checked') ? 1 : 0;
 		var sectionTitle = $('#sectionTitle').val();
-
-		setColumnProperties(itemid, width, split, color);
+        var showBorders = $('#show-borders').prop('checked');
+        if (!showBorders) {
+            if (color === '') {
+                color = 'trans';
+            } else {
+                color = color + '-trans';
+            }
+        }
+		setColumnProperties(itemid, width, split, color, forceBtnColor);
 		if (width === 2)
 		    col.addClass('double');		    
 		else
@@ -2616,10 +2815,21 @@ $(document).ready(function() {
 		    col.addClass('split');
 		else
 		    col.removeClass('split');
-		col.removeClass('coltrans colgray colred colblue colgreen colyellow');
+		col.removeClass('coltrans colgray colred colblue colgreen colyellow colngray colngray-trans colnblack colnblack-trans colnblue colnblue-trans' +
+			' colnblue2 colnblue2-trans colnred colnred-trans colnnavy colnnavy-trans colnnavy2 colnnavy2-trans colngreen colngreen-trans' +
+			' colgray-trans colred-trans colblue-trans colgreen-trans colyellow-trans colnorange colnorange-trans colngold colngold-trans colnteal colnteal-trans colnpurple colnpurple-trans');
 		if (color !== '')
 		    col.addClass('col' + color);
-		fixupColAttrs();
+
+		if (isSection) {
+            header.removeClass('coltrans-header colgray-header colred-header colblue-header colgreen-header colyellow-header colngray-header colngray-trans-header colnblack-header colnblack-trans-header colnblue-header colnblue-trans-header' +
+                ' colnblue2-header colnblue2-trans-header colnred-header colnred-trans-header colnnavy-header colnnavy-trans-header colnnavy2-header colnnavy2-trans-header colngreen-header colngreen-trans-header' +
+                ' colgray-trans-header colred-trans-header colblue-trans-header colgreen-trans-header colyellow-trans-header colnorange-header colnorange-trans-header colngold-header colngold-trans-header colnteal-header colnteal-trans-header colnpurple-header colnpurple-trans-header');
+            if(color !== '')
+                header.addClass('col' + color + '-header');
+        }
+
+        fixupColAttrs();
 		fixupHeights();
 		setSectionCollapsible(itemid, collapsible, sectionTitle, defaultClosed);
 		header.find('.sectionHeaderText').text(sectionTitle);
@@ -2631,7 +2841,6 @@ $(document).ready(function() {
 		if (collapsible) {
 			section.addClass('collapsible');
 			header.addClass('collapsibleSectionHeader');
-			setCollapsedStatus(header, false);
 			var sectionId = section.attr('id');
 			if (typeof sectionId === 'undefined' || sectionId === null || sectionId === '') {
 			    sectionId = 'sectionid' + (nextid++);
@@ -2641,14 +2850,15 @@ $(document).ready(function() {
 		} else {
 			section.removeClass('collapsible');
 			header.removeClass('collapsibleSectionHeader');
-			setCollapsedStatus(header, false);
 			header.removeAttr('aria-controls');
 			header.removeAttr('aria-expanded');
 		}
 		if (defaultClosed) {
 			section.addClass('defaultClosed');
+			setCollapsedStatus(header, true);
 		} else {
 			section.removeClass('defaultClosed');
+			setCollapsedStatus(header, false);
 		}
 		if($('.collapsibleSectionHeader').length) {
 			$('#expandCollapseButtons').show();
@@ -2656,6 +2866,7 @@ $(document).ready(function() {
 			$('#expandCollapseButtons').hide();
 		}
 		$('#column-dialog').dialog('close');
+		$document.reload();
 		return false;
 	    });
 
@@ -2737,6 +2948,7 @@ $(document).ready(function() {
 	$('#subpage-error-container').hide();
 	$("#require-label2").hide();
 	$("#item-required2").hide();
+    $(".reqCheckbox").hide();
 	$("#assignment-dropdown-selection").hide();
 	$("#edit-youtube-error-container").hide();
 	$("#messages").hide();
@@ -2800,20 +3012,22 @@ $(document).ready(function() {
 function setCollapsedStatus(header, collapse) {
     if (collapse === null) {
 	// toggle
-	collapse = header.find('.collapseIcon').hasClass("fa-toggle-up");
+	collapse = header.find('.collapseIcon').hasClass("fa-caret-down");
     }
     if (collapse) {
-	header.find('.collapseIcon').addClass("fa-toggle-down");
-	header.find('.collapseIcon').removeClass("fa-toggle-up");
-	header.find('.sectionCollapsedIcon').show();
+	header.find('.collapseIcon').addClass("fa-caret-right");
+	header.find('.collapseIcon').removeClass("fa-caret-down");
 	header.find('.toggleCollapse').text(msg('simplepage.clickToExpand'));
 	header.attr('aria-expanded', 'false');
+	header.addClass('closedSectionHeader');
+	header.removeClass('openSectionHeader');
     } else {
-	header.find('.collapseIcon').removeClass("fa-toggle-down");
-	header.find('.collapseIcon').addClass("fa-toggle-up");
-	header.find('.sectionCollapsedIcon').hide();
+	header.find('.collapseIcon').removeClass("fa-caret-right");
+	header.find('.collapseIcon').addClass("fa-caret-down");
 	header.find('.toggleCollapse').text(msg('simplepage.clickToCollapse'));
 	header.attr('aria-expanded', 'true');
+	header.addClass('openSectionHeader');
+	header.removeClass('closedSectionHeader');
     }
 }
 
@@ -2837,6 +3051,11 @@ function closeEditItemDialog() {
 	$("#edit-item-dialog").dialog("close");
 	$('#edit-item-error-container').hide();
 	$("#select-resource-group").hide();
+	if (!$("#page-releasedate2").prop('checked')){	// if the date-release option isn't checked, we should clear out the date-related values on close.
+		$("#release_date2").val('');
+		$("#releaseDate2ISO8601").val('');
+		$("#release_date_string").val('')
+	}
 	oldloc.focus();
 }
 
@@ -2847,6 +3066,17 @@ function closeMultimediaEditDialog() {
 }
 
 function closeAddMultimediaDialog() {
+	//clear all sticky values so that the dialog can be fully usable if reopened
+	$('#mm-url-name').val('');
+	$('#mm-url').val('');
+	$("[name='mm-file']").val('');
+	// collapse resources/URL sections. expand file upload section...returns window to its initial state
+	$('#new-url-section').collapse();
+	$('#existing-resource-section').collapse();
+	$('#new-file-section').collapse('show');
+	// show the Resource and URL sections in case those were hidden on cancel
+	$('#new-url-panel').show();
+	$('#existing-resource-panel').show();
 	$("#add-multimedia-dialog").dialog("close");
 	oldloc.focus();
     $(oldloc).closest('div.item').removeClass('editInProgress');
@@ -2906,6 +3136,11 @@ function closeQuestionDialog() {
 	oldloc.focus();
 }
 
+function closeLayoutDialog() {
+	$('#layout-dialog').dialog('close');
+	oldloc.focus();
+}
+
 function closePeerReviewDialog() {
 	$('#peer-eval-create-dialog').dialog('close');
 }
@@ -2922,7 +3157,11 @@ function checkEditTitleForm() {
 	}else if ($("#page-gradebook").prop("checked") && !isFinite(safeParseInt($("#page-points").val()))) {
 		$('#edit-title-error').text(intError(safeParseInt($("#page-points").val())));
 		$('#edit-title-error-container').show();
-	}else {
+	} else if(/[\[\]{}\\|\^\`]/.test($('#pageTitle').val())) {
+		$('#edit-title-error').text(msg("simplepage.subpage_invalid_chars"));
+		$('#edit-title-error-container').show();
+		return false;
+	} else {
 		$('#edit-title-error-container').hide();
 		if ($("#page-releasedate").prop('checked'))
 		    $("#release_date_string").val($("#releaseDateISO8601").val());
@@ -3070,12 +3309,16 @@ function checkEditItemForm() {
 		$('#edit-item-error').text(msg("simplepage.item_notblank"));
 		$('#edit-item-error-container').show();
 		return false;
-        } else if ((requirementType === '3' || requirementType === '6') && 
-		   $("#item-required2").prop("checked") && !isFinite(safeParseInt($("#assignment-points").val()))) {
+	} else if ((requirementType === '3' || requirementType === '6') && 
+		$("#item-required2").prop("checked") && !isFinite(safeParseInt($("#assignment-points").val()))) {
 		$('#edit-item-error').text(intError(safeParseInt($("#assignment-points").val())));
 		$('#edit-item-error-container').show();
 		return false;
-	}else {
+	} else if(/[\[\]{}\\|\^\`]/.test($('#name').val())) {
+		$('#edit-item-error').text(msg("simplepage.subpage_invalid_chars"));
+		$('#edit-item-error-container').show();
+		return false;
+	} else {
 		if ($("#page-releasedate2").prop('checked'))
 			$("#release_date2").val($("#releaseDate2ISO8601").val());
 		else
@@ -3088,6 +3331,10 @@ function checkEditItemForm() {
 function checkSubpageForm() {
 	if($('#subpage-title').val() === '') {
 		$('#subpage-error').text(msg("simplepage.page_notblank"));
+		$('#subpage-error-container').show();
+		return false;
+	} else if(/[\[\]{}\\|\^\`]/.test($('#subpage-title').val())) {
+		$('#subpage-error').text(msg("simplepage.subpage_invalid_chars"));
 		$('#subpage-error-container').show();
 		return false;
 	}else {
@@ -3184,9 +3431,13 @@ $(function() {
 	});
 
 	function mmFileInputDelete() {
-	    $(this).parent().parent().remove();
+	    $(this).parent().parent().remove();	//remove file name
+		$('.selector-helper').val('');		//remove file from the visible input/picker as well
 	}
 	function mmFileInputChanged() {
+	    var previousTitle = $("#mm-name").val();
+	    $("#mm-name").val('');
+	    $("#mm-name-section").hide();
 	    // user has probably selected a file. 
 	    var lastInput = $(".mm-file-input").last();
 	    if (lastInput[0].files.length !== 0) {
@@ -3195,7 +3446,7 @@ $(function() {
 		if ($('.fileTitles')[0]) {
 			doingNames = true;
 		}
-		// user has chosen a file. 
+		// user has chosen a file.
 		// Add another button for user to pick more files
 		lastInput.parent().after(lastInput.parent().clone());
 		// find the new button and put this trigger on it
@@ -3206,27 +3457,33 @@ $(function() {
 		$('.add-another-file').last().show().parent().addClass('add-another-file-div');
 		// Loop through the new files in reverse order so that they can be added just after the lastInput element.
 		for (i = lastInput[0].files.length-1; i >= 0; i--) {
-			var newStuff = '<p><span class="mm-file-input-name">' + lastInput[0].files[i].name + '</span><span title="' + msg('simplepage.remove_from_uploads') + '"><span class="mm-file-input-delete fa fa-times"></span></span>';
+			var newStuff = '<p><span class="mm-file-input-name h5">' + lastInput[0].files[i].name + '</span>';
 			if (doingNames) {
-					newStuff = newStuff + '<label for="link-title">Link title</label><input id="link-title" class="mm-file-input-names" type="text" size="30" maxlength="255"/></p>';
+				var valueContent = '';
+				if(i === 0 && previousTitle){
+					valueContent = 'value="' + previousTitle + '"';
+				}
+				newStuff = newStuff + '<label for="link-title">Link title</label><input id="link-title" class="mm-file-input-names" type="text" size="30" maxlength="255" ' + valueContent + '/></p>';
 			} else {
-				newStuff = newStuff + '</p>';
+			    newStuff = newStuff + '<div><label for="link-title"> Custom name for uploaded file [optional]: </label><input id="link-title" class="mm-file-input-names" type="text" size="30" maxlength="255"/></div>';
 			}
+			newStuff = newStuff + '</p>'
 			lastInput.after(newStuff);
 			lastInput.parent().addClass('mm-file-group');
-			$('.mm-file-input-delete').on('click', mmFileInputDelete);
-		}		
+		}
+		var nextStuff = '<span class="remove-upload" title="' + msg('simplepage.remove_from_uploads') + '"><span class="mm-file-input-delete fa fa-trash"></span></span>';
+		lastInput.after(nextStuff);
+		$('.mm-file-input-delete').on('click', mmFileInputDelete);
 		// hide the original button as a new one has been created with the annotation of the new number of files.  
 		lastInput.hide();
+		lastInput.removeClass('selector-helper');	//this empty class is used as a selector for deletion...we do NOT want to clear existing files' inputs, so they should not have this class; only the clones [created above] should.
 		// Hide the add from resources link and add URL section as one can't upload files and do these at the same time.
-		$('.mm-url-section').hide();
-		$('.mm-resources-section').hide();
+		$('#new-url-panel').hide();
+		$('#existing-resource-panel').hide();
 	    }
 	};
 
 	$(".mm-file-input").on("change", mmFileInputChanged);
-
-
 
 });
 
@@ -3237,7 +3494,7 @@ var addAboveLI = null;
 function buttonOpenDropdown() {
     oldloc = $("#dropdown");
     addAboveItem = "";
-    openDropdown($("#moreDiv"), $("#dropdown"), msg("simplepage.more-tools"));
+    openDropdown($("#moreDiv"), $("#dropdown"), msg("simplepage.more-tools"), true);
 }
 
 function buttonOpenDropdownc() {
@@ -3265,6 +3522,10 @@ function buttonOpenDropdownb() {
     oldloc = $(this);
     addAboveItem = '-' + $(this).closest('.column').find('div.mainList').children().last().find("span.itemid").text();
     addAboveLI = $(this).closest('.column').find('div.mainList').children().last().closest("div.item");
+    if (addAboveLI.length === 0) {
+        // Unable to find item (due to an empty section or column). Target break instead
+        addAboveLI = $(this).closest('.column').find('div.mainList').children().last().closest("div.breakitem");
+    }
     $(".addbreak").show();
     openDropdown($("#addContentDiv"), $("#dropdownc"), msg('simplepage.add-item-column'),
 		 {
@@ -3273,20 +3534,15 @@ function buttonOpenDropdownb() {
     return false;
 }
 
-function openDropdown(dropDiv, button, title, dialogOpts) {
-    if (dialogOpts == undefined) {
-        dialogOpts = {
-            width: '300px',
-        };
-    }
-
+function openDropdown(dropDiv, button, title, dropDown) {
     closeDropdowns();
     hideMultimedia();
     dropDiv.dialog('option', 'title', title);
-//    dropDiv.dialog('option', 'position', { my: 'left top', at: 'left bottom', of: button });
-    dropDiv.dialog('option', 'position', { my: "center", at: "center", of: window });
-    dropDiv.parent().css({ position:" fixed" });
-    dropDiv.dialog('option', dialogOpts);
+    if (dropDown) {
+        dropDiv.dialog('option', 'position', { my: 'left top', at: 'left bottom', of: button });
+	} else {
+        dropDiv.dialog('option', 'width', calculateDropDownModalWidth());
+	}
     dropDiv.dialog('open');
     dropDiv.find("a").first().focus();
     /*
@@ -3298,6 +3554,20 @@ function openDropdown(dropDiv, button, title, dialogOpts) {
     $("[aria-describedby='addContentDiv']").offset({top : button.offset().top + button.height()});
     */
     return false;
+}
+
+function calculateDropDownModalWidth() {
+    var wWidth = $(window).width();
+    var pbr = 768;
+    var dWidth = wWidth * 0.7;
+    if ( wWidth <= pbr ) {
+        dWidth = pbr * 0.7;
+        if ( dWidth > (wWidth * 0.95) ) {
+            dWidth = wWidth * 0.95;
+        }
+    }
+    if ( dWidth < 300 ) dWidth = 300; // Should not happen
+    return Math.round(dWidth);
 }
 
 function closeDropdowns() {
@@ -3342,15 +3612,14 @@ function unhideMultimedia() {
 
 // Clones one of the multiplechoice answers in the Question dialog and appends it to the end of the list
 function addMultipleChoiceAnswer() {
-	var clonedAnswer = $("#copyableMultipleChoiceAnswerDiv").clone(true);
-	var num = $("#extraMultipleChoiceAnswers").find(".question-answer").length + 2; // Should be currentNumberOfAnswers + 1
-	
+	var clonedAnswer = $("#copyableMultipleChoiceAnswer").clone(true);
+	var num = $("#multipleChoiceAnswersBody").find("tr").length + 2; // Should be currentNumberOfAnswers + 1
 	clonedAnswer.find(".question-multiplechoice-answer-id").val("-1");
 	clonedAnswer.find(".question-multiplechoice-answer-correct").prop("checked", false);
 	clonedAnswer.find(".question-multiplechoice-answer").val("");
-	
+
 	clonedAnswer.attr("id", "multipleChoiceAnswerDiv" + num);
-	
+
 	// Each input has to be renamed so that RSF will recognize them as distinct
 	clonedAnswer.find("[name='question-multiplechoice-answer-complete']")
 		.attr("name", "question-multiplechoice-answer-complete" + num);
@@ -3366,39 +3635,50 @@ function addMultipleChoiceAnswer() {
 		.attr("for", "question-multiplechoice-answer" + num);
 	clonedAnswer.find("[name='question-multiplechoice-answer']")
 		.attr("name", "question-multiplechoice-answer" + num);
-	
+
 	// Unhide the delete link on every answer choice other than the first.
 	// Not allowing them to remove the first makes this AddAnswer code simpler,
 	// and ensures that there is always at least one answer choice.
 	clonedAnswer.find(".deleteAnswerLink").removeAttr("style");
 
-	clonedAnswer.appendTo("#extraMultipleChoiceAnswers");
-	
+	clonedAnswer.appendTo("#multipleChoiceAnswersBody");
+
+	// Re-assign the options to the question list
+	reassignAnswerOptions();
+
 	return clonedAnswer;
 }
 
+function reassignAnswerOptions() {
+	const capitalLettersIndex = 65; // 65 corresponds to A.
+	document.querySelectorAll('.question-multiplechoice-answer-option').forEach( (item, index) => {
+		item.innerHTML = String.fromCharCode(capitalLettersIndex + index);
+	});
+	document.querySelectorAll('.question-showans-answer-option').forEach( (item, index) => {
+		item.innerHTML = String.fromCharCode(capitalLettersIndex + index);
+	});
+}
 // Clones one of the shortanswers in the Question dialog and appends it to the end of the list
 function addShortanswer() {
-	var clonedAnswer = $("#copyableShortanswerDiv").clone(true);
-	
+	var clonedAnswer = $("#copyableShortanswer").clone(true);
 	clonedAnswer.find(".question-shortanswer-answer").val("");
-	
+
 	// Unhide the delete link on every answer choice other than the first.
 	// Not allowing them to remove the first makes this AddAnswer code simpler,
 	// and ensures that there is always at least one answer choice.
 	clonedAnswer.find(".deleteAnswerLink").removeAttr("style");
 
 	// have to make name unique, so append a count
-	var n = $("#extraShortanswers div").length;
+	var n = $("#shortAnswersTableBody tr").length;
 	var elt = clonedAnswer.find("label");
 	elt.attr("for", elt.attr("for") + n);
 	elt = clonedAnswer.find("input");
 	elt.attr("name", elt.attr("name") + n);
-	
-	clonedAnswer.appendTo("#extraShortanswers");
 
+	clonedAnswer.appendTo("#shortAnswersTableBody");
+	// Re-assign the options to the question list
+	reassignAnswerOptions();
 
-	
 	return clonedAnswer;
 }
 
@@ -3423,7 +3703,8 @@ function updateShortanswers() {
 }
 
 function deleteAnswer(el) {
-	el.closest('.question-answer').remove();
+	el.parent('td').parent('tr').remove();
+	reassignAnswerOptions();
 }
 
 // Enabled or disables the subfields under grading in the question dialog
@@ -3466,7 +3747,9 @@ function prepareQuestionDialog() {
 
 	updateMultipleChoiceAnswers();
 	updateShortanswers();
-	
+
+	$("input[name='" + $("#activeQuestion").val() + "'").val($("#question-text-input").val());
+
 	// RSF bugs out if we don't undisable these before submitting
 	$("#multipleChoiceSelect").prop("disabled", false);
 	$("#shortanswerSelect").prop("disabled", false);
@@ -3475,17 +3758,15 @@ function prepareQuestionDialog() {
 
 // Reset the multiple choice answers to prevent problems when submitting a shortanswer
 function resetMultipleChoiceAnswers() {
-	var firstMultipleChoice = $("#copyableMultipleChoiceAnswerDiv");
+	var firstMultipleChoice = $("#copyableMultipleChoiceAnswer");
 	firstMultipleChoice.find(".question-multiplechoice-answer-id").val("-1");
 	firstMultipleChoice.find(".question-multiplechoice-answer").val("");
 	firstMultipleChoice.find(".question-multiplechoice-answer-correct").prop("checked", false);
-	$("#extraMultipleChoiceAnswers").empty();
 }
 
 //Reset the shortanswers to prevent problems when submitting a multiple choice
 function resetShortanswers() {
-	$("#copyableShortanswerDiv").find(".question-shortanswer-answer").val("");
-	$("#extraShortanswers").empty();
+	$("#copyableShortanswer").find(".question-shortanswer-answer").val("");
 }
 
 
@@ -3534,7 +3815,7 @@ function deleteBreak(itemId, type) {
 	    }});
 }
 
-function setColumnProperties(itemId, width, split, color) {
+function setColumnProperties(itemId, width, split, color, forceBtnColor) {
     var errors = '';
     var url = location.protocol + '//' + location.host + 
 	'/lessonbuilder-tool/ajax';
@@ -3543,7 +3824,7 @@ function setColumnProperties(itemId, width, split, color) {
     $.ajax({type: "POST",
 	    async: false,
 	    url: url,
-		data: {op: 'setcolumnproperties', itemid: itemId, width: width, split: split, csrf: csrf, color: color},
+		data: {op: 'setcolumnproperties', itemid: itemId, width: width, split: split, csrf: csrf, color: color, forceBtn: forceBtnColor},
 	    success: function(data){
 		ok = data;
 	    }});
@@ -3627,6 +3908,21 @@ function printView(url) {
 	return url;
     return url.substring(0, i) + url.substring(j);
 }
+
+function printViewWithParameter(url) {
+    var i = url.indexOf("/site/");
+    if (i < 0)
+	return url;
+    var j = url.indexOf("/tool/");
+    if (j < 0)
+	return url;
+    var z = url.indexOf("ShowPage");
+    if (z < 0)
+    return url.substring(0, i) + url.substring(j) + '?printall=true';
+    else
+    return url.substring(0, i) + url.substring(j) + '&printall=true';
+}
+
 // make columns in a section the same height. Is there a better place to trigger this?
 // use load because we want to do this after images, etc. are loaded so heights are set
 

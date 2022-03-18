@@ -24,18 +24,18 @@ package org.sakaiproject.springframework.orm.hibernate;
 import java.io.IOException;
 
 import org.springframework.core.io.Resource;
-import org.springframework.orm.hibernate4.LocalSessionFactoryBuilder;
+import org.springframework.orm.hibernate5.LocalSessionFactoryBuilder;
+import org.springframework.orm.jpa.persistenceunit.MutablePersistenceUnitInfo;
 
 /**
  * When the kernel starts up it will ask the component manager for all instances of this interface and then
  * it will allow them all to add to the central Hibernate session factory configuration.
- *
- * @see AddableSessionFactoryBean
  */
 public interface AdditionalHibernateMappings extends Comparable<AdditionalHibernateMappings>
 {
 	Integer getSortOrder();
 	void processAdditionalMappings(LocalSessionFactoryBuilder localSessionFactoryBuilder) throws IOException;
+	void processAdditionalUnit(MutablePersistenceUnitInfo pui);
 	void setAnnotatedClasses(Class<?>... annotatedClasses);
 	void setAnnotatedPackages(String... annotatedPackages);
 	void setCacheableMappingLocations(Resource... mappingLocations);

@@ -33,7 +33,7 @@ import java.util.Map;
 import java.util.Set;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import org.sakaiproject.event.cover.EventTrackingService;
 import org.sakaiproject.exception.IdUnusedException;
@@ -114,10 +114,8 @@ public class SaveAssessmentSettings
         control.setLateHandling(new Integer(assessmentSettings.getLateHandling()));
     }
 
-    if (assessmentSettings.getRetractDate() == null
-            || "".equals(assessmentSettings.getRetractDateString())) {
+    if ("".equals(assessmentSettings.getRetractDateString())) {
         control.setRetractDate(null);
-        control.setLateHandling(AssessmentAccessControl.NOT_ACCEPT_LATE_SUBMISSION);
     } else if (!assessmentSettings.getAutoSubmit() && 
                assessmentSettings.getRetractDate() != null && 
                assessmentSettings.getLateHandling() != null && 
@@ -127,6 +125,10 @@ public class SaveAssessmentSettings
         control.setRetractDate(assessmentSettings.getRetractDate());
     }
     control.setFeedbackDate(assessmentSettings.getFeedbackDate());
+    control.setFeedbackEndDate(assessmentSettings.getFeedbackEndDate());
+    //Set the value if the checkbox is selected, wipe the value otherwise.
+    String feedbackScoreThreshold = StringUtils.replace(assessmentSettings.getFeedbackScoreThreshold(), ",", ".");
+    control.setFeedbackScoreThreshold(assessmentSettings.getFeedbackScoreThresholdEnabled() ? new Double(feedbackScoreThreshold) : null);
     control.setReleaseTo(assessmentSettings.getReleaseTo());
 
     // b. set Timed Assessment
@@ -290,6 +292,11 @@ public class SaveAssessmentSettings
       evaluation.setScoringType(new Integer(assessmentSettings.getScoringType()));
     assessment.setEvaluationModel(evaluation);
 
+    // Add category unless unassigned (-1) is selected or defaulted. CategoryId comes
+    // from the web page as a string representation of a the long cat id.
+    if (!StringUtils.equals(assessmentSettings.getCategorySelected(), "-1")) {
+		assessment.setCategoryId(Long.parseLong((assessmentSettings.getCategorySelected())));
+    }
 
     // h. update ValueMap: it contains value for teh checkboxes in
     // authorSettings.jsp for: hasAvailableDate, hasDueDate,
@@ -298,9 +305,6 @@ public class SaveAssessmentSettings
     // hasTimeAssessment,hasAutoSubmit, hasPartMetaData, hasQuestionMetaData
     Map <String, String> h = assessmentSettings.getValueMap();
     updateMetaWithValueMap(assessment, h);
-
-    //Update with any settings that are unsaved
-    assessmentSettings.addExtendedTime(false);
 
     ExtendedTimeFacade extendedTimeFacade = PersistenceService.getInstance().getExtendedTimeFacade();
     extendedTimeFacade.saveEntries(assessment, assessmentSettings.getExtendedTimes());
@@ -321,7 +325,7 @@ public class SaveAssessmentSettings
     // k. set ipAddresses
    
     HashSet ipSet = new HashSet();
-    String ipAddresses = assessmentSettings.getIpAddresses();
+    String ipAddresses = assessmentSettings.getIpAddresses().replace(" ", "");
     if (ipAddresses == null)
       ipAddresses = "";
     

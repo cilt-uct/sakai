@@ -21,8 +21,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
 import org.sakaiproject.gradebookng.business.SortDirection;
 import org.sakaiproject.gradebookng.business.model.GbAssignmentGradeSortOrder;
 import org.sakaiproject.gradebookng.business.model.GbCategoryAverageSortOrder;
@@ -61,6 +61,7 @@ public class GradebookUiSettings implements Serializable {
 	private boolean categoriesEnabled;
 
 	@Getter
+	@Setter
 	private boolean groupedByCategory;
 
 	private final Map<Long, Boolean> assignmentVisibility;
@@ -153,14 +154,14 @@ public class GradebookUiSettings implements Serializable {
 
 	public String getCategoryColor(final String categoryName, final Long categoryID) {
 		if (!this.categoryColors.containsKey(categoryName)) {
-			setCategoryColor(categoryName, generateRandomRGBColorString(categoryID));
+			setCategoryColor(categoryName, generateRandomRGBColorString(categoryName));
 		}
 		return this.categoryColors.get(categoryName);
 	}
 
 	public void initializeCategoryColors(final List<CategoryDefinition> categories) {
 		for (CategoryDefinition category : categories) {
-			setCategoryColor(category.getName(), generateRandomRGBColorString(category.getId()));
+			setCategoryColor(category.getName(), generateRandomRGBColorString(category.getName()));
 		}
 	}
 
@@ -170,19 +171,14 @@ public class GradebookUiSettings implements Serializable {
 		this.gradeSummaryGroupedByCategory = categoriesEnabled;
 	}
 
-	public void setGroupedByCategory(final boolean groupedByCategory) {
-		this.groupedByCategory = groupedByCategory;
-		this.gradeSummaryGroupedByCategory = categoriesEnabled;
-	}
-
 	/**
 	 * Helper to generate a RGB CSS color string with values between 180-250 to ensure a lighter color e.g. rgb(181,222,199)
 	 */
-	public static String generateRandomRGBColorString(Long categoryID) {
-		if (categoryID == null) {
-			categoryID = -1L;
+	public static String generateRandomRGBColorString(String categoryName) {
+		if (categoryName == null) {
+			categoryName = "";
 		}
-		final Random rand = new Random(categoryID);
+		final Random rand = new Random(categoryName.hashCode());
 		final int min = 180;
 		final int max = 250;
 

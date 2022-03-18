@@ -851,8 +851,8 @@ public abstract class UsageSessionServiceAdaptor implements UsageSessionService
 				session.getIpAddress(),
 				hostName,
 				userAgent,
-				session.getStart(),
-				session.getEnd(),
+				session.getStartInstant(),
+				session.getEndInstant(),
 				session.isClosed() ? null : Boolean.valueOf(true)
 			});
 

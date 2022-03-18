@@ -2,7 +2,7 @@
                  javax.faces.el.*, org.sakaiproject.tool.messageforums.*"%>
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://sakaiproject.org/jsf/messageforums" prefix="mf" %>
 <jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
    <jsp:setProperty name="msgs" property="baseName" value="org.sakaiproject.api.app.messageforums.bundle.Messages"/>
@@ -10,12 +10,18 @@
 
 <f:view>
 	<sakai:view title="#{msgs.cdfm_default_template_organize}" toolCssHref="/messageforums-tool/css/msgcntr.css">           
-       		<script type="text/javascript">includeLatestJQuery("msgcntr");</script>
-       		<sakai:script contextBase="/messageforums-tool" path="/js/sak-10625.js"/>
-       		<sakai:script contextBase="/messageforums-tool" path="/js/messages.js"/>
+       		<script>includeLatestJQuery("msgcntr");</script>
+       		<script src="/messageforums-tool/js/sak-10625.js"></script>
+       		<script src="/messageforums-tool/js/messages.js"></script>
    <f:verbatim>
-      <script language="javascript">
-      
+      <script>
+         $(document).ready(function() {
+             var menuLink = $('#forumsOrganizeMenuLink');
+             var menuLinkSpan = menuLink.closest('span');
+             menuLinkSpan.addClass('current');
+             menuLinkSpan.html(menuLink.text());
+         });
+
          function updateForums(forumIndexChanged)
          {
          	var numForums = 0;
@@ -124,14 +130,17 @@
       </script>
    </f:verbatim>
       <h:form id="revise">
-		
+			<%@ include file="/jsp/discussionForum/menu/forumsMenu.jsp" %>
 			<!--jsp/discussionForum/area/dfTemplateOrganize.jsp-->
-        <sakai:tool_bar_message value="#{msgs.cdfm_default_template_organize}" />
-		 		<div class="instruction">
-		  		  <h:outputText id="instruction" value="#{msgs.cdfm_default_template_organize_instruction}"/>
-				</div>
+			<div class="page-header">
+				<h1><sakai:tool_bar_message value="#{msgs.cdfm_default_template_organize}"/></h1>
+			</div>
+			<div class="instruction">
+				<h:outputText id="instruction" value="#{msgs.cdfm_default_template_organize_instruction}"/>
+			</div>
 			<h:dataTable id="forums" binding="#{ForumTool.forumTable}" value="#{ForumTool.forums}" width="100%" var="forum" cellpadding="0" cellspacing="0" >
-    <h:column rendered="#{! forum.nonePermission}">
+    <h:column>
+        <h:panelGroup rendered="#{! forum.nonePermission}" layout="block">
 					<h:panelGroup style="display:block;width:90%;padding:.5em" styleClass="forumHeader">
 					<h:selectOneMenu id="forumIndex" value="#{forum.forum.sortIndex}" onchange="updateForums(this);" style="margin-right:1em">
 	            <f:selectItems value="#{ForumTool.forumSelectItems}"/>
@@ -148,7 +157,8 @@
 								<h:outputText id="topicTitle" value="#{topic.title}" style="font-weight:bold;font-size:1.2em;"/>
 							</h:panelGroup>
 		   </h:column>
-        </h:dataTable>			
+        </h:dataTable>	
+        </h:panelGroup>
    </h:column>
  </h:dataTable>
 		

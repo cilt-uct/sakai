@@ -5,17 +5,12 @@
     <parent>
         <groupId>org.sakaiproject.scheduler</groupId>
         <artifactId>scheduler</artifactId>
-        <version>12.5</version>
+        <version>21-SNAPSHOT</version>
     </parent>
 
     <name>Sakai Job Scheduler Test Component Shared Library (scheduler-test-component-shared)</name>
     <groupId>org.sakaiproject.scheduler</groupId>
     <artifactId>scheduler-test-component-shared</artifactId>
-    <organization>
-        <name>Sakai Foundation</name>
-        <url>http://sakaiproject.org/</url>
-    </organization>
-    <inceptionYear>2003</inceptionYear>
     <packaging>jar</packaging>
 
     <properties>
@@ -35,7 +30,10 @@
             <groupId>org.sakaiproject.kernel</groupId>
             <artifactId>sakai-kernel-api</artifactId>
         </dependency>
-
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.quartz-scheduler</groupId>
             <artifactId>quartz</artifactId>

@@ -2,7 +2,7 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
 <%@ taglib uri="http://www.sakaiproject.org/samigo" prefix="samigo" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <!DOCTYPE html
      PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -42,14 +42,15 @@ confirmation dialog
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head><%= request.getAttribute("html.head") %>
 	<title><h:outputText value="#{authorMessages.item_display_author}"/></title>
-	<samigo:script path="/js/info.js"/>
+	<script src="/samigo-app/js/info.js"></script>
 	<!-- AUTHORING -->
-	<samigo:script path="/js/authoring.js?_=1481259675"/>
-	<script type="text/javascript">
+	<script src="/samigo-app/js/authoring.js"></script>
+	<script>
 	$(document).ready(function() {
 		initCalcQuestion();
 	});
 	</script>
+
 </head>
 <%-- unfortunately have to use a scriptlet here --%>
 <body onload="<%= request.getAttribute("html.body.onload") %>">
@@ -106,7 +107,7 @@ confirmation dialog
 		<h:outputLabel for="answerptr" value="#{authorMessages.answer_point_value}" styleClass="col-md-4 form-control-label"/>
 		<div class="col-md-2">
 			<h:inputText id="answerptr" label="#{authorMessages.pt}" value="#{itemauthor.currentItem.itemScore}" 
-							required="true" styleClass="form-control">
+							required="true" disabled="#{author.isEditPoolFlow}" styleClass="form-control">
 				<f:validateDoubleRange/>
 			</h:inputText>			
 			<h:message for="answerptr" styleClass="validate"/>
@@ -114,17 +115,20 @@ confirmation dialog
 	</div>
 
 	<div class="form-group row">
-		<h:outputLabel value="#{authorMessages.answer_point_value_display}" styleClass="col-md-4 form-control-label"/>
+		<h:outputLabel for="itemScore" value="#{authorMessages.answer_point_value_display}" styleClass="col-md-4 form-control-label"/>
 		<div class="col-md-5 samigo-inline-radio">
-			<h:selectOneRadio value="#{itemauthor.currentItem.itemScoreDisplayFlag}" >
+			<h:selectOneRadio value="#{itemauthor.currentItem.itemScoreDisplayFlag}" id="itemScore">
 				<f:selectItem itemValue="true" itemLabel="#{authorMessages.yes}" />
 				<f:selectItem itemValue="false"	itemLabel="#{authorMessages.no}" />
 			</h:selectOneRadio>
 		</div>
 	</div>
 
+	<!-- Extra Credit -->
+	<%@ include file="/jsf/author/inc/extraCreditSetting.jspf" %>
+
     <%-- 2 QUESTION TEXT --%>
-    <div class="longtext"> <h:outputLabel value="#{authorMessages.q_text}" />
+    <div class="longtext"> <h:outputLabel for="questionItemText_textinput" value="#{authorMessages.q_text}" />
     <br/></div>
 	<div class="tier2">
 	  	<p><h:outputText value="#{authorMessages.calc_question_general_instructions1 }" /></p>
@@ -145,13 +149,12 @@ confirmation dialog
 				<li><h:outputText value="#{authorMessages.calc_question_simple_instructions_step_3b}" /></li>
 			</ol>
 		</ol>
-    <div class="mathjax-warning" style="display: none;">
-      <strong>Acceptable Characters</strong>
-      <div class="alert alert-warning">
-        LaTeX and AsciiMath markup may conflict with notation required for this question type.
-        Use the <a href="http://www.nyu.edu/servicelink/041310214003342" target="_blank">WIRIS or MathML plugins</a> in the editor instead.
-      </div>
-    </div>
+		<div class="mathjax-warning" style="display: none;">
+			<h:outputText value="#{authorMessages.accepted_characters}" escape="false"/>
+			<div class="sak-banner-warn">
+				<h:outputText value="#{authorMessages.mathjax_usage_warning}" escape="false"/>
+			</div>
+		</div>
 		<label><h:outputText value="#{authorMessages.calc_question_example_label}"/></label>
 		<p class="tier2"><h:outputText value="#{authorMessages.calc_question_example1}"/></p>
 		<p class="tier2"><h:outputText value="#{authorMessages.calc_question_example1_formula}"/></p>
@@ -219,7 +222,7 @@ confirmation dialog
 	  
 	  <!-- WYSIWYG -->
 	  	<h:panelGrid>
-	   		<samigo:wysiwyg rows="140" value="#{itemauthor.currentItem.instruction}" hasToggle="yes" mode="author">
+	   		<samigo:wysiwyg identity="questionItemText" rows="140" value="#{itemauthor.currentItem.instruction}" hasToggle="yes" mode="author">
 	     		<f:validateLength maximum="60000"/>
 	   		</samigo:wysiwyg>
 	
@@ -402,7 +405,7 @@ confirmation dialog
     <!-- 6 PART -->
 	<h:panelGroup styleClass="form-group row" layout="block"
 					rendered="#{itemauthor.target == 'assessment' && !author.isEditPoolFlow}">		
-		<h:outputLabel value="#{authorMessages.assign_to_p}" styleClass="col-md-4 form-control-label"/>
+		<h:outputLabel for="assignToPart" value="#{authorMessages.assign_to_p}" styleClass="col-md-4 form-control-label"/>
 		<div class="col-md-8">
 	  		<h:selectOneMenu id="assignToPart" value="#{itemauthor.currentItem.selectedSection}">
 	    		<f:selectItems  value="#{itemauthor.sectionSelectList}" />
@@ -413,7 +416,7 @@ confirmation dialog
     <!-- 7 POOL -->
 	<h:panelGroup styleClass="form-group row" layout="block"
 			rendered="#{itemauthor.target == 'assessment' && author.isEditPendingAssessmentFlow}">
-		<h:outputLabel value="#{authorMessages.assign_to_question_p}" styleClass="col-md-4 form-control-label"/>
+		<h:outputLabel for="assignToPool" value="#{authorMessages.assign_to_question_p}" styleClass="col-md-4 form-control-label"/>
 		<div class="col-md-8">
 	  		<h:selectOneMenu id="assignToPool" value="#{itemauthor.currentItem.selectedPool}">
 	    		<f:selectItem itemValue="" itemLabel="#{authorMessages.select_a_pool_name}" />
@@ -428,22 +431,22 @@ confirmation dialog
 			<h:outputLabel value="#{authorMessages.correct_incorrect_an}" styleClass="col-md-12 form-control-label"/>
 		</div>
 		<div class="form-group row">
-			<h:outputLabel value="#{authorMessages.correct_answer_opti}" styleClass="col-md-4 form-control-label"/>
+			<h:outputLabel for="questionFeedbackCorrect_textinput" value="#{authorMessages.correct_answer_opti}" styleClass="col-md-4 form-control-label"/>
 			<!-- WYSIWYG -->
 			<div class="col-md-8">
 				<h:panelGrid>
-					<samigo:wysiwyg rows="140" value="#{itemauthor.currentItem.corrFeedback}" hasToggle="yes" mode="author">
+					<samigo:wysiwyg identity="questionFeedbackCorrect" rows="140" value="#{itemauthor.currentItem.corrFeedback}" hasToggle="yes" mode="author">
 						<f:validateLength maximum="60000"/>
 					</samigo:wysiwyg>
 				</h:panelGrid>
 			</div>
 		</div>
 		<div class="form-group row">
-			<h:outputLabel value="#{authorMessages.incorrect_answer_op}" styleClass="col-md-4 form-control-label"/>
+			<h:outputLabel for="questionFeedbackIncorrect_textinput" value="#{authorMessages.incorrect_answer_op}" styleClass="col-md-4 form-control-label"/>
 			<!-- WYSIWYG -->
 			<div class="col-md-8">
 				<h:panelGrid>
-					<samigo:wysiwyg rows="140" value="#{itemauthor.currentItem.incorrFeedback}" hasToggle="yes" mode="author">
+					<samigo:wysiwyg identity="questionFeedbackIncorrect" rows="140" value="#{itemauthor.currentItem.incorrFeedback}" hasToggle="yes" mode="author">
 						<f:validateLength maximum="60000"/>
 					</samigo:wysiwyg>
 				</h:panelGrid>
@@ -457,19 +460,19 @@ confirmation dialog
 			<h:outputLabel value="Metadata" styleClass="col-md-12 form-control-label"/>
 		</div>
 		<div class="form-group row">
-			<h:outputLabel value="#{authorMessages.objective}" styleClass="col-md-4 form-control-label"/>
+			<h:outputLabel for="obj" value="#{authorMessages.objective}" styleClass="col-md-4 form-control-label"/>
 			<div class="col-md-5">
 				<h:inputText size="30" id="obj" value="#{itemauthor.currentItem.objective}" styleClass="form-control"/>
 			</div>
 		</div>
 		<div class="form-group row">
-			<h:outputLabel value="#{authorMessages.keyword}" styleClass="col-md-4 form-control-label"/>
+			<h:outputLabel for="keyword" value="#{authorMessages.keyword}" styleClass="col-md-4 form-control-label"/>
 			<div class="col-md-5">
 				<h:inputText size="30" id="keyword" value="#{itemauthor.currentItem.keyword}" styleClass="form-control"/>
 			</div>
 		</div>
 		<div  class="form-group row">
-			<h:outputLabel value="#{authorMessages.rubric_colon}" styleClass="col-md-4 form-control-label"/>
+			<h:outputLabel for="rubric" value="#{authorMessages.rubric_colon}" styleClass="col-md-4 form-control-label"/>
 			<div class="col-md-5">
 				<h:inputText size="30" id="rubric" value="#{itemauthor.currentItem.rubric}" styleClass="form-control" />
 			</div>

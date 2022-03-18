@@ -46,10 +46,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
-
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.authz.api.AuthzGroupService;
+import org.sakaiproject.authz.api.AuthzRealmLockException;
 import org.sakaiproject.authz.api.FunctionManager;
 import org.sakaiproject.authz.api.Member;
 import org.sakaiproject.authz.api.Role;
@@ -81,6 +80,9 @@ import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserNotDefinedException;
 import org.sakaiproject.util.api.FormattedText;
 import org.sakaiproject.util.ResourceLoader;
+import org.sakaiproject.util.api.FormattedText;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * <p>
@@ -352,26 +354,16 @@ public class SakaiFacadeImpl implements SakaiFacade {
 	 */
 	public String getUserDisplayLastFirstName(String userId) {
 		try {
-			String dispLastName= userDirectoryService.getUser(userId).getLastName();
-			if(dispLastName !=null){
-				dispLastName = StringUtils.lowerCase(dispLastName, rb.getLocale());
-				dispLastName = StringUtils.capitalize(dispLastName);
-			}
-			String dispFirstName = userDirectoryService.getUser(userId).getFirstName();
-			if(dispFirstName !=null){
-				dispFirstName = StringUtils.lowerCase(dispFirstName, rb.getLocale());
-				dispFirstName = StringUtils.capitalize(dispFirstName);
-			}
-			String displayname = null;
-			if(( dispLastName ==null || dispLastName.isEmpty()) && (dispFirstName ==null || dispFirstName.isEmpty()) ){
+			final String dispLastName = userDirectoryService.getUser(userId).getLastName();
+			final String dispFirstName = userDirectoryService.getUser(userId).getFirstName();
+			if(StringUtils.isEmpty(dispLastName) && StringUtils.isEmpty(dispFirstName)){
 				//Case: local user can have no first and last names
-				displayname = userDirectoryService.getUser(userId).getDisplayId();
+				return userDirectoryService.getUser(userId).getDisplayId();
 			}
 			else{
-				displayname = dispLastName +", " + dispFirstName;
+				return dispLastName + ", " + dispFirstName;
 			}
 
-			return displayname;
 		} catch (UserNotDefinedException e) {
 			log.warn("Cannot get user displayname for id: " + userId);
 			return "--------";
@@ -1494,8 +1486,8 @@ public class SakaiFacadeImpl implements SakaiFacade {
 		//However, if the user is inactive, getUserRole would return null; then use member role instead
 		try {
 			group.insertMember(userUuid, r != null ? r.getId() : memberRole != null? memberRole.getId() : "", m != null ? m.isActive() : true, false);
-		} catch (IllegalStateException e) {
-			log.error(".addUserToGroup: User with id {} cannot be inserted in group with id {} because the group is locked", userUuid, group.getId());
+		} catch (AuthzRealmLockException arle) {
+			log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
 		}
 		
 		return group;

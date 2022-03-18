@@ -24,6 +24,8 @@ import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.format.DateTimeFormatter;
+import java.time.DateTimeException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
@@ -76,7 +78,7 @@ public final class DateFormatterUtil {
 			LocalDateTime ldt = LocalDateTime.parse(inputDate, isoFormatter);
 			convertedDate = Date.from(ldt.atZone(ZoneId.systemDefault()).toInstant());
 		} catch (Exception  e) {
-			log.error(e.getMessage(), e);
+			log.warn("Error parsing the date {} using the ISO_ZONED_DATE_TIME format", inputDate);
 		}
 
 		return convertedDate;
@@ -94,18 +96,33 @@ public final class DateFormatterUtil {
 	 * 			If throws a parse exception then returns the SHORT format by default (MM/dd/yyyy hh:mm a)
 	 */
 	public static String format(Date inputDate, String format, Locale locale) {
-		SimpleDateFormat formatter = null;
-
 		if(inputDate == null){
 			return null;
 		}
 
 		try {
-			formatter = new SimpleDateFormat(format, locale);
-			return formatter.format(inputDate);
+			return new SimpleDateFormat(format, locale)
+					.format(inputDate);
 		} catch(Exception ex) {
-			formatter = (SimpleDateFormat) DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, Locale.US);
-			return formatter.format(inputDate);
+			return DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, Locale.US)
+					.format(inputDate)
+					.replace(",",""); // FIX JDK8 -> JDK9
 		}
+	}
+	
+	/**
+	 * Validate whether the date input is valid
+	 * @param day
+	 * @param month
+	 * @param year
+	 * @return
+	 */
+	public static boolean checkDate(int day, int month, int year) {
+		try {
+			LocalDate.of(year, month, day);
+		} catch (DateTimeException e) {
+			return false;
+		}
+		return true;
 	}
 }

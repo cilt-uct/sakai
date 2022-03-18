@@ -22,7 +22,7 @@
 				</div>
 				<p class="instruction"><wicket:message key="settingspage.graderelease.instructions" /></p>
 
-				<div class="checkbox">
+				<div class="checkbox" wicket:id="displayCourseGradeContainer">
 					<label>
 						<input wicket:id="displayCourseGrade" type="checkbox" />
 						<wicket:message key="settingspage.displaycoursegrade.label" />
@@ -31,7 +31,7 @@
 
 				<div class="form-group" wicket:id="courseGradeType">
 				
-					<p class="messageError" wicket:id="minimumOptions">minimum options message</p>
+					<p class="sak-banner-error" wicket:id="minimumOptions">minimum options message</p>
 					
 					<div class="col-sm-offset-1 col-sm-20">
 						<div class="checkbox">

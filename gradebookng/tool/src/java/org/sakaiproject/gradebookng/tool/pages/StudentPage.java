@@ -22,12 +22,14 @@ import org.apache.wicket.markup.head.CssHeaderItem;
 import org.apache.wicket.markup.head.IHeaderResponse;
 import org.apache.wicket.markup.head.JavaScriptHeaderItem;
 import org.apache.wicket.markup.html.basic.Label;
+import org.apache.wicket.markup.html.form.HiddenField;
 import org.apache.wicket.model.Model;
 import org.apache.wicket.model.StringResourceModel;
-import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.gradebookng.business.GbRole;
 import org.sakaiproject.gradebookng.business.util.EventHelper;
 import org.sakaiproject.gradebookng.tool.panels.StudentGradeSummaryGradesPanel;
+import org.sakaiproject.portal.util.PortalUtils;
+import org.sakaiproject.rubrics.logic.RubricsConstants;
 import org.sakaiproject.user.api.User;
 
 /**
@@ -63,25 +65,18 @@ public class StudentPage extends BasePage {
 	public void renderHead(final IHeaderResponse response) {
 		super.renderHead(response);
 
-		final String version = ServerConfigurationService.getString("portal.cdn.version", "");
+		final String version = PortalUtils.getCDNQuery();
 
 		// tablesorted used by student grade summary
-		response.render(CssHeaderItem
-				.forUrl(String.format("/library/js/jquery/tablesorter/2.27.7/css/theme.bootstrap.min.css?version=%s", version)));
-		response.render(JavaScriptHeaderItem
-				.forUrl(String.format("/library/js/jquery/tablesorter/2.27.7/js/jquery.tablesorter.min.js?version=%s", version)));
-		response.render(JavaScriptHeaderItem
-				.forUrl(String.format("/library/js/jquery/tablesorter/2.27.7/js/jquery.tablesorter.widgets.min.js?version=%s", version)));
+		response.render(JavaScriptHeaderItem.forScript("includeWebjarLibrary('jquery.tablesorter')", null));
+		response.render(JavaScriptHeaderItem.forScript("includeWebjarLibrary('jquery.tablesorter/2.27.7/dist/css/theme.bootstrap.min.css')", null));
 
 		// GradebookNG Grade specific styles and behaviour
-		response.render(
-				CssHeaderItem.forUrl(String.format("/gradebookng-tool/styles/gradebook-grades.css?version=%s", version)));
-		response.render(
-				CssHeaderItem.forUrl(
-						String.format("/gradebookng-tool/styles/gradebook-print.css?version=%s", version),
-						"print"));
+		response.render(CssHeaderItem.forUrl(String.format("/gradebookng-tool/styles/gradebook-grades.css%s", version)));
+		response.render(CssHeaderItem.forUrl(String.format("/gradebookng-tool/styles/gradebook-gbgrade-table.css%s", version)));
+		response.render(CssHeaderItem.forUrl(String.format("/gradebookng-tool/styles/gradebook-print.css%s", version), "print"));
 		response.render(
 				JavaScriptHeaderItem.forUrl(
-						String.format("/gradebookng-tool/scripts/gradebook-grade-summary.js?version=%s", version)));
+						String.format("/gradebookng-tool/scripts/gradebook-grade-summary.js%s", version)));
 	}
 }

@@ -17,14 +17,13 @@ package org.sakaiproject.shortenedurl.entityprovider;
 
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.URL;
 import java.net.URLDecoder;
 import java.util.Map;
 
 import javax.servlet.http.HttpServletResponse;
 
-import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.entitybroker.EntityView;
 import org.sakaiproject.entitybroker.entityprovider.EntityProvider;
@@ -34,6 +33,9 @@ import org.sakaiproject.entitybroker.entityprovider.capabilities.AutoRegisterEnt
 import org.sakaiproject.entitybroker.entityprovider.capabilities.Describeable;
 import org.sakaiproject.entitybroker.exception.EntityException;
 import org.sakaiproject.shortenedurl.api.ShortenedUrlService;
+
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Implementation of the EntityProvider for the ShortenedUrlService to allow URL shortening via GET requests.
@@ -77,9 +79,15 @@ public class ShortenedUrlServiceEntityProviderImpl implements ShortenedUrlServic
 				fullUrl = serverUrl + pathDecoded;
 				log.debug("Path: " + pathDecoded + ", full URL: " + fullUrl);
 			}
-						
-			//now have full url so check they start with the same value. otherwise it is external and it should be blocked.
-			if(!StringUtils.startsWith(fullUrl, serverUrl)) {
+
+			try {
+				String pathDomain = new URL(fullUrl).getHost();
+				String serverDomain = new URL(serverUrl).getHost();
+				//now have full url so check the domain is exactly the same value. otherwise it is external and it should be blocked.
+				if (!StringUtils.equals(pathDomain, serverDomain)) {
+					throw new Exception();
+				}
+			} catch(Exception e) {
 				log.error("Attempted to shorten:" + pathDecoded + ", but this does not have the same prefix as the current server: " + serverUrl);
 				throw new EntityException("Couldn't shorten URL as external URLs are not permitted. The path parameter must contain either a relative path or a full URL that is for the same host.", path, HttpServletResponse.SC_FORBIDDEN);
 			}

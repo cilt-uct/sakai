@@ -87,6 +87,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.Principal;
@@ -176,6 +177,8 @@ import org.sakaiproject.util.RequestFilter;
 import org.sakaiproject.util.ResourceLoader;
 import org.sakaiproject.util.StringUtil;
 import org.sakaiproject.util.Validator;
+
+import static org.sakaiproject.content.util.IdUtil.isolateContainingId;
 
 /**
  * Servlet which adds support for WebDAV level 2. All the basic HTTP requests are handled by the DefaultServlet.
@@ -1028,53 +1031,6 @@ public class DavServlet extends HttpServlet
 
 		// try to authenticate based on a Principal (one of ours) in the req
 		Principal prin = req.getUserPrincipal();
-
-		//SAK-14776 - In order for WAS to return the Principal with getUserPrincipal()
-		//security needs to be enabled. We have employed a custom JAAS module to handle
-		//WAS's user security for the Sakai WebApp. SakaiWASLoginModule also acts as a wrapper
-		//to fetch PrivateCredentials from WAS. The user password is stored in those
-		//credentials. Once all information is obtained, the Principal is remade and 
-		//DavServlet is none the wiser. 
-		//The Login Module code can be found at:
-		//https://source.sakaiproject.org/contrib/websphere/was-login-module/
-		/* removed 2013-09-10 -AZ
-		if ("websphere".equals(ServerConfigurationService.getString("servlet.container")))
-		{
-		    //Fetch the credentials collection from the Subject.
-		    //A wrapper is used here because we need access to 
-		    //com.ibm.ws.security.auth.WSLoginHelperImpl
-		    Iterator credItr = null;
-		    try {
-		        credItr = SakaiWASLoginModule.getSubject().getPrivateCredentials().iterator();
-		    } catch (Exception e) {
-		        log.error("SAKAIDAV: Unabled to obtain WAS credentials.", e);
-		    }
-
-		    String pw = "";
-		    while (credItr != null && credItr.hasNext())
-		    {
-		        //look for the Key-Value pair
-		        Object cred = credItr.next();
-		        if( cred instanceof SakaiWASLoginModule.SakaiWASLoginKeyValue ) 
-		        {
-		            SakaiWASLoginModule.SakaiWASLoginKeyValue entry = 
-		                    (SakaiWASLoginModule.SakaiWASLoginKeyValue)cred;
-
-		            //extract the password from the Key-Value pair
-		            if( "sakai.dav.pw".equals(entry.getKey()) )
-		            {
-		                pw = (String)entry.getValue();
-		                String eid = prin.getName();
-
-		                //remake the Principal with the user eid 
-		                //and the recently fetched password
-		                prin = new DavPrincipal(eid,pw);
-		                break;
-		            }
-		        }
-		    }
-		}
-		*/
 
 		if ((prin != null) && (prin instanceof DavPrincipal))
 		{
@@ -2493,21 +2449,6 @@ public class DavServlet extends HttpServlet
 	}
 
 	/**
-	 * Find the containing collection id of a given resource id. Copied from BaseContentService.
-	 * 
-	 * @param id
-	 *        The resource id.
-	 * @return the containing collection id.
-	 */
-	private String isolateContainingId(String id)
-	{
-		// take up to including the last resource path separator, not counting one at the very end if there
-		return id.substring(0, id.lastIndexOf('/', id.length() - 2) + 1);
-
-	} // isolateContainingId
-
-
-	/**
 	 * MKCOL Method.
 	 */
 	protected void doMkcol(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException
@@ -3164,7 +3105,7 @@ public class DavServlet extends HttpServlet
 							break;
 						case Node.ELEMENT_NODE:
 							strWriter = new StringWriter();
-							domWriter = new DOMWriter(strWriter, true);
+							domWriter = new DOMWriter(strWriter);
 							domWriter.print(currentNode);
 							lock.owner += strWriter.toString();
 							break;
@@ -3783,7 +3724,7 @@ public class DavServlet extends HttpServlet
 			}
 		}
 
-		destinationPath = UDecoder.URLDecode(normalize(destinationPath), "UTF8");
+		destinationPath = UDecoder.URLDecode(normalize(destinationPath), StandardCharsets.UTF_8);
 
 		return destinationPath;
 

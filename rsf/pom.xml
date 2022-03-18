@@ -4,7 +4,7 @@
   <parent>
     <artifactId>master</artifactId>
     <groupId>org.sakaiproject</groupId>
-    <version>12.5</version>
+    <version>21-SNAPSHOT</version>
     <relativePath>../master/pom.xml</relativePath>
   </parent>
   <groupId>org.sakaiproject.rsf</groupId>
@@ -12,17 +12,12 @@
   <packaging>pom</packaging>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <rsf.version>1.1</rsf.version>
+    <rsf.version>1.2</rsf.version>
   </properties>
   <modules>
     <module>sakai-rsf-core</module>
     <module>sakai-rsf-web</module>
   </modules>
-  <organization>
-    <name>CARET, University of Cambridge</name>
-    <url>http://www.caret.cam.ac.uk/</url>
-  </organization>
-  <inceptionYear>2005</inceptionYear>
   <url>http://www2.caret.cam.ac.uk/rsfwiki/Wiki.jsp?page=SakaiRSF</url>
   <description>Abstracts over Sakai dispatch cycle and tool state holders</description>
   <developers>

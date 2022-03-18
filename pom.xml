@@ -4,7 +4,7 @@
     <parent>
         <artifactId>master</artifactId>
         <groupId>org.sakaiproject</groupId>
-        <version>12.5</version>
+        <version>21-SNAPSHOT</version>
         <relativePath>master/pom.xml</relativePath>
     </parent>
 
@@ -14,11 +14,11 @@
     <packaging>pom</packaging>
 
     <organization>
-        <name>The Sakai Foundation</name>
-        <url>http://www.sakaiproject.org/</url>
+        <name>Sakai Community and the Apereo Foundation</name>
+        <url>https://www.sakailms.org/</url>
     </organization>
 
-    <url>http://www.sakaiproject.org/</url>
+    <inceptionYear>2003</inceptionYear>
 
     <licenses>
         <license>
@@ -30,7 +30,7 @@
 
     <issueManagement>
         <system>Jira</system>
-        <url>http://issues.sakaiproject.org/jira/browse/SAK</url>
+        <url>https://jira.sakaiproject.org/projects/SAK/issues</url>
     </issueManagement>
 
     <profiles>
@@ -42,6 +42,7 @@
             <modules>
                 <module>master</module>
                 <module>admin-tools</module>
+                <module>admin-su</module>
                 <module>access</module>
                 <module>announcement</module>
                 <module>archive</module>
@@ -53,7 +54,6 @@
                 <module>calendar</module>
                 <module>chat</module>
                 <module>citations</module>
-                <module>cmprovider</module>
                 <module>common</module>
                 <module>commons</module>
                 <module>common/import-parsers/blackboard_6</module>
@@ -61,9 +61,10 @@
                 <module>config</module>
                 <module>conversations</module>
                 <module>cloud-content</module>
+                <module>cloud-storage</module>
                 <module>content</module>
                 <module>content-review</module>
-                <module>courier</module>
+                <module>dashboard</module>
                 <module>dav</module>
                 <module>delegatedaccess</module>
                 <module>deploy</module>
@@ -74,20 +75,18 @@
                 <module>entitybroker</module>
                 <module>external-calendaring-service</module>
                 <module>feedback</module>
-                <module>gradebook</module>
                 <module>gradebookng</module>
                 <module>groupersync</module>
                 <module>help</module>
                 <module>hierarchy</module>
                 <module>jobscheduler</module>
                 <module>jsf</module>
-                <module>kaltura</module>
+                <module>jsf2</module>
                 <module>kernel</module>
                 <module>lessonbuilder</module>
                 <module>library</module>
                 <module>login</module>
                 <module>mailarchive</module>
-                <module>mailsender</module>
                 <module>message</module>
                 <module>msgcntr</module>
                 <module>mycalendar</module>
@@ -113,7 +112,7 @@
                 <module>reset-pass</module>
                 <module>roster2</module>
                 <module>rsf</module>
-                <!--<module>rubrics</module>-->
+                <module>rubrics</module>
                 <module>rwiki</module>
                 <module>tags</module>
                 <module>samigo</module>
@@ -134,18 +133,37 @@
                 <module>syllabus-feed</module>
                 <module>taggable</module>
                 <module>textarea</module>
-                <module>tool</module>
-                <!-- <module>turnitin/contentreview-impl</module> -->
                 <module>user</module>
                 <module>userauditservice</module>
                 <module>usermembership</module>
                 <module>velocity</module>
                 <module>web</module>
+                <module>webapi</module>
+                <module>webcomponents</module>
                 <module>webjars</module>
                 <module>webservices</module>
-                <module>hedex</module>
-                <module>sakai-widgets</module>
-                <module>wiris</module>
+                <module>wicket</module>
+
+                <!-- UCT -->
+                <module>uct-quartz</module>
+                <module>uct-site-manage</module>
+                <module>profilesearch</module>
+                <module>spml</module>
+                <module>profilewow</module>
+
+                <!-- contrib -->
+                <module>useralias</module>
+                <module>sms</module>
+                <module>qna</module>
+                <module>gradebook1</module>
+                <module>groupmanager</module>
+                <module>blogwow</module>
+                <module>evaluation</module>
+
+                <!-- Older, removed from 11.x but still in use at UCT -->
+                <module>linktool</module>
+                <module>profile</module>
+                <module>roster</module>
             </modules>
         </profile>
         <profile>
@@ -153,6 +171,7 @@
             <modules>
                 <module>master</module>
                 <module>access</module>
+                <module>admin-su</module>
                 <module>announcement</module>
                 <module>archive</module>
                 <module>assignment</module>
@@ -166,9 +185,11 @@
                 <module>commons</module>
                 <module>config</module>
                 <module>cloud-content</module>
+                <module>cloud-storage</module>
                 <module>content</module>
                 <module>content-review</module>
                 <module>courier</module>
+                <module>dashboard</module>
                 <module>dav</module>
                 <module>delegatedaccess</module>
                 <module>deploy</module>
@@ -179,7 +200,7 @@
                 <module>evaluation</module>
                 <module>external-calendaring-service</module>
                 <module>formbuilder</module>
-                <module>gradebook</module>
+                <module>gradebook1</module>
                 <module>help</module>
                 <module>hierarchy</module>
                 <module>jobscheduler</module>
@@ -207,7 +228,7 @@
                 <module>reset-pass</module>
                 <module>roster2</module>
                 <module>rss</module>
-                <!--<module>rubrics</module>-->
+                <module>rubrics</module>
                 <module>rwiki</module>
                 <module>tags</module>
                 <module>samigo</module>
@@ -221,15 +242,16 @@
                 <module>syllabus</module>
                 <module>taggable</module>
                 <module>textarea</module>
-                <module>tool</module>
                 <module>user</module>
                 <module>userauditservice</module>
                 <module>usermembership</module>
                 <module>velocity</module>
                 <module>warehouse</module>
                 <module>web</module>
+                <module>webapi</module>
                 <module>webjars</module>
                 <module>webservices</module>
+                <module>wicket</module>
                 <module>yaft</module>
             </modules>
         </profile>

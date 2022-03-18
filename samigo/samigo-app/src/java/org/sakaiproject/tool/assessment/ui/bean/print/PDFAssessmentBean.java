@@ -35,13 +35,15 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.SessionScoped;
 import javax.faces.context.FacesContext;
 import javax.imageio.ImageIO;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.ServletContext;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedAnswer;
 import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedAssessmentAttachment;
@@ -59,8 +61,8 @@ import org.sakaiproject.tool.assessment.ui.bean.print.settings.PrintSettingsBean
 import org.sakaiproject.tool.assessment.ui.listener.delivery.BeginDeliveryActionListener;
 import org.sakaiproject.tool.assessment.ui.listener.delivery.DeliveryActionListener;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
-import org.sakaiproject.util.FormattedText;
 import org.sakaiproject.util.ResourceLoader;
+import org.sakaiproject.util.api.FormattedText;
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.content.api.ContentResource;
 import org.sakaiproject.content.cover.ContentHostingService;
@@ -80,28 +82,23 @@ import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import org.sakaiproject.tool.assessment.jsf.convert.AnswerSurveyConverter;
 
-/**
- * 
- * @author Joshua Ryan <a href="mailto:joshua.ryan@asu.edu">joshua.ryan@asu.edu</a>
- *
- * This class is basically just a conveinceince class for abstracting the creation of
- * PDF's from assessments
- * 
- */
+/* Print to PDF backing bean. */
 @Slf4j
+@ManagedBean(name="pdfAssessment")
+@SessionScoped
 public class PDFAssessmentBean implements Serializable {
 
 	private static final long serialVersionUID = 1L;
 
-	private static org.sakaiproject.util.api.FormattedText formattedText = (org.sakaiproject.util.api.FormattedText)ComponentManager.get(org.sakaiproject.util.api.FormattedText.class);
+	private static FormattedText formattedText = ComponentManager.get(FormattedText.class);
 	
-	private ResourceLoader printMessages = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.PrintMessages");
+	private static final ResourceLoader printMessages = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.PrintMessages");
 
-	private ResourceLoader authorMessages = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AuthorMessages");
+	private static final ResourceLoader authorMessages = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AuthorMessages");
 
-	private ResourceLoader deliveryMessages = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.DeliveryMessages");
+	private static final ResourceLoader deliveryMessages = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.DeliveryMessages");
 
-	private ResourceLoader commonMessages = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.CommonMessages");
+	private static final ResourceLoader commonMessages = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.CommonMessages");
 
 	private String intro = "";
 
@@ -109,11 +106,12 @@ public class PDFAssessmentBean implements Serializable {
 
 	private List parts = null;
 
-	private List deliveryParts = null;
+	private List<SectionContentsBean> deliveryParts = null;
 
 	private int baseFontSize = 5;
 
 	private String actionString = "";
+	
 
 	public PDFAssessmentBean() {
 		if (log.isInfoEnabled())
@@ -135,14 +133,14 @@ public class PDFAssessmentBean implements Serializable {
 	 * @param intro in html
 	 */
 	public void setIntro(String intro) {
-		this.intro = convertFormattedText(FormattedText.unEscapeHtml(intro));
+		this.intro = convertFormattedText(formattedText.unEscapeHtml(intro));
 	}
 
 	/**
 	 * gets the delivery bean parts of the assessment
 	 * @return
 	 */
-	public List getDeliveryParts() {
+	public List<SectionContentsBean> getDeliveryParts() {
 		return deliveryParts;
 	}
 
@@ -166,26 +164,22 @@ public class PDFAssessmentBean implements Serializable {
 	 * sets the delivery parts
 	 * @param deliveryParts
 	 */
-	public void setDeliveryParts(List deliveryParts) {
-		List parts = new ArrayList();
+	public void setDeliveryParts(List<org.sakaiproject.tool.assessment.ui.bean.delivery.SectionContentsBean> deliveryParts) {
+		List<SectionContentsBean> parts = new ArrayList<>();
 		int numberQuestion = 1;
-		for (int i=0; i<deliveryParts.size(); i++) {
-			SectionContentsBean section = new SectionContentsBean((org.sakaiproject.tool.assessment.ui.bean.delivery.SectionContentsBean)deliveryParts.get(i));
-			List items = section.getItemContents();
+		for (org.sakaiproject.tool.assessment.ui.bean.delivery.SectionContentsBean part : deliveryParts) {
+			SectionContentsBean section = new SectionContentsBean(part);
+			List<ItemContentsBean> items = section.getItemContents();
 
 			// Renumbering
-			for (int j=0; items != null && j<items.size(); j++) {
-				ItemContentsBean itemContents = (ItemContentsBean)items.get(j);
-
+			for (ItemContentsBean itemContents : items) {
 				itemContents.setNumber(numberQuestion++);
 
 				// Order answers in order (A, B, C, D)
-				List question = itemContents.getItemData().getItemTextArraySorted();
-				for (int k=0; k<question.size(); k++) {
-					PublishedItemText itemtext = (PublishedItemText)question.get(k);
-					List answers = itemtext.getAnswerArray();
-					for (int t=0; t<answers.size(); t++) {
-						PublishedAnswer answer = (PublishedAnswer)answers.get(t);
+				List<ItemTextIfc> question = itemContents.getItemData().getItemTextArraySorted();
+				for (ItemTextIfc itemtext : question) {
+					List<AnswerIfc> answers = itemtext.getAnswerArray();
+					for (AnswerIfc answer : answers) {
 						if (answer.getLabel() != null && !answer.getLabel().equals(""))
 							answer.setSequence(Long.valueOf(answer.getLabel().charAt(0) - 64));
 					}
@@ -236,7 +230,7 @@ public class PDFAssessmentBean implements Serializable {
 		int min = cal.get(Calendar.MINUTE);
 		int sec = cal.get(Calendar.SECOND);
 
-		String fTitle = FormattedText.convertFormattedTextToPlaintext(title);
+		String fTitle = formattedText.convertFormattedTextToPlaintext(title);
 		int end = Math.min(fTitle.length(), 9);
 
 		StringBuffer name = new StringBuffer(fTitle.substring(0, end));
@@ -325,7 +319,7 @@ public class PDFAssessmentBean implements Serializable {
 		for (int i = 0; i < deliveryParts.size(); i++) {
 			//get the current item
 			SectionContentsBean section = (SectionContentsBean) deliveryParts.get(i);
-			List items = section.getItemContents();
+			List<ItemContentsBean> items = section.getItemContents();
 			List resources = new ArrayList();
 
 			//create a new part and empty list to fill with items
@@ -385,11 +379,8 @@ public class PDFAssessmentBean implements Serializable {
 			List pdfItems = new ArrayList();
 
 			//for each item in a section we add a blank pdfItem to the pdfPart
-			for (int j = 0; j < items.size(); j++) {
+			for (ItemContentsBean item : items) {
 				PDFItemBean pdfItem = new PDFItemBean();
-
-				ItemContentsBean item = (ItemContentsBean) items.get(j);
-				
 				StringBuffer legacy = new StringBuffer("<h3>");
 				if (printSetting.getShowSequence().booleanValue()) {
 					legacy.append(item.getSequence());
@@ -403,7 +394,9 @@ public class PDFAssessmentBean implements Serializable {
 				if (!(TypeIfc.FILL_IN_BLANK.equals(item.getItemData().getTypeId()) || TypeIfc.FILL_IN_NUMERIC.equals(item.getItemData().getTypeId())  
 					    || TypeIfc.CALCULATED_QUESTION.equals(item.getItemData().getTypeId()))) {
 					contentBuffer.append("<br />");
-					contentBuffer.append(convertFormattedText(item.getItemData().getText()));
+					if (StringUtils.isNotEmpty(item.getItemData().getText())) {
+						contentBuffer.append(convertFormattedText(item.getItemData().getText()));
+					}
 					contentBuffer.append("<br />");
 				}
 				if (item.getItemData().getItemAttachmentList() != null && item.getItemData().getItemAttachmentList().size() > 0) {
@@ -491,6 +484,21 @@ public class PDFAssessmentBean implements Serializable {
 						contentBuffer.append("</table>");
 					}
 				}
+
+				if (item.getItemData().getTypeId().equals(TypeIfc.IMAGEMAP_QUESTION)) {
+					List<ItemTextIfc> question = item.getItemData().getItemTextArraySorted();
+					contentBuffer.append("<ul>");
+					for (int k=0; k<question.size(); k++) {
+						PublishedItemText itemtext = (PublishedItemText)question.get(k);
+						contentBuffer.append("<li>");
+						contentBuffer.append(k+1 + "." + itemtext.getText());
+						contentBuffer.append("</li>");
+					}
+					contentBuffer.append("</ul>");
+					contentBuffer.append("<br />");
+					contentBuffer.append(getContentQuestionImageMap(item, printSetting, false));
+				}
+
 				if (item.getItemData().getTypeId().equals(TypeIfc.MATCHING)) {
 					contentBuffer.append("<table cols='20' width='100%'>");
 					List question = item.getMatchingArray();
@@ -594,9 +602,9 @@ public class PDFAssessmentBean implements Serializable {
 				item.getItemData().getTypeId().equals(TypeIfc.MULTIPLE_CORRECT_SINGLE_SELECTION)) {
 
 			if (item.getItemData().getTypeId().equals(TypeIfc.MULTIPLE_CORRECT))
-				contentBuffer.append("<td colspan='1'><img src='/samigo-app/images/unchecked.gif' /></td>");
+				contentBuffer.append("<td colspan='1'><span class='samigo-inline-radio fa fa-circle-o'></span></td>");
 			else
-				contentBuffer.append("<td colspan='1'><img src='/samigo-app/images/radiounchecked.gif' /></td>");
+				contentBuffer.append("<td colspan='1'><span class='samigo-inline-radio fa fa-circle-o'></span></td>");
 				
 			if (printSetting.getShowKeysFeedback()) {
 				contentBuffer.append("<td colspan='10'>");
@@ -718,57 +726,7 @@ public class PDFAssessmentBean implements Serializable {
 				} catch (IOException e) {
 					log.error(e.getMessage(), e);
 				}
-				
-				Color c = new Color(27, 148, 224, 80);
-				java.awt.Font font = new java.awt.Font("Serif", java.awt.Font.BOLD, 10);
-				
-				//print areas over the image
-				BufferedImage img_out = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
-				try {
-					Graphics g = img_out.getGraphics();
-					g.setFont(font);
-					g.drawImage(img_in, 0, 0, null);
-					
-					List question = item.getItemData().getItemTextArraySorted();
-					for (int k=0; k<question.size(); k++) {
-						PublishedItemText itemtext = (PublishedItemText)question.get(k);
-						List answers=itemtext.getAnswerArray();
-						PublishedAnswer answer = (PublishedAnswer)answers.get(0);
-						
-						String area = answer.getText();
-						Integer areax1=Integer.valueOf(area.substring(area.indexOf("\"x1\":")+5,area.indexOf(",", area.indexOf("\"x1\":"))));
-						Integer areay1=Integer.valueOf(area.substring(area.indexOf("\"y1\":")+5,area.indexOf(",", area.indexOf("\"y1\":"))));
-						Integer areax2=Integer.valueOf(area.substring(area.indexOf("\"x2\":")+5,area.indexOf(",", area.indexOf("\"x2\":"))));
-						Integer areay2=Integer.valueOf(area.substring(area.indexOf("\"y2\":")+5,area.indexOf("}", area.indexOf("\"y2\":"))));
-						
-						g.setColor(c);
-						g.fillRect(areax1, areay1, (areax2-areax1), (areay2-areay1));
-						
-						g.setColor(Color.WHITE);
-						g.drawRect(areax1, areay1, (areax2-areax1), (areay2-areay1));						
-
-						g.setColor(Color.BLACK);
-						g.drawString(""+(k+1), areax2-13, areay1+13);
-					}
-					g.dispose();
-				} catch (Exception e) {
-					log.error(e.getMessage(), e);
-				}			
-					
-
-				String destSrc = "temp://";
-				try {
-					File temp = File.createTempFile("imgtemp", "."+ext);
-					ImageIO.write(img_out, ext, temp);
-					destSrc+=temp.getCanonicalPath();
-				} catch (IOException e) {
-					log.error(e.getMessage(), e);
-				}
-				
-				//print it
-				contentBuffer.append("  <img src=\"");
-				contentBuffer.append(destSrc);
-				contentBuffer.append("\" />");
+				contentBuffer.append(getContentQuestionImageMap(item, printSetting, true));
 			}
 			else if(TypeIfc.CALCULATED_QUESTION.equals( item.getItemData().getTypeId() )){
 				contentBuffer.append(item.getAnswerKeyCalcQuestion());
@@ -821,11 +779,93 @@ public class PDFAssessmentBean implements Serializable {
 		return contentBuffer.toString();
 	}
 
+	public String getContentQuestionImageMap(ItemContentsBean item, PrintSettingsBean printSetting, boolean renderMap) {
+		StringBuffer contentBufferMap = new StringBuffer("");
+		//look for path on metadata
+		String imsrc=item.getItemData().getItemMetaDataByLabel("IMAGE_MAP_SRC");
+		if (imsrc==null)
+			imsrc="";
+
+		imsrc=imsrc.replaceAll(" ", "%20");
+
+		String ext = "";
+		if (imsrc.lastIndexOf('.') > 0)
+			ext = imsrc.substring(imsrc.lastIndexOf('.')+1);
+
+		BufferedImage img_in=null;
+		int w=-1;
+		int h=-1;
+		try {
+			URL url = new URL(ServerConfigurationService.getServerUrl()+imsrc);
+			img_in = ImageIO.read(url);
+			w = img_in.getWidth(null);
+			h = img_in.getHeight(null);
+		} catch (IOException e) {
+			log.error(e.getMessage(), e);
+		}
+
+		if (renderMap) {
+
+			Color c = new Color(27, 148, 224, 80);
+			java.awt.Font font = new java.awt.Font("Serif", java.awt.Font.BOLD, 10);
+
+			//print areas over the image
+			BufferedImage img_out = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+			try {
+				Graphics g = img_out.getGraphics();
+				g.setFont(font);
+				g.drawImage(img_in, 0, 0, null);
+
+				List<ItemTextIfc> question = item.getItemData().getItemTextArraySorted();
+				for (int k=0; k<question.size(); k++) {
+					PublishedItemText itemtext = (PublishedItemText)question.get(k);
+					List<PublishedAnswer> answers=itemtext.getAnswerArray();
+					PublishedAnswer answer = (PublishedAnswer)answers.get(0);
+
+					String area = answer.getText();
+					Integer areax1=Integer.valueOf(area.substring(area.indexOf("\"x1\":")+5,area.indexOf(",", area.indexOf("\"x1\":"))));
+					Integer areay1=Integer.valueOf(area.substring(area.indexOf("\"y1\":")+5,area.indexOf(",", area.indexOf("\"y1\":"))));
+					Integer areax2=Integer.valueOf(area.substring(area.indexOf("\"x2\":")+5,area.indexOf(",", area.indexOf("\"x2\":"))));
+					Integer areay2=Integer.valueOf(area.substring(area.indexOf("\"y2\":")+5,area.indexOf("}", area.indexOf("\"y2\":"))));
+
+					g.setColor(c);
+					g.fillRect(areax1, areay1, (areax2-areax1), (areay2-areay1));
+
+					g.setColor(Color.WHITE);
+					g.drawRect(areax1, areay1, (areax2-areax1), (areay2-areay1));
+
+					g.setColor(Color.BLACK);
+					g.drawString(""+(k+1), areax2-13, areay1+13);
+				}
+				g.dispose();
+				img_in = img_out;
+			} catch (Exception e) {
+				log.error(e.getMessage(), e);
+			}
+		}
+
+		try {
+			File temp = File.createTempFile("imgtemp", "." + ext);
+			temp.deleteOnExit();
+			ImageIO.write(img_in, ext, temp);
+			contentBufferMap.append("<img src=\"temp://").append(temp.getCanonicalPath());
+			contentBufferMap.append("\" alt=\"");
+			if (StringUtils.isNotBlank(item.getImageAltText())) {
+				contentBufferMap.append(item.getImageAltText());
+			}
+			contentBufferMap.append("\" />");
+		} catch (IOException e) {
+			log.warn("Could not create a temporary file for pdf image {}", e.getMessage(), e);
+		}
+
+		return contentBufferMap.toString();
+	}
+
 	public String convertFormattedText(String text) {
 	    //To preserve old behavior, set this to true
 	    //Possibly consider using jsoup with a whitelist so some formatted text gets though, I'm not sure why this was here in the first place
 	    if (ServerConfigurationService.getBoolean("samigo.pdf.convertformattedtext",false)) {
-	        return FormattedText.convertPlaintextToFormattedText(FormattedText.convertFormattedTextToPlaintext(text));
+	        return formattedText.convertPlaintextToFormattedText(formattedText.convertFormattedTextToPlaintext(text));
 	    }
 	    return text;
 	}
@@ -1124,12 +1164,11 @@ public class PDFAssessmentBean implements Serializable {
 	public String getTotalQuestions() {
 
 		int items = 0;
-		for (int i=0; i<deliveryParts.size(); i++) {
-			SectionContentsBean section = (SectionContentsBean) deliveryParts.get(i);
+		for (SectionContentsBean section : deliveryParts) {
 			items += section.getItemContents().size();
 
 		}
-		return "" + items;
+		return String.valueOf(items);
 	}
 
 	/**

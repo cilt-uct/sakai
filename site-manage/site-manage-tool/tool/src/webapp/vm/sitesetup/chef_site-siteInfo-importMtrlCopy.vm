@@ -1,12 +1,12 @@
 ##<!-- $Header: /cvs/sakai2/legacy/tools/src/webapp/vm/sitesetup/chef_site-siteInfo-importMtrlCopy.vm,v 1.2 2005/06/06 20:06:02 htripath.indiana.edu Exp $ -->
 ## Might want to get these dynamically 
 <div class="portletBody">
+	#if($menu)#toolbar($menu)#end
 	<h3>
 	$tlang.getString("sitedicla.copy_materials")
 	</h3>
 	#if ($alertMessage)
-		<div class="alertMessage">$tlang.getString("sitinfimp.alert") $alertMessage</div>
-		<div class="clear"></div>
+		<div class="sak-banner-error">$tlang.getString("sitinfimp.alert") $alertMessage</div>
 	#end
 	<p class="step">
 	$tlang.getString("sitedicla.choose_materials")

@@ -32,11 +32,10 @@ import org.sakaiproject.poll.logic.ExternalLogic;
 import org.sakaiproject.poll.logic.PollListManager;
 import org.sakaiproject.poll.model.Option;
 import org.sakaiproject.poll.model.Poll;
+import org.sakaiproject.poll.tool.constants.NavigationConstants;
 import org.sakaiproject.poll.tool.params.OptionViewParameters;
 import org.sakaiproject.poll.tool.params.PollViewParameters;
 import org.sakaiproject.poll.tool.params.VoteBean;
-import org.sakaiproject.tool.api.Session;
-import org.sakaiproject.tool.api.SessionManager;
 
 import uk.org.ponder.localeutil.LocaleGetter;
 import uk.org.ponder.messageutil.MessageLocator;
@@ -47,6 +46,7 @@ import uk.org.ponder.rsf.components.UIContainer;
 import uk.org.ponder.rsf.components.UIELBinding;
 import uk.org.ponder.rsf.components.UIForm;
 import uk.org.ponder.rsf.components.UIInput;
+import uk.org.ponder.rsf.components.UIInternalLink;
 import uk.org.ponder.rsf.components.UIMessage;
 import uk.org.ponder.rsf.components.UIOutput;
 import uk.org.ponder.rsf.components.decorators.UIFreeAttributeDecorator;
@@ -57,6 +57,7 @@ import uk.org.ponder.rsf.flow.jsfnav.NavigationCase;
 import uk.org.ponder.rsf.flow.jsfnav.NavigationCaseReporter;
 import uk.org.ponder.rsf.view.ComponentChecker;
 import uk.org.ponder.rsf.view.ViewComponentProducer;
+import uk.org.ponder.rsf.viewstate.SimpleViewParameters;
 import uk.org.ponder.rsf.viewstate.ViewParameters;
 import uk.org.ponder.rsf.viewstate.ViewParamsReporter;
 
@@ -122,6 +123,16 @@ public class PollOptionProducer implements ViewComponentProducer,ViewParamsRepor
 
 		UIOutput.make(tofill, "polls-html", null).decorate(new UIFreeAttributeDecorator(langMap));
 
+		// Menu links
+		UIBranchContainer actions = UIBranchContainer.make(tofill,"actions:",Integer.toString(0));
+		UIInternalLink.make(actions, NavigationConstants.NAVIGATE_MAIN, UIMessage.make(NavigationConstants.NAVIGATE_MAIN_MESSAGE), new SimpleViewParameters(PollToolProducer.VIEW_ID));
+		if (this.isAllowedPollAdd()) {
+			UIInternalLink.make(actions, NavigationConstants.NAVIGATE_ADD, UIMessage.make(NavigationConstants.NAVIGATE_ADD_MESSAGE), new PollViewParameters(AddPollProducer.VIEW_ID, "New 0"));
+		}
+		if (this.isSiteOwner()) {
+			UIInternalLink.make(actions, NavigationConstants.NAVIGATE_PERMISSIONS, UIMessage.make(NavigationConstants.NAVIGATE_PERMISSIONS_MESSAGE), new SimpleViewParameters(PermissionsProducer.VIEW_ID));
+		}
+
 		if (tml.size() > 0) {
 			for (int i = 0; i < tml.size(); i ++ ) {
 				UIBranchContainer errorRow = UIBranchContainer.make(tofill,"error-row:");
@@ -177,20 +188,20 @@ public class PollOptionProducer implements ViewComponentProducer,ViewParamsRepor
 		//UIOutput.make(form,"option-label",messageLocator.getMessage("new_poll_option"));
 
 
-		if (option.getOptionText() == null)
-			option.setOptionText("");
+		if (option.getText() == null)
+			option.setText("");
 
 		
 		if (!externalLogic.isMobileBrowser())
 		{
 			// show WYSIWYG editor
-		UIInput optText = UIInput.make(form,"optText:","#{option.optionText}",option.getOptionText());
+		UIInput optText = UIInput.make(form,"optText:","#{option.text}",option.getText());
 		richTextEvolver.evolveTextInput(optText);
 		}
 		else
 		{
 			// do not show WYSIWYG editor in the mobile view
-			UIInput optText = UIInput.make(form,"optText_mobile","#{option.optionText}",option.getOptionText());
+			UIInput.make(form,"optText_mobile","#{option.text}",option.getText());
 		}
 
 		form.parameters.add(new UIELBinding("#{option.pollId}",
@@ -253,7 +264,13 @@ public class PollOptionProducer implements ViewComponentProducer,ViewParamsRepor
 		}
 	}
 
+    private boolean isAllowedPollAdd() {
+        return externalLogic.isUserAdmin() || externalLogic.isAllowedInLocation(PollListManager.PERMISSION_ADD, externalLogic.getCurrentLocationReference());
+    }
+
+    private boolean isSiteOwner() {
+        return externalLogic.isUserAdmin() || externalLogic.isAllowedInLocation("site.upd", externalLogic.getCurrentLocationReference());
+    }
 
 }
-
 

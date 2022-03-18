@@ -8,11 +8,13 @@
         <%@ include file="/inc/navMenu.jspf"%>
     </t:aliasBean>
 
-	<h3>
-	    <h:outputFormat value="#{msgs.overview_page_header}">
-	        <f:param value="#{overviewBean.siteRole}"/>
-	    </h:outputFormat>
-	</h3>
+    <div class="page-header">
+        <h1>
+            <h:outputFormat value="#{msgs.overview_page_header}">
+                <f:param value="#{overviewBean.siteRole}"/>
+            </h:outputFormat>
+        </h1>
+    </div>
 	<div class="instructions">
 		<h:outputText value="#{overviewBean.instructions}" escape="false"/>
 	</div>
@@ -23,17 +25,30 @@
         <%@ include file="/inc/sectionFilter.jspf"%>
     </t:aliasBean>
 
-    <sec:rowGroupTable cellpadding="0" cellspacing="0"
+    <t:dataTable cellpadding="0" cellspacing="0"
         id="sectionsTable"
         value="#{overviewBean.sections}"
         var="section"
         sortColumn="#{preferencesBean.overviewSortColumn}"
         sortAscending="#{preferencesBean.overviewSortAscending}"
         styleClass="listHier sectionTable"
-        columnClasses="leftIndent,left,left,left,left,right,right,center"
+        columnClasses=",,leftIndent,left,left,left,left,right,right,center"
         rowClasses="groupRow"
         >
-    
+        <h:column>
+            <f:facet name="header">
+                <h:outputText value="#{msgs.category_table_header}" />
+            </f:facet>
+            <h:outputText value="#{section.category}"/>
+        </h:column>
+        <h:column>
+            <f:facet name="header">
+                <h:outputText value="#{msgs.category_title_table_header}" />
+            </f:facet>
+            <h:outputFormat value="#{msgs.section_table_category_header}">
+                <f:param value="#{section.categoryForDisplay}"/>
+            </h:outputFormat>
+        </h:column>
         <h:column>
             <f:facet name="header">
                 <t:commandSortHeader columnName="title" immediate="false" arrow="true">
@@ -154,9 +169,32 @@
             <f:facet name="header">
                 <h:outputText value="#{msgs.overview_table_header_remove}" />
             </f:facet>
-            <h:selectBooleanCheckbox id="remove" value="#{section.flaggedForRemoval}" rendered="#{ ! section.readOnly }"/>
+            <h:selectBooleanCheckbox id="remove" value="#{section.flaggedForRemoval}" rendered="#{ ! section.readOnly && ! section.lockedForDeletion }"/>
         </h:column>
-    </sec:rowGroupTable>
+    </t:dataTable>
+
+    <script type="text/javascript">includeWebjarLibrary('datatables');</script>
+    <script type="text/javascript">includeWebjarLibrary('datatables-rowgroup')</script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $('#overviewForm\\:sectionsTable').DataTable({
+                order: [[0, 'asc']],
+                ordering: false,
+                paging: false,
+                info: false,
+                searching: false,
+                rowGroup: {
+                    dataSrc: 1,
+                    className: 'categoryHeader',
+                    startClassName: 'firstCategoryHeader'
+                },
+                columnDefs: [ {
+                    targets: [0, 1],
+                    visible: false
+                } ]
+            });
+        });
+    </script>
 
     <t:div styleClass="verticalPadding" rendered="#{empty overviewBean.sections}">
         <h:outputText value="#{msgs.no_sections_available}"/>

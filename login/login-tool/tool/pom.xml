@@ -4,17 +4,12 @@
   <parent>
     <artifactId>login</artifactId>
     <groupId>org.sakaiproject.login</groupId>
-    <version>12.5</version>
+    <version>21-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
   <name>sakai-login-tool</name>
   <groupId>org.sakaiproject.login</groupId>
   <artifactId>sakai-login-tool</artifactId>
-  <organization>
-  	<name>Sakai Foundation</name>
-    <url>http://sakaiproject.org/</url>
-  </organization>
-  <inceptionYear>2003</inceptionYear>
   <packaging>war</packaging>
   <dependencies>
     <dependency>
@@ -23,7 +18,7 @@
     </dependency>
     <dependency>
       <groupId>javax.servlet</groupId>
-      <artifactId>servlet-api</artifactId>
+      <artifactId>javax.servlet-api</artifactId>
     </dependency>
     <dependency>
       <groupId>org.sakaiproject.kernel</groupId>
@@ -39,10 +34,14 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
-    	<groupId>commons-lang</groupId>
-    	<artifactId>commons-lang</artifactId>
+    	<groupId>org.apache.commons</groupId>
+    	<artifactId>commons-lang3</artifactId>
     	<type>jar</type>
     	<scope>provided</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-text</artifactId>
     </dependency>
     <dependency>
         <groupId>com.google.code.findbugs</groupId>
@@ -60,7 +59,7 @@
 	<dependency>
 	    <groupId>org.springframework.security.extensions</groupId>
 	    <artifactId>spring-security-saml2-core</artifactId>
-	    <version>1.0.2.RELEASE</version>
+	    <version>1.0.10.RELEASE</version>
 	</dependency>
       <dependency>
           <groupId>org.jasig.cas.client</groupId>

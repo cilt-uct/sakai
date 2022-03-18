@@ -5,8 +5,7 @@
 		$tlang.getString("prevassig.preass")
 	</h3>
 	
-		#if ($alertMessage)<div class="alertMessage"><strong>$tlang.getString("gen.alert")</strong> $alertMessage</div>#end
-		<div class="clear"></div>
+		#if ($alertMessage)<div class="sak-banner-error"><strong>$tlang.getString("gen.alert")</strong> $alertMessage</div>#end
 		<form id="previewAssignmentsForm" name="previewAssignmentsForm" action="#toolForm("AssignmentAction")" method="post" onsubmit="return true;">
 			<input type="hidden" name="assignmentId" value="$!value_assignment_id" />
 			<input type="hidden" name="assignmentContentId" value="$!value_assignmentcontent_id" />
@@ -17,7 +16,7 @@
 					<p class="discTria">
 						<a href="#toolLink("$action" "doHide_preview_assignment_assignment")" title="$tlang.getString("prevassig.hidass")">
 							<img src = "#imageLink("sakai/collapse.gif")" border="0" title="$tlang.getString("prevassig.hidass")" alt="$tlang.getString("prevassig.hidass")" hspace="0" /></a>
-							$tlang.getString("prevassig.hidass"): $validator.escapeHtml($value_Title)
+							$tlang.getString("prevassig.hidass"): $formattedText.escapeHtml($value_Title)
 					</p>		
 							<table class="itemSummary" border="0" summary="$tlang.getString("gen.viewasstablesummary")">  
 								<tr>
@@ -53,7 +52,7 @@
 								</tr>
 								<tr>
 									<th>
-										$tlang.getString("gen.due")
+										$tlang.getString("gen.due.header")
 									</th>
 									<td>
 										$!service.getUsersLocalDateTimeString($value_DueDate)
@@ -135,7 +134,7 @@
 											$!tlang.getString('addtogradebook')
 										</th>
 										<td>
-											$validator.escapeHtml($!gradeName)
+											$formattedText.escapeHtml($!gradeName)
 										</td>
 									</tr>
 								#end
@@ -144,7 +143,7 @@
 									$tlang.getString("gen.assinf")
 							</h4>
 							#if (($!value_Description) && ($value_Description.length()>0))
-								<div class="textPanel">$validator.escapeHtmlFormattedText($value_Description)</div>
+								<div class="textPanel">$formattedText.escapeHtmlFormattedText($value_Description)</div>
 							#end
 							#set ($size = 0)
 							#set ($props = false)
@@ -170,7 +169,7 @@
 												#else
 													<img src = "#imageLink($contentTypeImageService.getContentTypeImage($props.getProperty($props.NamePropContentType)))" border="0" alt="$tlang.getString("gen.filatt")" />
 												#end
-												<a href="$attachment.Url" target="_blank">$validator.escapeHtml($props.getPropertyFormatted($props.NamePropDisplayName))</a>						
+												<a href="$attachment.Url" target="_blank">$formattedText.escapeHtml($props.getPropertyFormatted($props.NamePropDisplayName))</a>						
 												#propertyDetails($props)
 											</li>
 										#end
@@ -181,7 +180,7 @@
 				<p class="discTria">			
 					<a href="#toolLink("$action" "doShow_preview_assignment_assignment")" title="$tlang.getString("prevassig.shoass")">
 						<img src = "#imageLink("sakai/expand.gif")" border="0" title="$tlang.getString("prevassig.shoass")" alt="$tlang.getString("prevassig.shoass")" hspace="0" /></a>
-						$tlang.getString("prevassig.shoass"): $validator.escapeHtml($value_Title)
+						$tlang.getString("prevassig.shoass"): $formattedText.escapeHtml($value_Title)
 				</p>	
 			#end
 			#if (!$preview_assignment_student_view_hide_flag)
@@ -196,7 +195,7 @@
 					<table class="itemSummary" summary="$tlang.getString("gen.viewasstablesummary")">
 						<tr>
 							<th>
-								$tlang.getString("gen.due")
+								$tlang.getString("gen.due.header")
 							</th>
 							<td>
 								$!service.getUsersLocalDateTimeString($value_DueDate)<br />
@@ -236,7 +235,7 @@
 						$tlang.getString("gen.assinf")
 					</h4>	
 					#if (($!value_Description) && ($value_Description.length()>0))
-								<div class="textPanel">$validator.escapeHtmlFormattedText($value_Description)</div>
+								<div class="textPanel">$formattedText.escapeHtmlFormattedText($value_Description)</div>
 					#else
 					#end
 					#set ($size = 0)
@@ -263,7 +262,7 @@
 										#else
 											<img src = "#imageLink($contentTypeImageService.getContentTypeImage($props.getProperty($props.NamePropContentType)))" border="0" alt="$tlang.getString("gen.filatt")" />
 										#end
-										<a href="$attachment.Url" target="_blank">$validator.escapeHtml($props.getPropertyFormatted($props.NamePropDisplayName))</a>						
+										<a href="$attachment.Url" target="_blank">$formattedText.escapeHtml($props.getPropertyFormatted($props.NamePropDisplayName))</a>						
 										#propertyDetails($props)
 									</li>
 								#end
@@ -305,11 +304,6 @@
 							<div class="act">
 								<input type="button" name="eventSubmit_doAttachments" value="$tlang.getString("gen.addatt")" accesskey="a" disabled="disabled" />
 							</div>
-						#end
-						## if honor pledge is required
-						#if ($value_CheckAddHonorPledge)
-							<p class="checkbox">$honor_pledge_text<input name="Yes" id="yes" type="checkbox" value="" disabled="disabled" /><label for="yes"> $tlang.getString("gen.yes")</label>
-							<br />$tlang.getString("gen.youmus")</p>
 						#end
 					#end
 					</div>

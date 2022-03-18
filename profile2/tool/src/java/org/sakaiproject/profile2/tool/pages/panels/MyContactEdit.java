@@ -17,8 +17,7 @@ package org.sakaiproject.profile2.tool.pages.panels;
 
 
 
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.Component;
 import org.apache.wicket.ajax.AjaxRequestTarget;
@@ -50,9 +49,7 @@ import org.sakaiproject.profile2.tool.components.FeedbackLabel;
 import org.sakaiproject.profile2.tool.components.PhoneNumberValidator;
 import org.sakaiproject.profile2.util.ProfileConstants;
 
-import java.util.Arrays;
-import java.util.ArrayList;
-import org.sakaiproject.profile2.model.TypeInputEntry;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class MyContactEdit extends Panel {

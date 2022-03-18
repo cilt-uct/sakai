@@ -1,61 +1,82 @@
-/**
- * For Footer toggles in Morpheus
- */
+var activeTabListenerAttached = false,// initial load
+    handleVisibilityChange = function(){}; 
 
-function updatePresence(){
+function updatePresenceTimeout(_ms, _go) {
+    if (window.sakaiLastPresenceTimeOut !== null) {
+        clearTimeout(window.sakaiLastPresenceTimeOut);
+        window.sakaiLastPresenceTimeOut = null;
+    }
+    if (_go) {
+        window.sakaiLastPresenceTimeOut = setTimeout('updatePresence()', _ms);
+    }
+}
+
+function updatePresence() {
+  if (!activeTabListenerAttached) {
+    document.addEventListener("visibilitychange", handleVisibilityChange, false);
+    activeTabListenerAttached = true;
+  }
+
+  if (document.hidden) {
+    return;
+  }
 
   $PBJQ.ajax({
     url: sakaiPresenceFragment,
     cache: false,
+    dataType : 'text',
     success: function(frag){
 
-      var whereul = frag.indexOf('<ul');
-      if (whereul < 1) {
-        $PBJQ("#presenceCount").html(' ');
-        $PBJQ('#presenceCount').removeClass('present').addClass('empty');
+      var $presenceIframe = $PBJQ("#presenceIframe");
+      $presenceIframe.html(frag);
+
+      var $presenceCount = $PBJQ("#presenceCount");
+
+      if ($presenceIframe.is(':empty')) {
+        $presenceCount.html(' ');
+        $presenceCount.removeClass('present').addClass('empty');
         location.reload();
         return;
       }
 
-      frag = frag.substr(whereul);
-      var _s = frag;
-      var _m = '<li'; // needle 
-      var _c = 0;
+      var userCount = $presenceIframe.find('.listUser').length;
 
-      for (var i = 0; i < _s.length; i++) {
-        if (_m == _s.substr(i, _m.length)) 
-          _c++;
-      }
       // No need to attrct attention you are alone
 
-      if (_c > 1) {
-        $PBJQ("#presenceCount").html(_c + '');
-        $PBJQ('#presenceCount').removeClass('empty').addClass('present');
+      if (userCount > 1) {
+        $presenceCount.html(userCount + '');
+        $presenceCount.removeClass('empty').addClass('present');
       }
 
-      else 
+      else if (userCount == 1) {
+        $PBJQ("#presenceCount").html(userCount + '');
+        $presenceCount.removeClass('present').addClass('empty');
+      }
 
-        if (_c == 1) {
-          $PBJQ("#presenceCount").html(_c + '');
-          $PBJQ('#presenceCount').removeClass('present').addClass('empty');
-        }
-
-        else {
-          $PBJQ("#presenceCount").html(' ');
-          $PBJQ('#presenceCount').removeClass('present').addClass('empty');
-        }
-
-      $PBJQ("#presenceIframe").html(frag);
+      else {
+        $PBJQ("#presenceCount").html(' ');
+        $presenceCount.removeClass('present').addClass('empty');
+      }
 
       var chatUrl = $PBJQ('.nav-selected .icon-sakai-chat').attr('href');
 
-      $PBJQ('#presenceIframe .presenceList li.inChat span').wrap('<a href="' + chatUrl + '"></a>')
-      sakaiLastPresenceTimeOut = setTimeout('updatePresence()', 30000);
+      $PBJQ('#presenceIframe .presenceList div.inChat span').wrap('<a href="' + chatUrl + '"></a>')
+      updatePresenceTimeout(30000, true); // 30 seconds
     },
 
     // If we get an error, wait 60 seconds before retry
     error: function(request, strError){
-      sakaiLastPresenceTimeOut = setTimeout('updatePresence()', 60000);
+      updatePresenceTimeout(60000, true);
     }
   });
 }
+
+// Triggers when visibility changes
+handleVisibilityChange = function(event) {
+    if (document.hidden) {
+        updatePresenceTimeout(window.sakaiPresenceTimeDelay, false); //stop
+    } else  {
+        updatePresenceTimeout(window.sakaiPresenceTimeDelay, false); 
+        updatePresence(); //start immediately
+    }
+};

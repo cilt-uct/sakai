@@ -25,6 +25,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.sakaiproject.component.locales.SakaiLocales;
@@ -189,6 +190,17 @@ public interface ServerConfigurationService
 	 * @return The configuration value with this name, empty array if no values or count=0, OR null if config name is not found.
 	 */
 	String[] getStrings(String name);
+
+	/**
+	 * Access some named configuration value as a long
+	 *
+	 * @param name
+	 *        The configuration value name.
+	 * @param dflt
+	 *        The value to return if not found.
+	 * @return The configuration value with this name, or the default value if not found.
+	 */
+	long getLong(String name, long dflt);
 
 	/**
 	 * Access some named configuration value as an int.
@@ -370,6 +382,14 @@ public interface ServerConfigurationService
     */
    public Locale getLocaleFromString(String localeString);
 
+   /**
+    * Retrieves the string property by key, then splits it by comma. The trimmed tokens
+    * are then returned in a set. If the key isn't present, an empty set will be returned.
+    *
+    * @param key The property key
+    * @return A set of trimmed tokens from a comma separated list
+    */
+   public Set<String> getCommaSeparatedListAsSet(String key);
 
    // improved methods
 

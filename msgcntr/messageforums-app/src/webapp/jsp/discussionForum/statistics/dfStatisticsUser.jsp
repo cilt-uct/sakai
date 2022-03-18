@@ -1,6 +1,6 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://sakaiproject.org/jsf/messageforums" prefix="mf" %>
 <jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
 	<jsp:setProperty name="msgs" property="baseName" value="org.sakaiproject.api.app.messagecenter.bundle.Messages"/>
@@ -17,9 +17,9 @@
 
 <f:view>
   <sakai:view>
-  	<h:form id="dfStatisticsForm" rendered="#{ForumTool.instructor}">
+  	<h:form id="dfStatisticsForm">
 		<!--discussionForum/statistics/dfStatisticsUser.jsp-->
-		<script type="text/javascript">
+		<script>
 
 	
 			var iframeId = '<%= org.sakaiproject.util.Web.escapeJavascript(thisId)%>';
@@ -93,14 +93,14 @@
 			
 		</script>
 		
-  	    <script type="text/javascript">includeLatestJQuery("msgcntr");</script>
-		<sakai:script contextBase="/messageforums-tool" path="/js/dialog.js"/>
-		<sakai:script contextBase="/messageforums-tool" path="/js/forum.js"/>
+  	    <script>includeLatestJQuery("msgcntr");</script>
+		<script src="/messageforums-tool/js/dialog.js"></script>
+		<script src="/messageforums-tool/js/forum.js"></script>
 		<link rel="stylesheet" type="text/css" href="/messageforums-tool/css/dialog.css" />
 		<link rel="stylesheet" type="text/css" href="/messageforums-tool/css/msgcntr_statistics.css" />
        	
   	
-  		<script type="text/javascript">
+  		<script>
   			$(document).ready(function() {
 				$(".messageBody").each(function(index){
 					var msgBody = $(this).html();
@@ -109,6 +109,10 @@
 					$("#wordCountSpan" + wordCountId).html(getWordCount(msgBody));
 	  				//fckeditor_word_count_fromMessage(msgBody,'wordCountSpan' + wordCountId);
 				});
+				var menuLink = $('#forumsStatisticsMenuLink');
+				var menuLinkSpan = menuLink.closest('span');
+				menuLinkSpan.addClass('current');
+				menuLinkSpan.html(menuLink.text());
 			});
 			
 			function dialogLinkClick(link){
@@ -116,12 +120,15 @@
 				dialogutil.openDialog('dialogDiv', 'dialogFrame', position.top);
 			}
 		</script>
-  		<f:verbatim>
-			<div id="dialogDiv" title="Grade Messages" style="display:none">
-		       <iframe id="dialogFrame" name="dialogFrame" width="100%" height="100%" frameborder="0"></iframe>
-		    </div>
-		</f:verbatim>
-  		<h:panelGrid columns="2" width="100%" styleClass="navPanel  specialLink">
+
+		<%@ include file="/jsp/discussionForum/menu/forumsMenu.jsp" %>
+
+		<div id="dialogDiv" title="Grade Messages" style="display:none">
+			<h:commandButton type="button" styleClass="closeDialogFrame" onclick="dialogutil.closeDialog($(this).parent().attr('id'), $('#dialogFrame').attr('id'));" value="#{msgs.close_window}"/>
+			<iframe id="dialogFrame" name="dialogFrame" width="100%" height="100%" frameborder="0"></iframe>
+		</div>
+
+  		<h:panelGrid columns="2" width="100%" styleClass="navPanel  specialLink" rendered="#{ForumTool.instructor}">
           <h:panelGroup>
           	 <f:verbatim><h3></f:verbatim>
 			      <h:commandLink action="#{ForumTool.processActionHome}" value="#{msgs.cdfm_message_forums}" title=" #{msgs.cdfm_message_forums}"
@@ -181,6 +188,18 @@
 
 	  	<h:outputText rendered="#{ForumTool.anonymousEnabled && ForumTool.siteHasAnonymousTopics && !mfStatisticsBean.pureAnon}" value="#{msgs.stat_forum_anonymous_omitted}" styleClass="instruction" />
 
+        <div>
+            <h:outputText value="#{msgs.stat_percent_read_user}" escape="false" />
+            <h:outputText value="#{mfStatisticsBean.getPercentRead()}">
+                <f:convertNumber type="percent" />
+            </h:outputText>
+        </div>
+        <div>
+            <h:outputFormat value="#{msgs.stat_num_authored_user}" escape="false">
+                <f:param value="#{mfStatisticsBean.userAuthoredStatistics.size()}" />
+            </h:outputFormat>
+        </div>
+
 	  	<h:panelGrid columns="2" width="100%" style="margin:0">
    			<h:panelGroup>
     			<f:verbatim><h4 style="margin:0;padding:0"></f:verbatim>
@@ -230,37 +249,39 @@
   			</h:column>
   			<h:column>
   				<f:facet name="header">
-				   <h:commandLink action="#{mfStatisticsBean.toggleSubjectSort}" title="#{msgs.stat_forum_subject}">
-					   	<h:outputText value="#{msgs.stat_forum_subject}"  />
+					<h:commandLink action="#{mfStatisticsBean.toggleSubjectSort}" title="#{msgs.stat_forum_subject}">
+						<h:outputText value="#{msgs.stat_forum_subject}"  />
 						<h:graphicImage value="/images/sortascending.gif" rendered="#{mfStatisticsBean.forumSubjectSort && mfStatisticsBean.ascendingForUser}" alt="#{msgs.stat_forum_subject}"/>
-						<h:graphicImage value="/images/sortdescending.gif" rendered="#{mfStatisticsBean.forumSubjectSort && !mfStatisticsBean.ascendingForUser}" alt="#{msgs.stat_forum_subject}"/>						
+						<h:graphicImage value="/images/sortdescending.gif" rendered="#{mfStatisticsBean.forumSubjectSort && !mfStatisticsBean.ascendingForUser}" alt="#{msgs.stat_forum_subject}"/>
 					</h:commandLink>
   				</f:facet>
   				<h:commandLink action="#{mfStatisticsBean.processActionDisplayMsgBody}" value="#{stat.forumSubject}">
-  							<f:param value="#{stat.msgId}" name="msgId"/> 				  			
-  				 </h:commandLink>
-  				 </h:column>
+  					<f:param value="#{stat.msgId}" name="msgId"/>
+  				</h:commandLink>
+  			</h:column>
 
-  				 <h:column>
-  					<h:outputLink value="/tool/#{ForumTool.currentToolId}/discussionForum/message/dfMsgGrade" target="dialogFrame"
-						onclick="dialogLinkClick(this);">
-						<f:param value="#{stat.forumId}" name="forumId"/>
-						<f:param value="#{stat.topicId}" name="topicId"/>
-						<f:param value="#{stat.msgId}" name="messageId"/>
-						<f:param value="#{mfStatisticsBean.selectedSiteUserId}" name="userId"/>						
-						<f:param value="dialogDiv" name="dialogDivId"/>
-						<f:param value="dialogFrame" name="frameId"/>
-						<f:param value="gradesSavedDiv" name="gradesSavedDiv"/>
-						<h:graphicImage value="/../../library/image/silk/award_star_gold_1.png" alt="#{msgs.cdfm_button_bar_grade}" />
-						<h:outputText value=" #{msgs.cdfm_button_bar_grade}" />
-					</h:outputLink>
-					<h:outputText value=" #{msgs.cdfm_toolbar_separator} " />
-					<h:commandLink action="#{ForumTool.processActionDisplayInThread}" value="#{msgs.stat_display_in_thread}" title=" #{msgs.stat_display_in_thread}">	
-		  				  		<f:param value="#{stat.topicId}" name="topicId"/>
-		  				  		<f:param value="#{stat.forumId}" name="forumId"/>
-		  				  		<f:param value="#{stat.msgId}" name="msgId"/>
-		  				  		
-		  			</h:commandLink>
+  			<h:column>
+				<f:facet name="header">
+					<h:outputText value="#{msgs.stat_forum_more_details}"  />
+				</f:facet>
+				<h:outputLink value="/tool/#{ForumTool.currentToolId}/discussionForum/message/dfMsgGrade" target="dialogFrame"
+					onclick="dialogLinkClick(this);" rendered="#{ForumTool.instructor}">
+					<f:param value="#{stat.forumId}" name="forumId"/>
+					<f:param value="#{stat.topicId}" name="topicId"/>
+					<f:param value="#{stat.msgId}" name="messageId"/>
+					<f:param value="#{mfStatisticsBean.selectedSiteUserId}" name="userId"/>
+					<f:param value="dialogDiv" name="dialogDivId"/>
+					<f:param value="dialogFrame" name="frameId"/>
+					<f:param value="gradesSavedDiv" name="gradesSavedDiv"/>
+					<h:graphicImage value="/../../library/image/silk/award_star_gold_1.png" alt="#{msgs.cdfm_button_bar_grade}" />
+					<h:outputText value=" #{msgs.cdfm_button_bar_grade}" />
+				</h:outputLink>
+				<h:outputText value=" #{msgs.cdfm_toolbar_separator} " rendered="#{ForumTool.instructor}" />
+				<h:commandLink action="#{ForumTool.processActionDisplayInThread}" value="#{msgs.stat_display_in_thread}" title=" #{msgs.stat_display_in_thread}">
+								<f:param value="#{stat.topicId}" name="topicId"/>
+								<f:param value="#{stat.forumId}" name="forumId"/>
+								<f:param value="#{stat.msgId}" name="msgId"/>
+				</h:commandLink>
   			</h:column>
   		</h:dataTable>
   		</div>

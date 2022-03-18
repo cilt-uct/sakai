@@ -56,9 +56,6 @@ public class ResourceTypeLabeler
 				case NEW_URLS:
 					label = ResourcesAction.trb.getString("create.urls");
 					break;
-				case NEW_GOOGLE_DRIVE_ITEMS:
-					label = "Add Google Drive items";
-					break;
 				case CREATE:
 					ResourceTypeRegistry registry = (ResourceTypeRegistry) ComponentManager.get("org.sakaiproject.content.api.ResourceTypeRegistry");
 					ResourceType typedef = registry.getType(action.getTypeId());

@@ -5,10 +5,15 @@
 /**************************************************************************************
  * A GradebookUpdateUngraded to encapsulate all the update ungraded form behaviours 
  */
-function GradebookUpdateUngraded($content) {
-  this.$content = $content;
+function GradebookUpdateUngraded($content, enableInputs) {
 
+  this.$content = $content;
   this.setupConfirmation();
+ 
+  // Attempt to re-enable any disabled inputs
+  if (enableInputs) {
+    this.$content.find(":input").prop("disabled", false);
+  }
 };
 
 GradebookUpdateUngraded.prototype.setupConfirmation = function(){

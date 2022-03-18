@@ -21,7 +21,6 @@
 package org.sakaiproject.coursemanagement.impl;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -30,9 +29,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import javax.persistence.TemporalType;
 
 import org.hibernate.Hibernate;
-import org.hibernate.Query;
+import org.hibernate.query.Query;
 import org.sakaiproject.coursemanagement.api.AcademicSession;
 import org.sakaiproject.coursemanagement.api.CanonicalCourse;
 import org.sakaiproject.coursemanagement.api.CourseManagementService;
@@ -44,8 +46,9 @@ import org.sakaiproject.coursemanagement.api.Membership;
 import org.sakaiproject.coursemanagement.api.Section;
 import org.sakaiproject.coursemanagement.api.SectionCategory;
 import org.sakaiproject.coursemanagement.api.exception.IdNotFoundException;
-import org.springframework.orm.hibernate4.HibernateCallback;
-import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
+import org.sakaiproject.util.ResourceLoader;
+import org.springframework.orm.hibernate5.HibernateCallback;
+import org.springframework.orm.hibernate5.support.HibernateDaoSupport;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -58,14 +61,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class CourseManagementServiceHibernateImpl extends HibernateDaoSupport implements CourseManagementService {
 
-	public void init() {
-		log.info("Initializing " + getClass().getName());
-	}
+	private static final ResourceLoader enrollmentsMessages = new ResourceLoader("enrollmentstatus");
 
-	public void destroy() {
-		log.info("Destroying " + getClass().getName());
-	}
-	
 	/**
 	 * A generic approach to finding objects by their eid.  This is "coding by convention",
 	 * since it expects the parameterized query to use "eid" as the single named parameter.
@@ -329,7 +326,7 @@ public class CourseManagementServiceHibernateImpl extends HibernateDaoSupport im
 		/**
 		 * select * from CM_MEMBER_CONTAINER_T where start_date <= now() and end_date>=now() and class_discr='org.sakaiproject.coursemanagement.impl.CourseOfferingCmImpl' and canonical_course in (select MEMBER_CONTAINER_ID from CM_MEMBER_CONTAINER_T where enterprise_id= ? and CLASS_DISCR='org.sakaiproject.coursemanagement.impl.CanonicalCourseCmImpl');
 		 */
-		CanonicalCourse canonicalCourse = null;
+		final CanonicalCourse canonicalCourse;
 		try {
 			canonicalCourse = this.getCanonicalCourse(eid);
 		}
@@ -337,11 +334,14 @@ public class CourseManagementServiceHibernateImpl extends HibernateDaoSupport im
 			//its quite possible someone ask for a course that doesn't exits
 			return new ArrayList<CourseOffering>();
 		}
-		
-		List<CourseOffering> ret = new ArrayList<CourseOffering>((List<CourseOffering>) getHibernateTemplate().findByNamedQueryAndNamedParam("findActiveCourseOfferingsInCanonicalCourse", 
-				"canonicalCourse", canonicalCourse));
-		
-		return ret;
+
+		HibernateCallback<List<CourseOffering>> hc = session -> {
+			return session.getNamedQuery("findActiveCourseOfferingsInCanonicalCourse")
+					.setParameter("now", new Date(), TemporalType.TIMESTAMP)
+					.setParameter("canonicalCourse", canonicalCourse)
+					.list();
+		};
+		return new ArrayList<>(getHibernateTemplate().execute(hc));
 	}
 	
 	
@@ -417,6 +417,22 @@ public class CourseManagementServiceHibernateImpl extends HibernateDaoSupport im
 		return sectionRoleMap;
 	}
 
+	public Map<String, String> findSectionRoles(final String userEid, final String academicSessionEid) {
+		HibernateCallback hc = session -> {
+			Query q = session.getNamedQuery("findSectionRolesByAcademicSession");
+			q.setParameter("userEid", userEid);
+			q.setParameter("academicSessionEid", academicSessionEid);
+			return q.list();
+		};
+
+		List<Object[]> results = new ArrayList<>((List<Object[]>) getHibernateTemplate().execute(hc));
+		Map<String, String> sectionRoleMap = new HashMap<>();
+		for(Object[] oa : results) {
+			sectionRoleMap.put((String) oa[0], (String) oa[1]);
+		}
+
+		return sectionRoleMap;
+	}
 
 	public Set<CourseOffering> getCourseOfferingsInCanonicalCourse(final String canonicalCourseEid) throws IdNotFoundException {
 		if(!isCanonicalCourseDefined(canonicalCourseEid)) {
@@ -465,11 +481,17 @@ public class CourseManagementServiceHibernateImpl extends HibernateDaoSupport im
 		}
 	}
 
+	public String getEnrollmentStatusDescription(String statusId) {
+		return enrollmentsMessages.getString(statusId, statusId);
+	}
+
 	public Map<String, String> getEnrollmentStatusDescriptions(Locale locale) {
-		Map<String, String> map = new HashMap<String, String>();
-		map.put("enrolled", "Enrolled");
-		map.put("wait", "Waitlisted");
-		return map;
+		enrollmentsMessages.setContextLocale(locale);
+		return ((Set<Map.Entry>) enrollmentsMessages.entrySet()).stream()
+				.collect(Collectors.toMap(
+						entry -> String.valueOf(entry.getKey()),
+						entry -> String.valueOf(entry.getValue()),
+						(a, b) -> b));
 	}
 
 	public Map<String, String> getGradingSchemeDescriptions(Locale locale) {

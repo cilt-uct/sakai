@@ -39,7 +39,7 @@ should be included in file importing DeliveryMessages
      <h:dataTable value="#{itemText.answerArraySorted}" var="answer">
         <h:column>
           	<%-- Show true/false radio buttons --%>
-			<h:graphicImage id="image1" url="/images/radiounchecked.gif"/>
+      <h:panelGroup id="image1" styleClass="samigo-inline-radio fa fa-circle-o"></h:panelGroup>
 			<h:outputText escape="false" value=" #{answer.text}" />
         </h:column>
       </h:dataTable>
@@ -50,7 +50,7 @@ should be included in file importing DeliveryMessages
   <h:panelGroup styleClass="answerBlock" rendered="#{printSettings.showKeys || printSettings.showKeysFeedback}">
     <h:outputLabel value="#{printMessages.answer_point}: "/>
     <h:outputText value="#{question.itemData.score}">
-        <f:convertNumber maxFractionDigits="2"/>
+        <f:convertNumber maxFractionDigits="2" groupingUsed="false"/>
     </h:outputText>
     <h:outputText escape="false" value=" #{authorMessages.points_lower_case}" />
   	<h:outputText value="<br />" escape="false" />

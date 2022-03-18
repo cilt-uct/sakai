@@ -1,6 +1,6 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://sakaiproject.org/jsf/messageforums" prefix="mf" %>
 <jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
    <jsp:setProperty name="msgs" property="baseName" value="org.sakaiproject.api.app.messagecenter.bundle.Messages"/>
@@ -13,10 +13,10 @@
 			<f:verbatim><input type="hidden" id="currentMessageId" name="currentMessageId" value="</f:verbatim><h:outputText value="#{ForumTool.selectedMessage.message.id}"/><f:verbatim>"/></f:verbatim>
 			<f:verbatim><input type="hidden" id="currentTopicId" name="currentTopicId" value="</f:verbatim><h:outputText value="#{ForumTool.selectedTopic.topic.id}"/><f:verbatim>"/></f:verbatim>
 			<f:verbatim><input type="hidden" id="currentForumId" name="currentForumId" value="</f:verbatim><h:outputText value="#{ForumTool.selectedForum.forum.id}"/><f:verbatim>"/></f:verbatim>
-            <script type="text/javascript">includeLatestJQuery("msgcntr");</script>
-            <sakai:script contextBase="/messageforums-tool" path="/js/sak-10625.js"/>
-            <sakai:script contextBase="/messageforums-tool" path="/js/forum.js"/>
-            <script type="text/javascript">
+            <script>includeLatestJQuery("msgcntr");</script>
+            <script src="/messageforums-tool/js/sak-10625.js"></script>
+            <script src="/messageforums-tool/js/forum.js"></script>
+            <script>
                 $(document).ready(function() {
                     $('#openLinkBlock').hide();
                     jQuery('.toggle').click(function(e) { 
@@ -89,9 +89,6 @@
     
             <p><h:message for="df_compose_body" styleClass="messageAlert" id="bodyErrorMessages" /></p>
             <h:outputText value="#{msgs.cdfm_message}" />
-                
-            <span style="display: none; margin-left:3em"><img src="/library/image/silk/table_add.png" />&nbsp;<h:outputText value="#{msgs.cdfm_message_count}" />:&nbsp;<span  id="counttotal"> </span></span>
-    
             <sakai:inputRichText value="#{ForumTool.composeBody}" id="df_compose_body" rows="22" cols="132">
             </sakai:inputRichText>
             

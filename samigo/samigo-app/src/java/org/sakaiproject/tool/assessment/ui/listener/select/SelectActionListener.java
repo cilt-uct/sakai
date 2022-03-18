@@ -14,7 +14,6 @@
  * limitations under the License.
  *
  */
-
 package org.sakaiproject.tool.assessment.ui.listener.select;
 
 import java.util.ArrayList;
@@ -34,10 +33,11 @@ import javax.faces.event.ActionListener;
 import javax.servlet.http.HttpServletRequest;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.ObjectUtils;
-import org.apache.commons.lang.math.NumberUtils;
+import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 
 import org.sakaiproject.tool.assessment.api.SamigoApiFactory;
+import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedAssessmentData;
 import org.sakaiproject.tool.assessment.data.dao.grading.AssessmentGradingData;
 import org.sakaiproject.tool.assessment.data.dao.grading.StudentGradingSummaryData;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentAccessControlIfc;
@@ -49,6 +49,7 @@ import org.sakaiproject.tool.assessment.facade.PublishedAssessmentFacade;
 import org.sakaiproject.tool.assessment.facade.PublishedAssessmentFacadeQueries;
 import org.sakaiproject.tool.assessment.services.GradingService;
 import org.sakaiproject.tool.assessment.services.assessment.PublishedAssessmentService;
+import org.sakaiproject.tool.assessment.services.PersistenceService;
 import org.sakaiproject.tool.assessment.shared.api.assessment.SecureDeliveryServiceAPI;
 import org.sakaiproject.tool.assessment.ui.bean.authz.AuthorizationBean;
 import org.sakaiproject.tool.assessment.ui.bean.delivery.DeliveryBean;
@@ -68,8 +69,7 @@ import org.sakaiproject.util.ResourceLoader;
  * @version $Id$
  */
 @Slf4j
-public class SelectActionListener
-    implements ActionListener {
+public class SelectActionListener implements ActionListener {
   private static final String AVG_SCORE = EvaluationModelIfc.AVERAGE_SCORE.toString();
   private static final String HIGH_SCORE = EvaluationModelIfc.HIGHEST_SCORE.toString();
   private static final String LAST_SCORE = EvaluationModelIfc.LAST_SCORE.toString();
@@ -98,7 +98,7 @@ public class SelectActionListener
     AuthorizationBean authzBean = (AuthorizationBean) ContextUtil.lookupBean("authorization");
     PersonBean personBean = (PersonBean) ContextUtil.lookupBean("person");
     DeliveryBean deliveryBean = (DeliveryBean) ContextUtil.lookupBean("delivery");
-    if (!deliveryBean.getAnonymousLogin() && !authzBean.getTakeAssessment())
+    if (!deliveryBean.isAnonymousLogin() && !authzBean.getTakeAssessment())
       return;
 
     // get service and managed bean
@@ -257,6 +257,10 @@ public class SelectActionListener
                                                  publishedAssessmentHash));
         delivery.setFeedbackDate(getFeedbackDate(g.getPublishedAssessmentId(),
                                                  publishedAssessmentHash));
+        delivery.setFeedbackEndDate(getFeedbackEndDate(g.getPublishedAssessmentId(),
+                                                 publishedAssessmentHash));
+        delivery.setFeedbackScoreThreshold(getFeedbackScoreThreshold(g.getPublishedAssessmentId(),
+                                                 publishedAssessmentHash));
         if (g.getFinalScore() != null) {
           delivery.setFinalScore(g.getFinalScore().toString());	
           delivery.setGrade(g.getFinalScore().toString());
@@ -271,7 +275,7 @@ public class SelectActionListener
         delivery.setSubmitted(true); // records are all submitted for grade
         PublishedAssessmentFacade p = (PublishedAssessmentFacade)publishedAssessmentHash.get(g.getPublishedAssessmentId());
         // check is feedback is available
-        String hasFeedback = hasFeedback(p);
+        String hasFeedback = hasFeedback(p, g.getFinalScore());
         delivery.setFeedback(hasFeedback);
         boolean isAssessmentRetractForEdit = isAssessmentRetractForEdit(p);
         delivery.setIsAssessmentRetractForEdit(isAssessmentRetractForEdit);
@@ -346,7 +350,7 @@ public class SelectActionListener
     
     /// --mustansar
     List reviewableList=new ArrayList();
-    List recordedList=new ArrayList();
+    List<DeliveryBeanie> recordedList=new ArrayList<>();
     Iterator it=submittedAssessmentGradingList.iterator();
     String assessmentIdNew="";
     while(it.hasNext()){
@@ -374,6 +378,8 @@ public class SelectActionListener
     		recorded.setAssessmentId(beanie.getAssessmentId());
     		recorded.setFeedback(beanie.getFeedback());
     		recorded.setFeedbackDate(beanie.getFeedbackDate());
+    		recorded.setFeedbackEndDate(beanie.getFeedbackEndDate());
+    		recorded.setFeedbackScoreThreshold(beanie.getFeedbackScoreThreshold());
     		recorded.setFeedbackDelivery(beanie.getFeedbackDelivery());
     		recorded.setFeedbackComponentOption(beanie.getFeedbackComponentOption());
     		recorded.setIsRecordedAssessment(true);
@@ -407,7 +413,9 @@ public class SelectActionListener
     		reviewableList.add(beanie);
     	}  
     }
-    
+
+    // display warning legend if any quizzes have been marked as modified in the review section
+    select.setHasAnyAssessmentBeenModified(recordedList.stream().anyMatch(db -> db.getHasAssessmentBeenModified()));
     
     if ("2".equals(select.getDisplayAllAssessments())){
     	submittedAssessmentGradingList=reviewableList;    
@@ -594,12 +602,27 @@ public class SelectActionListener
     Date retractDate = f.getRetractDate();
     boolean acceptLateSubmission = AssessmentAccessControlIfc.ACCEPT_LATE_SUBMISSION.equals(f.getLateHandling());
 
+    if (dueDate == null && (retractDate != null && acceptLateSubmission)) {
+        dueDate = retractDate;
+    }
+
     if (!Integer.valueOf(1).equals(status)) {
     	return false;
     }
     
     if (startDate != null && startDate.after(currentDate)) {
     	return false;
+    }
+
+    int totalSubmitted = 0;
+
+    //boolean notSubmitted = false;
+    if (h.get(f.getPublishedAssessmentId()) != null){
+      totalSubmitted = ((Integer) h.get(f.getPublishedAssessmentId()));
+    }
+    
+    if (acceptLateSubmission && (dueDate != null && dueDate.before(currentDate)) && retractDate == null && totalSubmitted == 0) {
+      return true;
     }
     
     if (acceptLateSubmission
@@ -620,12 +643,6 @@ public class SelectActionListener
     int numberRetake = 0;
     if (numberRetakeHash.get(f.getPublishedAssessmentId()) != null) {
     	numberRetake = (((StudentGradingSummaryData) numberRetakeHash.get(f.getPublishedAssessmentId())).getNumberRetake());
-    }
-    int totalSubmitted = 0;
-    
-    //boolean notSubmitted = false;
-    if (h.get(f.getPublishedAssessmentId()) != null){
-      totalSubmitted = ( (Integer) h.get(f.getPublishedAssessmentId()));
     }
     
       //2. time to go through all the criteria
@@ -651,22 +668,7 @@ public class SelectActionListener
 				}
 			}
     	} else {
-    		// LATE SUBMISSION ARE NOT HANDLED: Test retract date and retakes
-    		if (retractDate == null || retractDate.after(currentDate)) {
-				int actualNumberRetake = 0;
-				if (actualNumberRetakeHash.get(f.getPublishedAssessmentId()) != null) {
-					actualNumberRetake = (actualNumberRetakeHash.get(f.getPublishedAssessmentId()));
-				}
-				if (actualNumberRetake < numberRetake) {
-					returnValue = true;
-				} else {
-					returnValue = false;
-				}
-    		}
-    		else{
-	    		// Retract date has passed: Assessment is not available    		
-	    		returnValue = false;
-    		}
+	    	returnValue = false;
     	}
 	}
 	else {
@@ -684,7 +686,7 @@ public class SelectActionListener
    * these assessment, they still should be able to access it.The list returns
    * contains AssessmentGradingData with the PublishedAssessment Id and title.
    */
-  private String hasFeedback(PublishedAssessmentFacade p){
+  private String hasFeedback(PublishedAssessmentFacade p, Double finalScore){
     String hasFeedback = "na";
     Date currentDate = new Date();
     
@@ -692,18 +694,36 @@ public class SelectActionListener
       return hasFeedback;
     }
 
-    if ((AssessmentFeedbackIfc.IMMEDIATE_FEEDBACK).equals(p.getFeedbackDelivery())
-    	|| (AssessmentFeedbackIfc.FEEDBACK_ON_SUBMISSION).equals(p.getFeedbackDelivery())	
-        || ((AssessmentFeedbackIfc.FEEDBACK_BY_DATE).equals(p.getFeedbackDelivery()) && p.getFeedbackDate()!= null && currentDate.after(p.getFeedbackDate())))
-    {
-      hasFeedback="show";
+    switch(p.getFeedbackDelivery().intValue()){
+        case 1: //AssessmentFeedbackIfc.IMMEDIATE_FEEDBACK
+        case 4: //AssessmentFeedbackIfc.FEEDBACK_ON_SUBMISSION
+            hasFeedback = "show";
+            break;
+        case 2: //AssessmentFeedbackIfc.FEEDBACK_BY_DATE
+            if(p.getFeedbackDate()!= null && p.getFeedbackEndDate() == null){
+                hasFeedback = currentDate.after(p.getFeedbackDate()) ? "show" : "blank";
+            } else if(p.getFeedbackDate()!= null && p.getFeedbackEndDate() != null){
+                hasFeedback = currentDate.after(p.getFeedbackDate()) && currentDate.before(p.getFeedbackEndDate()) ? "show" : "blank";
+            }
+            if("show".equals(hasFeedback) && p.getFeedbackScoreThreshold() != null){
+                try{
+                    //We need the total score of the assessment
+                    PublishedAssessmentData assessmentData = PersistenceService.getInstance().getPublishedAssessmentFacadeQueries().loadPublishedAssessment(p.getPublishedAssessmentId());
+                    double maxScore = assessmentData.getTotalScore() != null ? assessmentData.getTotalScore().doubleValue() : 0.0;
+                    Double earnedScorePercentage = maxScore != 0.0 ? new Double(finalScore.doubleValue() * 100.0 / maxScore) : new Double(0.0);
+                    Double scoreThresholdDouble = p.getFeedbackScoreThreshold();
+                    //Display when the earned score percentage is lower than the score threshold
+                    hasFeedback = earnedScorePercentage.compareTo(scoreThresholdDouble) < 0 ? "show" : "blank";
+                } catch(Exception ex){
+                    log.error("Error comparing the feedback score threshold {}. ", ex);
+                }
+            }
+            break;
+        default: 
+            hasFeedback="na";
+            break;
     }
-    
-    if ((AssessmentFeedbackIfc.FEEDBACK_BY_DATE).equals(p.getFeedbackDelivery()) && (p.getFeedbackDate()!= null && currentDate.before((p.getFeedbackDate()))))
-    {
-      hasFeedback="blank";
-    }
-    
+
     return hasFeedback;
   }
 
@@ -776,6 +796,16 @@ public class SelectActionListener
       return null;
   }
 
+  private Date getFeedbackEndDate(Long publishedAssessmentId, Map publishedAssessmentHash) {
+      PublishedAssessmentFacade p = (PublishedAssessmentFacade)publishedAssessmentHash.get(publishedAssessmentId);
+      return p != null ? p.getFeedbackEndDate() : null;
+  }
+
+  private Double getFeedbackScoreThreshold(Long publishedAssessmentId, Map publishedAssessmentHash){
+      PublishedAssessmentFacade p = (PublishedAssessmentFacade)publishedAssessmentHash. get(publishedAssessmentId);
+      return p != null ? p.getFeedbackScoreThreshold() : null;
+  }
+
   private String getFeedbackDelivery(Long publishedAssessmentId, Map publishedAssessmentHash){
     PublishedAssessmentFacade p = (PublishedAssessmentFacade)publishedAssessmentHash.
         get(publishedAssessmentId);
@@ -806,7 +836,6 @@ public class SelectActionListener
 	    		log.debug("AssessmentGradingId = " + g.getAssessmentGradingId());
 	    		log.debug("LastModifiedDate = " + p.getLastModifiedDate());
 	    		log.debug("SubmittedDate = " + g.getSubmittedDate());
-	    		select.setHasAnyAssessmentBeenModified(true);
 	    		return true;
 	    	}
 	    }

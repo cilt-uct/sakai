@@ -8,8 +8,10 @@
         <%@ include file="/inc/navMenu.jspf"%>
     </t:aliasBean>
 
-	<h3><h:outputText value="#{msgs.student_member}"/></h3>
-	
+    <div class="page-header">
+        <h1><h:outputText value="#{msgs.student_member}"/></h1>
+    </div>
+
 	<div class="instructions">	
 		<h:outputText value="#{msgs.roster_instructions}"
 			rendered="#{ ! rosterBean.externallyManaged}"/>
@@ -27,7 +29,7 @@
 	
     <h:panelGrid styleClass="sectionContainerNav" columns="1" columnClasses="sectionLeftNav,sectionRightNav">
         <t:div>
-            <h:inputText id="search" value="#{rosterBean.searchText}"
+            <h:inputText id="search" onkeydown="submitSearchText(event)" value="#{rosterBean.searchText}"
                 onfocus="clearIfDefaultString(this, '#{msgs.roster_search_text}')"/>
             <h:commandButton value="#{msgs.roster_search_button}" actionListener="#{rosterBean.search}"/>
             <h:commandButton value="#{msgs.roster_clear_button}" actionListener="#{rosterBean.clearSearch}"/>
@@ -43,6 +45,10 @@
         </t:div>
     </h:panelGrid>
     
+    <h:panelGroup rendered="#{rosterBean.enrollmentsSize <= 0}" >
+        <h:outputText styleClass="sak-banner-warn" value="#{msgs.students_not_found}"  />
+    </h:panelGroup>
+
     <t:dataTable cellpadding="0" cellspacing="0"
         id="sectionsTable"
         value="#{rosterBean.enrollments}"
@@ -50,6 +56,7 @@
         binding="#{rosterBean.rosterDataTable}"
         sortColumn="#{preferencesBean.rosterSortColumn}"
         sortAscending="#{preferencesBean.rosterSortAscending}"
+        rendered="#{rosterBean.enrollments.size() > 0}"
         styleClass="listHier rosterTable">
         <h:column>
             <f:facet name="header">

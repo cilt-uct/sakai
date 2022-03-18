@@ -19,7 +19,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -28,11 +27,11 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.hibernate.Query;
 import org.hibernate.criterion.DetachedCriteria;
 import org.hibernate.criterion.Restrictions;
+import org.hibernate.query.Query;
 import org.sakaiproject.api.app.scheduler.ScheduledInvocationManager;
 import org.sakaiproject.assignment.api.AssignmentPeerAssessmentService;
 import org.sakaiproject.assignment.api.AssignmentReferenceReckoner;
@@ -50,8 +49,8 @@ import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.tool.api.SessionManager;
 import org.sakaiproject.user.api.User;
-import org.springframework.orm.hibernate4.HibernateCallback;
-import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
+import org.springframework.orm.hibernate5.HibernateCallback;
+import org.springframework.orm.hibernate5.support.HibernateDaoSupport;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -407,7 +406,7 @@ public class AssignmentPeerAssessmentServiceImpl extends HibernateDaoSupport imp
     }
 
     public void removePeerAttachment(PeerAssessmentAttachment peerAssessmentAttachment) {
-        getHibernateTemplate().delete(peerAssessmentAttachment);
+        getHibernateTemplate().delete(getHibernateTemplate().merge(peerAssessmentAttachment));
         getHibernateTemplate().flush();
     }
 

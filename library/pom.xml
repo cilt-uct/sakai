@@ -5,7 +5,7 @@
 	<parent>
 		<artifactId>master</artifactId>
 		<groupId>org.sakaiproject</groupId>
-		<version>12.5</version>
+		<version>21-SNAPSHOT</version>
 		<relativePath>../master/pom.xml</relativePath>
 	</parent>
 	<name>Sakai Library</name>
@@ -14,11 +14,11 @@
 	<packaging>war</packaging>
 	<properties>
 		<!-- This is used in re-write rules as well -->
-		<ckeditor.version>4.9.1</ckeditor.version>
+		<ckeditor.version>4.14.0</ckeditor.version>
 		<bootstrap-version>3.3.7</bootstrap-version>
 		<font-awesome-version>4.7.0</font-awesome-version>
-		<!-- Default extra plugins enabled, currently autosave disabled via SAK-33362 -->
-		<ckeditor-extra-plugins>sakaipreview,image,audiorecorder,contentitem,movieplayer,wordcount,notification,autosave</ckeditor-extra-plugins>
+		<!-- Default extra plugins enabled -->
+		<ckeditor-extra-plugins>sakaipreview,image2,audiorecorder,contentitem,html5video,wordcount,notification,autosave,bt_table</ckeditor-extra-plugins>
 		<!-- Empty defaults for a11y-->
 		<ckeditor-a11y-extra-plugins></ckeditor-a11y-extra-plugins>
 	</properties>
@@ -45,13 +45,27 @@
 			<artifactId>urlrewritefilter</artifactId>
 			<version>4.0.3</version>
 		</dependency>
+		<!--Used in cloud storage, Google Drive integration, file navigation UI -->
+		<dependency>
+			<groupId>org.webjars</groupId>
+			<artifactId>jstree</artifactId>
+			<version>3.3.8</version>
+		</dependency>
+		
 		<!-- At the moment we're unpacking the webjars, so we don't want them bundled into the WAR
 		     but we still need them as dependencies so the plugin unpacks them, that's why they
 		     have a scope of runtime -->
+		<!--Used in ELFinder, inside CK Editor, file editor -->
 		<dependency>
-			<groupId>org.webjars</groupId>
+			<groupId>org.webjars.npm</groupId>
 			<artifactId>codemirror</artifactId>
-			<version>5.6</version>
+			<version>5.52.0</version>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.webjars.npm</groupId>
+			<artifactId>wavesurfer.js</artifactId>
+			<version>3.3.1</version>
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
@@ -61,27 +75,40 @@
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
-			<groupId>org.sakaiproject.webjars</groupId>
+			<groupId>org.webjars</groupId>
 			<artifactId>ckeditor-autosave</artifactId>
 			<version>${ckeditor.autosave.version}</version>
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
-			<groupId>org.sakaiproject.webjars</groupId>
+			<groupId>org.webjars</groupId>
 			<artifactId>ckeditor-wordcount</artifactId>
 			<version>${ckeditor.wordcount.version}</version>
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
-			<groupId>org.sakaiproject.webjars</groupId>
+			<groupId>org.webjars</groupId>
 			<artifactId>ckeditor-image2</artifactId>
 			<version>${ckeditor.image2.version}</version>
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
+			<groupId>org.webjars.bower</groupId>
+			<artifactId>github-com-bahriddin-ckeditor-html5-video</artifactId>
+			<version>${ckeditor.html5video.version}</version>
+			<scope>runtime</scope>
+		</dependency>
+		<!--Used in Resources, drag&drop resources -->
+		<dependency>
 			<groupId>org.webjars</groupId>
 			<artifactId>dropzone</artifactId>
-			<version>4.2.0</version>
+			<version>5.5.0</version>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.webjars</groupId>
+			<artifactId>qtip2</artifactId>
+			<version>3.0.3-1</version>
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
@@ -93,7 +120,7 @@
 		<dependency>
 			<groupId>org.webjars</groupId>
 			<artifactId>momentjs</artifactId>
-			<version>2.11.1</version>
+			<version>2.24.0</version>
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
@@ -146,14 +173,22 @@
 		</dependency>
 		<dependency>
 			<groupId>org.webjars</groupId>
-			<artifactId>pnotify</artifactId>
-			<version>2.1.0-1</version>
+			<artifactId>jqplot</artifactId>
+			<version>1.0.9.d96a669-1</version>
 			<scope>runtime</scope>
 		</dependency>
+		<!--Used in the portal, notify the user about forbidden HTML entities (AntiSamy) -->
+		<dependency>
+			<groupId>org.webjars.npm</groupId>
+			<artifactId>pnotify</artifactId>
+			<version>4.0.0</version>
+			<scope>runtime</scope>
+		</dependency>
+		<!--Used in the CK Editor, browse server option -->
 		<dependency>
 			<groupId>org.webjars.bower</groupId>
 			<artifactId>elfinder</artifactId>
-			<version>2.1.28</version>
+			<version>2.1.53</version>
 			<scope>runtime</scope>
 			<exclusions>
 				<!-- The exclusions are because the bower versions don't have concat/min versions -->
@@ -173,31 +208,41 @@
 			<version>${font-awesome-version}</version>
 			<scope>runtime</scope>
 		</dependency>
+		<!--Used in the portal, profile image change option -->
 		<dependency>
 			<groupId>org.webjars.bower</groupId>
 			<artifactId>cropper</artifactId>
-			<version>2.3.2</version>
+			<version>4.0.0</version>
 			<scope>runtime</scope>
 		</dependency>
-        <!-- https://mvnrepository.com/artifact/org.webjars/select2 -->
+		<!--Used in Private messages, Tests&Quizzes, selector of multiple items (users, groups) -->
         <dependency>
             <groupId>org.webjars</groupId>
             <artifactId>select2</artifactId>
-            <version>4.0.3</version>
+            <version>4.0.12</version>
             <scope>runtime</scope>
         </dependency>
+		<!--Used in Lessons, embed calendar item -->
 		<dependency>
 			<groupId>org.webjars</groupId>
 			<artifactId>fullcalendar</artifactId>
-			<version>3.0.0</version>
+			<version>4.3.1</version>
 			<scope>runtime</scope>
 		</dependency>
+		<!--Used in Tests&Quizzes, Private Messages, search, pagination and sort options for tables -->
 		<dependency>
 			<groupId>org.webjars</groupId>
 			<artifactId>datatables</artifactId>
-			<version>1.10.16</version>
+			<version>1.10.20</version>
 			<scope>runtime</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.webjars.bowergithub.datatables</groupId>
+			<artifactId>dist-datatables-rowgroup</artifactId>
+			<version>1.1.1</version>
+			<scope>runtime</scope>
+		</dependency>
+		<!--Used in Tests&Quizzes, Assignments, Site Info, Resources, Announcements, Sites, selector of multiple items (groups, tools) -->
   		<dependency>
 			<groupId>org.webjars</groupId>
 			<artifactId>bootstrap-multiselect</artifactId>
@@ -214,6 +259,65 @@
 			<artifactId>featherlight</artifactId>
 			<version>1.7.13</version>
 			<scope>runtime</scope>
+		</dependency>
+		<!--Used in Tests&Quizzes, Gradebook, Forums, autocomplete with previous inputs -->
+		<dependency>
+			<groupId>org.webjars.npm</groupId>
+			<artifactId>awesomplete</artifactId>
+			<version>1.1.5</version>
+		</dependency>
+		<!--Used in Profile, record name pronunciation -->
+		<dependency>
+			<groupId>org.webjars.npm</groupId>
+			<artifactId>recordrtc</artifactId>
+			<version>5.5.8</version>
+		</dependency>
+		<!--Used in Profile, record name pronunciation -->
+		<dependency>
+			<groupId>org.webjars.npm</groupId>
+			<artifactId>webrtc-adapter</artifactId>
+			<version>7.5.0</version>
+		</dependency>
+		<!--Used in Tests&Quizzes, validation of fill in numeric questions -->
+		<dependency>
+			<groupId>org.webjars.npm</groupId>
+			<artifactId>mathjs</artifactId>
+			<version>6.5.0</version>
+		</dependency>
+		<!--Used in feedback tool-->
+		<dependency>
+			<groupId>org.webjars.bower</groupId>
+			<artifactId>multifile</artifactId>
+			<version>2.2.2</version>
+		</dependency>
+		<!--Used in the site group manager helper-->
+		<dependency>
+			<groupId>org.webjars.bower</groupId>
+			<artifactId>multiselect-two-sides</artifactId>
+			<version>2.5.5</version>
+		</dependency>
+		<dependency>
+			<groupId>org.webjars</groupId>
+			<artifactId>pdf-js</artifactId>
+			<version>2.3.200</version>
+		</dependency>
+		<dependency>
+			<groupId>org.webjars</groupId>
+			<artifactId>viewerjs</artifactId>
+			<version>0.5.8</version>
+		</dependency>
+		<!--Used in the BasicLTI and Site Manage-->
+		<dependency>
+			<groupId>org.webjars.npm</groupId>
+			<artifactId>fontawesome-iconpicker</artifactId>
+			<!-- Newer versions of this only compatible with FontAwesome 5 -->
+			<!-- Might be able to pass icon list to newer versions -->
+			<version>1.4.1</version>
+		</dependency>
+		<dependency>
+			<groupId>org.webjars.npm</groupId>
+			<artifactId>flatpickr</artifactId>
+			<version>4.6.3</version>
 		</dependency>
 	</dependencies>
 	<profiles>
@@ -250,7 +354,7 @@
 				<sakai.skin.source>morpheus-master</sakai.skin.source>
 				<sakai.skin.target>morpheus-default</sakai.skin.target>
 				<sakai.skin.customization.file>src/${sakai.skin.source}/sass/examples/_customization_example_empty.scss</sakai.skin.customization.file>
-				<sakai.skin.outputSyle>compressed</sakai.skin.outputSyle>
+				<sakai.skin.outputStyle>compressed</sakai.skin.outputStyle>
 			</properties>
 			<build>
 				<plugins>
@@ -331,61 +435,97 @@
 								</configuration>
 							</execution>
 						</executions>
-					</plugin>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>com.samaxes.maven</groupId>
+                        <artifactId>minify-maven-plugin</artifactId>
+                        <version>1.7.6</version>
+                        <executions>
+                            <execution>
+                                <id>default-minify</id>
+                                <configuration>
+                                    <charset>UTF-8</charset>
+                                    <webappSourceDir>${basedir}/src/${sakai.skin.source}</webappSourceDir>
+                                    <jsSourceDir>js/src/</jsSourceDir>
+                                    <jsIncludes>*.js</jsIncludes>
+                                    <jsTargetDir>skin/${sakai.skin.target}/js</jsTargetDir>
+                                    <jsFinalFile>morpheus.scripts.js</jsFinalFile>
+                                    <jsEngine>CLOSURE</jsEngine>
+                                </configuration>
+                                <goals><goal>minify</goal></goals>
+                            </execution>
+                            <execution>
+                                <id>elfinder-minify</id>
+                                <configuration>
+                                    <charset>UTF-8</charset>
+                                    <webappSourceDir>${basedir}/src/webapp</webappSourceDir>
+                                    <jsSourceDir>editor/elfinder/sakai/js/src/</jsSourceDir>
+                                    <jsSourceFiles>
+										<jsSourceFile>sakai.js</jsSourceFile>
+										<jsSourceFile>query.js</jsSourceFile>
+										<jsSourceFile>tools.js</jsSourceFile>
+										<jsSourceFile>ui.js</jsSourceFile>
+										<jsSourceFile>resizer.js</jsSourceFile>
+										<jsSourceFile>options.js</jsSourceFile>
+										<jsSourceFile>editors.js</jsSourceFile>
+										<jsSourceFile>confirm.js</jsSourceFile>
+										<jsSourceFile>i18n.js</jsSourceFile>
+										<jsSourceFile>init.js</jsSourceFile>
+                                    </jsSourceFiles>
+                                    <jsTargetDir>editor/elfinder/sakai/js</jsTargetDir>
+                                    <jsFinalFile>sakai-elfinder.js</jsFinalFile>
+                                    <jsEngine>CLOSURE</jsEngine>
+                                </configuration>
+                                <goals><goal>minify</goal></goals>
+                            </execution>
+                        </executions>
+                    </plugin>
 					<plugin>
-						<groupId>net.alchim31.maven</groupId>
-						<artifactId>yuicompressor-maven-plugin</artifactId>
-						<version>1.5.1</version>
+						<groupId>com.google.code.maven-replacer-plugin</groupId>
+						<artifactId>replacer</artifactId>
+						<version>1.5.3</version>
 						<executions>
 							<execution>
+								<id>replace-for-custom-skin</id>
+								<phase>process-sources</phase>
 								<goals>
-									<goal>compress</goal>
+									<goal>replace</goal>
 								</goals>
+								<configuration>
+									<ignoreMissingFile>false</ignoreMissingFile>
+                                    <file>${project.basedir}/src/morpheus-master/sass/_defaults.scss</file>
+									<replacements>
+										<replacement>
+											<token>morpheus-default</token>
+											<value>${sakai.skin.target}</value>
+										</replacement>
+									</replacements>
+								</configuration>
+							</execution>
+							<execution>
+								<id>revert-previous-replace</id>
+								<phase>package</phase>
+								<goals>
+									<goal>replace</goal>
+								</goals>
+								<configuration>
+									<ignoreMissingFile>false</ignoreMissingFile>
+                                    <file>${project.basedir}/src/morpheus-master/sass/_defaults.scss</file>
+									<replacements>
+										<replacement>
+											<token>${sakai.skin.target}</token>
+											<value>morpheus-default</value>
+										</replacement>
+									</replacements>
+								</configuration>
 							</execution>
 						</executions>
-						<configuration>
-							<force>true</force>
-							<nosuffix>true</nosuffix>
-							<sourceDirectory>${basedir}/src/${sakai.skin.source}/js/</sourceDirectory>
-							<outputDirectory>${project.build.directory}/js/</outputDirectory>
-							<aggregations>
-								<aggregation>
-									<inputDir>${project.build.directory}/js/src/</inputDir>
-									<includes>
-										<include>**/*.js</include>
-									</includes>
-									<output>${project.build.directory}/${project.build.finalName}/skin/${sakai.skin.target}/js/morpheus.scripts.min.js</output>
-								</aggregation>
-								<aggregation>
-									<inputDir>${project.build.directory}/js/plugins/</inputDir>
-									<includes>
-										<include>**/*.js</include>
-									</includes>
-									<output>${project.build.directory}/${project.build.finalName}/skin/${sakai.skin.target}/js/morpheus.plugins.min.js</output>
-								</aggregation>
-								<aggregation>
-									<inputDir>src/webapp/editor/elfinder/sakai/js/src</inputDir>
-									<includes>
-										<include>sakai.js</include>
-										<include>query.js</include>
-										<include>tools.js</include>
-										<include>ui.js</include>
-										<include>resizer.js</include>
-										<include>options.js</include>
-										<include>editors.js</include>
-										<include>confirm.js</include>
-										<include>i18n.js</include>
-										<include>init.js</include>
-									</includes>
-									<output>${project.build.directory}/${project.build.finalName}/editor/elfinder/sakai/js/sakai-elfinder.min.js</output>
-								</aggregation>
-							</aggregations>
-						</configuration>
 					</plugin>
 					<plugin>
-					   <groupId>com.github.warmuuh</groupId>
+					   <groupId>com.gitlab.haynes</groupId>
 					   <artifactId>libsass-maven-plugin</artifactId>
-					   <version>0.2.6-libsass_3.4.0</version>
+					   <version>0.2.26</version>
 					   <executions>
 					       <execution>
 					           <phase>process-resources</phase>
@@ -395,7 +535,7 @@
 					       </execution>
 					   </executions>
 					   <configuration>
-					       <outputStyle>${sakai.skin.outputSyle}</outputStyle>
+					       <outputStyle>${sakai.skin.outputStyle}</outputStyle>
 					       <imgPath>${basedir}/src/${sakai.skin.source}/images/</imgPath>
 					       <inputPath>${basedir}/src/${sakai.skin.source}/sass/</inputPath>
 					       <outputPath>${basedir}/src/webapp/skin/${sakai.skin.target}</outputPath>
@@ -405,7 +545,7 @@
 					</plugin>
 					<plugin>
 						<artifactId>maven-clean-plugin</artifactId>
-						<version>2.6.1</version>
+						<version>3.1.0</version>
 						<executions>
 							<execution>
 								<id>remove-skin</id>
@@ -510,7 +650,6 @@
 			</plugin>
 			<plugin>
 				<artifactId>maven-war-plugin</artifactId>
-				<version>3.0.0</version>
 				<configuration>
 					<warSourceExcludes>editor/elfinder/sakai/js/src/**</warSourceExcludes>
 					<webResources>

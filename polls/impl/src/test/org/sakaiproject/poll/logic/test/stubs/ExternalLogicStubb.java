@@ -45,6 +45,11 @@ public class ExternalLogicStubb implements ExternalLogic {
 		return null;
 	}
 
+	public String getCurrentToolURL() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 	public String currentUserId = null;
 	public String getCurrentUserId() {
 		return currentUserId;
@@ -114,7 +119,7 @@ public class ExternalLogicStubb implements ExternalLogic {
 		
 	}
 
-	public void registerFunction(String function) {
+	public void registerFunction(String function, boolean userMutable) {
 		// TODO Auto-generated method stub
 		
 	}
@@ -208,8 +213,32 @@ public class ExternalLogicStubb implements ExternalLogic {
     }
 
     @Override
-    public void registerStatement(String pollText, boolean newPoll) {
+    public void registerStatement(String pollText, boolean newPoll, String pollId) {
         // TODO Auto-generated method stub
     }
+    
+    @Override
+    public int getNumberUsersCanVote() {
+    	return 0;
+    }
+
+	@Override
+	public String convertFormattedTextToPlaintext(String text) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public String processFormattedText(String text, StringBuilder errorMessages) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public String processFormattedText(String strFromBrowser, StringBuilder errorMessages, boolean checkForEvilTags,
+			boolean replaceWhitespaceTags) {
+		// TODO Auto-generated method stub
+		return null;
+	}
 
 }

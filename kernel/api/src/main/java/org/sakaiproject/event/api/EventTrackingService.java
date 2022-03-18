@@ -21,10 +21,10 @@
 
 package org.sakaiproject.event.api;
 
+import java.time.Instant;
 import java.util.Observer;
 
 import org.sakaiproject.event.api.LearningResourceStoreService.LRS_Statement;
-import org.sakaiproject.time.api.Time;
 import org.sakaiproject.user.api.User;
 
 /**
@@ -86,7 +86,7 @@ public interface EventTrackingService
 	 */
 	Event newEvent(String event, String resource, String context, boolean modify, int priority);
 
-/**
+	/**
 	 * Construct a Event object.
 	 * 
 	 * @param event
@@ -104,6 +104,26 @@ public interface EventTrackingService
 	 * @return A new Event object that can be used with this service.
 	 */
 	Event newEvent(String event, String resource, String context, boolean modify, int priority, LRS_Statement lrsStatement);
+
+	/**
+	 * Construct a Event object.
+	 *
+	 * @param event
+	 *        The Event id.
+	 * @param resource
+	 *        The resource reference.
+	 * @param context
+	 *        The Event's context (may be null, if null will try to detect context).
+	 * @param modify
+	 *        Set to true if this event caused a resource modification, false if it was just an access.
+	 * @param priority
+	 *        The Event's notification priority. Use NotificationService.NOTI_OPTIONAL as default.
+	 * @param isTransient
+	 *        Setting this to true means that the event will never be persisted into storage. It will only ever
+	 *        exist in memory.
+	 * @return A new Event object that can be used with this service.
+	 */
+	Event newEvent(String event, String resource, String context, boolean modify, int priority, boolean isTransient);
 
 	/**
 	 * Post an event
@@ -180,7 +200,7 @@ public interface EventTrackingService
 	 * @param event
 	 * @param fireTime
 	 */
-	void delay(Event event, Time fireTime);
+	void delay(Event event, Instant fireTime);
 
 	/**
 	 * Cancel all delayed events for a resource that haven't yet fired.

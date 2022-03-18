@@ -27,7 +27,7 @@ import lombok.Data;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import org.sakaiproject.chat2.model.ChatChannel;
 import org.sakaiproject.chat2.model.ChatManager;
@@ -101,8 +101,8 @@ public class ChatMessageEntityProvider implements CoreEntityProvider,
 			
 			try {
 				User msgowner = userDirectoryService.getUser(this.owner);
-				this.ownerDisplayId = msgowner.getDisplayId();
-				this.ownerDisplayName = msgowner.getDisplayName();
+				this.ownerDisplayId = msgowner.getDisplayId(this.context);
+				this.ownerDisplayName = msgowner.getDisplayName(this.context);
 			} catch (UserNotDefinedException e) {
 				// user not found - ignore
 			}

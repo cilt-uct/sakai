@@ -42,9 +42,7 @@ import org.sakaiproject.tool.assessment.data.ifc.grading.StudentGradingSummaryIf
 public interface AssessmentGradingFacadeQueriesAPI
 {
 
-  public List getTotalScores(String publishedId, String which);
-
-  public List getTotalScores(String publishedId, String which, boolean getSubmittedOnly);
+  public List<AssessmentGradingData> getTotalScores(Long publishedId, String which, boolean getSubmittedOnly);
   
   /**
    * Get all submissions that are flagged for grading
@@ -248,7 +246,9 @@ public interface AssessmentGradingFacadeQueriesAPI
   public boolean getHasGradingData(Long publishedAssessmentId);
 
   public void removeUnsubmittedAssessmentGradingData(AssessmentGradingData data);
-    
+
+  public void removeAssessmentGradingData(AssessmentGradingData data);
+
   public List<Boolean> getHasGradingDataAndHasSubmission(Long publishedAssessmentId);
   
   
