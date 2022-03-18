@@ -30,9 +30,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.lang3.BooleanUtils;
 import org.osid.assessment.AssessmentException;
-import org.osid.assessment.Item;
 import org.osid.shared.Type;
 import org.sakaiproject.tool.assessment.data.dao.assessment.ItemData;
 import org.sakaiproject.tool.assessment.data.dao.assessment.ItemFeedback;
@@ -91,6 +94,7 @@ public class ItemFacade implements Serializable, ItemDataIfc, Comparable<ItemDat
   protected Date createdDate;
   protected String lastModifiedBy;
   protected Date lastModifiedDate;
+  protected Boolean isExtraCredit = Boolean.FALSE;
   protected Set itemTextSet;
   protected Set itemMetaDataSet;
   protected Set itemTagSet;
@@ -102,6 +106,8 @@ public class ItemFacade implements Serializable, ItemDataIfc, Comparable<ItemDat
   protected String leadInText;
   protected Integer answerOptionsRichCount;
   protected Integer answerOptionsSimpleOrRich;
+  
+  @Getter @Setter private Long originalItemId;
 
   
   /** ItemFacade is the class that is exposed to developer
@@ -118,10 +124,9 @@ public class ItemFacade implements Serializable, ItemDataIfc, Comparable<ItemDat
   // need to hook ItemFacade.data to ItemData, our POJO for Hibernate
   // persistence
    this.data = new ItemData();
-   ItemImpl itemImpl = new ItemImpl(); //<-- place holder
-   item = (Item)itemImpl;
+   this.item = new ItemImpl(); //<-- place holder
    try {
-     item.updateData(this.data);
+     this.item.updateData(this.data);
    }
    catch (AssessmentException ex) {
      throw new DataFacadeException(ex.getMessage());
@@ -137,10 +142,9 @@ public class ItemFacade implements Serializable, ItemDataIfc, Comparable<ItemDat
    */
   public ItemFacade(ItemDataIfc data){
     this.data = data;
-    ItemImpl itemImpl = new ItemImpl(); // place holder
-    item = (Item)itemImpl;
+    this.item = new ItemImpl(); // place holder
     try {
-      item.updateData(this.data);
+      this.item.updateData(this.data);
     }
     catch (AssessmentException ex) {
       throw new DataFacadeException(ex.getMessage());
@@ -157,22 +161,6 @@ public class ItemFacade implements Serializable, ItemDataIfc, Comparable<ItemDat
     this.answerOptionsRichCount = getAnswerOptionsRichCount();
     this.answerOptionsSimpleOrRich = getAnswerOptionsSimpleOrRich();
   }
-
-    /*
-  public Object clone() throws CloneNotSupportedException{
-        ItemData itemdataOrig = (ItemData) this.data;
-  ItemData cloneditemdata = (ItemData) itemdataOrig.clone();
-  // set itemId and itemIdString = 0
-        cloneditemdata.setItemId(new Long(0));
-        cloneditemdata.setItemIdString("0");
-        Object cloned = new ItemFacade(cloneditemdata);
-        return cloned;
-    }
-    */
-
-  // the following method's signature has a one to one relationship to
-  // org.sakaiproject.tool.assessment.osid.item.ItemImpl
-  // which implements org.osid.assessment.Item
 
   /**
    * Get the Id for this ItemFacade.
@@ -241,6 +229,11 @@ public class ItemFacade implements Serializable, ItemDataIfc, Comparable<ItemDat
    */
   public void setData(ItemDataIfc data) {
       this.data = data;
+    try {
+      this.item.updateData(data);
+    } catch (AssessmentException e) {
+      throw new DataFacadeException(e.getMessage());
+    }
   }
 
   // the following methods implements
@@ -677,12 +670,27 @@ public class ItemFacade implements Serializable, ItemDataIfc, Comparable<ItemDat
     this.data.setLastModifiedDate(lastModifiedDate);
   }
 
+  public void setIsExtraCredit(Boolean isExtraCredit) {
+    isExtraCredit = BooleanUtils.toBoolean(isExtraCredit);
+    this.isExtraCredit = isExtraCredit;
+    this.data.setIsExtraCredit(isExtraCredit);
+  }
+
+  public Boolean getIsExtraCredit() throws DataFacadeException {
+      try {
+          this.data = (ItemDataIfc) item.getData();
+      } catch (AssessmentException ex) {
+          throw new DataFacadeException(ex.getMessage());
+      }
+      return this.data.getIsExtraCredit();
+  }
+
   /**
    * Get item text set (question text set) from ItemFacade.data
    * @return
    * @throws DataFacadeException
    */
-  public Set getItemTextSet() throws DataFacadeException {
+  public Set<ItemTextIfc> getItemTextSet() throws DataFacadeException {
     try {
       this.data = (ItemDataIfc) item.getData();
     }
@@ -1060,7 +1068,7 @@ public class ItemFacade implements Serializable, ItemDataIfc, Comparable<ItemDat
     return this.data.getItemAttachmentSet();
   }
 
-  public void setItemAttachmentSet(Set itemAttachmentSet) {
+  public void setItemAttachmentSet(Set<ItemAttachmentIfc> itemAttachmentSet) {
     this.itemAttachmentSet = itemAttachmentSet;
     this.data.setItemAttachmentSet(itemAttachmentSet);
   }
@@ -1171,7 +1179,11 @@ public class ItemFacade implements Serializable, ItemDataIfc, Comparable<ItemDat
   public String getImageMapSrc() {
 	  return getItemMetaDataByLabel(ItemMetaDataIfc.IMAGE_MAP_SRC);
   }
-  
+
+  public String getImageMapAltText() {
+      return getItemMetaDataByLabel(ItemMetaDataIfc.IMAGE_MAP_ALT_TEXT);
+  }
+
 	public List getEmiAnswerOptions() {
 		try {
 			this.data = (ItemDataIfc) item.getData();
@@ -1287,9 +1299,4 @@ public class ItemFacade implements Serializable, ItemDataIfc, Comparable<ItemDat
   public String getTagListToJsonString() {
     return  this.data.getTagListToJsonString();
   }
-
-  public void setTagListToJsonString(String tagListToJsonString) {
-    this.data.setTagListToJsonString(tagListToJsonString);
-  }
-
 }

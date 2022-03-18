@@ -5,18 +5,13 @@
     <parent>
         <groupId>org.sakaiproject.mailarchive</groupId>
         <artifactId>mailarchive</artifactId>
-        <version>12.5</version>
+        <version>21-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
     <name>sakai-mailarchive-api</name>
     <groupId>org.sakaiproject.mailarchive</groupId>
     <artifactId>sakai-mailarchive-api</artifactId>
-    <organization>
-        <name>The Sakai Foundation</name>
-        <url>http://sakaiproject.org/</url>
-    </organization>
-    <inceptionYear>2003</inceptionYear>
     <packaging>jar</packaging>
 
     <properties>
@@ -37,4 +32,15 @@
             <artifactId>sakai-message-api</artifactId>
         </dependency>
     </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>${basedir}/src/bundle</directory>
+                <includes>
+                    <include>**/*.properties</include>
+                </includes>
+            </resource>
+        </resources>
+    </build>
 </project>

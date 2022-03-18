@@ -26,7 +26,7 @@ package org.sakaiproject.lessonbuildertool.tool.producers;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 
 import uk.org.ponder.messageutil.MessageLocator;
@@ -106,6 +106,8 @@ public class BltiPickerProducer implements ViewComponentProducer, NavigationCase
 		    }
 		}
 
+		boolean appStoresOnly = ((GeneralViewParameters) viewparams).bltiAppStores;
+
 	Integer bltiToolId = ((GeneralViewParameters)viewparams).addTool;
 		BltiTool bltiTool = null;
 		if (bltiToolId == -1)
@@ -132,8 +134,11 @@ public class BltiPickerProducer implements ViewComponentProducer, NavigationCase
 
 		if (bltiTool != null)
 		    UIOutput.make(tofill, "mainhead", bltiTool.title);
-		else
-		    UIOutput.make(tofill, "mainhead", messageLocator.getMessage("simplepage.blti.chooser"));
+		else if (appStoresOnly) {
+			UIOutput.make(tofill, "mainhead", messageLocator.getMessage("simplepage.blti.app"));
+		} else {
+			UIOutput.make(tofill, "mainhead", messageLocator.getMessage("simplepage.blti.chooser"));
+		}
 
 		// here is a URL to return to this page
 		String comeBack = ToolUtils.getToolBaseUrl()+ "/" + ToolManager.getCurrentPlacement().getId() + "/BltiPicker?" +
@@ -158,13 +163,23 @@ public class BltiPickerProducer implements ViewComponentProducer, NavigationCase
 			    currentItem = i.getSakaiId();
 			}
 
-			List<UrlItem> createLinks = bltiEntity.createNewUrls(simplePageBean, bltiToolId);
+			List<UrlItem> createLinks = bltiEntity.createNewUrls(simplePageBean, bltiToolId, appStoresOnly);
 			UrlItem mainLink = null;
 			int toolcount = 0;
 
-			UIBranchContainer toolListContainer = UIBranchContainer.make(tofill, "external-tool-container:");
-			UIOutput.make(toolListContainer, "blti-name-header", messageLocator.getMessage("simplepage.blti.tool.name"));
-			UIOutput.make(toolListContainer, "blti-description-header", messageLocator.getMessage("simplepage.blti.tool.description"));
+			UIBranchContainer toolListContainer = null;
+			if(appStoresOnly) {
+				// If we have one store, we get two links, the last one is the "Cancel/panel=Main" link
+				if ( createLinks.size() <= 2 ) {
+					toolListContainer = UIBranchContainer.make(tofill, "app-store-shortcut:");
+				} else {
+					toolListContainer = UIBranchContainer.make(tofill, "app-store-container:");
+				}
+			} else {
+				toolListContainer = UIBranchContainer.make(tofill, "external-tool-container:");
+				UIOutput.make(toolListContainer, "blti-name-header", messageLocator.getMessage("simplepage.blti.tool.name"));
+				UIOutput.make(toolListContainer, "blti-description-header", messageLocator.getMessage("simplepage.blti.tool.description"));
+			}
 
 			for (UrlItem createLink: createLinks) {
 			    if (createLink.Url.indexOf("panel=Main") >= 0) {
@@ -172,26 +187,26 @@ public class BltiPickerProducer implements ViewComponentProducer, NavigationCase
 				continue;
 			    }
 			    toolcount = 1;
-			    UIBranchContainer link = UIBranchContainer.make(tofill, "blti-create:");
+				UIBranchContainer linkContainer = UIBranchContainer.make(toolListContainer, "blti-create:");
 
-			    UILink.make(link, "blti-create-link", (bltiTool == null ? createLink.label : bltiTool.addText), createLink.Url)
-				.decorate(new UIFreeAttributeDecorator("title", messageLocator.getMessage("simplepage.blti.config")));
-				UIOutput.make(link , "blti-create-text", (bltiTool == null ? createLink.label : bltiTool.addText));
-				UIOutput.make(link , "blti-create-description", (bltiTool == null ? createLink.description : bltiTool.description));
+				UILink link = UILink.make(linkContainer, "blti-create-link", createLink.Url);
+				link.decorate(new UIFreeAttributeDecorator("title", messageLocator.getMessage("simplepage.blti.config")));
+				UIOutput.make(linkContainer, "blti-create-text", (bltiTool == null ? createLink.label : bltiTool.addText));
+				UIOutput.make(linkContainer, "blti-create-description", (bltiTool == null ? createLink.description : bltiTool.description));
 
-			    if ( createLink.fa_icon != null ) {
-				UIOutput.make(link, "blti-create-icon", "")
+			    if ( createLink.fa_icon != null && !createLink.search ) {
+			        UIOutput.make(linkContainer, "blti-create-icon", "")
 				    .decorate(new UIFreeAttributeDecorator("class", "fa " + createLink.fa_icon));
 			    }
 
 			    if ( createLink.search ) {
-				UIOutput.make(link, "blti-search-icon");
+			        UIOutput.make(linkContainer, "blti-search-icon");
 			    }
 
 			}
 			
 			if ( toolcount > 0 ) {
-			    UIOutput.make(tofill, "blti-tools-text", messageLocator.getMessage("simplepage.blti.tools.text"));
+				UIOutput.make(tofill, "blti-tools-text", appStoresOnly ? messageLocator.getMessage("simplepage.blti.app.store.text") : messageLocator.getMessage("simplepage.blti.tools.text"));
 			} else { 
 			    UIOutput.make(tofill, "no-blti-tools");
 			    UIOutput.make(tofill, "no-blti-tools-text", messageLocator.getMessage("simplepage.no_blti_tools"));

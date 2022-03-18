@@ -41,7 +41,7 @@ import javax.faces.event.ActionEvent;
 
 import lombok.extern.slf4j.Slf4j;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.sakaiproject.authz.api.SecurityService;
@@ -73,6 +73,7 @@ import org.sakaiproject.util.MergedList;
 import org.sakaiproject.util.MergedListEntryProviderFixedListWrapper;
 import org.sakaiproject.util.ResourceLoader;
 import org.sakaiproject.util.StringUtil;
+import org.sakaiproject.util.Validator;
 import org.sakaiproject.entitybroker.EntityBroker;
 import org.sakaiproject.entitybroker.EntityReference;
 import org.sakaiproject.entitybroker.entityprovider.extension.ActionReturn;
@@ -92,7 +93,7 @@ public class CalendarBean {
 	private static final String 					MERGED_CALENDARS_PROP 	= "mergedCalendarReferences";
 
 	/** Resource bundle */
-	private transient ResourceLoader				msgs					= new ResourceLoader("calendar");
+	private static final ResourceLoader				msgs					= new ResourceLoader("calendar");
 	
 	private CalendarUtil calendarUtil = new CalendarUtil();
 	
@@ -782,6 +783,9 @@ public class CalendarBean {
 					}
 					
 				}catch(EntityNotFoundException e){
+					final String openDateErrorDescription = msgs.getFormattedMessage("java.alert.opendatedescription",
+									event.getField(CalendarUtil.NEW_ASSIGNMENT_OPEN_DATE_ANNOUNCED));
+					selectedEvent.setOpenDateErrorDescription(openDateErrorDescription);
 					selectedEvent.setOpenDateError(true);
 				}				
 				
@@ -843,8 +847,8 @@ public class CalendarBean {
 			url.append("/directtool/");
 			url.append(tc.getId());
 			url.append("?eventReference=");
-			url.append(eventRef);
-			url.append("&panel=Main&sakai_action=doDescription&sakai.state.reset=true");		
+			url.append(Validator.escapeUrl(eventRef));
+			url.append("&panel=Main&sakai_action=doDescription&sakai.state.reset=true");
 			return url.toString();
 		}else{
 			// no schedule tool in site

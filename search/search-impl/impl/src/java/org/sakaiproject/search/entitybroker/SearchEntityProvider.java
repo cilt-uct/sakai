@@ -28,16 +28,30 @@ import org.sakaiproject.entitybroker.entityprovider.annotations.EntityCustomActi
 import org.sakaiproject.entitybroker.entityprovider.capabilities.ActionsExecutable;
 import org.sakaiproject.entitybroker.entityprovider.capabilities.Describeable;
 import org.sakaiproject.entitybroker.entityprovider.capabilities.Outputable;
+import org.sakaiproject.entitybroker.entityprovider.extension.ActionReturn;
 import org.sakaiproject.entitybroker.entityprovider.extension.Formats;
 import org.sakaiproject.entitybroker.entityprovider.search.Restriction;
 import org.sakaiproject.entitybroker.entityprovider.search.Search;
 import org.sakaiproject.entitybroker.util.AbstractEntityProvider;
-import org.sakaiproject.search.api.*;
+import org.sakaiproject.exception.IdUnusedException;
+import org.sakaiproject.search.api.EntityContentProducer;
+import org.sakaiproject.search.api.InvalidSearchQueryException;
+import org.sakaiproject.search.api.SearchIndexBuilder;
+import org.sakaiproject.search.api.SearchResult;
+import org.sakaiproject.search.api.SearchService;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.user.api.UserDirectoryService;
 
-import java.util.*;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Entity provider for Entity broker giving access to search services through a an HTTP method
@@ -45,8 +59,13 @@ import java.util.*;
  * @author Adrian Fish (a.fish@lancaster.ac.uk)
  * @author Colin Hebert
  */
+@Setter
+@Slf4j
 public class SearchEntityProvider extends AbstractEntityProvider implements ActionsExecutable, Outputable, Describeable {
+
     private static final int DEFAULT_RESULT_COUNT = 10;
+    public static final String REQUEST_PARAMETER_Q = "q";
+
     private UserDirectoryService userDirectoryService;
     private SearchService searchService;
     private SearchIndexBuilder searchIndexBuilder;
@@ -63,7 +82,7 @@ public class SearchEntityProvider extends AbstractEntityProvider implements Acti
     }
 
     /**
-     * Handled formats, such as JSon and XML
+     * Handled formats, such as JSON and XML
      *
      * @return formats supported
      */
@@ -80,7 +99,8 @@ public class SearchEntityProvider extends AbstractEntityProvider implements Acti
      * @return a list of SearchResults
      */
     @EntityCustomAction(action = "search", viewKey = EntityView.VIEW_LIST)
-    public List<SearchResultEntity> search(EntityReference ref, Search search) {
+    public ActionReturn search(EntityReference ref, Search search) {
+
         try {
             //Get the query sent by the client
             String query = extractQuery(search.getRestrictionByProperty("searchTerms"));
@@ -88,22 +108,26 @@ public class SearchEntityProvider extends AbstractEntityProvider implements Acti
             List<String> contexts = extractContexts(search.getRestrictionByProperty("contexts"));
 
             //Set the limit if it hasn't been set already
-            if (search.getLimit() < 0)
+            if (search.getLimit() < 0) {
                 search.setLimit(DEFAULT_RESULT_COUNT);
-
-            //Actual search
-            SearchList searchResults = searchService.search(query, contexts, (int) search.getStart(), (int) search.getLimit());
-
-            //Transforms SearchResult in a SearchResultEntity to avoid conflicts with the getId() method (see SRCH-85)
-            List<SearchResultEntity> results = new ArrayList<SearchResultEntity>(searchResults.size());
-            for (SearchResult result : searchResults) {
-                results.add(new SearchResultEntity(result));
             }
 
-            return results;
+            //Transforms SearchResult in a SearchResultEntity to avoid conflicts with the getId() method (see SRCH-85)
+            List<SearchResultEntity> results = 
+                searchService.search(query, contexts, (int) search.getStart(), (int) search.getLimit())
+                    .stream().map(SearchResultEntity::new).collect(Collectors.toList());
+
+            return new ActionReturn(results);
         } catch (InvalidSearchQueryException e) {
             throw new IllegalArgumentException(e);
         }
+    }
+
+    @EntityCustomAction(action = "suggestions", viewKey = EntityView.VIEW_LIST)
+    public ActionReturn handleSuggestions(Map<String, String> params) {
+
+        String[] suggestions = searchService.getSearchSuggestions(params.get(REQUEST_PARAMETER_Q), null, true);
+        return new ActionReturn(Arrays.asList(suggestions), null, Formats.JSON);
     }
 
     /**
@@ -113,12 +137,9 @@ public class SearchEntityProvider extends AbstractEntityProvider implements Acti
      */
     @EntityCustomAction(action = "tools", viewKey = EntityView.VIEW_LIST)
     public Set<String> getTools() {
-        List<EntityContentProducer> entityContentProducers = searchIndexBuilder.getContentProducers();
-        Set<String> tools = new HashSet<String>(entityContentProducers.size());
-        for (EntityContentProducer entityContentProducer : entityContentProducers) {
-            tools.add(entityContentProducer.getTool());
-        }
-        return tools;
+
+        return searchIndexBuilder.getContentProducers()
+            .stream().map(EntityContentProducer::getTool).collect(Collectors.toSet());
     }
 
     /**
@@ -129,15 +150,12 @@ public class SearchEntityProvider extends AbstractEntityProvider implements Acti
      * @throws IllegalArgumentException If no query has been provided
      */
     private String extractQuery(Restriction searchTermsRestriction) {
-        if (searchTermsRestriction == null)
-            throw new IllegalArgumentException("No searchTerms supplied");
 
-        StringBuilder searchQuery = new StringBuilder();
-        for (String term : (String[]) searchTermsRestriction.getArrayValue()) {
-            //Concatenate with spaces, if the user wants a coma separated value he can easily enter comas in his query.
-            searchQuery.append(term).append(' ');
+        if (searchTermsRestriction == null) {
+            throw new IllegalArgumentException("No searchTerms supplied");
         }
-        return searchQuery.toString();
+
+        return String.join(" ", (String[]) searchTermsRestriction.getArrayValue());
     }
 
     /**
@@ -147,13 +165,9 @@ public class SearchEntityProvider extends AbstractEntityProvider implements Acti
      * @return A list of contexts (sites) where the search will be done
      */
     private List<String> extractContexts(Restriction contextsRestriction) {
-        List<String> contexts;
-        if (contextsRestriction != null)
-            contexts = Arrays.asList((String[]) contextsRestriction.getArrayValue());
-        else
-            // No contexts supplied. Get all the sites the current user is a member of
-            contexts = getAllSites();
-        return contexts;
+
+        return (contextsRestriction != null)
+                    ? Arrays.asList((String[]) contextsRestriction.getArrayValue()) :  getAllSiteIds();
     }
 
     /**
@@ -161,36 +175,14 @@ public class SearchEntityProvider extends AbstractEntityProvider implements Acti
      *
      * @return a list of contexts (sites IDs) available for the current user
      */
-    private List<String> getAllSites() {
-        List<Site> sites = siteService.getSites(SiteService.SelectionType.ACCESS, null, null, null, null, null);
-        List<String> siteIds = new ArrayList<String>(sites.size());
-        for (Site site : sites) {
-            if (site != null && site.getId() != null)
-                siteIds.add(site.getId());
-        }
+    private List<String> getAllSiteIds() {
+
+        List<String> siteIds = siteService.getSites(SiteService.SelectionType.ACCESS, null, null, null, null, null)
+            .stream().collect(Collectors.mapping(Site::getId, Collectors.toList()));
 
         //Manually add the user's site
         siteIds.add(siteService.getUserSiteId(userDirectoryService.getCurrentUser().getId()));
         return siteIds;
-    }
-
-    //--------------------------
-    //Spring injected components
-    //--------------------------
-    public void setSearchService(SearchService searchService) {
-        this.searchService = searchService;
-    }
-
-    public void setSiteService(SiteService siteService) {
-        this.siteService = siteService;
-    }
-
-    public void setUserDirectoryService(UserDirectoryService userDirectoryService) {
-        this.userDirectoryService = userDirectoryService;
-    }
-
-    public void setSearchIndexBuilder(SearchIndexBuilder searchIndexBuilder) {
-        this.searchIndexBuilder = searchIndexBuilder;
     }
 
     /**
@@ -202,10 +194,22 @@ public class SearchEntityProvider extends AbstractEntityProvider implements Acti
      * </p>
      */
     public class SearchResultEntity {
+
         private final SearchResult searchResult;
+        @Getter private String siteTitle;
+        @Getter private String siteUrl;
 
         private SearchResultEntity(SearchResult searchResult) {
             this.searchResult = searchResult;
+
+            String siteId = searchResult.getSiteId();
+            try {
+                Site site = siteService.getSite(siteId);
+                this.siteTitle = site.getTitle();
+                this.siteUrl = site.getUrl();
+            } catch (IdUnusedException e) {
+                log.error("No site found for id {}", siteId);
+            }
         }
 
         public String getReference() {

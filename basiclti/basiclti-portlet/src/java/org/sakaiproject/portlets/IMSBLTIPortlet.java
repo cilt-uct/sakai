@@ -19,83 +19,72 @@
 
 package org.sakaiproject.portlets;
 
-import org.sakaiproject.authz.cover.SecurityService;
-import org.sakaiproject.component.cover.HotReloadConfigurationService;
-import org.tsugi.basiclti.BasicLTIUtil;
+import static org.sakaiproject.basiclti.util.SakaiBLTIUtil.BASICLTI_PORTLET_ALLOWROSTER;
+import static org.sakaiproject.basiclti.util.SakaiBLTIUtil.BASICLTI_PORTLET_ALLOWSETTINGS;
+import static org.sakaiproject.basiclti.util.SakaiBLTIUtil.BASICLTI_PORTLET_ASSIGNMENT;
+import static org.sakaiproject.basiclti.util.SakaiBLTIUtil.BASICLTI_PORTLET_KEY;
+import static org.sakaiproject.basiclti.util.SakaiBLTIUtil.BASICLTI_PORTLET_ON;
+import static org.sakaiproject.basiclti.util.SakaiBLTIUtil.BASICLTI_PORTLET_PLACEMENTSECRET;
+import static org.sakaiproject.basiclti.util.SakaiBLTIUtil.BASICLTI_PORTLET_RELEASEEMAIL;
+import static org.sakaiproject.basiclti.util.SakaiBLTIUtil.BASICLTI_PORTLET_RELEASENAME;
+import static org.sakaiproject.basiclti.util.SakaiBLTIUtil.BASICLTI_PORTLET_TOOLTITLE;
 
-import java.lang.Integer;
-
-import java.io.PrintWriter;
 import java.io.IOException;
-import java.net.URL;
+import java.io.PrintWriter;
 import java.net.URI;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.UUID;
-import java.util.Properties;
-import java.util.Map;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.Date;
+import java.net.URL;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.UUID;
 
-import javax.portlet.GenericPortlet;
-import javax.portlet.RenderRequest;
 import javax.portlet.ActionRequest;
 import javax.portlet.ActionResponse;
-import javax.portlet.RenderResponse;
-import javax.portlet.PortletRequest;
-import javax.portlet.PortletException;
-import javax.portlet.PortletPreferences;
-import javax.portlet.PortletContext;
-import javax.portlet.PortletRequestDispatcher;
+import javax.portlet.GenericPortlet;
 import javax.portlet.PortletConfig;
+import javax.portlet.PortletContext;
+import javax.portlet.PortletException;
 import javax.portlet.PortletMode;
+import javax.portlet.PortletPreferences;
+import javax.portlet.PortletRequest;
+import javax.portlet.PortletRequestDispatcher;
 import javax.portlet.PortletSession;
 import javax.portlet.ReadOnlyException;
-
+import javax.portlet.RenderRequest;
+import javax.portlet.RenderResponse;
 import javax.servlet.ServletRequest;
 
-import lombok.extern.slf4j.Slf4j;
-
-import org.sakaiproject.thread_local.cover.ThreadLocalManager;
-
-import org.sakaiproject.portlet.util.PortletHelper;
-
-// Sakai APIs
-import org.sakaiproject.component.cover.ComponentManager;
-import org.sakaiproject.tool.cover.ToolManager;
-import org.sakaiproject.tool.api.Session;
-import org.sakaiproject.tool.cover.SessionManager;
-import org.sakaiproject.site.api.ToolConfiguration;
-import org.sakaiproject.tool.api.Placement;
-import org.sakaiproject.site.api.Site;
-import org.sakaiproject.site.api.SitePage;
-import org.sakaiproject.site.cover.SiteService;
-import org.sakaiproject.exception.IdUnusedException;
-import org.sakaiproject.component.cover.ServerConfigurationService;
-import org.sakaiproject.util.ResourceLoader;
-import org.sakaiproject.util.FormattedText;
-import org.sakaiproject.event.api.Event;
-import org.sakaiproject.event.api.NotificationService;
-//import org.sakaiproject.event.cover.EventTrackingService;
 import org.sakaiproject.basiclti.LocalEventTrackingService;
 import org.sakaiproject.basiclti.util.SakaiBLTIUtil;
 import org.sakaiproject.basiclti.util.SimpleEncryption;
-
+import org.sakaiproject.component.cover.ComponentManager;
+import org.sakaiproject.component.cover.ServerConfigurationService;
+import org.sakaiproject.event.api.Event;
+import org.sakaiproject.event.api.NotificationService;
+import org.sakaiproject.exception.IdUnusedException;
+import org.sakaiproject.portlet.util.PortletHelper;
 import org.sakaiproject.service.gradebook.shared.Assignment;
-import org.sakaiproject.service.gradebook.shared.AssignmentHasIllegalPointsException;
-import org.sakaiproject.service.gradebook.shared.CategoryDefinition;
-import org.sakaiproject.service.gradebook.shared.GradebookService;
-import org.sakaiproject.service.gradebook.shared.GradebookExternalAssessmentService;
 import org.sakaiproject.service.gradebook.shared.ConflictingAssignmentNameException;
-import org.sakaiproject.service.gradebook.shared.ConflictingExternalIdException;
 import org.sakaiproject.service.gradebook.shared.GradebookNotFoundException;
+import org.sakaiproject.service.gradebook.shared.GradebookService;
+import org.sakaiproject.site.api.Site;
+import org.sakaiproject.site.api.SitePage;
+import org.sakaiproject.site.api.ToolConfiguration;
+import org.sakaiproject.site.cover.SiteService;
+import org.sakaiproject.thread_local.cover.ThreadLocalManager;
+import org.sakaiproject.tool.api.Placement;
+import org.sakaiproject.tool.api.Session;
+import org.sakaiproject.tool.cover.SessionManager;
+import org.sakaiproject.tool.cover.ToolManager;
+import org.sakaiproject.util.ResourceLoader;
+import org.sakaiproject.util.api.FormattedText;
+import org.tsugi.basiclti.BasicLTIUtil;
 
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.concurrent.ConcurrentHashMap;
-
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * a simple IMSBLTIPortlet Portlet
@@ -130,23 +119,20 @@ public class IMSBLTIPortlet extends GenericPortlet {
 		// Populate the list of fields
 		fieldList.add("launch");
 		fieldList.add("secret");
-		fieldList.add("key");
+		fieldList.add(BASICLTI_PORTLET_KEY);
 		fieldList.add("xml");
 		fieldList.add("frameheight");
 		fieldList.add("toolorder");
 		fieldList.add("debug");
 		fieldList.add("pagetitle");
-		fieldList.add("tooltitle");
+		fieldList.add(BASICLTI_PORTLET_TOOLTITLE);
 		fieldList.add("custom");
-		fieldList.add("releasename");
-		fieldList.add("releaseemail");
-		fieldList.add("assignment");
+		fieldList.add(BASICLTI_PORTLET_RELEASENAME);
+		fieldList.add(BASICLTI_PORTLET_RELEASEEMAIL);
+		fieldList.add(BASICLTI_PORTLET_ASSIGNMENT);
 		fieldList.add("newpage");
-		fieldList.add("sha256");
-		// fieldList.add("maximize");
-		fieldList.add("allowsettings");
-		fieldList.add("allowroster");
-		fieldList.add("contentlink");
+		fieldList.add(BASICLTI_PORTLET_ALLOWSETTINGS);
+		fieldList.add(BASICLTI_PORTLET_ALLOWROSTER);
 		fieldList.add("splash");
 		fieldList.add("fa_icon");
 	}
@@ -171,7 +157,6 @@ public class IMSBLTIPortlet extends GenericPortlet {
 
 			// Grab that underlying request to get a GET parameter
 			ServletRequest req = (ServletRequest) ThreadLocalManager.get(CURRENT_HTTP_REQUEST);
-			String popupDone = req.getParameter("sakai.popup");
 
 			PrintWriter out = response.getWriter();
 
@@ -183,21 +168,20 @@ public class IMSBLTIPortlet extends GenericPortlet {
 
 			// Get the properties
 			Properties sakaiProperties = getSakaiProperties();
-			String placementSecret = getSakaiProperty(sakaiProperties,"imsti.placementsecret");
-			String allowOutcomes = getSakaiProperty(sakaiProperties,"imsti.allowoutcomes");
-			String allowSettings = getSakaiProperty(sakaiProperties,"imsti.allowsettings");
-			String allowRoster = getSakaiProperty(sakaiProperties,"imsti.allowroster");
-			String assignment = getSakaiProperty(sakaiProperties,"imsti.assignent");
+			String placementSecret = getSakaiProperty(sakaiProperties,"imsti."+BASICLTI_PORTLET_PLACEMENTSECRET);
+			String allowSettings = getSakaiProperty(sakaiProperties,"imsti."+BASICLTI_PORTLET_ALLOWSETTINGS);
+			String allowRoster = getSakaiProperty(sakaiProperties,"imsti."+BASICLTI_PORTLET_ALLOWROSTER);
+			String assignment = getSakaiProperty(sakaiProperties,"imsti."+BASICLTI_PORTLET_ASSIGNMENT);
 			String launch = getSakaiProperty(sakaiProperties,"imsti.launch");
 
-			if ( placementSecret == null && 
-			   ( "on".equals(allowOutcomes) || "on".equals(allowSettings) || 
-				 "on".equals(allowRoster) ) ) {
+			if ( placementSecret == null &&
+			   ( SakaiBLTIUtil.outcomesEnabled() || BASICLTI_PORTLET_ON.equals(allowSettings) ||
+				 BASICLTI_PORTLET_ON.equals(allowRoster) ) ) {
 				String uuid = UUID.randomUUID().toString();
 				Date date = new Date();
 				SimpleDateFormat sdf = new SimpleDateFormat(ISO_8601_FORMAT);
 				String date_secret = sdf.format(date);
-				placement.getPlacementConfig().setProperty("imsti.placementsecret", uuid);
+				placement.getPlacementConfig().setProperty("imsti."+BASICLTI_PORTLET_PLACEMENTSECRET, uuid);
 				placement.getPlacementConfig().setProperty("imsti.placementsecretdate", date_secret);
 				placement.save();
 			}
@@ -218,8 +202,8 @@ public class IMSBLTIPortlet extends GenericPortlet {
 				}
 
 				// Change "newpage" if forcePopup so the portal will do our pop up next time
-				if ( forcePopup && ! "on".equals(newPage) ) {
-					placement.getPlacementConfig().setProperty("imsti.newpage","on");
+				if ( forcePopup && ! BASICLTI_PORTLET_ON.equals(newPage) ) {
+					placement.getPlacementConfig().setProperty("imsti.newpage",BASICLTI_PORTLET_ON);
 					placement.save();
 				}
 
@@ -230,22 +214,16 @@ public class IMSBLTIPortlet extends GenericPortlet {
 				session.setAttribute("sakai:maximized-url",iframeUrl);
 				log.debug("Setting sakai:maximized-url={}", iframeUrl);
 
-				if ( "on".equals(newPage) || forcePopup ) {
+				if ( BASICLTI_PORTLET_ON.equals(newPage) || forcePopup ) {
 					String windowOpen = "window.open('"+iframeUrl+"','BasicLTI');"; 			
-					if ( popupDone == null ) {
-						text.append("<p>\n");
-						text.append("<script type=\"text/javascript\">\n");
-						text.append(windowOpen+"\n");
-						text.append("</script>\n");
-					}
 					String siteName = ServerConfigurationService.getString(SITE_NAME, SAKAI);
 					title = title!=null ? title : rb.getString("tool.name", "your tool");
-					String newPageLaunchText = rb.getFormattedMessage("new.page.launch", new Object[]{FormattedText.escapeHtml(title, false), FormattedText.escapeHtml(siteName, false)});
+					String newPageLaunchText = rb.getFormattedMessage("new.page.launch", new Object[]{ComponentManager.get(FormattedText.class).escapeHtml(title, false), ComponentManager.get(FormattedText.class).escapeHtml(siteName, false)});
 					text.append(newPageLaunchText);
 					text.append("</p>\n");
 					text.append("<input type=\"submit\" onclick=\""+windowOpen+"\" target=\"BasicLTI\" value=\"Launch " + title + "\"/>");
 				} else {
-					if ( "on".equals(maximize) ) {
+					if ( BASICLTI_PORTLET_ON.equals(maximize) ) {
 						text.append("<script type=\"text/javascript\" language=\"JavaScript\">\n");
 						text.append("try { portalMaximizeTool(); } catch (err) { }\n");
 						text.append("</script>\n");
@@ -280,14 +258,14 @@ public class IMSBLTIPortlet extends GenericPortlet {
 					text.append("    if ( message.subject == 'lti.frameResize' ) {\n");
 					text.append("      var height = message.height;\n");
 					text.append("      document.getElementById(idval).height = height;\n");
-					text.append("      window.console && console.log('Received lti.frameResize height='+height);\n");
+					text.append("      window.console && console.debug('Received lti.frameResize height='+height);\n");
 					text.append("    }\n");
 					text.append("    else if ( message.subject == 'lti.pageRefresh' ) {\n");
 					text.append("      location.reload(true);\n");
 					text.append("    }\n");
 					text.append("  } catch (error) {\n");
-					text.append("   window.console && console.log('lti.frameResize of '+idval+' failed height='+height);\n");
-					text.append("   window.console && console.log(e.data);\n");
+					text.append("   window.console && console.debug('lti.frameResize of '+idval+' failed height='+height);\n");
+					text.append("   window.console && console.debug(e.data);\n");
 					text.append("  }\n");
 					text.append("});\n");
 					text.append("</script>\n");
@@ -357,7 +335,7 @@ public class IMSBLTIPortlet extends GenericPortlet {
 				if ( "secret".equals(element)) {
 					propValue = LEAVE_SECRET_ALONE;
 				}
-				oldValues.setProperty(propKey, FormattedText.escapeHtml(propValue,false));
+				oldValues.setProperty(propKey, ComponentManager.get(FormattedText.class).escapeHtml(propValue,false));
 			}
 		}
 
@@ -367,15 +345,9 @@ public class IMSBLTIPortlet extends GenericPortlet {
 		request.setAttribute("allowSettings", new Boolean("true".equals(allowSettings)));
 		String allowRoster = ServerConfigurationService.getString(SakaiBLTIUtil.BASICLTI_ROSTER_ENABLED, SakaiBLTIUtil.BASICLTI_ROSTER_ENABLED_DEFAULT);
 		request.setAttribute("allowRoster", new Boolean("true".equals(allowRoster)));
-		String allowContentLink = ServerConfigurationService.getString(SakaiBLTIUtil.BASICLTI_CONTENTLINK_ENABLED, SakaiBLTIUtil.BASICLTI_CONTENTLINK_ENABLED_DEFAULT);
-		request.setAttribute("allowContentLink", new Boolean("true".equals(allowContentLink)));
 
 		// For outcomes we check for tools in the site before offering the options
 		String allowOutcomes = ServerConfigurationService.getString(SakaiBLTIUtil.BASICLTI_OUTCOMES_ENABLED, SakaiBLTIUtil.BASICLTI_OUTCOMES_ENABLED_DEFAULT);
-		if ( "true".equals(allowOutcomes) ) {
-			String outcomeProp = getCorrectProperty(request, "allowoutcomes", "on");
-			allowOutcomes = "on".equals(outcomeProp) ? "true" : "false";
-		}
 
 		boolean foundLessons = false;
 		boolean foundGradebook = false;
@@ -401,7 +373,6 @@ public class IMSBLTIPortlet extends GenericPortlet {
 			if ( assignments != null && assignments.size() > 0 ) request.setAttribute("assignments", assignments);
 		}
 
-
 		clearErrorMessage(request);
 	}
 
@@ -414,7 +385,7 @@ public class IMSBLTIPortlet extends GenericPortlet {
 		}
 	}
 
-	// Get Property - Precedence is frozen server configuration, sakai tool properties, 
+	// Get Property - Precedence is frozen server configuration, sakai tool properties,
 	//     portlet preferences, sakai tool properties, and then default
 	public String getCorrectProperty(PortletRequest request, String propName, String defaultValue)
 	{
@@ -617,7 +588,7 @@ public class IMSBLTIPortlet extends GenericPortlet {
 	public String getFormParameter(ActionRequest request, Properties sakaiProperties, String propName)
 	{
 		String propValue = getCorrectProperty(request, propName, null);
-		if ( propValue == null || ! isPropertyFinal(propName) ) 
+		if ( propValue == null || ! isPropertyFinal(propName) )
 		{
 			propValue = request.getParameter("imsti."+propName);
 		}
@@ -662,7 +633,7 @@ public class IMSBLTIPortlet extends GenericPortlet {
 				try {
 					URL testUrl = new URL(imsTIUrl);
 					URI testUri = new URI(imsTIUrl);
-				} 
+				}
 				catch(Exception e) {
 					setErrorMessage(request, rb.getString("error.bad.url") );
 					return;
@@ -679,7 +650,7 @@ public class IMSBLTIPortlet extends GenericPortlet {
 			// Make Sure the Assignment is a legal one
 			String assignment = getFormParameter(request,sakaiProperties,"assignment");
 			String newAssignment = getFormParameter(request,sakaiProperties,"newassignment");
-			String oldPlacementSecret = getSakaiProperty(sakaiProperties,"imsti.placementsecret");
+			String oldPlacementSecret = getSakaiProperty(sakaiProperties,"imsti."+BASICLTI_PORTLET_PLACEMENTSECRET);
 			String allowOutcomes = ServerConfigurationService.getString(SakaiBLTIUtil.BASICLTI_OUTCOMES_ENABLED, SakaiBLTIUtil.BASICLTI_OUTCOMES_ENABLED_DEFAULT);
 			String allowSettings = ServerConfigurationService.getString(SakaiBLTIUtil.BASICLTI_SETTINGS_ENABLED, SakaiBLTIUtil.BASICLTI_SETTINGS_ENABLED_DEFAULT);
 			String allowRoster = ServerConfigurationService.getString(SakaiBLTIUtil.BASICLTI_ROSTER_ENABLED, SakaiBLTIUtil.BASICLTI_ROSTER_ENABLED_DEFAULT);
@@ -691,22 +662,22 @@ public class IMSBLTIPortlet extends GenericPortlet {
 			}
 
 			log.debug("old placementsecret={}", oldPlacementSecret);
-			if ( oldPlacementSecret == null && 
-					("true".equals(allowOutcomes) || "true".equals(allowSettings) || 
+			if ( oldPlacementSecret == null &&
+					("true".equals(allowOutcomes) || "true".equals(allowSettings) ||
                      "true".equals(allowRoster) ) ) {
 				try {
 					String uuid = UUID.randomUUID().toString();
 					Date date = new Date();
 					SimpleDateFormat sdf = new SimpleDateFormat(ISO_8601_FORMAT);
 					String date_secret = sdf.format(date);
-					prefs.setValue("sakai:imsti.placementsecret", uuid);
+					prefs.setValue("sakai:imsti."+BASICLTI_PORTLET_PLACEMENTSECRET, uuid);
 					prefs.setValue("sakai:imsti.placementsecretdate", date_secret);
 					log.debug("placementsecret set to={} data={}", uuid, date_secret);
 					changed = true;
 				} catch (ReadOnlyException e) {
 					setErrorMessage(request, rb.getString("error.modify.prefs") );
 					return;
-				} 
+				}
 			}
 
 			if ( "true".equals(allowOutcomes) && assignment != null && assignment.trim().length() > 1 ) {
@@ -719,8 +690,8 @@ public class IMSBLTIPortlet extends GenericPortlet {
 					}
 				}
 				if ( ! found ) {
-					setErrorMessage(request, rb.getString("error.gradable.badassign") + 
-							" " + FormattedText.escapeHtml(assignment,false));
+					setErrorMessage(request, rb.getString("error.gradable.badassign") +
+							" " + ComponentManager.get(FormattedText.class).escapeHtml(assignment,false));
 					return;
 				}
 			}
@@ -785,7 +756,7 @@ public class IMSBLTIPortlet extends GenericPortlet {
 							if ( formParm != null && formParm.trim().length() > 0 ) {
 									formParm = SimpleEncryption.encrypt(key, formParm);
 									// BLTI-195 convert old-style encrypted secrets
-									prefs.reset("sakai:imsti.encryptedsecret"); 
+									prefs.reset("sakai:imsti.encryptedsecret");
 							}
 						} catch (RuntimeException re) {
 							log.warn("Failed to encrypt secret, falling back to plaintext: {}", re.getMessage());
@@ -833,7 +804,7 @@ public class IMSBLTIPortlet extends GenericPortlet {
 
 	/**
 	 * Get the current site page our current tool is placed on.
-	 * 
+	 *
 	 * @return The site page id on which our tool is placed.
 	 */
 	protected String getCurrentSitePageId()

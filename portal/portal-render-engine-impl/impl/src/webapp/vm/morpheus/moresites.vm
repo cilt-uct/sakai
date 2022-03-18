@@ -64,8 +64,8 @@
                     <hr />
 
                     <div id="otherSiteSearch">
-                        <label for="txtSearch" class="sr-only">${rloader.sit_search}</label>
-                        <input type="text" id="txtSearch" name="txtSearch" maxlength="50" placeholder="${rloader.sit_search}">
+                        <label for="txtSearch">${rloader.sit_search}</label>
+                        <input type="text" id="txtSearch" name="txtSearch" maxlength="50">
                         <a id="otherSiteSearchClear" class="other-site-search-clear" href="javascript:void(0);"></a>
                     </div>
                     <div id="noSearchResults" class="is-hidden">${rloader.sit_search_none}</div>
@@ -88,7 +88,7 @@
                                     #end
                                 </a>
                             </div>
-                            <a href="#" id="${site.siteId}" class="toolMenus" aria-haspopup="true" aria-label="${site.siteTitleTrunc} - ${rloader.sit_open_menu}">
+                            <a href="#" id="${site.siteId}" class="toolMenus" aria-haspopup="true" aria-label="$rloader.getFormattedMessage("sit_open_menu", $site.siteTitleTrunc)">
                                 <span class="fa fa-chevron-down" aria-hidden="true"></span>
                             </a>
                         </li>
@@ -164,8 +164,8 @@
 
                         <div class="onoffswitch" style="display: none">
                             <button role="switch" aria-checked="true" aria-labelledby="autofav-description" class="btn btn-lg" id="autoFavoritesEnabled">
-                                <span class="onoffswitch-inner">${rloader.moresite_favorites_on}</span>
-                                <span class="onoffswitch-switch">${rloader.moresite_favorites_off}</span>
+                                <span class="onoffswitch-inner">${rloader.moresite_favorites_off}</span>
+                                <span class="onoffswitch-switch">${rloader.moresite_favorites_on}</span>
                             </button>
                         </div>
                     </div>

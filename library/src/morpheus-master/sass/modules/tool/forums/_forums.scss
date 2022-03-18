@@ -8,8 +8,8 @@
 }
 
 .topic-filter{
-	background: $tool-menu-background-color;
-	border: 1px solid darken( $tool-menu-background-color, 20% );
+	background: var(--tool-menu-background-color);
+	border: 1px solid var(--sakai-border-color);
 	margin: 1em 0;
 	padding: 1em;
 	.topic-header-h3{
@@ -19,7 +19,7 @@
 
 .#{$namespace}sakai-forums{
 	.topicBlocLone{
-		@extend .bs-callout-warn;
+		@extend .bs-callout-info;
 	}
 
 	.permissionRow{
@@ -66,13 +66,18 @@
 	#msgForum{
 		.itemNav{
 			position: absolute;
-			right: 5px;
+			right: 0;				// right-aligned
+			
 			@media #{$phone}{
 				position: inherit;
 				&:after{
 					content: " ";
 					clear: both;
 				}
+			}
+			
+			> .button:first-child {
+				margin-right: $standard-space;	// space the buttons out
 			}
 		}
 		.specialLink{
@@ -86,7 +91,7 @@
 		}
 
 		.view-message-nav{
-			text-align:right;
+			text-align: right;
 		}
 	}
 
@@ -96,6 +101,7 @@
 				margin: 0 0.2em 0 0;
 				@include transform( rotate(0deg) );
 				@include transition( all 0.15s linear );
+				filter: var(--sakai-image-invert);
 			}
 			&.opened{
 				img{
@@ -105,8 +111,15 @@
 		}
 	}
 
+	div.specialLink{
+		max-width: calc(100% - 260px);
+		@media #{$phone} {
+			max-width: unset;
+		}
+	}
+
 	.allMessages{
-		border: 1px solid #ddd;
+		border: 1px solid var(--sakai-border-color);
 		border-collapse: collapse;
 		width: 100%;
 		margin: 1em 0 0 0;
@@ -114,11 +127,11 @@
 			th{
 				vertical-align: text-bottom;
 				padding: 0.8em 0em;
-				background: #F9F9F9;
-				border: 1px solid #ddd;
+				background: var(--sakai-background-color-2);
+				border: 1px solid var(--sakai-border-color);
 				text-align: center;
 				&.header{
-					padding: 0.8em 0.4em;					
+					padding: 0.8em 0.4em;
 					text-align: left;
 				}
 			}
@@ -150,11 +163,14 @@
 			font-weight: 400;
 			margin: 1em 0 0.25em 0;
 			input[type="radio"]{
-				margin: 0 0.5em 0 0;
+				margin: 0 0.5em 0 -2em;
 			}
 			
 			&[for*=forum_assignments]{
 				margin-top: 0;
+			}
+			&.strong {
+				font-weight: 700;
 			}
 		}
 		input[type="text"], textarea{
@@ -181,7 +197,7 @@
 				position: relative;
 			}
 			input[type="checkbox"]{
-				margin-left: 10px;
+				margin: 0 10px;
 				position: inherit;
 				+ label{
 					padding-left: 10px;
@@ -199,17 +215,17 @@
 				}
 			}
 		}
-		.act{
-			margin: 1em 0 0 0;
-		}
 		.permissionRow{
 			label{
 				margin: 0 0 0 0;
+				cursor: pointer;
 			}
 		}
 		.messageInstruction{
 			@extend .bs-callout-danger;
-			display: inline;
+			display: inline-block;
+			margin: 0 $standard-spacing;
+			padding: 5px $standard-spacing;
 			@media #{$phone}{
 				display: inline-block;
 			    margin: 0 0 0 0;
@@ -232,15 +248,61 @@
 			font-size: 1em;
 			padding: 0.3em 0.2em 0.1em 0;
 			a{
-				color: $text-color;
+				color: var(--sakai-text-color-1);
 				text-decoration: none;
-				border-bottom: 1px dotted darken( $tool-background-color, 15% );
-				&:hover{
-					border-bottom: 1px dotted darken( $tool-background-color, 10% );
+				border-bottom: 1px solid var(--sakai-border-color);
+				&:hover, &:focus{
+					color: var(--link-hover-color);
 				}
 			}
 		}
 	}
 
+	.openLinkBlock, .hideLinkBlock {
+		padding: 0;
+		margin: 0.5em 0;
+		&.display-none {
+			display: none;
+		}
+	}
 
+	.fullTopicDescription {
+		display: none;
+		&.display-block {
+			display: block;
+		}
+	}
+
+	.attachListTable {
+		font-size: 0.9em;
+		width: auto;
+		margin-left: 1em;
+	}
+
+	#revise p.anonTopic.checkbox {
+		@include display-flex;
+
+		input[type=checkbox] {
+			min-width: 16px;
+			align-self: center;
+		}
+	}
+	
+	.otherActions{
+		margin-left: $standard-space;	// space between previous group of buttons
+		white-space: nowrap;
+		
+		@media #{$phone} {
+			white-space: normal;
+		}
+		
+		& > a.button {
+			margin: 0 $standard-space $standard-space 0;
+		}
+	}
+
+	.statsTally {
+		color: var(--sakai-text-color-dimmed);
+		font-weight: bold;
+	}
 }

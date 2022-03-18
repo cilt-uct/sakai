@@ -25,7 +25,7 @@ import java.util.Map;
 import java.util.Set;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import org.sakaiproject.tool.assessment.data.dao.assessment.AssessmentAccessControl;
 import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedAssessmentData;
@@ -730,4 +730,18 @@ public class PublishedAssessmentService extends AssessmentService{
 		return PersistenceService.getInstance().getPublishedAssessmentFacadeQueries()
 				.getAllAssessmentsGradingDataByAgentAndSiteId(agentId, siteId);
 	}
+
+	public List getQuestionsIdList(long publishedAssessmentId) {
+		return PersistenceService.getInstance().getPublishedAssessmentFacadeQueries()
+				.getQuestionsIdList(publishedAssessmentId);
+	}
+
+	public List<PublishedAssessmentData> getPublishedDeletedAssessments(String siteId) {
+		return PersistenceService.getInstance().getPublishedAssessmentFacadeQueries().getPublishedDeletedAssessments(siteId);
+	}
+
+	public void restorePublishedAssessment(Long publishedAssessmentId) {
+		PersistenceService.getInstance().getPublishedAssessmentFacadeQueries().restorePublishedAssessment(publishedAssessmentId);
+	}
+
 }

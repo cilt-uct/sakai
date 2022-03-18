@@ -33,7 +33,7 @@
       <head><%= request.getAttribute("html.head") %>
       <title><h:outputText value="#{questionPoolMessages.mv_p}"/></title>
                         <!-- stylesheet and script widgets -->
-<script type="text/JavaScript">
+<script>
 <%@ include file="/js/samigotree.js" %>
               function flagFolders() {
 	          collapseAllRowsForSelectList();
@@ -41,14 +41,14 @@
               }
               window.onload = flagFolders;
 </script>
-<samigo:script path="/../library/js/spinner.js"/>
+<script src="/library/js/spinner.js"></script>
       </head>
 <body onload="collapseAllRowsForSelectList();flagRows();;<%= request.getAttribute("html.body.onload") %>">
   
 <!-- content... -->
  <div class="portletBody">
 <h:form id="movePool">
-<h:messages styleClass="messageSamigo" rendered="#{! empty facesContext.maximumSeverity}" layout="table"/>
+<h:messages styleClass="sak-banner-error" rendered="#{! empty facesContext.maximumSeverity}" layout="table"/>
 <h3>
 <h:outputText rendered="#{questionpool.actionType == 'pool'}" value="#{questionPoolMessages.mv_p}"/>
 <h:outputText rendered="#{questionpool.actionType == 'item'}" value="#{questionPoolMessages.mv_q}"/>
@@ -100,13 +100,13 @@
     onclick="SPNR.disableControlsAndSpin(this, null);">
   </h:commandButton>
 
-	<h:commandButton id="cancel" value="#{commonMessages.cancel_action}" action="#{questionpool.cancelPool}"
+	<h:commandButton id="cancel" value="#{commonMessages.cancel_action}" action="#{questionpool.cancelPool}" immediate="true"
 					 rendered="#{questionpool.actionType == 'pool'}" onclick="SPNR.disableControlsAndSpin(this, null);">
 		<f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.questionpool.CancelPoolListener" />
 		<f:attribute name="returnToParentPool" value="true"/>
 	</h:commandButton>
 
-	<h:commandButton id="cancelItem" value="#{commonMessages.cancel_action}" action="#{questionpool.cancelPool}"
+	<h:commandButton id="cancelItem" value="#{commonMessages.cancel_action}" action="#{questionpool.cancelPool}" immediate="true"
 					 rendered="#{questionpool.actionType == 'item'}" onclick="SPNR.disableControlsAndSpin(this, null);">
 		<f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.questionpool.CancelPoolListener" />
 		<f:attribute name="returnToParentPool" value="false"/>

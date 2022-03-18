@@ -27,6 +27,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.TimeZone;
 
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import org.joda.time.DateTime;
@@ -45,7 +47,7 @@ public class EventSummary implements Serializable {
 	private static final long	serialVersionUID	= 4943854683550852507L;
 
 	/** Resource bundle */
-	private transient ResourceLoader msgs 			= new ResourceLoader("calendar");
+	private static final ResourceLoader msgs 			= new ResourceLoader("calendar");
 	
 	private final int	MAX_TEXT_SIZE	= 30;
 
@@ -64,6 +66,8 @@ public class EventSummary implements Serializable {
 	private List		attachments		= new ArrayList();
 	private List		attachmentsWrp	= new ArrayList();
 	private boolean 	openDateError	= false;
+	@Getter @Setter
+	private String openDateErrorDescription = "";
 
 	public String getDisplayName() {
 		return displayName;

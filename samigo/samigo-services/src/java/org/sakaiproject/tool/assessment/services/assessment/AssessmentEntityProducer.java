@@ -43,10 +43,13 @@ import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.content.api.ContentResource;
 import org.sakaiproject.content.cover.ContentHostingService;
 import org.sakaiproject.db.cover.SqlService;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+
 import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.entity.api.EntityProducer;
 import org.sakaiproject.entity.api.EntityTransferrer;
-import org.sakaiproject.entity.api.EntityTransferrerRefMigrator;
 import org.sakaiproject.entity.api.HttpAccess;
 import org.sakaiproject.entity.api.Reference;
 import org.sakaiproject.entity.api.ResourceProperties;
@@ -81,9 +84,10 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Slf4j
-public class AssessmentEntityProducer implements EntityTransferrer,
-		EntityProducer, EntityTransferrerRefMigrator {
+public class AssessmentEntityProducer implements EntityTransferrer, EntityProducer {
 
     private static final int QTI_VERSION = 1;
     private static final String ARCHIVED_ELEMENT = "assessment";
@@ -111,13 +115,8 @@ public class AssessmentEntityProducer implements EntityTransferrer,
 		return toolIds;
 	}
 
-        public void transferCopyEntities(String fromContext, String toContext, List resourceIds)
-        {
-                transferCopyEntitiesRefMigrator(fromContext, toContext, resourceIds); 
-        }
+	public Map<String, String> transferCopyEntities(String fromContext, String toContext, List<String> resourceIds, List<String> transferOptions) {
 
-        public Map<String, String> transferCopyEntitiesRefMigrator(String fromContext, String toContext, List resourceIds)
-	{
 		AssessmentService service = new AssessmentService();
 		Map<String, String> transversalMap = new HashMap<String, String>();
 		service.copyAllAssessments(fromContext, toContext, transversalMap);
@@ -305,36 +304,25 @@ public class AssessmentEntityProducer implements EntityTransferrer,
 		return true;
 	}
 
-	 
-        public void transferCopyEntities(String fromContext, String toContext, List ids, boolean cleanup)
-        {
-                transferCopyEntitiesRefMigrator(fromContext, toContext, ids, cleanup);
-        }
+	public Map<String, String> transferCopyEntities(String fromContext, String toContext, List<String> ids, List<String> options, boolean cleanup) {
 
-        public Map<String, String> transferCopyEntitiesRefMigrator(String fromContext, String toContext, List ids, boolean cleanup)
-	{	
-		try
-		{
-			if(cleanup == true)
-			{
-			        if (log.isDebugEnabled()) log.debug("deleting assessments from " + toContext);
+		try {
+			if (cleanup) {
+				if (log.isDebugEnabled()) log.debug("deleting assessments from " + toContext);
 				AssessmentService service = new AssessmentService();
 				List assessmentList = service.getAllActiveAssessmentsbyAgent(toContext);
 				log.debug("found " + assessmentList.size() + " assessments in site: " + toContext);
-				Iterator iter =assessmentList.iterator();
-				while (iter.hasNext()) {
+				for (Iterator iter = assessmentList.iterator(); iter.hasNext();) {
 					AssessmentData oneassessment = (AssessmentData) iter.next();
 					log.debug("removing assessemnt id = " +oneassessment.getAssessmentId() );
 					service.removeAssessment(oneassessment.getAssessmentId().toString());
 				}
 			}
-		}
-		catch (Exception e)
-		{
+		} catch (Exception e) {
 			log.error("transferCopyEntities: End removing Assessment data", e);
 		}
 		
-		return transferCopyEntitiesRefMigrator(fromContext, toContext, ids);
+		return transferCopyEntities(fromContext, toContext, ids, null);
 	}
 
 	/**

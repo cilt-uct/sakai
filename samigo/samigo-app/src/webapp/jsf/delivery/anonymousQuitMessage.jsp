@@ -38,14 +38,14 @@
 <div class="portletBody">
 <h3> <h:outputText value="#{deliveryMessages.anonymous_quit_warning}"/></h3>
 <h:form id="redirectLoginForm">
- <div class="messageSamigo2">
+ <div class="sak-banner-warn">
 <h:outputText  value="#{deliveryMessages.non_anonymous_quit_warning_message}" escape="false" rendered="#{!delivery.anonymousLogin}"/>
 <h:outputText  value="#{deliveryMessages.anonymous_quit_warning_message}" escape="false" rendered="#{delivery.anonymousLogin}"/>
  
  </div>
 
 <p class="act">
-    <h:commandButton id="returnToAssessment" value="#{deliveryMessages.button_return_to_assessment}" action="#{delivery.validate}" type="submit" styleClass="active" onclick="disableReturnToAssessment();">
+    <h:commandButton id="returnToAssessment" value="#{deliveryMessages.button_return_to_assessment}" action="#{delivery.validate}" type="submit" styleClass="active">
         <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.delivery.DeliveryActionListener" />
     </h:commandButton>
 </p>

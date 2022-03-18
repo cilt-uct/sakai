@@ -12,9 +12,9 @@
 <head><%= request.getAttribute("html.head") %>
 <title><h:outputText value="#{questionPoolMessages.t_previewPool}"/></title>
 <!-- stylesheet and script widgets -->
-<samigo:stylesheet path="/css/imageQuestion.author.css"/>
-<samigo:script path="/js/selection.author.preview.js"/>
-<script type="text/JavaScript">	
+<link rel="stylesheet" type="text/css" href="/samigo-app/css/imageQuestion.author.css">
+<script src="/samigo-app/js/selection.author.preview.js"></script>
+<script>	
 	jQuery(window).load(function(){
 			
 		$('input:hidden[id*=hiddenSerializedCoords_]').each(function(){

@@ -27,9 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
-
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.cheftool.Context;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.component.cover.ComponentManager;
@@ -49,6 +47,9 @@ import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.util.ParameterParser;
 import org.sakaiproject.util.ResourceLoader;
+import org.sakaiproject.util.comparator.GroupTitleComparator;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * This class handles all aspects of joinable site settings within the site-manage tool 
@@ -1400,20 +1401,5 @@ public class JoinableSiteSettings
 			state.removeAttribute( stateAttributeName );
 		}
 	}
-	
-	/**********************************************************************************************
-	 ********************************** Sub-classes ***********************************************
-	 **********************************************************************************************/
-	
-	/**
-	 * Comparator class used to compare Group objects based on title
-	 */
-	public static class GroupTitleComparator implements Comparator<Group>
-	{
-		@Override
-		public int compare( Group group1, Group group2 )
-		{
-			return group1.getTitle().compareToIgnoreCase( group2.getTitle() );
-		}
-	}
+
 }

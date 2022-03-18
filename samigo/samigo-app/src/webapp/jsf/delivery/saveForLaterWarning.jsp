@@ -41,9 +41,13 @@
 <h:form id="saveForLater">
 <!-- DONE BUTTON FOR PREVIEW -->
 <h:panelGroup rendered="#{delivery.actionString=='previewAssessment'}">
- <f:verbatim><div class="previewMessage"></f:verbatim>
-     <h:outputText value="#{deliveryMessages.ass_preview}" />
-     <h:commandButton value="#{deliveryMessages.done}" action="#{person.cleanResourceIdListInPreview}" type="submit"/>
+ <f:verbatim><div class="sak-banner-info"></f:verbatim>
+     <h:outputText value="#{deliveryMessages.ass_preview}" escape="false" />
+     <h:commandButton value="#{deliveryMessages.exit_preview}"
+        styleClass="exitPreviewButton"
+        action="#{person.cleanResourceIdListInPreview}"
+        type="submit"
+        onclick="return returnToHostUrl(\"#{delivery.selectURL}\");" />
  <f:verbatim></div></f:verbatim>
 </h:panelGroup>
 
@@ -53,7 +57,7 @@
 </h3>
 <br/>
   <!-- content... -->
-  <h:panelGroup styleClass="messageSamigo2">
+  <h:panelGroup styleClass="sak-banner-warn">
   <h:panelGrid border="0">
       <h:outputText value="#{deliveryMessages.save_for_later_warning_1}" escape="false"/>
       <h:outputText value="#{deliveryMessages.save_for_later_warning_2}" escape="false"/>
@@ -73,13 +77,14 @@
  </p> 
   <!-- end content -->
 </div>
+
 <!-- DONE BUTTON IN PREVIEW -->
-<h:panelGroup rendered="#{delivery.actionString=='previewAssessment'}">
- <f:verbatim><div class="previewMessage"></f:verbatim>
-     <h:outputText value="#{deliveryMessages.ass_preview}" />
-     <h:commandButton value="#{deliveryMessages.done}" action="#{person.cleanResourceIdListInPreview}" type="submit"/>
-<f:verbatim></div></f:verbatim>
-</h:panelGroup>
+<h:panelGroup rendered="#{delivery.actionString=='previewAssessment'}"> 
+  <h:commandButton value="#{deliveryMessages.exit_preview}" 
+     action="#{person.cleanResourceIdListInPreview}" 
+     type="submit" 
+     onclick="return returnToHostUrl(\"#{delivery.selectURL}\");" /> 
+</h:panelGroup> 
 
  </h:form>
       </body>

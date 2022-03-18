@@ -30,7 +30,6 @@ import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -42,8 +41,8 @@ import java.util.TreeSet;
 
 import lombok.extern.slf4j.Slf4j;
 
-import org.jdom.Element;
-import org.jdom.Namespace;
+import org.jdom2.Element;
+import org.jdom2.Namespace;
 
 import uk.org.ponder.messageutil.MessageLocator;
 
@@ -486,23 +485,6 @@ public class Assignment2Entity implements LessonEntity, AssignmentInterface {
 	    } catch (Exception ignore) {};
 	}	
 
-    }
-
-    // access control
-    // no longer used, so there's no way to test them
-    public boolean addEntityControl(String siteId, final String groupId) throws IOException {
-	return false;
-
-    }
-
-    public boolean removeEntityControl(String siteId, String groupId) throws IOException {
-	return false;
-    }
-
-    // submission
-    // do we need the data from submission?
-    public boolean needSubmission(){
-	return true;
     }
 
     public Double toDouble(Object f) {

@@ -24,12 +24,11 @@ package org.sakaiproject.lessonbuildertool.service;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import uk.org.ponder.messageutil.MessageLocator;
@@ -46,11 +45,10 @@ import org.sakaiproject.lessonbuildertool.tool.beans.SimplePageBean;
 import org.sakaiproject.memory.api.Cache;
 import org.sakaiproject.memory.api.MemoryService;
 import org.sakaiproject.site.api.SiteService;
+import org.sakaiproject.time.api.UserTimeService;
 import org.sakaiproject.tool.api.SessionManager;
 import org.sakaiproject.tool.api.ToolManager;
 import org.sakaiproject.user.api.UserDirectoryService;
-
-import org.sakaiproject.component.cover.HotReloadConfigurationService;
 
 // This class is used to check whether a page or item should be
 // accessible for the user. It checks all conditions. SimplePageBean
@@ -72,11 +70,23 @@ public class LessonsAccess {
     static final boolean useCache = true;
 
     // Sakai Service Beans
-    private SimplePageToolDao dao;
-    private AuthzGroupService authzGroupService;
-    private SecurityService securityService;
-    private MemoryService memoryService;
-    private UserDirectoryService userDirectoryService;
+    @Setter private SimplePageToolDao dao;
+    @Setter private MessageLocator messageLocator;
+    @Setter private AuthzGroupService authzGroupService;
+    @Setter private SecurityService securityService;
+    @Setter private MemoryService memoryService;
+    @Setter private SessionManager sessionManager; 
+    @Setter private ToolManager toolManager;
+    @Setter private UserDirectoryService userDirectoryService;
+    @Setter private UserTimeService userTimeService;
+    @Setter private SiteService siteService;
+    @Setter private ContentHostingService contentHostingService;
+    @Setter private GradebookIfc gradebookIfc;
+
+    @Setter private LessonEntity forumEntity;
+    @Setter private LessonEntity quizEntity;
+    @Setter private LessonEntity assignmentEntity;
+    @Setter private LessonEntity bltiEntity;
 
     public void init() {
 	if (useCache) {
@@ -414,7 +424,7 @@ public class LessonsAccess {
 
 			simplePageBean = makeSimplePageBean(simplePageBean, siteId, currentPage);
 
-			List<SimplePageItem> items = dao.findItemsInSite(siteId);
+			List<SimplePageItem> items = dao.getOrderedTopLevelPageItems(siteId);
 			// sorted by SQL
 
 			boolean ok = true;
@@ -477,6 +487,8 @@ public class LessonsAccess {
 	    simplePageBean.setCurrentSiteId(siteId);
 	    simplePageBean.setCurrentPage(currentPage);
 	    simplePageBean.setCurrentPageId(currentPage.getPageId());
+	    simplePageBean.setUserTimeService(userTimeService);
+	    simplePageBean.setUserDirectoryService(userDirectoryService);
 	    simplePageBean.init();
 	}
 
@@ -495,6 +507,20 @@ public class LessonsAccess {
 	    return false;
 	}
 	
+	// top-level pseudo-item is special, as there is no containing page
+	// just test the page it points to
+	if (item.getPageId() == 0L && item.getType() == SimplePageItem.PAGE) {
+	    String pageString = item.getSakaiId();
+	    long pageNum = 0;
+	    try {
+	    	pageNum = Long.parseLong(pageString, 10);
+	    } catch (Exception e) {
+	    	return false;
+	    }
+	    return isPageAccessible(pageNum, siteId, currentUserId, simplePageBean);
+	}
+	
+	//Look these up after the top-level check
 	SimplePage currentPage = dao.getPage(item.getPageId());
 	if (currentPage == null) {
 	    return false;
@@ -505,19 +531,6 @@ public class LessonsAccess {
         siteId = currentPage.getSiteId();   
 	}
 	
-	// top-level pseudo-item is special, as there is no containing page
-	// just test the page it points to
-	if (item.getPageId() == 0L && item.getType() == SimplePageItem.PAGE) {
-	    String pageString = item.getSakaiId();
-	    long pageNum = 0;
-	    try {
-		pageNum = Long.parseLong(pageString, 10);
-	    } catch (Exception e) {
-		return false;
-	    }
-	    return isPageAccessible(pageNum, siteId, currentUserId, simplePageBean);
-	}
-
 	simplePageBean = makeSimplePageBean(simplePageBean, siteId, currentPage);
 
 	// containing page must be accessible.
@@ -564,92 +577,4 @@ public class LessonsAccess {
 	else
 	    return authzGroupService.getUserRole(currentUserId, group) != null;
     }
-
-    public void setAuthzGroupService(AuthzGroupService authzGroupService) {
-        this.authzGroupService = authzGroupService;
-    }
-
-    public AuthzGroupService getAuthzGroupService() {
-        return authzGroupService;
-    }
-
-    public void setSecurityService(SecurityService securityService) {
-        this.securityService = securityService;
-    }
-
-    public SecurityService getSecurityService() {
-        return securityService;
-    }
-
-    public void setSimplePageToolDao(SimplePageToolDao s) {
-        dao = s;
-    }
-
-    public void setMemoryService(MemoryService m) {
-	memoryService = m;
-    }
-
-    public void setUserDirectoryService(UserDirectoryService userDirectoryService) {
-		this.userDirectoryService = userDirectoryService;
-	}
-    
-    public MessageLocator messageLocator;
-
-    public void setMessageLocator(MessageLocator s) {
-	messageLocator = s;
-    }
-
-    private ToolManager toolManager;
-    
-    public void setToolManager(ToolManager s) {
-	toolManager = s;
-    }
-
-    SessionManager sessionManager = null;
-
-    public void setSessionManager(SessionManager s) {
-	sessionManager = s;
-    }
-
-    private SiteService siteService;
-
-    public void setSiteService(SiteService s) {
-	siteService = s;
-    }
-
-    ContentHostingService contentHostingService = null;
-
-    public void setContentHostingService(ContentHostingService s) {
-	contentHostingService = s;
-    }
-
-    LessonEntity forumEntity = null;
-
-    public void setForumEntity(Object e) {
-	forumEntity = (LessonEntity) e;
-    }
-
-    LessonEntity quizEntity = null;
-    
-    public void setQuizEntity(Object e) {
-	quizEntity = (LessonEntity) e;
-    }
-
-    LessonEntity assignmentEntity = null;
-
-    public void setAssignmentEntity(Object e) {
-	assignmentEntity = (LessonEntity) e;
-    }
-    
-    LessonEntity bltiEntity = null;
-    public void setBltiEntity(Object e) {
-	bltiEntity = (LessonEntity)e;
-    }
-
-    private GradebookIfc gradebookIfc = null;
-
-    public void setGradebookIfc(GradebookIfc g) {
-	gradebookIfc = g;
-    }
-
 }

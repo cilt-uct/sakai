@@ -14,9 +14,16 @@
 
 #set($i = 0) ## Counter for directUrl ids 
 
+#set($homePage = false)
+#foreach( $page in $sitePages.pageNavTools )
+    #if (${page.current} && ${page.pageProps.is_home_page})
+        #set($homePage = true)
+        #break
+    #end
+#end
 <!-- START VM includePageBody.vm -->
 
-<h1 class="skip" tabindex="-1" id="tocontent">${rloader.sit_contentshead}</h1>
+<h2 class="skip" tabindex="-1" id="tocontent">${rloader.sit_contentshead}</h2>
 
     #if ( $pageColumn1Tools ) 
         #set( $numberTools = $pageColumn0Tools.size() + $pageColumn1Tools.size() )
@@ -24,7 +31,7 @@
         #set( $numberTools = $pageColumn0Tools.size() )
     #end
 
-    <main id="$pageWrapperClass" class="Mrphs-mainContent #if( $numberTools > 1 )Mrphs-multipleTools #end" role="main">
+    <main id="$pageWrapperClass" class="Mrphs-mainContent #if( $numberTools > 1 || $homePage)Mrphs-multipleTools #end" role="main">
 
         <div id="$pageColumnLayout" class="${columnClasses}">
 
@@ -60,7 +67,7 @@
                                                 <span class="Mrphs-toolTitleNav__link Mrphs-toolTitleNav__link--reset"></span>
                                                 <span class="Mrphs-toolTitleNav__text">${tool.toolRenderResult.getTitle()}</span>
                                             </a>
-					    <span class="Mrphs-toolTitleNav__addLeft"></span>
+					                        <span class="Mrphs-toolTitleNav__addLeft"></span>
                                         </h2>
 
                                     #else
@@ -70,7 +77,7 @@
                                                 <span class="Mrphs-toolTitleNav__link Mrphs-toolTitleNav__link--reset"></span>
                                                 <span class="Mrphs-toolTitleNav__text">${tool.toolRenderResult.getTitle()}</span>
                                             </a>
-					    <span class="Mrphs-toolTitleNav__addLeft"></span>
+                                            <span class="Mrphs-toolTitleNav__addLeft"></span>
                                         </h2>
 
                                     #end ## END of IF ($!{tool.toolInline})
@@ -81,8 +88,9 @@
 
                                 #end ## END of IF (${tool.toolShowResetButton})
 
-                                <div class="Mrphs-toolTitleNav__button_container">
-                                
+                                <div class="Mrphs-toolTitleNav__button_container #if(${homePage})home#end">
+
+
                                 #if (${tool.toolJSR168Edit})
 
                                     <a class="Mrphs-toolTitleNav__link Mrphs-toolTitleNav__link--edit" accesskey="e" id="jsr-edit" href="${tool.toolJSR168Edit}" title="${rloader.sit_edit}">
@@ -91,7 +99,7 @@
 
                                 #end ## END of IF (${tool.toolJSR168Edit} )
 
-				                <span class="Mrphs-toolTitleNav__addRight"></span>
+				                    <span class="Mrphs-toolTitleNav__addRight"></span>
                                 #if ( $toolDirectUrlEnabled && ${tool.showDirectToolUrl} )
 
                                     <button class="Mrphs-toolTitleNav__link Mrphs-toolTitleNav__link--directurl" rel="#${tool.toolPlacementIDJS}_directurl" title="${rloader.tool_direct_link}" aria-haspopup="dialog">
@@ -144,22 +152,7 @@
 
                                 #end ## END of IF (${tool.toolShowHelpButton})
 
-                                #if ($toolTitleClass == "sakai-summary-calendar")
-                                  #if ($cleanPageSiteType == "workspace")
-                                  #else
-                                    <a id="synopticCalendarOptions" class="Mrphs-toolTitleNav__link" href="javascript:void(0);">
-                                      Options
-                                    </a>
-                                  #end
-                                #elseif ($cleanPageSiteType == "workspace" && $toolTitleClass == "sakai-synoptic-messagecenter")
-                                  <a id="synopticMessageCenterOptions" class="Mrphs-toolTitleNav__link" href="javascript:void(0);">
-                                    Options
-                                  </a>
-                                #elseif ($toolTitleClass == "sakai-synoptic-chat")
-                                  <a id="synopticChatOptions" class="Mrphs-toolTitleNav__link" href="javascript:void(0);">
-                                    Options
-                                  </a>
-                                #end
+                                    <sakai-maximise-button #if (${toolMaximised}) full-screen #end></sakai-maximise-button>
 
                                 </div>
 

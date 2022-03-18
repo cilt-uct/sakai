@@ -23,6 +23,9 @@ package org.sakaiproject.component.common.edu.person;
 
 import java.util.Date;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import org.sakaiproject.api.common.edu.person.InetOrgPerson;
 import org.sakaiproject.api.common.edu.person.OrganizationalPerson;
 import org.sakaiproject.api.common.edu.person.Person;
@@ -33,6 +36,9 @@ import org.sakaiproject.api.common.edu.person.SakaiPerson;
  */
 public class SakaiPersonImpl extends EduPersonImpl implements Person, OrganizationalPerson, InetOrgPerson, SakaiPerson
 {
+	@Getter @Setter
+	private String phoneticPronunciation;
+
 	/**
 	 * Empty constuctor for hibernate
 	 */
@@ -304,5 +310,6 @@ public class SakaiPersonImpl extends EduPersonImpl implements Person, Organizati
 		this.businessBiography = businessBiography;
 	}
 
-	
+	@Getter @Setter
+	private String pronouns;
 }

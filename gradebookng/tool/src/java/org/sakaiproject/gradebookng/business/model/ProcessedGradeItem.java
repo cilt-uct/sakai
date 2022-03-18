@@ -18,12 +18,13 @@ package org.sakaiproject.gradebookng.business.model;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 
-import org.apache.commons.lang.builder.CompareToBuilder;
+import org.apache.commons.lang3.builder.CompareToBuilder;
 
 /**
  * Holds the data about a grade item that is imported from the spreadsheet as well as any edits that happen through the wizard
@@ -140,5 +141,5 @@ public class ProcessedGradeItem implements Serializable, Comparable {
 
 	@Getter
 	@Setter
-	private Double assignmentPoints;
+	private Map<String, String> rubricParameters;
 }

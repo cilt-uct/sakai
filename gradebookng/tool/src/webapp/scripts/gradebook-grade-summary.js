@@ -6,6 +6,7 @@
  * A GradebookGradeSummary to encapsulate all the grade summary content behaviours 
  */
 function GradebookGradeSummary($content, blockout, modalTitle) {
+  var self = this;
   this.$content = $content;
 
   this.blockout = blockout || false;
@@ -31,6 +32,10 @@ function GradebookGradeSummary($content, blockout, modalTitle) {
       }
     }, this));
   }
+
+  $("body").on("DOMNodeInserted", ".wicket-top-modal", function() {
+    self.positionModalAtTop($(this));
+  });
 };
 
 
@@ -110,12 +115,15 @@ GradebookGradeSummary.prototype.setupStudentNavigation = function() {
 
   var currentStudentIndex = GbGradeTable.rowForStudent(this.studentId);
 
+  // get the students as they are currently rendered so the sorting/filtering is accurately reflected
+  const studentsAsRendered = GbGradeTable.instance.getDataAtCol(0);
+
   var previousStudentId, nextStudentId;
   if (currentStudentIndex > 0) {
-    previousStudentId = GbGradeTable.students[currentStudentIndex - 1].userId;
+    previousStudentId = studentsAsRendered[currentStudentIndex - 1].userId;
   }
-  if (currentStudentIndex < GbGradeTable.students.length - 1) {
-    nextStudentId = GbGradeTable.students[currentStudentIndex + 1].userId;
+  if (currentStudentIndex < studentsAsRendered.length - 1) {
+    nextStudentId = studentsAsRendered[currentStudentIndex + 1].userId;
   } 
 
   if (previousStudentId) {
@@ -302,8 +310,7 @@ GradebookGradeSummary.prototype.setupTableSorting = function() {
       stickyHeaders_yScroll : null,
       stickyHeaders_filteredToTop: true
     },
-    //sort by due date descending and secondarily by assignment title
-    sortList: [[3, 0], [0, 0]],
+    sortReset   : true,
     textExtraction: function(node) {
       var $node = $(node);
       // sort dates by data-sort-key
@@ -329,6 +336,13 @@ GradebookGradeSummary.prototype.setupTableSorting = function() {
     },
     cssInfoBlock: "gb-summary-category-tbody"
   });
+};
+
+
+GradebookGradeSummary.prototype.positionModalAtTop = function($modal) {
+    // position the modal at the top of the viewport
+    // taking into account the current scroll offset
+    $modal.closest('.wicket-modal').css('top', 30 + $(window).scrollTop() + "px");
 };
 
 

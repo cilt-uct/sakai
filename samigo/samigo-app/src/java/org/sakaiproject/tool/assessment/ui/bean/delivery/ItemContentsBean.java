@@ -31,13 +31,19 @@ import java.util.List;
 import java.util.Set;
 import java.util.Map;
 
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.SessionScoped;
 import javax.faces.model.SelectItem;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import lombok.Getter;
+import lombok.Setter;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.util.Precision;
+import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.event.cover.EventTrackingService;
 import org.sakaiproject.samigo.util.SamigoConstants;
+import org.sakaiproject.tool.assessment.data.dao.grading.ItemGradingAttachment;
 import org.sakaiproject.tool.assessment.data.dao.grading.ItemGradingData;
 import org.sakaiproject.tool.assessment.data.dao.grading.MediaData;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AnswerIfc;
@@ -55,20 +61,15 @@ import org.sakaiproject.tool.assessment.ui.bean.author.AuthorBean;
 import org.sakaiproject.tool.assessment.ui.bean.util.Validator;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 import org.sakaiproject.tool.assessment.util.AttachmentUtil;
-import org.sakaiproject.util.FormattedText;
 import org.sakaiproject.util.ResourceLoader;
+import org.sakaiproject.util.api.FormattedText;
 
-/**
- * <p>
- * This bean represents an item
- * </p>
- */
-
+/* For delivery: ItemContents backing bean. */
 @Slf4j
+@ManagedBean(name="itemContents")
+@SessionScoped
 public class ItemContentsBean implements Serializable {
-	/**
-	 * 
-	 */
+
 	private static final long serialVersionUID = 6270034338280029897L;
 
 	private static ResourceLoader rb = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.DeliveryMessages");
@@ -144,7 +145,7 @@ public class ItemContentsBean implements Serializable {
 	
 	private String pointsDisplayString;
 
-	private List itemGradingAttachmentList;
+	private List<ItemGradingAttachment> itemGradingAttachmentList;
 	
 	private Long itemGradingIdForFilePicker;
 	
@@ -171,11 +172,17 @@ public class ItemContentsBean implements Serializable {
 	private String studentComment;
 	
 	private String imageSrc = "";
+	@Getter @Setter
+	private String imageAltText = "";
 
 	private Set<ItemTagIfc> tagsList;
 	private String tagsListToJson;
 
 	private int answerCounter = 1;
+
+	// Rubrics
+	private String rubricStateDetails;
+	private boolean hasAssociatedRubric;
 
 	public ItemContentsBean() {
 	}
@@ -863,7 +870,7 @@ public class ItemContentsBean implements Serializable {
 	}
 	
 	public String getResponseTextPlain() {
-		return FormattedText.convertFormattedTextToPlaintext(getResponseText());
+		return ComponentManager.get(FormattedText.class).convertFormattedTextToPlaintext(getResponseText());
 	}
 
 	public String getResponseTextForDisplay() {
@@ -967,7 +974,7 @@ public class ItemContentsBean implements Serializable {
 		fibArray = newArray;
 	}
 
-	public List getFinArray() {
+	public List<FinBean> getFinArray() {
 		return finArray;
 	}
 
@@ -1167,7 +1174,7 @@ public class ItemContentsBean implements Serializable {
 		int count = getItemGradingDataArray().size();
 		if (count > 0) {
 			ItemGradingData data = getItemGradingDataArray().get(count - 1);
-			rationale = FormattedText.convertFormattedTextToPlaintext(data.getRationale());
+			rationale = ComponentManager.get(FormattedText.class).convertFormattedTextToPlaintext(data.getRationale());
 		}
 		return Validator.check(rationale, "");
 	}
@@ -1177,7 +1184,8 @@ public class ItemContentsBean implements Serializable {
 		if (count > 0) {
 			ItemGradingData data = getItemGradingDataArray().get(count - 1);
 			if (data.getRationale() != null) {
-				rationale = FormattedText.convertFormattedTextToPlaintext(data.getRationale()).replaceAll("(\r\n|\r)", "<br/>");
+				rationale = ComponentManager.get(FormattedText.class).convertFormattedTextToPlaintext(data.getRationale()).replaceAll("(\r\n|\r)", "<br/>");
+				rationale = ComponentManager.get(FormattedText.class).escapeHtml(rationale, true);
 			}
 		}
 		return Validator.check(rationale, "");
@@ -1327,7 +1335,7 @@ public class ItemContentsBean implements Serializable {
 	public String getPointsDisplayString() {
 		String pointsDisplayString = "";
 		if (showStudentQuestionScore) {
-			pointsDisplayString = Precision.round(points, 2) + "/";
+			pointsDisplayString = String.valueOf(Precision.round(points, 2));
 		}
 		return pointsDisplayString;
 	}
@@ -1337,7 +1345,7 @@ public class ItemContentsBean implements Serializable {
 			//text = text.replaceAll("<.*?>", " ");
 			//text = FormattedText.convertFormattedTextToPlaintext(text);
 			//text = FormattedText.stripHtmlFromText(text, true); // SAM-2277
-			text = FormattedText.stripHtmlFromText( text, false, true ).trim(); // SAM-2499
+			text = ComponentManager.get(FormattedText.class).stripHtmlFromText( text, false, false ).trim(); // We do not want escaped HTML to be un-escaped
 		}
 		return text;
 
@@ -1522,11 +1530,11 @@ public class ItemContentsBean implements Serializable {
       }
   }
 
-  public List getItemGradingAttachmentList() {
+  public List<ItemGradingAttachment> getItemGradingAttachmentList() {
 	  return itemGradingAttachmentList;
   }
 
-  public void setItemGradingAttachmentList(List itemGradingAttachmentList)
+  public void setItemGradingAttachmentList(List<ItemGradingAttachment> itemGradingAttachmentList)
   {
 	  this.itemGradingAttachmentList = itemGradingAttachmentList;
   }
@@ -1642,5 +1650,30 @@ public class ItemContentsBean implements Serializable {
   public int getAnswerCounter() {
     return answerCounter++;
   }
+
+	public String getRubricStateDetails() {
+		return rubricStateDetails;
+	}
+
+	public void setRubricStateDetails(String rubricStateDetails) {
+		this.rubricStateDetails = rubricStateDetails;
+	}
+
+	public boolean isHasAssociatedRubric() {
+		return hasAssociatedRubric;
+	}
+
+	public void setHasAssociatedRubric(boolean hasAssociatedRubric) {
+		this.hasAssociatedRubric = hasAssociatedRubric;
+	}
+	
+	public Long getEffectiveItemId() {
+		AuthorBean author = (AuthorBean) ContextUtil.lookupBean("author");
+		if (author.getIsEditPendingAssessmentFlow()) {
+			return itemData.getOriginalItemId();
+		} else {
+			return itemData.getItemId();
+		}
+	}
 }
 

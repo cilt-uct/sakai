@@ -1,0 +1,45 @@
+<!-- start:  chef_assignments_student_view_assignment_honor_pledge.vm  -->
+<div class="portletBody container-fluid">
+    #if ($alertMessage)
+        <div class="sak-banner-error">
+            <strong>$tlang.getString("gen.alert")</strong>
+            $alertMessage
+        </div>
+        <div class="clear"></div>
+    #else
+        <h3>
+            $tlang.getString('assignment.title')
+            #assignmentTitleIcon($assignment)
+            $formattedText.escapeHtml($!assignment.Title)
+        </h3>
+
+        #progressBar($statusMap)
+
+        <div class="jumbotron" id="honor-pledge-agreement">
+            <h4>$tlang.getString("gen.hpa.title")</h4>
+            <p>$!honorPledgeText</p>
+        </div>
+    #end
+    <form name="assignmentHonorPledgeForm" action="#toolForm($action)" method="post">
+        <p class="act">
+            #if (!$alertMessage)
+                <input type="submit"
+                       accesskey="s"
+                       name="eventSubmit_doAccept_assignment_honor_pledge"
+                       value="$tlang.getString("gen.agree")"
+                       aria-label="$tlang.getString("gen.agree")"
+                       onclick="SPNR.disableControlsAndSpin( this, null );"
+                       class="active"/>
+            #end
+            <input type="submit"
+                   accesskey="x"
+                   name="eventSubmit_doCancel_assignment_honor_pledge"
+                   value="$tlang.getString('gen.backtolist')"
+                   aria-label="$tlang.getString('gen.backtolist')"
+                   onclick="SPNR.disableControlsAndSpin( this, null );"/>
+        </p>
+        <input type="hidden" name="assignmentReference" value="$formattedText.escapeUrl($assignmentReference)"/>
+        <input type="hidden" name="sakai_csrf_token" value="$sakai_csrf_token"/>
+    </form>
+</div>
+<!-- end:  chef_assignments_student_view_assignment_honor_pledge.vm  -->

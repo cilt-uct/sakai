@@ -5,29 +5,23 @@
     <parent>
         <groupId>org.sakaiproject.basiclti</groupId>
         <artifactId>basiclti</artifactId>
-        <version>12.5</version>
+        <version>21-SNAPSHOT</version>
     </parent>
 
     <name>Portlet utilities (portlet-util)</name>
     <groupId>org.sakaiproject.basiclti</groupId>
     <artifactId>portlet-util</artifactId>
-    <organization>
-        <name>Sakai Project</name>
-        <url>http://sakaiproject.org/</url>
-    </organization>
-    <inceptionYear>2005</inceptionYear>
     <packaging>jar</packaging>
 
     <dependencies>
         <dependency>
             <groupId>javax.servlet</groupId>
-            <artifactId>servlet-api</artifactId>
+            <artifactId>javax.servlet-api</artifactId>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>javax.portlet</groupId>
             <artifactId>portlet-api</artifactId>
-            <version>1.0</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -37,6 +31,10 @@
         <dependency>
             <groupId>org.sakaiproject.kernel</groupId>
             <artifactId>sakai-kernel-util</artifactId>
+        </dependency>
+        <dependency>
+           <groupId>org.sakaiproject.kernel</groupId>
+           <artifactId>sakai-component-manager</artifactId>
         </dependency>
     </dependencies>
 

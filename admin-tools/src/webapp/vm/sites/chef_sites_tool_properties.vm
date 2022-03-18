@@ -7,7 +7,7 @@
 	#if($menu)
 		#toolbar($menu)
 	#end
-	#if ($alertMessage)<div class="alertMessage">$tlang.getString("sitedi.alert") $validator.escapeHtml($alertMessage)</div>#end
+	#if ($alertMessage)<div class="sak-banner-error">$tlang.getString("sitedi.alert") $formattedText.escapeHtml($alertMessage)</div>#end
 	<h3>
 		$tlang.getString("tooldi.edisit") $!tool.Id
 	</h3>
@@ -19,7 +19,7 @@
 		<h4>
 			$tlang.getString("sitedi.pro")
 		</h4>
-		<table class="itemSummary" summary="$tlang.getString("sitedi.pro")">
+		<table class="table table-striped table-bordered" summary="$tlang.getString("sitedi.pro")">
 			#set ($toolParams = $tool.PlacementConfig)
 			#set ($paramNames = $toolParams.propertyNames())
 			
@@ -28,11 +28,11 @@
 				<tr>
 					<th>
 						<label for="param_$paramName">
-							$validator.escapeHtml($paramName):
+							$formattedText.escapeHtml($paramName):
 						</label>
 					</th>
 					<td>
-						<input type="text" name="param_$paramName" id="param_$paramName" value="$validator.escapeHtml($paramValue)" />
+						<input type="text" name="param_$paramName" id="param_$paramName" value="$formattedText.escapeHtml($paramValue)" />
 					</td>
 				</tr>
 			#end
@@ -40,7 +40,7 @@
 		<div class="instruction">
 			$tlang.getString("sitedi.newpropinst")
 		</div>
-		<table summary="$tlang.getString("sitedi.pro")">
+		<table class="table table-striped table-bordered" summary="$tlang.getString("sitedi.pro")">
 			<tr>
 				<td>
 					<label for="new_name">

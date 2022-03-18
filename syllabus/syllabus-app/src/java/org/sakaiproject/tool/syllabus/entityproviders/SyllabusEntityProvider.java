@@ -27,16 +27,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import lombok.Getter;
-import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
-import org.sakaiproject.component.cover.ServerConfigurationService;
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.api.app.syllabus.SyllabusAttachment;
 import org.sakaiproject.api.app.syllabus.SyllabusData;
 import org.sakaiproject.api.app.syllabus.SyllabusItem;
 import org.sakaiproject.api.app.syllabus.SyllabusManager;
 import org.sakaiproject.api.app.syllabus.SyllabusService;
+import org.sakaiproject.component.cover.ComponentManager;
+import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.content.api.ContentHostingService;
 import org.sakaiproject.entitybroker.EntityReference;
 import org.sakaiproject.entitybroker.EntityView;
@@ -60,7 +58,11 @@ import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.site.api.ToolConfiguration;
 import org.sakaiproject.tool.api.ToolManager;
-import org.sakaiproject.util.FormattedText;
+import org.sakaiproject.util.api.FormattedText;
+
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Entity provider for the Syllabus tool
@@ -282,11 +284,12 @@ public class SyllabusEntityProvider extends AbstractEntityProvider implements En
 	}
 	
 	public Object getEntity(EntityReference ref){
-		return new HashMap();
+		return new HashMap<>();
 	}
 	
 	public void updateEntity(EntityReference ref, Object entity, Map<String, Object> params){
 		if(params != null){
+			FormattedText FormattedText = ComponentManager.get(FormattedText.class);
 			if(params.containsKey("add") && params.containsKey("title") && params.containsKey("siteId")){
 				String siteId = (String) params.get("siteId");
 				if(!"".equals(siteId.trim())){
@@ -323,6 +326,7 @@ public class SyllabusEntityProvider extends AbstractEntityProvider implements En
 								} else {
 									if (StringUtils.isNotEmpty(cleanedText)) {
 										data.setAsset(cleanedText);
+										syllabusManager.saveSyllabus(data);
 									}
 								}
 							}

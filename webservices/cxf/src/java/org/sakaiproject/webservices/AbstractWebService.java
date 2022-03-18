@@ -30,10 +30,12 @@ import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.calendar.api.CalendarService;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.content.api.ContentHostingService;
+import org.sakaiproject.db.api.SqlService;
 import org.sakaiproject.entity.api.EntityManager;
 import org.sakaiproject.event.api.EventTrackingService;
 import org.sakaiproject.event.api.UsageSessionService;
 import org.sakaiproject.event.api.ActivityService;
+import org.sakaiproject.messagebundle.api.MessageBundleService;
 import org.sakaiproject.service.gradebook.shared.GradebookExternalAssessmentService;
 import org.sakaiproject.service.gradebook.shared.GradebookService;
 import org.sakaiproject.site.api.SiteService;
@@ -44,6 +46,7 @@ import org.sakaiproject.tool.api.SessionManager;
 import org.sakaiproject.tool.api.ToolManager;
 import org.sakaiproject.user.api.AuthenticationManager;
 import org.sakaiproject.user.api.UserDirectoryService;
+import org.sakaiproject.util.api.FormattedText;
 import org.sakaiproject.user.api.PreferencesService;
 import org.sakaiproject.shortenedurl.api.ShortenedUrlService;
 import org.sakaiproject.tool.assessment.samlite.api.SamLiteService;
@@ -85,6 +88,7 @@ public class AbstractWebService {
     protected ContentHostingService contentHostingService;
     protected EntityManager entityManager;
     protected DiscussionForumManager discussionForumManager;
+    protected MessageBundleService messageBundleService;
     protected MessageForumsForumManager messageForumsForumManager;
     protected MessageForumsMessageManager messageForumsMessageManager;
     protected MessageForumsTypeManager messageForumsTypeManager;
@@ -98,16 +102,8 @@ public class AbstractWebService {
     protected ActivityService activityService;
     protected QuestionPoolServiceAPI questionPoolServiceImpl;
     protected LessonBuilderAccessAPI lessonBuilderAccessAPI;
-    protected ArchiveService archiveService;
-    protected MemoryService memoryService;
+    protected FormattedText formattedText;
     protected SqlService sqlService;
-    protected ImportService importService;
-    protected SyllabusManager syllabusManager;
-
-    
-    @WebMethod(exclude = true)
-    public void init() {
-    }
 
     /**
      * Get the Session related to the given sessionid
@@ -227,7 +223,12 @@ public class AbstractWebService {
     public void setMessageForumsForumManager(MessageForumsForumManager messageForumsForumManager) {
         this.messageForumsForumManager = messageForumsForumManager;
     }
-    
+
+    @WebMethod(exclude = true)
+    public void setMessageBundleService(MessageBundleService messageBundleService) {
+        this.messageBundleService = messageBundleService;
+    }
+
     @WebMethod(exclude = true)
     public void setMessageForumsMessageManager(MessageForumsMessageManager messageForumsMessageManager) {
         this.messageForumsMessageManager = messageForumsMessageManager;
@@ -316,6 +317,16 @@ public class AbstractWebService {
     @WebMethod(exclude = true)
     public void setLessonBuilderAccessAPI(LessonBuilderAccessAPI lessonBuilderAccessAPI) {
         this.lessonBuilderAccessAPI = lessonBuilderAccessAPI;
+    }
+    
+    @WebMethod(exclude = true)
+    public void setFormattedText(FormattedText formattedText) {
+        this.formattedText = formattedText;
+    }
+
+    @WebMethod(exclude = true)
+    public void setSqlService(SqlService sqlService) {
+        this.sqlService = sqlService;
     }
 
 }

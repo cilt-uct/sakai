@@ -21,23 +21,32 @@
 
 package org.sakaiproject.util;
 
+import java.util.Enumeration;
+import javax.servlet.ServletContext;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
 
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.component.impl.SakaiContextLoader;
 import org.sakaiproject.component.impl.SpringCompMgr;
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.web.context.WebApplicationContext;
 
 /**
  * <p>
  * Sakai's extension to the Spring ContextLoaderListener - use our ContextLoader, and increment / decrement the child count of the ComponentManager on init / destroy.
  * </p>
  */
+@NoArgsConstructor
 @Slf4j
 public class SakaiContextLoaderListener extends SakaiContextLoader implements ServletContextListener
 {
+	public SakaiContextLoaderListener(WebApplicationContext context) {
+		super(context);
+	}
+
 	/**
 	 * Initialize the root web application context.
 	 */
@@ -57,11 +66,34 @@ public class SakaiContextLoaderListener extends SakaiContextLoader implements Se
 	public void contextDestroyed(ServletContextEvent event)
 	{
 		closeWebApplicationContext(event.getServletContext());
-		//ContextCleanupListener.cleanupAttributes(event.getServletContext());
-		
-		log.info("Destroying Components in "+event.getServletContext().getServletContextName());
+		cleanupAttributes(event.getServletContext());
+
+		log.debug("Destroying Components in {}", event.getServletContext().getServletContextName());
 
 		// decrement the count of children for the component manager
 		((SpringCompMgr) ComponentManager.getInstance()).removeChildAc();
+	}
+
+	/**
+	 * Find all ServletContext attributes which implement {@link DisposableBean}
+	 * and destroy them, removing all affected ServletContext attributes eventually.
+	 * @param sc the ServletContext to check
+	 */
+	private static void cleanupAttributes(ServletContext sc) {
+		Enumeration<String> attrNames = sc.getAttributeNames();
+		while (attrNames.hasMoreElements()) {
+			String attrName = attrNames.nextElement();
+			if (attrName.startsWith("org.springframework.")) {
+				Object attrValue = sc.getAttribute(attrName);
+				if (attrValue instanceof DisposableBean) {
+					try {
+						((DisposableBean) attrValue).destroy();
+					}
+					catch (Throwable ex) {
+						log.error("Couldn't invoke destroy method of attribute with name '" + attrName + "'", ex);
+					}
+				}
+			}
+		}
 	}
 }

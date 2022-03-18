@@ -1,253 +1,239 @@
-##{$namespace}sakai-roster {
+.#{$namespace}sakai-site-roster2 {
 
-    .filterLabel {
-        vertical-align:top;
-        font-weight:bold;
+    div#rosterMainContainer {
+        margin-top: 0.5em;
     }
 
-    .instruction.rosterTitleMessage {
-        display: block;
+    // toolbar styles
+    .sakai-table-toolBar {
+        .sakai-table-viewFilter ~ .sakai-table-viewFilter {
+            margin-top: $standard-spacing;
+        }
+
+        .sakai-table-buttonContainer {
+            @include flex-direction(column);
+            text-align: center;
+
+            #roster_hide_options {
+                display: none;
+
+                input[type=checkbox] {
+                    margin: 0;
+                    vertical-align: text-top;
+                }
+            }
+        }
+
+        div.displayFilterContainer {
+            margin:  0 0 $standard-spacing auto;
+            padding: 0 0 0 $standard-spacing;
+            text-align: center;
+
+            div.sakai-table-viewFilter {
+                @include justify-content(center);
+
+                fieldset.roundedBorder {
+                    border: 2px solid var(--sakai-border-color);
+                    @include border-radius(5px);
+                    padding: 5px;
+                    white-space: nowrap;
+
+                    legend {
+                        padding: 0 5px 0 5px;
+                        font-size: $default-font-size;
+                        font-weight: normal;
+                        color: var(--sakai-text-color-2);
+                    }
+                }
+
+                label {
+                    margin-bottom: 0;
+                }
+            }
+
+            @media #{$tablet} {
+                margin-left: 0;
+                padding-left: 0;
+            }
+
+            /* override breakpoint inherited from _table.scss */
+            @media #{$smallPhone} {
+                .sakai-table-viewFilter {
+                    @include align-items(center);
+
+                    fieldset.roundedBorder {
+                        @include display-flex();
+                        @include flex-direction(column);
+                        @include align-items(flex-start);
+
+                        input[type=radio] {
+                            margin: 0 5px 0 0;
+                        }
+                    }
+                }
+            }
+        }
+    } // sakai-table-toolBar
+
+    .roster-filter-totals {
+        text-align: center;
+        padding: $standard-spacing 0 $standard-spacing 0;
+    }
+
+    #roster-members-total, #roster-role-totals {
+        color: var(--sakai-text-color-2);
+        font-size: 12px;
     }
 
     .role {
         font-weight: bold;
     }
+    // end tool bar styles
 
-    .rosterRoleTopLine {
-        padding-top:10px;
-    }
-
-    .rosterActionAlignment {
-        vertical-align:top;
-    }
-
-    .rosterActions {
-        margin-top:0.5em;
-    }
-
-    .connection-email {
-        background-image: url(/library/image/silk/email.png);
-    }
-
-    .roster-pictureview {
-        display: inline-block;
-        border: 1px solid #ccc;
-        border-width: 1px;
-        @include border-radius(5px);
-        padding: 5px;
-        margin-bottom: 5px;
-        width: 161px;
-        .roster-pictureview-picture {
-            width: 150px;
-            height: 150px;
-            img {
-                width: 150px;
-                max-height: 150px;
-            }
-        }
-        .roster-name {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-    }
-
+    // common view styles
     #roster-loading-image {
         display: none;
     }
 
-    .roster-table {
-        display: table;
-        width: 100%;
-
-        .roster-table-header-group {
-            display: table-header-group;
-            font-weight: bold;
-            padding-bottom: 10px;
-        }
-
-        .roster-table-row-group {
-            display: table-row-group;
-        }
-
-        .roster-table-row {
-            display: table-row;
+    .roster-members-grid {
+        max-width: 100%;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, 340px);
+        grid-template-rows: repeat(auto, 1fr);
+        grid-gap: 5px;
+        .roster-member-card {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            grid-gap: 5px;
+            border: 1px solid #ccc;
+            @include border-radius(5px);
+            padding: 5px;
+            margin-right: 5px;
             margin-bottom: 5px;
+            width: 340px;
+            padding: 5px;
 
-            .roster-table-cell {
-                display: table-cell;
-                padding-right: 10px;
-                white-space: nowrap;
-
+            .roster-picture-card {
+                margin-right: 10px;
+                min-width: 76px;
+                max-width: 76px;
                 .roster-picture {
-                    min-width: 55px;
-                    min-height: 55px;
-                    max-width: 55px;
-                    max-height: 55px;
-                    padding: 0;
-                    margin: 15px 0 15px 10px;
-                    border: 1px solid #666666;
-                    border-radius: 37.5px;
-                    object-fit: cover;
+                    width: 100%;
+                    border: 1px solid #BBB;
                 }
+            }
 
-                .roster-mobile-label {
-                    display: none;
+            .roster-info-card {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                grid-gap: 3px;
+                align-content: start;
+                .roster-card-value {
+                    word-wrap: break-word;
                     font-weight: bold;
-                    padding-right: 10px;
-                }
-
-                .roster-user-properties {
-                    list-style: none;
+                    .roster-user-properties {
+                        list-style: none;
+                    }
                 }
             }
-            .roster-last-visit-time-cell {
-                font-size: 0.9em;
-            }
 
-            .roster-name-cell {
-                max-width: 150px;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
-        }
-        .roster-member:nth-child(odd){
-            background: $tool-tab-background-color;
-        }
-    }
+            &.photogrid {
+                display: block;
+                width: 120px;
+                .roster-picture-card {
+                    margin-right: 0;
+                    width: 100%;
+                    max-width: none;
+                    .roster-picture {
+                        width: 100%;
+                        border: 1px solid #BBB;
+                    }
+                }
 
-    .roster-picture {
-        width: 50px;
-    }
-
-    #roster_content{
-        margin-top: 1em;
-    }
-
-    #summary{
-        margin-left: 2px;
-    }
-
-    .roster-group-cell {
-        display: inline-block;
-        min-width: 60px !important;
-        max-width: 140px !important;
-        white-space: normal !important;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        vertical-align: middle;
-
-        .roster-group-link {
-            white-space: nowrap !important;
-            font-size: smaller;
-        }
-    }
-
-    .roster-no-groups-label {
-        font-size: smaller;
-        font-weight: bold;
-    }
-
-    #roster-filters {
-        > div {
-            display: inline-block;
-        }
-    }
-
-    #roster-search-group {
-        .form-group {
-            > div {
-                @include display-flex;
-                @include flex-direction(row);
-
-                > input {
-                    margin: 0;
-                    margin-right: 5px;
+                .roster-info-card {
+                    display: block;
+                    text-align: center;
                 }
             }
         }
-    }
-
-    .form-group {
-        @media #{$nonPhone} {
-            @include display-flex;
-            @include flex-direction(row);
-            @include align-items(center);
+        &.photogrid {
+            grid-template-columns: repeat(auto-fill, 120px);
         }
     }
 
-    #roster_type_selector {
-        .official-label {
-            @extend label;
-        }
-    }
-
-    .switch-button {
-        height: 26px;
-        width: 45px;
-        border: 1px solid #CCCCCC;
-        border-radius: 13px;
-        background-color: #DADADA;
-        position: relative;
-        display: inline-block;
+    .nameAudioPlayer {
+        margin-left: 10px;
+        display: -webkit-inline-flex;
+        display: -ms-inline-flexbox;
+        display: inline-flex;
+        @include align-items(center);
+        @include justify-content(center);
+        width: 32px;
+        height: 32px;
+        border-radius: 16px;
+        background-color: var(--sakai-background-color-3);
+        border: 2px solid var(--sakai-border-color);
+        box-shadow: var(--elevation-2dp);
         cursor: pointer;
 
-        &::after {
-            content: " ";
-            position: absolute;
-            height: 20px;
-            width: 20px;
-            background-color: #FFFFFF;
-            box-shadow: 0 1px 3px 0 rgba(0,0,0,0.45);
-            border-radius: 10px;
-            top: 2px;
-            left: 2px;
+        &:hover, &:active, &:focus {
+            background-color: var(--sakai-background-color-4);
+            box-shadow: var(--elevation-4dp);
         }
 
-        &.on {
-            border-color: #275779 !important;
-            background-color: #3675a1 !important;
+        &.playing {
+            background-color: var(--successBanner-bgcolor);
+            border-color: var(--successBanner-bordercolor);
 
-            &::after {
-                left: initial;
-                right: 2px;
+            .fa {
+                color: var(--successBanner-color);
             }
+        }
+    }
+
+
+    table {
+        .roster-name-cell {
+            max-width: 130px;
+        }
+
+        .roster-mobile-label {
+            display: none;
+        }
+
+        .roster-user-properties {
+            list-style: none;
+            max-width: 100px;
+            word-wrap: break-word;
+        }
+
+        .roster-no-groups-label {
+            font-size: smaller;
+            font-weight: bold;
+        }
+
+        .roster-hide-pictures {
+            display: none;
+        }
+
+        .roster-picture {
+            width: 30px;
+            height: 24px;
+            padding: 0;
+        }
+
+        .roster-picture-cell {
+            text-align: center;
+        }
+
+        .roster-hide-pictures {
+            display: none;
         }
     }
 
     @media #{$phone} {
-        .roster-table-header-group {
-            display: none !important;
-        }
-
-        .roster-mobile-label {
-            display: inline-block !important;
-        }
-
-        .roster-table-row {
-            display: block !important;
-            border: 1px solid #ccc;
-            border-width: 1px;
-            -moz-border-radius: 5px;
-            -webkit-border-radius: 5px;
-            border-radius: 5px;
-            padding: 5px;
-            margin-bottom: 5px;
-            max-width: 400px;
-
-            .roster-table-cell {
-                display: block !important;
-                max-width: 400px;
-
-                .roster-picture {
-                    width: 160px !important;
-                    height: 160px !important;
-                    border-radius: 80px !important;
-                }
-            }
-            .roster-name-cell {
-                max-width: 250px !important;
-            }
+        input#roster-spreadsheet-view-radio, label[for=roster-spreadsheet-view-radio] {
+            display: none;
         }
     }
 }

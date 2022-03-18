@@ -40,6 +40,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.sakaiproject.authz.api.AuthzGroup;
 import org.sakaiproject.authz.api.AuthzPermissionException;
+import org.sakaiproject.authz.api.AuthzRealmLockException;
 import org.sakaiproject.authz.api.GroupAlreadyDefinedException;
 import org.sakaiproject.authz.api.GroupIdInvalidException;
 import org.sakaiproject.authz.api.GroupNotDefinedException;
@@ -497,9 +498,6 @@ public class PermissionsHelperAction extends VelocityPortletPaneledAction
 		}
 		context.put("rolesAbilities", rolesAbilities);
 
-		// make sure observers are disabled
-		VelocityPortletPaneledAction.disableObservers(state);
-
 		return getContext(rundata).get("template");
 	}
 	/**
@@ -561,9 +559,6 @@ public class PermissionsHelperAction extends VelocityPortletPaneledAction
 		state.removeAttribute(STATE_MODE);
 		state.removeAttribute(VelocityPortletPaneledAction.STATE_HELPER);
 		state.removeAttribute(STATE_GROUP_AWARE);
-
-		// re-enable observers
-		VelocityPortletPaneledAction.enableObservers(state);
 	}
 
 	/**
@@ -625,6 +620,10 @@ public class PermissionsHelperAction extends VelocityPortletPaneledAction
 			catch (AuthzPermissionException e)
 			{
 				addAlert(state, rb.getFormattedMessage("alert_permission", new Object[]{edit.getReference()}));
+			}
+			catch (AuthzRealmLockException arle)
+			{
+				log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
 			}
 		}
 

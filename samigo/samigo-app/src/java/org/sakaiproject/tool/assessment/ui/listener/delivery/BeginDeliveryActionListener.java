@@ -29,12 +29,14 @@ import javax.faces.context.FacesContext;
 import javax.faces.event.AbortProcessingException;
 import javax.faces.event.ActionEvent;
 import javax.faces.event.ActionListener;
-import javax.faces.context.ExternalContext;
-import javax.servlet.ServletContext;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
+import org.sakaiproject.component.cover.ComponentManager;
+import org.sakaiproject.component.api.ServerConfigurationService;
+import org.sakaiproject.rubrics.logic.RubricsConstants;
+import org.sakaiproject.rubrics.logic.RubricsService;
 import org.sakaiproject.tool.assessment.data.dao.assessment.AssessmentAccessControl;
 import org.sakaiproject.tool.assessment.data.dao.assessment.PublishedFeedback;
 import org.sakaiproject.tool.assessment.data.dao.grading.AssessmentGradingData;
@@ -75,6 +77,8 @@ import org.sakaiproject.util.ResourceLoader;
 @Slf4j
 public class BeginDeliveryActionListener implements ActionListener
 {
+  private static final ResourceLoader rl = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.DeliveryMessages");
+  private RubricsService rubricsService = ComponentManager.get(RubricsService.class);
 
   /**
    * ACTION.
@@ -99,29 +103,30 @@ public class BeginDeliveryActionListener implements ActionListener
       // preview and take assessment is set by the parameter in the jsp pages
       delivery.setActionString(actionString);
     }
-    
-    delivery.setDisplayFormat();
-    
+
+    if (StringUtils.equalsAny(delivery.getActionString(), "reviewAssessment", "takeAssessment", "takeAssessmentViaUrl", "previewAssessment")) {
+      delivery.setRbcsToken(rubricsService.generateJsonWebToken(RubricsConstants.RBCS_TOOL_SAMIGO, delivery.getSiteId()));
+    }
+
     if ("previewAssessment".equals(delivery.getActionString()) || "editAssessment".equals(actionString)) {
     	String isFromPrint = ContextUtil.lookupParam("isFromPrint");
         if (StringUtils.isNotBlank(isFromPrint)) {
-    		delivery.setIsFromPrint(Boolean.parseBoolean(isFromPrint));
+    		delivery.setFromPrint(Boolean.parseBoolean(isFromPrint));
     	}
+    } else {
+    	delivery.setFromPrint(false);
     }
-    else {
-    	delivery.setIsFromPrint(false);
-    }
-    
+
     int action = delivery.getActionMode();
     PublishedAssessmentFacade pub = getPublishedAssessmentBasedOnAction(action, delivery, assessmentId, publishedId);
-
-    AssessmentAccessControlIfc control = pub.getAssessmentAccessControl();
-    boolean releaseToAnonymous = control.getReleaseTo() != null && control.getReleaseTo().indexOf("Anonymous Users")> -1;
 
     if(pub == null){
     	delivery.setOutcome("poolUpdateError");
     	throw new AbortProcessingException("pub is null");
     }
+
+    AssessmentAccessControlIfc control = pub.getAssessmentAccessControl();
+    boolean releaseToAnonymous = control.getReleaseTo() != null && control.getReleaseTo().indexOf("Anonymous Users")> -1;
 
     // Does the user have permission to take this action on this assessment in this site?
     AuthorizationBean authzBean = (AuthorizationBean) ContextUtil.lookupBean("authorization");
@@ -130,14 +135,12 @@ public class BeginDeliveryActionListener implements ActionListener
         if (!authzBean.isUserAllowedToEditAssessment(assessmentId, pub.getCreatedBy(), false)) {
           throw new IllegalArgumentException("User does not have permission to preview assessment id " + assessmentId);
         }
-      }
-      else {
+      } else {
         if (!authzBean.isUserAllowedToEditAssessment(publishedId, pub.getCreatedBy(), true)) {
           throw new IllegalArgumentException("User does not have permission to preview assessment id " + publishedId);
         }
       }
-    }
-    else if (DeliveryBean.REVIEW_ASSESSMENT == action || DeliveryBean.TAKE_ASSESSMENT == action) {
+    } else if (DeliveryBean.REVIEW_ASSESSMENT == action || DeliveryBean.TAKE_ASSESSMENT == action) {
       if (!releaseToAnonymous && !authzBean.isUserAllowedToTakeAssessment(pub.getPublishedAssessmentId().toString())) {
         throw new IllegalArgumentException("User does not have permission to view assessment id " + pub.getPublishedAssessmentId());
       }
@@ -170,25 +173,16 @@ public class BeginDeliveryActionListener implements ActionListener
     // protocol = http://servername:8080/; deliverAudioRecording.jsp needs it
     delivery.setProtocol(ContextUtil.getProtocol());
 
-    FacesContext context = FacesContext.getCurrentInstance();
-    ExternalContext external = context.getExternalContext();
-    String paramValue = ((Long)((ServletContext)external.getContext()).getAttribute("FILEUPLOAD_SIZE_MAX")).toString();
-    Long sizeMax = null;
-    float sizeMax_float = 0f;
-    if (paramValue != null) {
-    	sizeMax = Long.parseLong(paramValue);
-    	sizeMax_float = sizeMax.floatValue()/1024;
-    }
-    delivery.setFileUploadSizeMax(Math.round(sizeMax_float));
+    ServerConfigurationService serverConfigurationService = ComponentManager.get(ServerConfigurationService.class);
+    Long sizeMax = Long.valueOf(serverConfigurationService.getInt("samigo.sizeMax", 20480));
+    delivery.setFileUploadSizeMax(Math.round(sizeMax.floatValue()/1024));
     delivery.setPublishedAssessment(pub);
-    
+
     // populate backing bean from published assessment
     populateBeanFromPub(delivery, pub);
   }
 
-  private PublishedAssessmentFacade lookupPublishedAssessment(String id,
-    PublishedAssessmentService publishedAssessmentService
-    )
+  private PublishedAssessmentFacade lookupPublishedAssessment(String id)
   {
     PublishedAssessmentFacade pub;
     PublishedAssessmentService assessmentService = new PublishedAssessmentService();
@@ -234,10 +228,14 @@ public class BeginDeliveryActionListener implements ActionListener
     
     // important: set feedbackOnDate last
     Date currentDate = new Date();
-    if (component.getShowDateFeedback() && control.getFeedbackDate()!= null && currentDate.after(control.getFeedbackDate())) {
-      delivery.setFeedbackOnDate(true); 
+    if (component.getShowDateFeedback()) {
+        if(control.getFeedbackDate()!= null && control.getFeedbackEndDate() == null ) {
+            delivery.setFeedbackOnDate(currentDate.after(control.getFeedbackDate()));
+        } else if(control.getFeedbackDate()!= null && control.getFeedbackEndDate() != null ) {
+            delivery.setFeedbackOnDate(currentDate.after(control.getFeedbackDate()) && currentDate.before(control.getFeedbackEndDate()));
+        }
     }
-    
+
     EvaluationModelIfc eval = (EvaluationModelIfc) pubAssessment.getEvaluationModel();
     delivery.setScoringType(eval.getScoringType());
     
@@ -298,9 +296,17 @@ public class BeginDeliveryActionListener implements ActionListener
    */
   private void populateDelivery(DeliveryBean delivery, PublishedAssessmentIfc pubAssessment){
 
+    AuthorBean author = (AuthorBean) ContextUtil.lookupBean("author");
     Long publishedAssessmentId = pubAssessment.getPublishedAssessmentId();
     AssessmentAccessControlIfc control = pubAssessment.getAssessmentAccessControl();
     PublishedAssessmentService service = new PublishedAssessmentService();
+    
+    if (author.getIsEditPendingAssessmentFlow()) {
+    	delivery.setRubricAssociation(pubAssessment.getAssessmentId().toString());
+    }
+    else {
+    	delivery.setRubricAssociation("pub." + publishedAssessmentId.toString());
+    }
 
     // #0 - global information
     delivery.setAssessmentId((pubAssessment.getPublishedAssessmentId()).toString());
@@ -413,7 +419,7 @@ public class BeginDeliveryActionListener implements ActionListener
     				delivery.setTimeLimit_minute(minute);
     				delivery.setTimeExpired(false);
     				StringBuilder sb = new StringBuilder();
-    				ResourceLoader rl = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.DeliveryMessages");
+
     				if (hour == 0) {
     					if (minute == 1) {
     						sb.append(minute).append(" ").append(rl.getString("time_limit_minute"));
@@ -467,7 +473,7 @@ public class BeginDeliveryActionListener implements ActionListener
     			TimedAssessmentGradingModel timedAG = queue.
     					get(unSubmittedAssessmentGrading.getAssessmentGradingId());
     			// if it was submitted (race condition) while checking, unblock it - sam will synch soon
-    			if(timedAG != null && !timedAG.getSubmittedForGrade()) {
+    			if(timedAG != null && !timedAG.isSubmittedForGrade()) {
     				delivery.setTimeExpired(true);
     			}
     		}
@@ -551,7 +557,7 @@ public class BeginDeliveryActionListener implements ActionListener
 
     case 1: //delivery.TAKE_ASSESSMENT
     case 3: //delivery.REVIEW_ASSESSMENT
-        pub = lookupPublishedAssessment(publishedId, publishedAssessmentService);
+        pub = lookupPublishedAssessment(publishedId);
         break;
 
     default: 

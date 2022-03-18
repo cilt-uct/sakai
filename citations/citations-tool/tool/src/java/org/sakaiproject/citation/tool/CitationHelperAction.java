@@ -633,8 +633,8 @@ public class CitationHelperAction extends VelocityPortletPaneledAction
 		
 		String resourceClass = scs.getString(RESOURCECLASS, DEFAULT_RESOURCECLASS);
 		String resourceBundle = scs.getString(RESOURCEBUNDLE, DEFAULT_RESOURCEBUNDLE);
-		srb = new Resource().getLoader(resourceClass, resourceBundle);		
-		
+		srb = Resource.getResourceLoader(resourceClass, resourceBundle);
+
 		if(scs != null) {
 			defaultListPageSize = scs.getInt("citations.default.list.page.size", DEFAULT_LIST_PAGE_SIZE);
 		} else {
@@ -976,7 +976,7 @@ public class CitationHelperAction extends VelocityPortletPaneledAction
 				this.captureAccess(params, state, edit, results);
 				this.captureAvailability(params, edit, results);
 				getContentService().commitResource(edit, priority);
-				message = "Resource updated";
+				message = rb.getString("resource.updated");
 				state.setAttribute(STATE_CITATION_COLLECTION, null);
 			} catch (IdUnusedException e) {
 				message = e.getMessage();
@@ -2294,9 +2294,6 @@ public class CitationHelperAction extends VelocityPortletPaneledAction
 		{
 			context.put( "resourcesAddAction", Boolean.TRUE );
 		}
-
-		// make sure observers are disabled
-		VelocityPortletPaneledAction.disableObservers(state);
 
 		String template = "";
 		Mode mode = (Mode) state.getAttribute(CitationHelper.STATE_HELPER_MODE);
@@ -5385,9 +5382,6 @@ public class CitationHelperAction extends VelocityPortletPaneledAction
 				toolSession.removeAttribute(aName);
 			}
 		}
-
-		// re-enable observers
-		VelocityPortletPaneledAction.enableObservers(sessionState);
 	}
 
 	public void doSortCollection( RunData data )

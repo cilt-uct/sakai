@@ -2,7 +2,7 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
 <%@ taglib uri="http://www.sakaiproject.org/samigo" prefix="samigo" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://myfaces.apache.org/tomahawk" prefix="t" %>
 
 <!DOCTYPE html
@@ -35,8 +35,8 @@
       <head><%= request.getAttribute("html.head") %>
       <title><h:outputText value="#{authorMessages.create_modify_p}" /></title>
       <!-- AUTHORING -->
-      <samigo:script path="/js/authoring.js"/>
-      <samigo:script path="/../library/js/spinner.js" type="text/javascript"/>
+      <script src="/samigo-app/js/authoring.js"></script>
+      <script src="/library/js/spinner.js"></script>
       </head>
       <body onload="<%= request.getAttribute("html.body.onload") %>">
 
@@ -47,7 +47,7 @@
 
 <h3><h:outputText value="#{authorMessages.create_modify_p} #{authorMessages.dash} #{sectionBean.assessmentTitle}" escape="false"/></h3>
 <h:form id="modifyPartForm"  onsubmit="return editorCheck();">
-    <h:messages styleClass="messageSamigo" rendered="#{! empty facesContext.maximumSeverity}" layout="table"/>
+    <h:messages styleClass="sak-banner-error" rendered="#{! empty facesContext.maximumSeverity}" layout="table"/>
     <h:inputHidden id="assessmentId" value="#{sectionBean.assessmentId}"/>
     <h:inputHidden id="sectionId" value="#{sectionBean.sectionId}"/>
 
@@ -61,7 +61,7 @@
         <div class="infoEditor">
             <h:outputLabel value="#{authorMessages.information}" />
             <samigo:wysiwyg rows="140" value="#{sectionBean.sectionDescription}" hasToggle="yes" mode="author">
-              <f:validateLength minimum="1" maximum="60000"/>
+              <f:validateLength maximum="60000"/>
             </samigo:wysiwyg>
         </div>
         
@@ -104,7 +104,6 @@
                     <h:outputText rendered="#{sectionBean.type == '2'}" value="#{authorMessages.random_draw_questions_suffix}"/>
                     <h:selectOneMenu rendered="#{sectionBean.type == '2'}" disabled="#{sectionBean.type == '1' || !author.isEditPendingAssessmentFlow}"
                                      id="assignToPool" value="#{sectionBean.selectedPool}">
-                        <%--<f:selectItem itemValue="" itemLabel="#{authorMessages.select_a_pool_for_random_draw}(###)" />--%>
                         <f:selectItems value="#{sectionBean.poolsAvailable}" />
                     </h:selectOneMenu>
                 </t:div>

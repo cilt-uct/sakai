@@ -24,6 +24,8 @@ package org.sakaiproject.cheftool;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -31,16 +33,12 @@ import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
-
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.authz.cover.SecurityService;
 import org.sakaiproject.cheftool.api.Alert;
 import org.sakaiproject.cheftool.api.Menu;
@@ -48,7 +46,6 @@ import org.sakaiproject.cheftool.menu.MenuEntry;
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.content.api.ContentHostingService;
-import org.sakaiproject.courier.api.ObservingCourier;
 import org.sakaiproject.event.api.SessionState;
 import org.sakaiproject.event.api.UsageSession;
 import org.sakaiproject.event.cover.UsageSessionService;
@@ -58,14 +55,19 @@ import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.tool.api.Tool;
 import org.sakaiproject.tool.api.ToolException;
 import org.sakaiproject.tool.api.ToolSession;
+import org.sakaiproject.user.api.Preferences;
+import org.sakaiproject.user.api.PreferencesService;
 import org.sakaiproject.tool.cover.SessionManager;
 import org.sakaiproject.tool.cover.ToolManager;
 import org.sakaiproject.util.EditorConfiguration;
 import org.sakaiproject.util.ParameterParser;
+import org.sakaiproject.util.RequestFilter;
 import org.sakaiproject.util.ResourceLoader;
-import org.sakaiproject.util.Validator;
 import org.sakaiproject.util.Web;
+import org.sakaiproject.util.api.FormattedText;
 import org.sakaiproject.vm.ActionURL;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * <p>
@@ -112,9 +114,11 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
         protected static final String HELPER_MODE_DONE = "helper.done";
 
 	private ContentHostingService contentHostingService;
+	private FormattedText formattedText;
 
 	public VelocityPortletPaneledAction() {
 		contentHostingService = (ContentHostingService) ComponentManager.get(ContentHostingService.class.getName());
+		formattedText = ComponentManager.get(FormattedText.class);
 	}
 	
 	protected void initState(SessionState state, VelocityPortlet portlet, JetspeedRunData rundata)
@@ -137,32 +141,6 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
 	}
 
 	/**
-	 * Compute the deliver address for the current request. Compute the client window id, based on the float state
-	 * 
-	 * @param state
-	 *        The tool state.
-	 * @param toolId
-	 *        The tool instance id, which might be used as part of the client window id if floating.
-	 * @return The client window id, based on the float state.
-	 */
-	protected String clientWindowId(SessionState state, String toolId)
-	{
-		// TODO: drop the params
-
-		// get the Sakai session
-		Session session = SessionManager.getCurrentSession();
-
-		// get the current tool placement
-		Placement placement = ToolManager.getCurrentPlacement();
-
-		// compute our courier delivery address: this placement in this session
-		String deliveryId = session.getId() + placement.getId();
-
-		return deliveryId;
-
-	} // clientWindowId
-
-	/**
 	 * Compute the courier update html element id for the main panel - add "." and other names for inner panels.
 	 * 
 	 * @param toolId
@@ -172,7 +150,7 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
 	public static String mainPanelUpdateId(String toolId)
 	{
 		// TODO: who should be responsible for "Main" here? It's a Portal thing... -ggolden
-		return Validator.escapeJavascript("Main" + toolId);
+		return ComponentManager.get(FormattedText.class).escapeJavascript("Main" + toolId);
 
 	} // mainPanelUpdateId
 
@@ -186,9 +164,24 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
 	public static String titlePanelUpdateId(String toolId)
 	{
 		// TODO: who should be responsible for "Title" here? It's a Portal thing... -ggolden
-		return Validator.escapeJavascript("Title" + toolId);
+		return ComponentManager.get(FormattedText.class).escapeJavascript("Title" + toolId);
 
 	} // titlePanelUpdateId
+
+	/**
+	 * Add another string to the alert message.
+	 * Defaults to removing duplicates from the alert message
+	 * 
+	 * @param state
+	 *        The session state.
+	 * @param message
+	 *        The string to add.
+	 */
+
+	public static void addAlert(SessionState state, String message) {
+		
+		addAlert(state, message, true);
+	}
 
 	/**
 	 * Add another string to the alert message.
@@ -197,17 +190,19 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
 	 *        The session state.
 	 * @param message
 	 *        The string to add.
+	 * @param removeDuplicates
+	 * 		  Remove duplicates from the alert
 	 */
-	public static void addAlert(SessionState state, String message)
+	public static void addAlert(SessionState state, String message, boolean removeDuplicates)
 	{
 		String soFar = (String) state.getAttribute(STATE_MESSAGE);
-		if (soFar != null)
-		{
-			soFar = soFar + "\n\n" + message;
-		}
-		else
+		if (soFar == null)
 		{
 			soFar = message;
+		}
+		else if (!removeDuplicates || !soFar.contains(message))
+		{
+			soFar += "<br/>" + message;
 		}
 		state.setAttribute(STATE_MESSAGE, soFar);
 
@@ -350,6 +345,21 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
             context.put("language",languageCode);
             context.put("dir", rl.getOrientation(locale));
 
+			String userTheme = "sakaiUserTheme-notSet";
+			boolean sakaiThemesEnabled = ServerConfigurationService.getBoolean("portal.themes", true);
+			if ( sakaiThemesEnabled ) {
+				String thisUser = SessionManager.getCurrentSessionUserId();
+				PreferencesService preferencesService = ComponentManager.get(PreferencesService.class);
+
+				Preferences prefs = preferencesService.getPreferences(thisUser);
+
+				if ( prefs != null ) {
+					userTheme = StringUtils.defaultIfEmpty(prefs.getProperties(PreferencesService.USER_SELECTED_UI_THEME_PREFS).getProperty("theme"), "sakaiUserTheme-notSet");
+				}
+			}
+
+			context.put("userTheme", userTheme);
+
 			String browserId = session.getBrowserId();
 			if (UsageSession.WIN_IE.equals(browserId) || UsageSession.WIN_MZ.equals(browserId)
 					|| UsageSession.WIN_NN.equals(browserId) || UsageSession.MAC_MZ.equals(browserId)
@@ -408,7 +418,10 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
 				}
 
 				// the vm file needs a path and an extension
-				template = "/vm/" + template + ".vm";
+				if(!template.equals(MODE_PERMISSIONS)) {
+					template = "/vm/" + template;
+				}
+				template += ".vm";
 
 				// setup for old style alert
 				StringBuilder buf = new StringBuilder();
@@ -438,12 +451,13 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
 				}
 				if (sbNotif.length() > 0)
 				{
-							setVmReference("flashNotif", sbNotif.toString(), req);
+					setVmReference("flashNotif", sbNotif.toString(), req);
 					setVmReference("flashNotifCloseTitle",rb.getString("flashNotifCloseTitle"),req);
 				}
 
 				// setup for old style validator
 				setVmReference("validator", m_validator, req);
+				setVmReference("formattedText", formattedText, req);
 
 				// set standard no-cache headers
 				setNoCacheHeaders(res);
@@ -602,7 +616,10 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
 
 			try
 			{
-				res.sendRedirect(redirect);
+				//to prevent the 'response already committed' error
+				if(!(res.isCommitted())) {
+					res.sendRedirect(redirect);
+				}
 			}
 			catch (IOException e)
 			{
@@ -849,12 +866,15 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
 	public static final String STATE_FLOAT = "float";
 
 	public static final String STATE_TOOL = "tool";
+	public static final String STATE_TOOL_KEY = "tool_key";
+	public static final String STATE_BUNDLE_KEY = "bundle_key";
 
 	public static final String STATE_MESSAGE = "message";
 	public static final String STATE_NOTIF = "notification";
 
 	/** Standard modes. */
 	public static final String MODE_OPTIONS = "options";
+	public static final String MODE_PERMISSIONS = "permissions";
 
 	/**
 	 * Handle a request to set options.
@@ -876,9 +896,6 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
 		// go into options mode
 		state.setAttribute(STATE_MODE, MODE_OPTIONS);
 
-		// disable auto-updates while editing
-		disableObservers(state);
-
 		// if we're not in the main panel for this tool, schedule an update of the main panel
 		String currentPanelId = runData.getParameters().getString(ActionURL.PARAM_PANEL);
 		if (!LAYOUT_MAIN.equals(currentPanelId))
@@ -888,6 +905,17 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
 		}
 
 	} // doOptions
+
+	protected String build_permissions_context(VelocityPortlet portlet, Context context, RunData data, SessionState state) {
+		String toolKey = (String) state.getAttribute(STATE_TOOL_KEY);
+		context.put("toolKey", toolKey);
+		String bundleKey = (String) state.getAttribute(STATE_BUNDLE_KEY);
+		if(StringUtils.isNotBlank(bundleKey)){
+			context.put("bundleKey", bundleKey);
+		}
+		context.put("permissions", rb.getString("permissions"));
+		return MODE_PERMISSIONS;
+	}
 
 	/**
 	 * Complete the options process with a save.
@@ -946,65 +974,6 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
 		}
 
 		return false;
-	}
-
-	/**
-	 * Disable any observers registered in state in STATE_OBSERVER or STATE_OBSERVER2
-	 * 
-	 * @param state
-	 *        The session state.
-	 */
-	public static void disableObservers(SessionState state)
-	{
-		ObservingCourier observer = (ObservingCourier) state.getAttribute(STATE_OBSERVER);
-		if (observer != null)
-		{
-			observer.disable();
-		}
-
-		observer = (ObservingCourier) state.getAttribute(STATE_OBSERVER2);
-		if (observer != null)
-		{
-			observer.disable();
-		}
-
-	} // disableObservers
-
-	/**
-	 * Enable any observers registered in state in STATE_OBSERVER or STATE_OBSERVER2
-	 * 
-	 * @param state
-	 *        The session state.
-	 */
-	public static void enableObservers(SessionState state)
-	{
-		ObservingCourier observer = (ObservingCourier) state.getAttribute(STATE_OBSERVER);
-		if (observer != null)
-		{
-			observer.enable();
-		}
-
-		observer = (ObservingCourier) state.getAttribute(STATE_OBSERVER2);
-		if (observer != null)
-		{
-			observer.enable();
-		}
-
-	} // enableObservers
-
-	/**
-	 * Tell the main observer we have just delivered.
-	 * 
-	 * @param state
-	 *        The session state.
-	 */
-	public static void justDelivered(SessionState state)
-	{
-		ObservingCourier observer = (ObservingCourier) state.getAttribute(STATE_OBSERVER);
-		if (observer != null)
-		{
-			observer.justDelivered();
-		}
 	}
 
 	/**
@@ -1089,29 +1058,6 @@ public abstract class VelocityPortletPaneledAction extends ToolServlet
 		if (tool != null)
 		{
 			setVmReference("toolTitle", tool.getTitle(), request);
-		}
-	}
-
-	/**
-	 * Setup the vm context for a courier
-	 * 
-	 * @param request
-	 */
-	protected void setVmCourier(HttpServletRequest request, int refresh)
-	{
-		// the url for the chat courier
-		Placement placement = ToolManager.getCurrentPlacement();
-		if (placement != null)
-		{
-			String userId = SessionManager.getCurrentSessionUserId();
-			StringBuilder url = new StringBuilder(Web.serverUrl(request));
-			url.append("/courier/");
-			url.append(placement.getId());
-			url.append("?userId=");
-			url.append(userId);
-			
-			setVmReference("courier", url.toString(), request);
-			setVmReference("courierTimeout", Integer.toString(refresh), request);
 		}
 	}
 

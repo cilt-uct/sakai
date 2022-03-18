@@ -29,15 +29,16 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.Criteria;
 import org.hibernate.FetchMode;
-import org.hibernate.Query;
+import org.hibernate.query.Query;
 import org.hibernate.criterion.Expression;
 import org.hibernate.type.LongType;
 import org.hibernate.type.StringType;
-import org.springframework.orm.hibernate4.HibernateCallback;
-import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
+import org.springframework.orm.hibernate5.HibernateCallback;
+import org.springframework.orm.hibernate5.support.HibernateDaoSupport;
 
 import org.sakaiproject.api.app.syllabus.SyllabusAttachment;
 import org.sakaiproject.api.app.syllabus.SyllabusData;
@@ -64,10 +65,8 @@ import org.sakaiproject.time.api.TimeRange;
 import org.sakaiproject.time.api.TimeService;
 import org.sakaiproject.user.api.PreferencesService;
 import org.sakaiproject.user.api.User;
-import org.sakaiproject.user.cover.UserDirectoryService;
+import org.sakaiproject.user.api.UserDirectoryService;
 
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 
 /**
  * SyllabusManagerImpl provides convenience functions to query the database
@@ -83,6 +82,7 @@ public class SyllabusManagerImpl extends HibernateDaoSupport implements Syllabus
   private PreferencesService preferencesService;
   private TimeService timeService;
   private EntityManager entityManager;
+  @Setter private UserDirectoryService userDirectoryService;
   private static final String QUERY_BY_USERID_AND_CONTEXTID = "findSyllabusItemByUserAndContextIds";
   private static final String QUERY_BY_CONTEXTID = "findSyllabusItemByContextId";
   private static final String QUERY_LARGEST_POSITION = "findLargestSyllabusPosition";
@@ -265,7 +265,7 @@ public class SyllabusManagerImpl extends HibernateDaoSupport implements Syllabus
 		  throw new IllegalArgumentException("Null Argument");
 	  }else{
 		  d.setPosition(position);
-	      getHibernateTemplate().update(d);
+	      getHibernateTemplate().merge(d);
 	  }
   }
 
@@ -393,17 +393,17 @@ public class SyllabusManagerImpl extends HibernateDaoSupport implements Syllabus
       SyllabusItem returnedItem = (SyllabusItem) session.get(SyllabusItemImpl.class, syllabusItem.getSurrogateKey());
       if (returnedItem != null){
         returnedItem.getSyllabi().add(syllabusData);
-        session.save(returnedItem);
+        returnedItem = (SyllabusItem) session.merge(returnedItem);
       }
       return null;
     };
-    getHibernateTemplate().execute(hcb);    
+    getHibernateTemplate().execute(hcb);
     updateSyllabusAttachmentsViewState(syllabusData);
     syllabusData.setSyllabusItem(syllabusItem);
     if(updateCalendar){
     	boolean modified = updateCalendarSettings(syllabusData);
     	if(modified){
-    		getHibernateTemplate().saveOrUpdate(syllabusData);
+    		getHibernateTemplate().merge(syllabusData);
     	}
     }
   }  
@@ -427,7 +427,7 @@ public class SyllabusManagerImpl extends HibernateDaoSupport implements Syllabus
       SyllabusItem returnedItem = (SyllabusItem) session.get(SyllabusItemImpl.class, syllabusItem.getSurrogateKey());
       if (returnedItem != null){
         returnedItem.getSyllabi().remove(syllabusData);
-        session.saveOrUpdate(returnedItem);
+        returnedItem = (SyllabusItem) session.merge(returnedItem);
       }
       return null;
     };
@@ -488,7 +488,7 @@ public class SyllabusManagerImpl extends HibernateDaoSupport implements Syllabus
 		  //calendar check
 		  updateCalendarSettings(data);
 	  }
-	  getHibernateTemplate().saveOrUpdate(data);
+	  getHibernateTemplate().merge(data);
 	  if(updateCalendar){
 		  updateSyllabusAttachmentsViewState(data);
 		  //update calendar attachments
@@ -548,9 +548,9 @@ public class SyllabusManagerImpl extends HibernateDaoSupport implements Syllabus
 
       ContentResource cr = contentHostingService.getResource(attachId);
       attach.setSize((Long.valueOf(cr.getContentLength())).toString());
-      User creator = UserDirectoryService.getUser(cr.getProperties().getProperty(cr.getProperties().getNamePropCreator()));
+      User creator = userDirectoryService.getUser(cr.getProperties().getProperty(cr.getProperties().getNamePropCreator()));
       attach.setCreatedBy(creator.getDisplayName());
-      User modifier = UserDirectoryService.getUser(cr.getProperties().getProperty(cr.getProperties().getNamePropModifiedBy()));
+      User modifier = userDirectoryService.getUser(cr.getProperties().getProperty(cr.getProperties().getNamePropModifiedBy()));
       attach.setLastModifiedBy(modifier.getDisplayName());
       attach.setType(cr.getContentType());
       String tempString = cr.getUrl();
@@ -587,7 +587,7 @@ public class SyllabusManagerImpl extends HibernateDaoSupport implements Syllabus
 
   public void saveSyllabusAttachment(SyllabusAttachment attach)
   {
-    getHibernateTemplate().saveOrUpdate(attach);
+    getHibernateTemplate().merge(attach);
   }
   
   public void addSyllabusAttachToSyllabusData(final SyllabusData syllabusData, final SyllabusAttachment syllabusAttach)
@@ -604,7 +604,7 @@ public class SyllabusManagerImpl extends HibernateDaoSupport implements Syllabus
       SyllabusData returnedData = (SyllabusData) session.get(SyllabusDataImpl.class, syllabusData.getSyllabusId());
       if (returnedData != null){
         returnedData.getAttachments().add(syllabusAttach);
-        session.save(returnedData);
+        returnedData = (SyllabusData) session.merge(returnedData);
       }
       return null;
     };
@@ -615,7 +615,7 @@ public class SyllabusManagerImpl extends HibernateDaoSupport implements Syllabus
 
   public void removeSyllabusAttachmentObject(SyllabusAttachment o)
   {
-    getHibernateTemplate().delete(o);
+    getHibernateTemplate().delete(getHibernateTemplate().merge(o));
   }
   
   public void removeSyllabusAttachSyllabusData(final SyllabusData syllabusData, final SyllabusAttachment syllabusAttach)
@@ -630,7 +630,7 @@ public class SyllabusManagerImpl extends HibernateDaoSupport implements Syllabus
       SyllabusData returnedData = (SyllabusData) session.get(SyllabusDataImpl.class, syllabusData.getSyllabusId());
       if (returnedData != null){
         returnedData.getAttachments().remove(syllabusAttach);
-        session.saveOrUpdate(returnedData);
+        returnedData = (SyllabusData) session.merge(returnedData);
       }
       return null;
     };
@@ -890,7 +890,7 @@ public class SyllabusManagerImpl extends HibernateDaoSupport implements Syllabus
 		for(SyllabusData data : findPublicSyllabusDataWithCalendarEvent(syllabusId)){
 			boolean updated = updateCalendarSettings(data);
 			if(updated){
-				getHibernateTemplate().saveOrUpdate(data);
+				getHibernateTemplate().merge(data);
 			}
 			if(data.getAttachments() != null && data.getAttachments().size() > 0){
 		    	if(data.getCalendarEventIdStartDate() != null
@@ -945,7 +945,7 @@ public class SyllabusManagerImpl extends HibernateDaoSupport implements Syllabus
 		//calendar check
 		updated = removeCalendarEvents(data);
 		
-		if (data.isLinkCalendar() 
+		if (data.getLinkCalendar()
 				  && !SyllabusData.ITEM_DRAFT.equals(data.getStatus())
 				  && (data.getSyllabusItem().getRedirectURL() == null
 						  || data.getSyllabusItem().getRedirectURL().isEmpty())
@@ -993,70 +993,4 @@ public class SyllabusManagerImpl extends HibernateDaoSupport implements Syllabus
 	public void setEntityManager(EntityManager entityManager) {
 		this.entityManager = entityManager;
 	}
-
-    public void setSelectedExportAttachment(SyllabusItem syllabusItem, Long attachmentId) {
-        clearSelectedExportAttachment(syllabusItem);
-        SyllabusAttachment attachment = getSyllabusAttachment(String.valueOf(attachmentId));
-        attachment.setExport(true);
-        attachment.setLastModifiedTime(System.currentTimeMillis());
-        saveSyllabusAttachment(attachment);
-    }
-
-    public SyllabusAttachment getSelectedExportAttachment(SyllabusItem syllabusItem) {
-        Connection conn = null;
-
-        try {
-            conn = SqlService.borrowConnection();
-
-            try (PreparedStatement ps = conn.prepareStatement("select ssa.syllabusAttachId" +
-                                                              " from sakai_syllabus_attach ssa" +
-                                                              " inner join sakai_syllabus_data ssd on ssd.id = ssa.syllabusId" +
-                                                              " inner join sakai_syllabus_item ssi on ssi.id = ssd.surrogateKey" +
-                                                              " where ssi.id = ?" +
-                                                              " and ssa.export = 1")) {
-                ps.setLong(1, syllabusItem.getSurrogateKey());
-
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) {
-                        String attachmentId = rs.getString("syllabusAttachId");
-                        return getSyllabusAttachment(attachmentId);
-                    } else {
-                        return null;
-                    }
-                }
-            }
-      } catch (SQLException e) {
-          throw new RuntimeException(e);
-      } finally {
-          if (conn != null) {
-              SqlService.returnConnection(conn);
-          }
-      }
-    }
-
-    public void clearSelectedExportAttachment(SyllabusItem syllabusItem) {
-        Connection conn = null;
-
-        try {
-            conn = SqlService.borrowConnection();
-
-            try (PreparedStatement ps = conn.prepareStatement("update sakai_syllabus_attach ssa" +
-                                                              " set export = 0, lastModifiedTime = ?" +
-                                                              " where ssa.export = 1" +
-                                                              " and ssa.syllabusId in (" +
-                                                              "  select ssd.id from sakai_syllabus_data ssd where ssd.surrogateKey = ?" +
-                                                              " )")) {
-                ps.setLong(1, System.currentTimeMillis());
-                ps.setLong(2, syllabusItem.getSurrogateKey());
-                ps.executeUpdate();
-		conn.commit();
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        } finally {
-            if (conn != null) {
-                SqlService.returnConnection(conn);
-            }
-        }
-    }
 }

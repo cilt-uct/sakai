@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.sakaiproject.signup</groupId>
         <artifactId>signup</artifactId>
-        <version>12.5</version>
+        <version>21-SNAPSHOT</version>
     </parent>
 
     <name>Sakai Signup Implementation</name>
@@ -70,8 +70,8 @@
             <artifactId>quartz</artifactId>
         </dependency>
         <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
         </dependency>
         <dependency>
             <groupId>commons-codec</groupId>
@@ -98,7 +98,7 @@
             <artifactId>hsqldb</artifactId>
         </dependency>
         <dependency>
-            <groupId>dom4j</groupId>
+            <groupId>org.dom4j</groupId>
             <artifactId>dom4j</artifactId>
         </dependency>
         <dependency>

@@ -21,24 +21,34 @@
 
 package org.sakaiproject.util.impl;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.net.URL;
 import java.net.URI;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.util.Stack;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.text.NumberFormat;
-import java.text.DecimalFormat;
+import java.util.stream.IntStream;
 
-import lombok.extern.slf4j.Slf4j;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.Result;
+import javax.xml.transform.Source;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 
-import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import org.apache.commons.validator.routines.UrlValidator;
-
-import org.w3c.dom.Element;
-
 import org.owasp.validator.html.AntiSamy;
 import org.owasp.validator.html.CleanResults;
 import org.owasp.validator.html.Policy;
@@ -52,6 +62,15 @@ import org.sakaiproject.util.Resource;
 import org.sakaiproject.util.ResourceLoader;
 import org.sakaiproject.util.Xml;
 import org.sakaiproject.util.api.FormattedText;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
+
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * FormattedText provides support for user entry of formatted text; the formatted text is HTML. This includes text formatting in user input such as bold, underline, and fonts.
@@ -59,15 +78,8 @@ import org.sakaiproject.util.api.FormattedText;
 @Slf4j
 public class FormattedTextImpl implements FormattedText
 {
-    private ServerConfigurationService serverConfigurationService = null;
-    public void setServerConfigurationService(ServerConfigurationService serverConfigurationService) {
-        this.serverConfigurationService = serverConfigurationService;
-    }
-
-    private SessionManager sessionManager = null;
-    public void setSessionManager(SessionManager sessionManager) {
-        this.sessionManager = sessionManager;
-    }   
+    @Setter private ServerConfigurationService serverConfigurationService;
+    @Setter private SessionManager sessionManager;
 
     /**
      * This is the high level html cleaner object
@@ -167,33 +179,87 @@ public class FormattedTextImpl implements FormattedText
          */
         try {
             ClassLoader current = FormattedTextImpl.class.getClassLoader();
-            URL lowPolicyURL = current.getResource("antisamy/low-security-policy.xml");
-            URL highPolicyURL = current.getResource("antisamy/high-security-policy.xml");
             // Allow lookup of the policy files in sakai home - KNL-1047
             String sakaiHomePath = getSakaiHomeDir();
-            File lowFile = new File(sakaiHomePath, "antisamy"+File.separator+"low-security-policy.xml");
-            if (lowFile.canRead()) {
-                nyuLowPolicyFile = lowFile;
-                lowPolicyURL = lowFile.toURI().toURL();
-                log.info("AntiSamy found override for low policy file at: "+lowPolicyURL);
+            URL lowPolicyUrl;
+            URL highPolicyUrl;
+            File lowPolicyFile = new File(sakaiHomePath, "antisamy" + File.separator + "low-security-policy.xml");
+            if (lowPolicyFile.canRead()) {
+                log.info("AntiSamy found override for low policy file at: {}", lowPolicyFile.getName());
+                lowPolicyUrl = lowPolicyFile.toURI().toURL();
+            } else {
+                // use default file from classpath
+                lowPolicyUrl = current.getResource("antisamy/low-security-policy.xml");
             }
-            File highFile = new File(sakaiHomePath, "antisamy"+File.separator+"high-security-policy.xml");
-            if (highFile.canRead()) {
-                nyuHighPolicyFile = highFile;
-                highPolicyURL = highFile.toURI().toURL();
-                log.info("AntiSamy found override for high policy file at: "+highPolicyURL);
+            File highPolicyFile = new File(sakaiHomePath, "antisamy" + File.separator + "high-security-policy.xml");
+            if (highPolicyFile.canRead()) {
+                log.info("AntiSamy found override for high policy file at: {}", highPolicyFile.getName());
+                highPolicyUrl = highPolicyFile.toURI().toURL();
+            } else {
+                // use default file from classpath
+                highPolicyUrl = current.getResource("antisamy/high-security-policy.xml");
             }
-
-            Policy policyHigh = Policy.getInstance(highPolicyURL);
+            Policy policyHigh = readPolicyFile(highPolicyUrl);
             antiSamyHigh = new AntiSamy(policyHigh);
-            Policy policyLow = Policy.getInstance(lowPolicyURL);
+            Policy policyLow = readPolicyFile(lowPolicyUrl);
             antiSamyLow = new AntiSamy(policyLow);
+
             // TODO should we attempt to fallback to internal files if the parsing/init fails of external ones?
-            log.info("AntiSamy INIT default security level ("+(defaultLowSecurity()?"LOW":"high")+"), policy files: high="+highPolicyURL+", low="+lowPolicyURL);
+            log.info("AntiSamy INIT default security level ({}), policy files read: high={}, low={}",  defaultLowSecurity() ? "LOW" : "HIGH", highPolicyFile.getAbsolutePath(), lowPolicyFile.getAbsolutePath());
         } catch (Exception e) {
             throw new IllegalStateException("Unable to startup the antisamy html code cleanup handler (cannot complete startup): " + e, e);
         }
 
+    }
+
+    private Policy readPolicyFile(URL url) throws PolicyException {
+        if (url != null) {
+            try {
+                InputSource is = new InputSource(url.toExternalForm());
+                DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+                dbf.setFeature(Policy.EXTERNAL_GENERAL_ENTITIES, false);
+                dbf.setFeature(Policy.EXTERNAL_PARAM_ENTITIES, false);
+                dbf.setFeature(Policy.DISALLOW_DOCTYPE_DECL, true);
+                dbf.setFeature(Policy.LOAD_EXTERNAL_DTD, false);
+                DocumentBuilder builder = dbf.newDocumentBuilder();
+                Document document = builder.parse(is);
+                document.getDocumentElement().normalize();
+                NodeList regexps = document.getElementsByTagName("common-regexps");
+                IntStream.range(0, regexps.getLength()).mapToObj(regexps::item).forEach(node -> {
+                    NodeList children = node.getChildNodes();
+                    IntStream.range(0, children.getLength()).mapToObj(children::item).forEach(child -> {
+                        if (Node.ELEMENT_NODE == child.getNodeType()) {
+                            Element element = (Element) child;
+                            if ("regexp".equals(element.getTagName()) && "flashSites".equals(element.getAttribute("name"))) {
+                                String value = element.getAttribute("value");
+                                if (!".*".equals(value)) {
+                                    String updatedValue = value + "|(^" + serverConfigurationService.getServerUrl() + "/.*)";
+                                    log.debug("Updating flashSites regexp with this servers url: {}", updatedValue);
+                                    element.setAttribute("value", updatedValue);
+                                }
+                            }
+                        }
+                    });
+                });
+                Source source = new DOMSource(document);
+                try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+                    Result result = new StreamResult(baos);
+                    TransformerFactory.newInstance().newTransformer().transform(source, result);
+                    try (ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray())) {
+                        return Policy.getInstance(bais);
+                    } catch (IOException ioe) {
+                        log.warn("InputStream failure while performing policy file transformation of file: {}", url, ioe);
+                    }
+                } catch (IOException ioe) {
+                    log.warn("OutputStream failure while performing policy file transformation of file: {}", url, ioe);
+                }
+            } catch (TransformerException | ParserConfigurationException | SAXException | IOException e) {
+                log.warn("XML failure while updating policy file: {}", url, e);
+                return Policy.getInstance(url);
+            }
+        }
+        log.warn("Could not create antisamy policy from a null file");
+        return Policy.getInstance();
     }
 
     /*
@@ -250,7 +316,7 @@ public class FormattedTextImpl implements FormattedText
     public ResourceLoader getResourceLoader() {
         String resourceClass = serverConfigurationService.getString(RESOURCECLASS, DEFAULT_RESOURCECLASS);
         String resourceBundle = serverConfigurationService.getString(RESOURCEBUNDLE, DEFAULT_RESOURCEBUNDLE);
-        ResourceLoader loader = new Resource().getLoader(resourceClass, resourceBundle);
+        ResourceLoader loader = Resource.getResourceLoader(resourceClass, resourceBundle);
         return loader;
     }   
 
@@ -284,9 +350,9 @@ public class FormattedTextImpl implements FormattedText
     /** Matches all anchor tags that have target="_blank" not accompanied by a rel attribute. */
     public final Pattern M_patternAnchorTagWithTargetBlankAndWithOutRel = Pattern.compile("([<]a\\s[^<>]*?)(?![^>]*rel[^<>\\s]*=)(target[^<>\\s]*=[^<>\\s]*_blank)([^<>]*?)[>]",
             Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-    /** Matches all anchor tags that do not have a target attribute. */
-    public final Pattern M_patternAnchorTagWithOutTarget = 
-            Pattern.compile("([<]a\\s)(?![^>]*target=)([^>]*?)[>]",
+    /** Matches all anchor tags that do not have a target attribute AND href not starting with # AND href exists */
+    public final Pattern M_patternAnchorTagWithOutTargetAndWithHrefAndHrefNotStartingWithHash =
+            Pattern.compile("([<]a\\s)(?=[^>]*href=)(?![^>]*href=\"#)(?![^>]*target=)([^>]*?)[>]",
                     Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
     /** Matches href attribute */
@@ -443,7 +509,7 @@ public class FormattedTextImpl implements FormattedText
 
                     // now replace all the A tags WITHOUT a target with _blank (to match the old functionality)
                     if (addBlankTargetToLinks() && StringUtils.isNotBlank(val)) {
-                        Matcher m = M_patternAnchorTagWithOutTarget.matcher(val);
+                        Matcher m = M_patternAnchorTagWithOutTargetAndWithHrefAndHrefNotStartingWithHash.matcher(val);
                         if (m.find()) {
                             if (StringUtils.isNotBlank(referrerPolicy)) {
                                 val = m.replaceAll("$1$2 target=\"_blank\" rel=\"" + referrerPolicy + "\">"); // adds a target and rel to A tags without one
@@ -552,8 +618,7 @@ public class FormattedTextImpl implements FormattedText
      */
     private String escapeHtmlFormattedText(String value, boolean supressNewlines)
     {
-        if (value == null) return "";
-        if (value.length() == 0) return "";
+        if (StringUtils.isEmpty(value)) return StringUtils.EMPTY;
         if (cleanUTF8) {
             value = removeSurrogates(value);
         }
@@ -576,7 +641,7 @@ public class FormattedTextImpl implements FormattedText
         // added for KNL-526
 
         if (addBlankTargetToLinks()) {
-            Matcher m = M_patternAnchorTagWithOutTarget.matcher(value);
+            Matcher m = M_patternAnchorTagWithOutTargetAndWithHrefAndHrefNotStartingWithHash.matcher(value);
             if (m.find()) {
                 if (StringUtils.isNotBlank(referrerPolicy)) {
                     value = m.replaceAll("$1$2 target=\"_blank\" rel=\"" + referrerPolicy + "\">"); // adds a target and rel to A tags without one
@@ -632,8 +697,8 @@ public class FormattedTextImpl implements FormattedText
          * they also depend on this handling a null input and converting it to null
          */
         String val = "";
-        if (value != null && !"".equals(value)) {
-            val = StringEscapeUtils.escapeHtml(value);
+        if (StringUtils.isNotEmpty(value)){
+            val = StringEscapeUtils.escapeHtml4(value);
             if (escapeNewlines && val != null) {
                 val = val.replace("\n", "<br/>\n");
             }
@@ -659,7 +724,7 @@ public class FormattedTextImpl implements FormattedText
     public String encodeUnicode(String value)
     {
         // TODO call method in each process routine
-        if (value == null) return "";
+        if (StringUtils.isEmpty(value)) return StringUtils.EMPTY;
 
         try
         {
@@ -691,7 +756,7 @@ public class FormattedTextImpl implements FormattedText
         catch (Exception e)
         {
             log.error("Validator.escapeHtml: ", e);
-            return "";
+            return StringUtils.EMPTY;
         }
     }
 
@@ -700,12 +765,8 @@ public class FormattedTextImpl implements FormattedText
      */
     public String unEscapeHtml(String value)
     {
-        if (value == null || value.equals("")) return "";
-        value = value.replaceAll("&lt;", "<");
-        value = value.replaceAll("&gt;", ">");
-        value = value.replaceAll("&amp;", "&");
-        value = value.replaceAll("&quot;", "\"");
-        return value;
+        if (StringUtils.isEmpty(value)) return StringUtils.EMPTY;
+        return StringEscapeUtils.unescapeHtml4(value);
     }
 
     /* (non-Javadoc)
@@ -752,7 +813,9 @@ public class FormattedTextImpl implements FormattedText
             hrefTarget = " target=\"" + hrefTarget + "\"";
         } else {
             // default to _blank if not set and configured to force
-            if (addBlankTargetToLinks()) {
+            // do not add if anchor link to same page (editor page)
+            if (addBlankTargetToLinks() &&
+                    !(href != null && href.startsWith("#"))) {
                 hrefTarget = " target=\"_blank\"";
             }
         }
@@ -803,10 +866,8 @@ public class FormattedTextImpl implements FormattedText
      * @see org.sakaiproject.util.api.FormattedText#processEscapedHtml(java.lang.String)
      */
     public String processEscapedHtml(final String source) {
-        if (source == null)
-            return "";
-        if (source.equals(""))
-            return "";
+        if (StringUtils.isEmpty(source))
+            return StringUtils.EMPTY;
 
         String html = null;
         try {
@@ -1095,7 +1156,7 @@ public class FormattedTextImpl implements FormattedText
     }
 
     public String escapeJavascript(String value) {
-        if (value == null || "".equals(value)) return "";
+        if (StringUtils.isEmpty(value)) return StringUtils.EMPTY;
         try
         {
             StringBuilder buf = new StringBuilder();
@@ -1134,7 +1195,7 @@ public class FormattedTextImpl implements FormattedText
      * @see org.sakaiproject.util.api.FormattedText#escapeJsQuoted(java.lang.String)
      */
     public String escapeJsQuoted(String value) {
-        return StringEscapeUtils.escapeJavaScript(value);
+        return StringEscapeUtils.escapeEcmaScript(value);
     }
 
     /** These characters are escaped when making a URL */
@@ -1153,7 +1214,7 @@ public class FormattedTextImpl implements FormattedText
         try
         {
             // convert the string to bytes in UTF-8
-            byte[] bytes = id.getBytes("UTF-8");
+            byte[] bytes = id.getBytes(StandardCharsets.UTF_8.name());
 
             StringBuilder buf = new StringBuilder();
             for (int i = 0; i < bytes.length; i++)

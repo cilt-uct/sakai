@@ -26,6 +26,7 @@ package org.sakaiproject.lessonbuildertool.model;
 import java.util.List;
 import java.util.Map;
 import java.util.Collection;
+import java.util.Optional;
 
 import org.sakaiproject.lessonbuildertool.SimplePage;
 import org.sakaiproject.lessonbuildertool.SimplePageComment;
@@ -44,7 +45,9 @@ import org.sakaiproject.lessonbuildertool.SimplePageProperty;
 import org.sakaiproject.lessonbuildertool.SimpleChecklistItem;
 import org.sakaiproject.lessonbuildertool.ChecklistItemStatus;
 
-import org.springframework.orm.hibernate4.HibernateTemplate;
+import org.sakaiproject.site.api.ToolConfiguration;
+
+import org.springframework.orm.hibernate5.HibernateTemplate;
 
 public interface SimplePageToolDao {
 
@@ -144,6 +147,8 @@ public interface SimplePageToolDao {
 
     // find all items with given page ID
 	public List<SimplePageItem> findPageItemsBySakaiId(String id);
+
+	public List<SimplePageItem> findPageItemsByPageId(long pageId);
 
     // find resource items with access control involving specified sakaiid
 	public List findControlledResourcesBySakaiId(String id, String siteid);
@@ -332,4 +337,8 @@ public interface SimplePageToolDao {
     public String getLessonSubPageJSON(String userId, boolean isInstructor, String siteId, List pages);
 
     public List<SimplePage> getTopLevelPages(String siteId);
+
+    public List<ToolConfiguration> getSiteTools(String siteId);
+
+    public List<SimplePageItem> getOrderedTopLevelPageItems(String siteId);
 }

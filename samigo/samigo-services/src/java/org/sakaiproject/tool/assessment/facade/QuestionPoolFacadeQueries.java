@@ -35,7 +35,7 @@ import java.util.Vector;
 import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
-import org.hibernate.Query;
+import org.hibernate.query.Query;
 import org.hibernate.Session;
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.event.cover.EventTrackingService;
@@ -58,15 +58,12 @@ import org.sakaiproject.tool.assessment.services.PersistenceService;
 import org.sakaiproject.tool.assessment.services.assessment.AssessmentService;
 import org.sakaiproject.util.api.FormattedText;
 import org.springframework.dao.DataAccessException;
-import org.springframework.orm.hibernate4.HibernateCallback;
-import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
+import org.springframework.orm.hibernate5.HibernateCallback;
+import org.springframework.orm.hibernate5.support.HibernateDaoSupport;
 
 @Slf4j
 public class QuestionPoolFacadeQueries
     extends HibernateDaoSupport implements QuestionPoolFacadeQueriesAPI {
-  
-  // SAM-2049
-  private static final String VERSION_START = " - ";
   
   // SAM-2499
   private final FormattedText formattedText = (FormattedText) ComponentManager.get( FormattedText.class );
@@ -731,7 +728,7 @@ public class QuestionPoolFacadeQueries
     int retryCount = PersistenceService.getInstance().getPersistenceHelper().getRetryCount();
     while (retryCount > 0){
       try {
-        getHibernateTemplate().delete(qpi);
+        getHibernateTemplate().delete(getHibernateTemplate().merge(qpi));
         retryCount = 0;
       }
       catch (Exception e) {
@@ -752,7 +749,7 @@ public class QuestionPoolFacadeQueries
     int retryCount = PersistenceService.getInstance().getPersistenceHelper().getRetryCount();
     while (retryCount > 0){
       try {
-        getHibernateTemplate().delete(qpi);
+        getHibernateTemplate().delete(getHibernateTemplate().merge(qpi));
         retryCount = 0;
       }
       catch (Exception e) {
@@ -1231,6 +1228,7 @@ public class QuestionPoolFacadeQueries
 	  item.setScore(itemData.getScore());
 	  item.setDiscount(itemData.getDiscount());
       item.setHint(itemData.getHint());
+      item.setMinScore(itemData.getMinScore());
       item.setStatus(itemData.getStatus());
       item.setTypeId(itemData.getTypeId());
       item.setCreatedBy(AgentFacade.getAgentString());
@@ -1243,6 +1241,8 @@ public class QuestionPoolFacadeQueries
       item.setAnswerOptionsRichCount(itemData.getAnswerOptionsRichCount());
       item.setAnswerOptionsSimpleOrRich(itemData.getAnswerOptionsSimpleOrRich());
       item.setDescription(itemData.getDescription());
+      item.setIsExtraCredit(itemData.getIsExtraCredit());
+      item.setPartialCreditFlag(itemData.getPartialCreditFlag());
 
       item.setItemTextSet(copyItemText(item.getData(), itemData));
       item.setItemMetaDataSet(copyMetaData(item.getData(), itemData));
@@ -1280,7 +1280,7 @@ public class QuestionPoolFacadeQueries
 	    	  Iterator answerIter = fromAnswerSet.iterator();
 	    	  while (answerIter.hasNext()) {
 	    		  Answer fromAnswer = (Answer) answerIter.next();
-	    		  Answer toAnswer = new Answer(toItemText, fromAnswer.getText(), fromAnswer.getSequence(), fromAnswer.getLabel(),
+	    		  Answer toAnswer = new Answer(toItemText, AssessmentService.copyStringAttachment(fromAnswer.getText()), fromAnswer.getSequence(), fromAnswer.getLabel(),
 	    				  fromAnswer.getIsCorrect(), fromAnswer.getGrade(), fromAnswer.getScore(), fromAnswer.getPartialCredit(), fromAnswer.getDiscount(), 
 	    				  //fromAnswer.getCorrectOptionLabels(), 
 	    				  null);
@@ -1387,7 +1387,7 @@ public class QuestionPoolFacadeQueries
   public void removeQuestionPoolAccess(Tree tree, String user, final Long questionPoolId, Long accessTypeId) {	  
 	  QuestionPoolAccessData qpad = new QuestionPoolAccessData(questionPoolId, user, accessTypeId);
 
-	  getHibernateTemplate().delete(qpad);
+	  getHibernateTemplate().delete(getHibernateTemplate().merge(qpad));
 
 	  Iterator citer = (tree.getChildList(questionPoolId)).iterator();
 	  while (citer.hasNext()) {
@@ -1444,44 +1444,7 @@ public class QuestionPoolFacadeQueries
 		  log.warn("problem update the pool name" + e.getMessage());
 	  }	  
   }
-  
-  private String renameDuplicate(String title) {
-	  if (title == null) {
-		  title = "";
-	  }
-  
-	  String rename = "";
-	  int index = title.lastIndexOf(VERSION_START);
 
-	  // If it is versioned
-	  if (index > -1) {
-		  String mainPart = "";
-		  String versionPart = title.substring(index);
-		  if(index > 0) {
-			  mainPart = title.substring(0, index);
-		  }
-  
-		  int nIndex = index + VERSION_START.length();
-		  String version = title.substring(nIndex);
-  
-		  int versionNumber = 0;
-		  try {
-			  versionNumber = Integer.parseInt(version);
-			  if (versionNumber < 2) {
-				  versionNumber = 2;
-			  }
-			  versionPart = VERSION_START + (versionNumber + 1);
-  			  rename = mainPart + versionPart;
-  		  } catch (NumberFormatException ex) {
-  			  rename = title + VERSION_START + "2";
-  		  }
-	  } else {
-		  rename = title + VERSION_START + "2";
-	  }
-
-	  return rename;
-  }
-	  
   public void transferPoolsOwnership(String ownerId, final List<Long> transferPoolIds) {
   	  Session session = null;
 
@@ -1557,7 +1520,7 @@ public class QuestionPoolFacadeQueries
 				  int count = 0; // Alternate exit condition
 	
 				  while (!isUnique) {
-					  title = renameDuplicate(title);
+					  title = AssessmentService.renameDuplicate(title);
 					  log.debug("renameDuplicate (title): " + title);
 					  
 					  // Recheck to confirm that new title is not a dplicate too

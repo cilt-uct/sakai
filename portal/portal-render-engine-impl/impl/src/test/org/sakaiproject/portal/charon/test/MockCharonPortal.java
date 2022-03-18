@@ -236,8 +236,8 @@ public class MockCharonPortal extends HttpServlet
 		{
 			List l = new ArrayList();
 			Map m = new HashMap();
-			m.put("poweredByUrl", "http://sakaiproject.org");
-			m.put("poweredByImage", "/library/image/sakai_powered.gif");
+			m.put("poweredByUrl", "https://www.sakailms.org/");
+			m.put("poweredByImage", "/library/image/poweredBySakai.png");
 			m.put("poweredByAltText", "Powered by Sakai");
 			l.add(m);
 			rcontext.put("bottomNavPoweredBy", l);
@@ -357,13 +357,9 @@ public class MockCharonPortal extends HttpServlet
 		rcontext.put("pageNavHelpUrl", "helpUrl");
 		// rcontext.put("pageNavSitHelp", "sit_help");
 
-		// rcontext.put("pageNavSitPresenceTitle", "sit_presencetitle");
-		// rcontext.put("pageNavSitPresenceFrameTitle",
-		// "sit_presenceiframetit");
 		rcontext.put("pageNavToolsCount", l.size());
 		rcontext.put("pageNavShowPresenceLoggedIn", Boolean.valueOf(true));
 		rcontext.put("pageNavPresenceUrl", "presenceUrl");
-		rcontext.put("pageNavPresenceIframe", Boolean.valueOf(false));
                 rcontext.put("sakaiPresenceTimeDelay", Integer.valueOf(3000));
 		// rcontext.put("pageNavSitContentshead", "sit_contentshead");
 
@@ -373,11 +369,6 @@ public class MockCharonPortal extends HttpServlet
 	{
 		rcontext.put("siteNavHasAccessibilityURL", Boolean.valueOf((true)));
 		rcontext.put("siteNavAccessibilityURL", "accessibilityURL");
-		// rcontext.put("siteNavSitAccessability", "sit_accessibility");
-		// rcontext.put("siteNavSitJumpContent", "sit_jumpcontent");
-		// rcontext.put("siteNavSitJumpTools", "sit_jumptools");
-		// rcontext.put("siteNavSitJumpWorksite", "sit_jumpworksite");
-
 		rcontext.put("siteNavLoggedIn", Boolean.valueOf(true));
 
 		includeLogo(rcontext);
@@ -515,9 +506,7 @@ public class MockCharonPortal extends HttpServlet
 				while ((thisLine = br.readLine()) != null) { // while loop begins here
 					log.debug(thisLine);
 					if ( thisLine.indexOf("Error:") < 0 ) continue;
-					if ( thisLine.indexOf("<nav>") > 0 ) continue;
-					if ( thisLine.indexOf("<main>") > 0 ) continue;
-					if ( thisLine.indexOf("<header>") > 0 ) continue;
+					if ( thisLine.indexOf("is not recognized") > 0 ) continue;
 					log.info("Context Dump is " + rcontext.dump());
 					throw new RuntimeException("Error in HTML see "+errorFile+" "+thisLine);
 				} 

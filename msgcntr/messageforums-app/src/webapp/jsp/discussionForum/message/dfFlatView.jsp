@@ -1,6 +1,6 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://sakaiproject.org/jsf/messageforums" prefix="mf" %>
 <jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
    <jsp:setProperty name="msgs" property="baseName" value="org.sakaiproject.api.app.messagecenter.bundle.Messages"/>
@@ -12,23 +12,36 @@
 	<h:form id="msgForum" styleClass="specialLink">
 
 	<!--jsp/discussionForum/message/dfFlatView.jsp-->
-		<script type="text/javascript">includeLatestJQuery("msgcntr");</script>
-		<sakai:script contextBase="/messageforums-tool" path="/js/dialog.js"/>
+		<script>includeLatestJQuery("msgcntr");</script>
   		<link rel="stylesheet" type="text/css" href="/messageforums-tool/css/dialog.css" />
-		<script type="text/javascript" src="/library/js/jquery/qtip/jquery.qtip-latest.min.js"></script>
-		<link rel="stylesheet" type="text/css" href="/library/js/jquery/qtip/jquery.qtip-latest.min.css" />
-		<sakai:script contextBase="/messageforums-tool" path="/js/sak-10625.js"/>
-		<sakai:script contextBase="/messageforums-tool" path="/js/forum.js"/>
+		<script>includeWebjarLibrary("qtip2");</script>
+		<script src="/messageforums-tool/js/sak-10625.js"></script>
+		<script src="/messageforums-tool/js/forum.js"></script>
+		<script src="/messageforums-tool/js/dialog.js"></script>
+        <script>
+            $(document).ready(function(){
+                var menuLink = $('#forumsMainMenuLink');
+                var menuLinkSpan = menuLink.closest('span');
+                menuLinkSpan.addClass('current');
+                menuLinkSpan.html(menuLink.text());
+
+                setupMessageNav('messageNew');
+                setupMessageNav('messagePending');
+
+            });
+        </script>
+		<%@ include file="/jsp/discussionForum/menu/forumsMenu.jsp" %>
+
 	<%--//
 		//plugin required below
-		<sakai:script contextBase="/messageforums-tool" path="/js/pxToEm.js"/>
+		<script src="/messageforums-tool/js/pxToEm.js"></script>
 
 		/*
 		gsilver: get a value representing max indents
 	 	from the server configuraiton service or the language bundle, parse 
 		all the indented items, and if the item indent goes over the value, flatten to the value 
 		*/
-		<script type="text/javascript">
+		<script>
 		$(document).ready(function() {
 			// pick value from element (that gets it from language bundle)
 			maxThreadDepth =$('#maxthreaddepth').text()
@@ -52,27 +65,7 @@
 	    	<div id="dialogDiv" title="Grade Messages" style="display:none">
 	    		<iframe id="dialogFrame" name="dialogFrame" width="100%" height="100%" frameborder="0"></iframe>
 	    	</div>
-			
-		<sakai:tool_bar separator="#{msgs.cdfm_toolbar_separator}">
-				<sakai:tool_bar_item value="#{msgs.cdfm_container_title_thread}" action="#{ForumTool.processAddMessage}" id="df_compose_message_dfAllMessages"
-		  			rendered="#{ForumTool.selectedTopic.isNewResponse && !ForumTool.selectedTopic.locked && !ForumTool.selectedForum.locked == 'true'}" />
-		  			
-      			<sakai:tool_bar_item value="#{msgs.cdfm_thread_view}" action="#{ForumTool.processActionDisplayThreadedView}" />
-      			
-        		<h:commandLink action="#{ForumTool.processActionTopicSettings}" id="topic_setting" value="#{msgs.cdfm_topic_settings}" 
-					rendered="#{ForumTool.selectedTopic.changeSettings}">
-					<f:param value="#{ForumTool.selectedTopic.topic.id}" name="topicId"/>
-        		</h:commandLink>
-					
-										<h:commandLink action="#{ForumTool.processActionDeleteTopicConfirm}" id="delete_confirm" 
-								value="#{msgs.cdfm_button_bar_delete_topic}" accesskey="d" rendered="#{!ForumTool.selectedTopic.markForDeletion && ForumTool.displayTopicDeleteOption}">
-								<f:param value="#{ForumTool.selectedTopic.topic.id}" name="topicId"/>
-								</h:commandLink>
 
-				<h:outputLink id="print" value="javascript:printFriendly('#{ForumTool.printFriendlyUrl}');">
-					<h:graphicImage url="/../../library/image/silk/printer.png" alt="#{msgs.print_friendly}" title="#{msgs.print_friendly}" />
-				</h:outputLink>
- 		</sakai:tool_bar>
 		<div class="row">
 			<div class="col-md-9 col-xs-12">
 					<f:verbatim><div class="breadCrumb specialLink"><h3></f:verbatim>
@@ -80,12 +73,12 @@
 			      		rendered="#{ForumTool.messagesandForums}" />
 			      <h:commandLink action="#{ForumTool.processActionHome}" value="#{msgs.cdfm_discussion_forums}" title=" #{msgs.cdfm_discussion_forums}"
 			      		rendered="#{ForumTool.forumsTool}" />
-      			  <f:verbatim><h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " /></f:verbatim>
+      			  <h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " />
 					  <h:commandLink action="#{ForumTool.processActionDisplayForum}" title=" #{ForumTool.selectedForum.forum.title}">
 						  <f:param value="#{ForumTool.selectedForum.forum.id}" name="forumId"/>
 						  <h:outputText value="#{ForumTool.selectedForum.forum.title}" />
 					  </h:commandLink>
-				  <f:verbatim><h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " /></f:verbatim>
+				  <h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " />
 				  	  <h:outputText value="#{ForumTool.selectedTopic.topic.title}" />
 					  <f:verbatim></h3></div></f:verbatim>
 			</div>
@@ -112,21 +105,32 @@
 	<span class="skip" id="lastPendItemTitleHolder"><h:outputText value="#{msgs.cdfm_lastpendtitle}" /></span>
 	<span class="skip" id="nextNewItemTitleHolder"><h:outputText value="#{msgs.cdfm_gotonewtitle}" /></span>
 	<span class="skip" id="lastNewItemTitleHolder"><h:outputText value="#{msgs.cdfm_lastnewtitle}" /></span>
- 	<script type="text/javascript">
- 			$(document).ready(function() {
-					setupMessageNav('messageNew');
-					setupMessageNav('messagePending');
-				});
- 	</script>
 
 		<div id="messNavHolder" style="clear:both;">
-				<h:commandLink action="#{ForumTool.processActionMarkAllAsRead}" rendered="#{ForumTool.selectedTopic.isMarkAsRead}" styleClass="markAllAsRead"> 
+				<h:commandLink action="#{ForumTool.processActionMarkAllAsRead}" rendered="#{ForumTool.selectedTopic.isMarkAsRead}" styleClass="button"> 
 					<h:outputText value=" #{msgs.cdfm_mark_all_as_read}" />
 				</h:commandLink>
 		</div>
-		
-		<h:outputText  value="#{msgs.cdfm_no_messages}" rendered="#{empty ForumTool.messages}"   styleClass="instruction" style="display:block" />
-		<div class="table-responsive clear">
+
+		<h:panelGroup id="forumsActions" layout="block">
+			<h:commandLink styleClass="button" value="#{msgs.cdfm_container_title_thread}" id="df_compose_message_dfAllMessages" 
+				rendered="#{ForumTool.selectedTopic.isNewResponse && !ForumTool.selectedTopic.locked && !ForumTool.selectedForum.locked == 'true'}" action="#{ForumTool.processAddMessage}" immediate="true"/>&nbsp;
+			<h:commandLink styleClass="button" value="#{msgs.cdfm_thread_view}"  id="threadView" action="#{ForumTool.processActionDisplayThreadedView}" immediate="true"/>&nbsp;
+			<h:commandLink styleClass="button" action="#{ForumTool.processActionTopicSettings}" id="topic_setting" value="#{msgs.cdfm_topic_settings}" 
+				rendered="#{ForumTool.selectedTopic.changeSettings}">
+				<f:param value="#{ForumTool.selectedTopic.topic.id}" name="topicId"/>
+			</h:commandLink>&nbsp;
+			<h:commandLink styleClass="button" action="#{ForumTool.processActionDeleteTopicConfirm}" id="delete_confirm" 
+				value="#{msgs.cdfm_button_bar_delete_topic}" accesskey="d" rendered="#{!ForumTool.selectedTopic.markForDeletion && ForumTool.displayTopicDeleteOption}">
+				<f:param value="#{ForumTool.selectedTopic.topic.id}" name="topicId"/>
+			</h:commandLink>&nbsp;
+			<h:outputLink styleClass="button" id="print" value="javascript:printFriendly('#{ForumTool.printFriendlyUrl}');">
+				<h:graphicImage url="/../../library/image/silk/printer.png" alt="#{msgs.print_friendly}" title="#{msgs.print_friendly}" />
+			</h:outputLink>
+ 		</h:panelGroup>
+
+		<h:outputText  value="#{msgs.cdfm_no_messages}" rendered="#{empty ForumTool.messages}"   styleClass="sak-banner-info" style="display:block" />
+		<div class="clear">
 			<mf:hierDataTable id="expandedThreadedMessages" value="#{ForumTool.messages}" var="message" 
 	   	 		noarrows="true" styleClass="table-hover messagesThreaded" cellpadding="0" cellspacing="0" width="100%" columnClasses="bogus">
 				<h:column id="_msg_subject">
@@ -161,7 +165,7 @@
     thisId = "Main" + org.sakaiproject.tool.cover.ToolManager.getCurrentPlacement().getId();
   }
 %>
-			<script type="text/javascript">
+			<script>
 			function resize(){
   				mySetMainFrameHeight('<%= org.sakaiproject.util.Web.escapeJavascript(thisId)%>');
   			}

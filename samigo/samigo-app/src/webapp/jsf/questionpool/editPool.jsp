@@ -35,7 +35,7 @@
 
 <%@ include file="/js/delivery.js" %>
 
-<script type="text/JavaScript">
+<script>
 var textcheckall="<h:outputText value="#{questionPoolMessages.t_checkAll}"/>";
 var textuncheckall="<h:outputText value="#{questionPoolMessages.t_uncheckAll}"/>";
 <%@ include file="/js/samigotree.js" %>
@@ -47,8 +47,8 @@ function textCounter(field, maxlimit) {
 }
 
 </script>
-<samigo:script path="/../library/js/spinner.js"/>
-          <script type="text/javascript">
+<script src="/library/js/spinner.js"></script>
+          <script>
               function flagFolders() {
                   collapseRowsByLevel(<h:outputText value="#{questionpool.htmlIdLevel}"/>);
                   flagRows();
@@ -74,28 +74,34 @@ function textCounter(field, maxlimit) {
   <!-- HEADINGS -->
   <%@ include file="/jsf/questionpool/questionpoolHeadings.jsp" %>
 
-<!-- dataLine here is not working -->
 <br />
-<samigo:dataLine value="#{questionpool.currentPool.parentPoolsArray}" var="parent"
-   separator=" > " first="0" rows="100" >
-  <h:column>
-    <h:commandLink action="#{questionpool.editPool}"  immediate="true">
-      <h:outputText value="#{parent.displayName}" escape="false"/>
-      <f:param name="qpid" value="#{parent.questionPoolId}"/>
-    </h:commandLink>
-  </h:column>
-</samigo:dataLine>
-
-<h:outputText rendered="#{questionpool.currentPool.showParentPools}" value=" > " />
-<h:outputText rendered="#{questionpool.currentPool.showParentPools}" value="#{questionpool.currentPool.displayName}"/>
-
+<h:panelGroup rendered="#{questionpool.currentPool.showParentPools}">
+  <ol class="breadcrumb">
+    <li>
+      <h:outputText value="#{authorMessages.global_nav_pools}" />
+    </li>
+    <samigo:dataLine value="#{questionpool.currentPool.parentPoolsArray}" var="parent" separator="" first="0" rows="100" >
+      <h:column>
+        <li>
+          <h:commandLink action="#{questionpool.editPool}" immediate="true">
+            <h:outputText value="#{parent.displayName}" escape="false"/>
+            <f:param name="qpid" value="#{parent.questionPoolId}"/>
+          </h:commandLink>
+        </li>
+      </h:column>
+    </samigo:dataLine>
+    <li>
+      <h:outputText value="#{questionpool.currentPool.displayName}"/>
+    </li>
+  </ol>
+</h:panelGroup>
 <div class="page-header">
   <h1>
     <h:outputText value="#{questionPoolMessages.qp}#{questionPoolMessages.column} #{questionpool.currentPool.displayName}"/>
   </h1>
 </div>
 
-<h:messages styleClass="messageSamigo" rendered="#{! empty facesContext.maximumSeverity}" layout="table"/>
+<h:messages styleClass="sak-banner-error" rendered="#{! empty facesContext.maximumSeverity}" layout="table"/>
 
 <h:outputText rendered="#{questionpool.importToAuthoring == 'true'}" value="#{questionPoolMessages.msg_imp_editpool}"/>
 
@@ -138,7 +144,7 @@ function textCounter(field, maxlimit) {
 </h:panelGroup>
 
   <h:inputHidden id="createdDate" value="#{questionpool.currentPool.dateCreated}">
-  <f:convertDateTime pattern="yyyy-MM-dd HH:mm:ss"/>
+    <f:convertDateTime pattern="yyyy-MM-dd HH:mm:ss"/>
   </h:inputHidden>
 <div>
   <h:commandButton id="Update" rendered="#{questionpool.importToAuthoring == 'false'}" action="#{questionpool.getOutcomeEdit}" value="#{questionPoolMessages.update}">

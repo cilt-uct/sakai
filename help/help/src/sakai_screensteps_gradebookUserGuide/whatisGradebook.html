@@ -1,79 +1,143 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<title>How do I enable student peer review for an assignment?</title>
+<title>What is Gradebook?</title>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<meta content="sakai.assignment" name="description">
-<meta content="peer review, peer assessment, peer evaluation" name="search">
-<link href="/library/skin/tool_base.css" media="screen" rel="stylesheet" type="text/css" charset="utf-8">
-<link href="../css/help.css" media="screen" rel="stylesheet" type="text/css" charset="utf-8">
-<link href="/library/skin/morpheus-default/tool.css" media="screen" rel="stylesheet" type="text/css" charset="utf-8">
-<link href="/library/js/jquery/featherlight/0.4.0/featherlight.min.css" media="screen" rel="stylesheet" type="text/css" charset="utf-8">
-<script src="/library/webjars/jquery/1.12.4/jquery.min.js" type="text/javascript" charset="utf-8"></script><script src="/library/js/jquery/featherlight/0.4.0/featherlight.min.js" type="text/javascript" charset="utf-8"></script><script type="text/javascript" charset="utf-8">
+<meta content="sakai.gradebookng" name="description">
+<link href="../css/help.css" media="all" rel="stylesheet" type="text/css" charset="utf-8">
+<link href="/library/webjars/fontawesome/4.7.0/css/font-awesome.min.css" media="screen" rel="stylesheet">
+<script src="/library/webjars/jquery/1.12.4/jquery.min.js" type="text/javascript" charset="utf-8"></script>
+<script src="/library/js/headscripts.js" type="text/javascript" charset="utf-8"></script>
+<script type="text/javascript" charset="utf-8">
+    includeWebjarLibrary('featherlight');
     $(document).ready(function(){
-      $("a[rel^='featherlight']").featherlight({
+      $("a.screensteps-image-zoom").featherlight({
         type: { image:true },
-    closeOnClick: 'anywhere'
+        closeOnClick: 'anywhere'
       }); 
     });   
-  </script>
+</script>
 </head>
 <body>
-  <div id="wrapper"><div id="article-content">
-<div id="article-header"><h1 class="article-title">What is Gradebook?</h1></div>
-<div id="article-description">
-  <div class="step-instructions screensteps-textblock screensteps-wrapper--introduction screensteps-wrapper">
-  <p>Gradebook (previously known as GradebookNG) is a new core tool for instructors to calculate and store grade information and distribute it to students online. It has been designed based on the same back-end as the Gradebook Classic tool, but with a number of new features and enhancements.</p>
-<p>The following provides a high-level overview of the functional requirements guiding the development of the enhanced Gradebook.</p>
+  <div class="screensteps-main-content" role="main">
+    <div class="screensteps-article">
+      <div class="screensteps-article-content">
+
+        <div><div>
+<div><h1 class="article-title">What is Gradebook?</h1></div>
+<div><div class="screensteps-steps">    <div class="step-instructions screensteps-textblock screensteps-wrapper--introduction screensteps-wrapper">
+  <p>The Gradebook allows instructors to do the following:</p>
 <ul>
-<li>
-<strong>Editable Spreadsheet View: </strong>The default “Grades” view within the gradebook will be replaced by an editable spreadsheet view, wherein gradebook items will be displayed as a series of columns. The layout and data-entry process will be familiar to users of modern spreadsheet applications such as Excel and Google Sheets. Gradebook actions will be available within the context of dropdowns in spreadsheet cells and columns. Modal windows (lightboxes) will be used for entering and editing information, thereby maintaining a sense of continuity and place for users.</li>
-<li>
-<strong>Automatic Saving/Data Validation: </strong>Changes to data within the spreadsheet view will be automatically saved, with clear feedback confirming to users that their data has been saved. The interface will also provide data validation feedback.</li>
-<li>
-<strong>New Course Grade Display Options: </strong>Course grades will benefit from additional display options. Instructors will have the option of displaying course grades to students as letter grades, percentages, points, or combinations thereof.</li>
-<li>
-<strong>Student Summary View: </strong>Within the spreadsheet view, instructors will be able to view a gradebook item summary for each student. This view will display grade information solely for the selected student, providing an overview of the student’s grades in a vertical orientation whilst obscuring the grade data of other students.</li>
-<li>
-<strong>Enhanced Import/Export Process: </strong>The existing Import/Export process will be simplified and consolidated into one page. The improved workflow will allow instructors to update existing gradebook items/comments and add new gradebook items in bulk. Users will also be able to export the gradebook as they can today.</li>
-</ul>
-<p>In Gradebook, Students can view their scores for all items; view their course grades, once an instructor releases them; and sort their items by title, due date, grade, and weight, where applicable.</p>
-<p>Gradebook is section aware, so teaching assistants can see grades only for students in their assigned sections.</p>
-<p>Using Gradebook, instructors can:</p>
-<ul>
+<li>Enter grades and comments in an easy-to-use spreadsheet view.</li>
 <li>Auto-calculate course grades, with the ability to override any course grade.</li>
-<li>Define course letter grades based on a 100% scale.</li>
+<li>Define course letter grades and grading schema.</li>
 <li>Choose between point- or percentage-based grading.</li>
-<li>Add gradebook items for manually graded or offline activities.</li>
-<li>Create categories to organize items and allow for weighting of grades.</li>
-<li>Enter, view, edit, and release to students scores, grades, and comments.</li>
+<li>Add Gradebook items for manually graded or offline activities.</li>
 <li>Collect and display scores from tools such as Tests &amp; Quizzes, Assignments, and Forums.</li>
-<li>Export scores and grades to Microsoft Excel (in XLS format).</li>
-<li>Import item scores from spreadsheet (CSV) files.</li>
-<li>Export a printer-friendly (PDF) version of individual student grades.</li>
-<li>Drop grades or keep the highest grades in a category.</li>
-<li>Specify items or categories as extra credit.</li>
+<li>Restrict permissions so <em>Teaching Assistants</em> can only grade specific rosters or groups of students.</li>
+<li>Import grades from a spreadsheet (CSV) file.</li>
+<li>Export grades as a spreadsheet (CSV) file.</li>
+<li>Create extra credit items and/or categories.</li>
+<li>Organize grades into categories, and use categories to do the following:<ul>
+<li>Assign a weight to the category,</li>
+<li>Automatically drop grades in a specific category.</li>
 </ul>
+</li>
+<li>Export a printer-friendly (PDF) version of individual student grades.</li>
+</ul>
+<p>Students can view their own grades and comments in the Gradebook.  </p>
 </div>
 
-
-  
-  <div class="step screensteps-section screensteps-depth-1" id="to-access-this-tool-select-gradebook-from-the-tool-menu-of-your-site">
-    <h2 id="to-access-this-tool-select-gradebook-from-the-tool-menu-of-your-site" class="step-title screensteps-heading">To access this tool, select Gradebook from the Tool Menu of your site.</h2>
-    
+      <div class="step screensteps-section screensteps-depth-1" id="to-access-this-tool-select-gradebook-from-the-tool-menu-of-your-site">
+    <h2 class="step-title screensteps-heading">To access this tool, select Gradebook from the Tool Menu of your site.</h2>
       <div class="image screensteps-image">
-  
-  
-    <img src="https://s3.amazonaws.com/screensteps_live/image_assets/assets/001/310/670/original/cc66d50a-67e1-44f6-a6fa-3dde1e0a2989.png" alt="To access this tool, select Gradebook from the Tool Menu of your site." height="143" width="200">
-  
+    <img src="https://media.screensteps.com/image_assets/assets/003/297/779/original/041a71e9-8c85-4884-abac-7c81d442990a.png" alt="" height="113" width="215">
 </div>
-
-    
+ 
+        <div class="step screensteps-section screensteps-depth-2" id="gradebook_tool_main_page_instructor_view">
+    <h3 class="step-title screensteps-heading">Gradebook Tool Main Page (Instructor View)</h3>
+      <div class="image screensteps-image">
+    <a href="https://media.screensteps.com/image_assets/assets/003/151/137/original/a0826ae4-8b1b-45e4-85cf-65c919351422.png" class="screensteps-image-zoom">
+      <img src="https://media.screensteps.com/image_assets/assets/003/151/137/medium/a0826ae4-8b1b-45e4-85cf-65c919351422.png" alt="" height="421" width="855">
+    </a>
+</div>
+ 
+      <div class="step-instructions screensteps-textblock">
+  <p>The instructor view of Gradebook (<em>Grades</em> screen) displays the following: </p>
+<ol>
+<li>
+<strong>Add Gradebook Item: </strong>Add new items.</li>
+<li>
+<strong>All Sections/Groups:</strong> Select to display students in a specific roster or group.</li>
+<li>
+<strong>Filter students:</strong> Search for students by name or user ID.</li>
+<li>
+<strong>View Columns: </strong>Show or hide Gradebook columns.</li>
+<li>
+<strong>Item Order: </strong>View and organize all Gradebook items in one screen.</li>
+<li>
+<strong>Group By Category: </strong>View by group if categories were added in the <strong>Settings.</strong>
+</li>
+<li>
+<strong>Bulk Edit: </strong>Select several items to release to students or include in grade calculations at once. </li>
+<li>
+<strong>Students:</strong> View the list of students ordered by first or last name.</li>
+<li>
+<strong>Course Grade: </strong>View currently calculated course grade.</li>
+<li>
+<strong>Gradebook items: </strong>Items including grades that have been entered, and <strong>Comments</strong> icons to display comments,</li>
+<li>
+<strong>Category Title: </strong>If items are grouped by category, the category is shown as a separate column.</li>
+<li>
+<strong>Category average: </strong>The average for items in a category.</li>
+</ol>
+</div>
+ 
+      <div class="step-instructions screensteps-textblock">
+  <p><em>Note<strong>: </strong>If a </em>gradebook<em> has categories, but items have not yet been assigned to a category, these items will display under the title Uncategorized.</em></p>
+</div>
+ 
+  </div>
+ 
+        <div class="step screensteps-section screensteps-depth-2" id="gradebook_tool_main_page_student_view">
+    <h3 class="step-title screensteps-heading">Gradebook Tool Main Page (Student View)</h3>
+      <div class="image screensteps-image">
+    <a href="https://media.screensteps.com/image_assets/assets/003/151/134/original/460f2298-ba14-4d52-a146-c5e6722ed68f.png" class="screensteps-image-zoom">
+      <img src="https://media.screensteps.com/image_assets/assets/003/151/134/medium/460f2298-ba14-4d52-a146-c5e6722ed68f.png" alt="" height="310" width="855">
+    </a>
+</div>
+ 
+      <div class="step-instructions screensteps-textblock">
+  <p>The student view of Gradebook (<em>Grade Report</em>) includes the following:</p>
+<ol>
+<li>A <strong>Print</strong> button</li>
+<li>
+<strong>Course Grade</strong> if released to students</li>
+<li>
+<strong>Display options</strong>, only if categories exist:<ul>
+<li><strong>Group by Category</strong></li>
+<li>
+<strong>Expand All: </strong>Show items in all categories</li>
+<li>
+<strong>Collapse All:</strong> Hide items in all categories to only display category averages</li>
+</ul>
+</li>
+<li>
+<strong>Gradebook items</strong>, with options to sort by <strong>Grade</strong>, <strong>Due Date</strong>, or instructor <strong>Comments</strong>
+</li>
+</ol>
+</div>
+ 
+  </div>
+ 
   </div>
 
 
-
-</div>
 </div></div>
+</div></div>
+
+      </div>
+    </div>
+  </div>
 </body>
 </html>

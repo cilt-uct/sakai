@@ -80,9 +80,9 @@ SPNR.insertSpinnerAfter = function( clickedElement, escapeList, overrideSpinnerL
  * 
  * If no escapes are needed, pass in null for the escapeList parameter.
  * 
- * @param {type} clickedElement - the element being interacted with
- * @param {type} escapeList - array of IDs you do not wish to be disabled
- * @param {type} allocatedID - the ID of the div manually added to the page to contain the spinner
+ * @param {DOM Element} clickedElement - the element being interacted with
+ * @param {Array[String]} escapeList - array of IDs you do not wish to be disabled
+ * @param {String} allocatedID - the ID of the div manually added to the page to contain the spinner
  */
 SPNR.insertSpinnerInPreallocated = function( clickedElement, escapeList, allocatedID )
 {
@@ -123,7 +123,7 @@ SPNR.disableControlsAndSpin = function( clickedElement, escapeList )
 
     SPNR.disableInputs( clickedElement, escapeList );
     SPNR.disableLinkPointers( escapeList );
-    SPNR.disableSelects( escapeList );
+    SPNR.disableSelects( clickedElement, escapeList );
     SPNR.disableTextAreas( escapeList );
 };
 
@@ -191,9 +191,10 @@ SPNR.disableInputs = function( clickedElement, escapeList )
 /**
  * This function clones and disables all 'select' elements on the page.
  * 
+ * @param {DOM Element} clickedElement - the element being interacted with
  * @param {Array[String]} escapeList - array of IDs you do not wish to be disabled
  */
-SPNR.disableSelects = function( escapeList )
+SPNR.disableSelects = function( clickedElement, escapeList )
 {
     // Clone and disable all drop downs (disable the clone, hide the original)
     var dropDowns = SPNR.nodeListToArray( document.getElementsByTagName( "select" ) );
@@ -208,7 +209,9 @@ SPNR.disableSelects = function( escapeList )
 
             // Create the cloned element and disable it
             var newSelect = document.createElement( "select" );
-            newSelect.setAttribute( "id", select.getAttribute( "id" ) + "Disabled" );
+            var oldId = select.getAttribute( "id" );
+            var newId = (oldId !== null) ? oldId : Math.random().toString(36).substring(2, 15);
+            newSelect.setAttribute( "id", newId + "Disabled" );
             newSelect.setAttribute( "name", select.getAttribute( "name" ) + "Disabled" );
             newSelect.setAttribute( "className", select.getAttribute( "className" ) );
             newSelect.setAttribute( "disabled", "true" );
@@ -217,9 +220,23 @@ SPNR.disableSelects = function( escapeList )
             newSelect.innerHTML = select.innerHTML;
             newSelect.selectedIndex = select.selectedIndex;
 
-            // Add the clone to the DOM where the original was
-            var parent = select.parentNode;
-            parent.insertBefore( newSelect, select );
+            if (select === clickedElement)
+            {
+                // wrap it
+                var wrapper = document.createElement("span");
+                wrapper.className = "spinSelect";
+                wrapper.appendChild(newSelect);
+                // transfer any margins from the original select to the wrapper
+                wrapper.style.margin = select.style.margin;
+
+                // insert it
+                select.parentNode.insertBefore(wrapper, select);
+            }
+            else
+            {
+                // Add the clone to the DOM where the original was
+                select.parentNode.insertBefore( newSelect, select );
+            }
         }
     }
 };
@@ -289,12 +306,13 @@ SPNR.disableElementAndSpin = function( divID, element, activateSpinner )
         newElement.setAttribute( "type", element.type );
     }
 
-    newElement.setAttribute( "id", element.getAttribute( "id" ) + "Disabled" );
+    var oldId = element.getAttribute( "id" );
+    var newId = (oldId !== null) ? oldId : Math.random().toString(36).substring(2, 15);
+    newElement.setAttribute( "id", newId + "Disabled" );
     newElement.setAttribute( "name", element.getAttribute( "name" ) + "Disabled" );
     newElement.setAttribute( "value", element.getAttribute( "value" ) );
     newElement.setAttribute( "disabled", "true" );
     newElement.style.display = origDisplay;
-    newElement.className = activateSpinner ? "spinButton formButtonDisabled" : "formButtonDisabled";
 
     if( element.type === "checkbox" || element.type === "radio" )
     {
@@ -303,6 +321,7 @@ SPNR.disableElementAndSpin = function( divID, element, activateSpinner )
     else
     {
         newElement.textContent = element.getAttribute( "value" );
+        newElement.className = activateSpinner ? "spinButton formButtonDisabled" : "formButtonDisabled";
     }
 
     if( "" !== divID )

@@ -39,6 +39,7 @@ import java.util.Vector;
 import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.authz.api.AuthzPermissionException;
+import org.sakaiproject.authz.api.AuthzRealmLockException;
 import org.sakaiproject.authz.api.FunctionManager;
 import org.sakaiproject.authz.api.GroupNotDefinedException;
 import org.sakaiproject.authz.api.SecurityService;
@@ -606,6 +607,7 @@ public abstract class BaseUserDirectoryService implements UserDirectoryService, 
 			functionManager().registerFunction(SECURE_UPDATE_USER_OWN_PASSWORD);
 			functionManager().registerFunction(SECURE_UPDATE_USER_OWN_TYPE);
 			functionManager().registerFunction(SECURE_UPDATE_USER_ANY);
+			functionManager().registerFunction(SECURE_VIEW_USER_ANY);
 			functionManager().registerFunction("user.studentnumber.visible");
 			
 
@@ -1635,8 +1637,13 @@ public abstract class BaseUserDirectoryService implements UserDirectoryService, 
 		{
 			log.warn("removeUser: removing realm for : " + ref + " : " + e);
 		}
-		catch (GroupNotDefinedException ignore)
+		catch (GroupNotDefinedException gnde)
 		{
+			log.warn(gnde.getMessage());
+		}
+		catch (AuthzRealmLockException arle)
+		{
+			log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
 		}
 
 		// Remove from cache.
@@ -1782,6 +1789,7 @@ public abstract class BaseUserDirectoryService implements UserDirectoryService, 
 		if (!m_separateIdEid) {
 		    id = cleanEid(id);
 		}
+		id = StringUtils.lowerCase(id);
 		id = StringUtils.trimToNull(id);
 		// max length for an id is 99 chars
         id = StringUtils.abbreviate(id, 99);
@@ -2529,13 +2537,17 @@ public abstract class BaseUserDirectoryService implements UserDirectoryService, 
 		/**
 		 * @inheritDoc
 		 */
-		public String getDisplayName()
+		public String getDisplayName(String context)
 		{
 			String rv = null;
 
 			// If a contextual aliasing service exists, let it have the first try.
 			if (m_contextualUserDisplayService != null) {
-				rv = m_contextualUserDisplayService.getUserDisplayName(this);
+				if (context != null) {
+					rv = m_contextualUserDisplayService.getUserDisplayName(this, context);
+				} else {
+					rv = m_contextualUserDisplayService.getUserDisplayName(this);
+				}
 				if (rv != null) {
 					return rv;
 				}
@@ -2575,13 +2587,24 @@ public abstract class BaseUserDirectoryService implements UserDirectoryService, 
 		/**
 		 * @inheritDoc
 		 */
-		public String getDisplayId()
+		public String getDisplayName() {
+			return getDisplayName(null);
+		}
+
+		/**
+		 * @inheritDoc
+		 */
+		public String getDisplayId(String context)
 		{
 			String rv = null;
 			
 			// If a contextual aliasing service exists, let it have the first try.
 			if (m_contextualUserDisplayService != null) {
-				rv = m_contextualUserDisplayService.getUserDisplayId(this);
+				if (context != null) {
+					rv = m_contextualUserDisplayService.getUserDisplayId(this, context);
+				} else {
+					rv = m_contextualUserDisplayService.getUserDisplayId(this);
+				}
 				if (rv != null) {
 					return rv;
 				}
@@ -2600,6 +2623,13 @@ public abstract class BaseUserDirectoryService implements UserDirectoryService, 
 			}
 
 			return rv;
+		}
+
+		/**
+		 * @inheritDoc
+		 */
+		public String getDisplayId() {
+			return getDisplayId(null);
 		}
 
 		/**
@@ -2693,8 +2723,8 @@ public abstract class BaseUserDirectoryService implements UserDirectoryService, 
 
 			BaseUserEdit that = (BaseUserEdit) o;
 
-			if (m_id != null ? !m_id.equals(that.m_id) : that.m_id != null) return false;
-			if (m_eid != null ? !m_eid.equals(that.m_eid) : that.m_eid != null) return false;
+			if (m_id != null ? !m_id.equalsIgnoreCase(that.m_id) : that.m_id != null) return false;
+			if (m_eid != null ? !m_eid.equalsIgnoreCase(that.m_eid) : that.m_eid != null) return false;
 
 			return true;
 		}
@@ -2710,7 +2740,7 @@ public abstract class BaseUserDirectoryService implements UserDirectoryService, 
 				// Maintains consistency with Sakai 2.4.x behavior.
 				id = "";
 			}
-			return id.hashCode();
+			return cleanId(id).hashCode();
 		}
 
 		/**

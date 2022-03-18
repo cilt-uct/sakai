@@ -21,7 +21,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import lombok.extern.slf4j.Slf4j;
 import org.sakaiproject.content.api.ContentResource;
 import org.sakaiproject.contentreview.dao.ContentReviewConstants;
 import org.sakaiproject.contentreview.dao.ContentReviewItem;
@@ -32,6 +31,7 @@ import org.sakaiproject.contentreview.exception.SubmissionException;
 import org.springframework.transaction.annotation.Transactional;
 
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class ContentReviewQueueServiceImpl implements ContentReviewQueueService {
@@ -52,7 +52,9 @@ public class ContentReviewQueueServiceImpl implements ContentReviewQueueService 
 		Objects.requireNonNull(siteId, "siteId cannot be null");
 		Objects.requireNonNull(taskId, "taskId cannot be null");
 		Objects.requireNonNull(content, "content cannot be null");
-				
+		
+		StringBuilder errors = new StringBuilder();
+		String delim = "";
 		for (ContentResource resource : content) {
 			String contentId = resource.getId();
 			
@@ -66,7 +68,9 @@ public class ContentReviewQueueServiceImpl implements ContentReviewQueueService 
 			Optional<ContentReviewItem> existingItem = itemDao.findByProviderAndContentId(providerId, contentId);
 			
 			if (existingItem.isPresent()) {
-				throw new QueueException("Content " + contentId + " is already queued");
+				errors.append(delim).append("Content " + contentId + " is already queued");
+				delim = ", ";
+				continue;
 			}
 			
 			ContentReviewItem item = new ContentReviewItem(contentId, userId, siteId, taskId, new Date(), ContentReviewConstants.CONTENT_REVIEW_NOT_SUBMITTED_CODE, providerId);
@@ -74,6 +78,11 @@ public class ContentReviewQueueServiceImpl implements ContentReviewQueueService 
 			log.debug("Adding content: " + contentId + " from site " + siteId + " and user: " + userId + " for task: " + taskId + " to submission queue");
 			
 			itemDao.create(item);
+		}
+
+		if (errors.length() > 0)
+		{
+			throw new QueueException(errors.toString());
 		}
 	}
 	

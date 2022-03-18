@@ -34,6 +34,8 @@ import java.util.Map.Entry;
 
 import lombok.extern.slf4j.Slf4j;
 
+import org.apache.commons.lang3.StringUtils;
+
 import org.sakaiproject.coursemanagement.api.AcademicSession;
 import org.sakaiproject.coursemanagement.api.CanonicalCourse;
 import org.sakaiproject.coursemanagement.api.CourseManagementService;
@@ -96,6 +98,7 @@ public class CourseManagementServiceFederatedImpl implements
 			try {
 				set = cm.findCourseOfferings(courseSetEid, academicSessionEid);
 				if(set != null) {
+					log.debug("{} found course set {}", cm, courseSetEid);
 					resultSet.addAll(set);
 				}
 			} catch (IdNotFoundException ide) {
@@ -184,6 +187,7 @@ public class CourseManagementServiceFederatedImpl implements
 			CourseManagementService cm = (CourseManagementService)implIter.next();
 			Set<Section> set = null;
 			try {
+				log.debug("{} found find academic session {}", cm, academicSessionEid);
 				set = cm.findInstructingSections(userId, academicSessionEid);
 			} catch (IdNotFoundException ide) {
 				exceptions++;
@@ -204,6 +208,7 @@ public class CourseManagementServiceFederatedImpl implements
 		for(Iterator implIter = implList.iterator(); implIter.hasNext();) {
 			CourseManagementService cm = (CourseManagementService)implIter.next();
 			try {
+				log.debug("{} found academic session {}", cm, eid);
 				return cm.getAcademicSession(eid);
 			} catch (IdNotFoundException ide) {
 				if(log.isDebugEnabled()) log.debug(cm + " could not locate academic session " + eid);
@@ -230,6 +235,7 @@ public class CourseManagementServiceFederatedImpl implements
 		for(Iterator implIter = implList.iterator(); implIter.hasNext();) {
 			CourseManagementService cm = (CourseManagementService)implIter.next();
 			try {
+				log.debug("{} found canonical course {}", cm, canonicalCourseEid);
 				return cm.getCanonicalCourse(canonicalCourseEid);
 			} catch (IdNotFoundException ide) {
 				if(log.isDebugEnabled()) log.debug(cm + " could not locate canonical course " + canonicalCourseEid);
@@ -245,6 +251,7 @@ public class CourseManagementServiceFederatedImpl implements
 			CourseManagementService cm = (CourseManagementService)implIter.next();
 			Set<CanonicalCourse> set = null;
 			try {
+				log.debug("{} founnd course set {}", cm, courseSetEid);
 				set = cm.getCanonicalCourses(courseSetEid);
 			} catch (IdNotFoundException ide) {
 				exceptions++;
@@ -268,6 +275,7 @@ public class CourseManagementServiceFederatedImpl implements
 			CourseManagementService cm = (CourseManagementService)implIter.next();
 			Set<CourseSet> set = null;
 			try {
+				log.debug("{} found parent course set {}", cm, parentCourseSetEid);
 				set = cm.getChildCourseSets(parentCourseSetEid);
 			} catch (IdNotFoundException ide) {
 				exceptions++;
@@ -291,6 +299,7 @@ public class CourseManagementServiceFederatedImpl implements
 			CourseManagementService cm = (CourseManagementService)implIter.next();
 			Set<Section> set = null;
 			try {
+				log.debug("{} found parent section {}", cm, parentSectionEid);
 				set = cm.getChildSections(parentSectionEid);
 			} catch (IdNotFoundException ide) {
 				exceptions++;
@@ -311,6 +320,7 @@ public class CourseManagementServiceFederatedImpl implements
 		for(Iterator implIter = implList.iterator(); implIter.hasNext();) {
 			CourseManagementService cm = (CourseManagementService)implIter.next();
 			try {
+				log.debug("{} found course offering {}", cm, courseOfferingEid);
 				return cm.getCourseOffering(courseOfferingEid);
 			} catch (IdNotFoundException ide) {
 				if(log.isDebugEnabled()) log.debug(cm + " could not locate course offering " + courseOfferingEid);
@@ -349,6 +359,7 @@ public class CourseManagementServiceFederatedImpl implements
 			CourseManagementService cm = (CourseManagementService)implIter.next();
 			Set<CourseOffering> set = null;
 			try {
+				log.debug("{} found locate course set {}", cm, courseSetEid);
 				set = cm.getCourseOfferingsInCourseSet(courseSetEid);
 			} catch (IdNotFoundException ide) {
 				exceptions++;
@@ -369,6 +380,7 @@ public class CourseManagementServiceFederatedImpl implements
 		for(Iterator implIter = implList.iterator(); implIter.hasNext();) {
 			CourseManagementService cm = (CourseManagementService)implIter.next();
 			try {
+				log.debug("{} found course set {}", cm, eid);
 				return cm.getCourseSet(eid);
 			} catch (IdNotFoundException ide) {
 				if(log.isDebugEnabled()) log.debug(cm + " could not locate course set " + eid);
@@ -384,6 +396,7 @@ public class CourseManagementServiceFederatedImpl implements
 			CourseManagementService cm = (CourseManagementService)implIter.next();
 			Set<Membership> set = null;
 			try {
+				log.debug("{} found course set {}", cm, courseSetEid);
 				set = cm.getCourseSetMemberships(courseSetEid);
 			} catch (IdNotFoundException ide) {
 				exceptions++;
@@ -442,6 +455,7 @@ public class CourseManagementServiceFederatedImpl implements
 		for(Iterator implIter = implList.iterator(); implIter.hasNext();) {
 			CourseManagementService cm = (CourseManagementService)implIter.next();
 			try {
+				log.debug("{} found enrollmentSet {}", cm, enrollmentSetEid);
 				return cm.getEnrollmentSet(enrollmentSetEid);
 			} catch (IdNotFoundException ide) {
 				if(log.isDebugEnabled()) log.debug(cm + " could not locate enrollmentSet " + enrollmentSetEid);
@@ -457,6 +471,7 @@ public class CourseManagementServiceFederatedImpl implements
 			CourseManagementService cm = (CourseManagementService)implIter.next();
 			Set<EnrollmentSet> set = null;
 			try {
+				log.debug("{} found course offering {}", cm, courseOfferingEid);
 				set = cm.getEnrollmentSets(courseOfferingEid);
 			} catch (IdNotFoundException ide) {
 				exceptions++;
@@ -480,6 +495,7 @@ public class CourseManagementServiceFederatedImpl implements
 			CourseManagementService cm = (CourseManagementService)implIter.next();
 			Set<Enrollment> set = null;
 			try {
+				log.debug("{} found enrollment set {}", cm, enrollmentSetEid);
 				set = cm.getEnrollments(enrollmentSetEid);
 			} catch (IdNotFoundException ide) {
 				if(log.isDebugEnabled()) log.debug(cm + " could not locate enrollment set " + enrollmentSetEid);
@@ -502,6 +518,7 @@ public class CourseManagementServiceFederatedImpl implements
 			CourseManagementService cm = (CourseManagementService)implIter.next();
 			Set<CanonicalCourse> set = null;
 			try {
+				log.debug("{} found locate canonical course {}", cm, canonicalCourseEid);
 				set = cm.getEquivalentCanonicalCourses(canonicalCourseEid);
 			} catch (IdNotFoundException ide) {
 				exceptions++;
@@ -525,6 +542,7 @@ public class CourseManagementServiceFederatedImpl implements
 			CourseManagementService cm = (CourseManagementService)implIter.next();
 			Set<CourseOffering> set = null;
 			try {
+				log.debug("{} found course offering {}", cm, courseOfferingEid);
 				set = cm.getEquivalentCourseOfferings(courseOfferingEid);
 			} catch (IdNotFoundException ide) {
 				exceptions++;
@@ -548,6 +566,7 @@ public class CourseManagementServiceFederatedImpl implements
 			CourseManagementService cm = (CourseManagementService)implIter.next();
 			Set<String> set = null;
 			try {
+				log.debug("{} found enrollment set {}", cm, enrollmentSetEid);
 				set = cm.getInstructorsOfRecordIds(enrollmentSetEid);
 			} catch (IdNotFoundException ide) {
 				exceptions++;
@@ -568,6 +587,7 @@ public class CourseManagementServiceFederatedImpl implements
 		for(Iterator implIter = implList.iterator(); implIter.hasNext();) {
 			CourseManagementService cm = (CourseManagementService)implIter.next();
 			try {
+				log.debug("{} found section {}", cm, sectionEid);
 				return cm.getSection(sectionEid);
 			} catch (IdNotFoundException ide) {
 				if(log.isDebugEnabled()) log.debug(cm + " could not locate section " + sectionEid);
@@ -606,6 +626,7 @@ public class CourseManagementServiceFederatedImpl implements
 			CourseManagementService cm = (CourseManagementService)implIter.next();
 			Set<Section> set = null;
 			try {
+				log.debug("{} found course offering {}", cm, courseOfferingEid);
 				set = cm.getSections(courseOfferingEid);
 			} catch (IdNotFoundException ide) {
 				exceptions++;
@@ -742,6 +763,26 @@ public class CourseManagementServiceFederatedImpl implements
 		return sectionRoleMap;
 	}
 
+	public Map<String, String> findSectionRoles(String userEid, String academicSessionEid) {
+		Map<String, String> sectionRoleMap = new HashMap<>();
+		for (CourseManagementService cm : implList) {
+			Map<String, String> map = cm.findSectionRoles(userEid, academicSessionEid);
+			if (map == null) {
+				continue;
+			}
+			for (String sectionEid : map.keySet()) {
+				String role = (String) map.get(sectionEid);
+
+				// Earlier impls take precedence, so don't overwrite what's in the map
+				if (!sectionRoleMap.containsKey(sectionEid)) {
+					sectionRoleMap.put(sectionEid, role);
+				}
+			}
+		}
+
+		return sectionRoleMap;
+	}
+
 	public Set<CourseOffering> getCourseOfferingsInCanonicalCourse(String canonicalCourseEid) throws IdNotFoundException {
 		Set<CourseOffering> resultSet = new HashSet<CourseOffering>();
 		int exceptions = 0;
@@ -749,6 +790,7 @@ public class CourseManagementServiceFederatedImpl implements
 			CourseManagementService cm = (CourseManagementService)implIter.next();
 			Set<CourseOffering> set = null;
 			try {
+				log.debug("{} found canonical course {}", cm, canonicalCourseEid);
 				set = cm.getCourseOfferingsInCanonicalCourse(canonicalCourseEid);
 			} catch (IdNotFoundException ide) {
 				if(log.isDebugEnabled()) log.debug(cm + " could not find canonical course " + canonicalCourseEid);
@@ -883,6 +925,21 @@ public class CourseManagementServiceFederatedImpl implements
 			}
 		}
 		return null;
+	}
+
+	public String getEnrollmentStatusDescription(String statusId) {
+
+		if (StringUtils.isBlank(statusId)) {
+			return StringUtils.EMPTY;
+		}
+
+		for (CourseManagementService cm : implList) {
+			String desc = cm.getEnrollmentStatusDescription(statusId);
+			if (StringUtils.isNotBlank(desc)) {
+				return desc;
+			}
+		}
+		return StringUtils.EMPTY;
 	}
 
 	public Map<String, String> getEnrollmentStatusDescriptions(Locale locale) {

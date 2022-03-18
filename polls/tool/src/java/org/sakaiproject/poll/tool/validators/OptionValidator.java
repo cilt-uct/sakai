@@ -21,10 +21,14 @@
 
 package org.sakaiproject.poll.tool.validators;
 
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import org.springframework.validation.Errors;
 import org.springframework.validation.Validator;
+import org.sakaiproject.poll.logic.ExternalLogic;
+import org.sakaiproject.poll.model.Option;
+import org.sakaiproject.poll.util.PollUtils;
 
 import org.sakaiproject.poll.model.Option;
 import org.sakaiproject.poll.util.PollUtils;
@@ -34,30 +38,28 @@ import org.sakaiproject.util.FormattedText;
 public class OptionValidator implements Validator {
 
 	public String submissionStatus;
+	@Setter private ExternalLogic externalLogic;
 	
 	public boolean supports(Class clazz) {
-		// TODO Auto-generated method stub
 		return clazz.equals(Option.class);
 	}
 
 	public void validate(Object obj, Errors errors) {
-
 
 		Option option = (Option) obj;
 		
 		// SAK-14725 : BugFix
 		String stripText = null;
 		
-		if(null != option.getOptionText()) {
-			stripText = FormattedText.convertFormattedTextToPlaintext(option.getOptionText()).trim();
+		if(null != option.getText()) {
+			stripText = externalLogic.convertFormattedTextToPlaintext(option.getText()).trim();
 		}
 		
-		log.debug("validating Option with id:" + option.getOptionId());
-		if (option.getStatus()!=null && (option.getStatus().equals("cancel") || option.getStatus().equals("delete")))
+		log.debug("validating Option with id {} and status {}.", option.getOptionId(), option.getStatus());
+		if (option.getStatus()!=null && (option.getStatus().equals("cancel") || option.getStatus().equals("delete") || option.getStatus().equals("batch")))
 			return;
 
-
-		if (option.getOptionText() == null || option.getOptionText().trim().length()==0 ||
+		if (option.getText() == null || option.getText().trim().length()==0 ||
 				stripText == null || stripText.length()==0) {
 			log.debug("OptionText is empty!");
 			errors.reject("option_empty","option empty");
@@ -65,24 +67,15 @@ public class OptionValidator implements Validator {
 		}
 
 		//if where here option is not null or empty but could be something like "&nbsp;&nbsp;"
-		String text = option.getOptionText();
-		
-
+		String text = option.getText();
 		text = PollUtils.cleanupHtmlPtags(text);
 		text = text.replace("&nbsp;", "");
-		text = StringEscapeUtils.unescapeHtml3(text).trim();
+		text = StringEscapeUtils.unescapeHtml4(text).trim();
 		log.debug("text to validate is: " + text);
 		if (text.trim().length()==0) {
 			log.debug("OptionText is empty! (after excaping html)");
 			errors.reject("option_empty","option empty");
 			return;
 		}
-
-
-
 	}
-
-
-
-
 }

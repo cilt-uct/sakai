@@ -23,7 +23,6 @@ package org.sakaiproject.calendar.impl;
 
 import java.io.InputStream;
 import java.text.DateFormat;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -35,12 +34,12 @@ import java.util.Map;
 import java.util.Stack;
 import java.util.Vector;
 
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
-import org.sakaiproject.util.CalendarEventType;
 import org.sakaiproject.calendar.api.Calendar;
 import org.sakaiproject.calendar.api.CalendarEvent;
 import org.sakaiproject.calendar.api.CalendarEventEdit;
@@ -48,7 +47,6 @@ import org.sakaiproject.calendar.api.CalendarImporterService;
 import org.sakaiproject.calendar.api.CalendarService;
 import org.sakaiproject.calendar.api.RecurrenceRule;
 import org.sakaiproject.calendar.impl.readers.CSVReader;
-import org.sakaiproject.calendar.impl.readers.MeetingMakerReader;
 import org.sakaiproject.calendar.impl.readers.OutlookReader;
 import org.sakaiproject.calendar.impl.readers.IcalendarReader;
 import org.sakaiproject.calendar.impl.readers.Reader;
@@ -60,8 +58,8 @@ import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.time.api.Time;
 import org.sakaiproject.time.api.TimeRange;
 import org.sakaiproject.time.api.TimeService;
-import org.sakaiproject.util.FormattedText;
 import org.sakaiproject.util.ResourceLoader;
+import org.sakaiproject.util.api.FormattedText;
 
 /**
  * This class provides common importing functionality after a lower-level reader has taken care of the peculiarities of a given import format.
@@ -129,39 +127,41 @@ public class GenericCalendarImporter implements CalendarImporterService
 	private final Map<String, Class<? extends Reader>> readerMap = new HashMap<>();
 	
 	protected Map<String, String> columnMap = null;
+	
+	private static final ResourceLoader rb = new ResourceLoader("calendar");
 
-	private DateFormat timeFormatter()
+	// These are injected at runtime by Spring.
+	private CalendarService calendarService = null;
+
+	private TimeService timeService = null;
+	
+	@Setter private FormattedText formattedText;
+
+	static DateFormat timeFormatter()
 	{
 		DateFormat rv = new SimpleDateFormat("hh:mm a");
 		rv.setLenient(false);
 		return rv;
 	}
 
-	private DateFormat timeFormatterWithSeconds()
+	static DateFormat timeFormatterWithSeconds()
 	{
 		return new SimpleDateFormat("hh:mm:ss a");
 	}
 
-	private DateFormat time24HourFormatter()
+	static DateFormat time24HourFormatter()
 	{
 		DateFormat rv = new SimpleDateFormat("HH:mm");
 		rv.setLenient(false);
 		return rv;
 	}
 
-	private DateFormat time24HourFormatterWithSeconds()
+	static DateFormat time24HourFormatterWithSeconds()
 	{
 		DateFormat rv = new SimpleDateFormat("HH:mm:ss");
 		rv.setLenient(false);
 		return rv;
 	}
-
-	private static ResourceLoader rb = new ResourceLoader("calendar");
-
-	// These are injected at runtime by Spring.
-	private CalendarService calendarService = null;
-
-	private TimeService timeService = null;
 
 	/*
 	 * This class is used as a "prototype" event that may be added to a real calendar. We emulate enough of a calendar event to hold all the information necessary to create a real event.
@@ -223,7 +223,7 @@ public class GenericCalendarImporter implements CalendarImporterService
 		 */
 		public String getDescription()
 		{
-			return FormattedText.convertFormattedTextToPlaintext(description);
+			return formattedText.convertFormattedTextToPlaintext(description);
 		}
 
 		/*
@@ -418,7 +418,7 @@ public class GenericCalendarImporter implements CalendarImporterService
 		 */
 		public void setDescription(String description)
 		{
-			this.description = FormattedText.convertPlaintextToFormattedText(description);
+			this.description = formattedText.convertPlaintextToFormattedText(description);
 		}
 
 		/*
@@ -716,7 +716,7 @@ public class GenericCalendarImporter implements CalendarImporterService
 	public List doImport(String importType, InputStream importStream, Map columnMapping, String[] customFieldPropertyNames, String userTzid)
 			throws ImportException
 	{
-		final List rowList = new ArrayList();
+		final List rowList;
 		final Reader scheduleImport;
 
 		try
@@ -754,199 +754,9 @@ public class GenericCalendarImporter implements CalendarImporterService
 		columnMap = scheduleImport.getDefaultColumnMap();
 		
 		// Read in the file.
-		String calendarTzid = scheduleImport.importStreamFromDelimitedFile(importStream, new Reader.ReaderImportRowHandler()
-		{
-			String frequencyColumn = columnMap.get(FREQUENCY_DEFAULT_COLUMN_HEADER);
-			String startTimeColumn = columnMap.get(START_TIME_DEFAULT_COLUMN_HEADER);
-			String endTimeColumn = columnMap.get(END_TIME_DEFAULT_COLUMN_HEADER);
-			String durationTimeColumn = columnMap.get(DURATION_DEFAULT_COLUMN_HEADER);
-			String dateColumn = columnMap.get(DATE_DEFAULT_COLUMN_HEADER);
-			String endsColumn = columnMap.get(ENDS_DEFAULT_COLUMN_HEADER);
-			String intervalColumn = columnMap.get(INTERVAL_DEFAULT_COLUMN_HEADER);
-			String repeatColumn = columnMap.get(REPEAT_DEFAULT_COLUMN_HEADER);
-			
-			// This is the callback that is called for each row.
-			public void handleRow(Iterator columnIterator) throws ImportException
-			{
-				final Map eventProperties = new HashMap();
-
-				// Add all the properties to the map
-				while (columnIterator.hasNext())
-				{
-					Reader.ReaderImportCell column = (Reader.ReaderImportCell) columnIterator.next();
-
-					String value = column.getCellValue().trim();
-					Object mapCellValue = null;
-
-					// First handle any empy columns.
-					if (value.length() == 0)
-					{
-						mapCellValue = null;
-					}
-					else
-					{
-						if (frequencyColumn != null && frequencyColumn.equals(column.getColumnHeader()))
-						{
-							mapCellValue = column.getCellValue();
-						}
-						else if (endTimeColumn != null && endTimeColumn.equals(column.getColumnHeader())
-								|| (startTimeColumn != null && startTimeColumn.equals(column.getColumnHeader())))
-						{
-							boolean success = false;
-
-							try
-							{
-								mapCellValue = timeFormatter().parse(value);
-								success = true;
-							}
-
-							catch (ParseException e)
-							{
-								// Try another format
-							}
-
-							if (!success)
-							{
-								try
-								{
-									mapCellValue = timeFormatterWithSeconds().parse(value);
-									success = true;
-								}
-
-								catch (ParseException e)
-								{
-									// Try another format
-								}
-							}
-
-							if (!success)
-							{
-								try
-								{
-									mapCellValue = time24HourFormatter().parse(value);
-									success = true;
-								}
-
-								catch (ParseException e)
-								{
-									// Try another format
-								}
-							}
-
-							if (!success)
-							{
-								try
-								{
-									mapCellValue = time24HourFormatterWithSeconds().parse(value);
-									success = true;
-								}
-
-								catch (ParseException e)
-								{
-									// Give up, we've run out of possible formats.
-                           String msg = (String)rb.getFormattedMessage(
-                                                   "err_time", 
-                                                   new Object[]{Integer.valueOf(column.getLineNumber()),
-                                                                column.getColumnHeader()});
-                           throw new ImportException( msg );
-								}
-							}
-						}
-						else if (durationTimeColumn != null && durationTimeColumn.equals(column.getColumnHeader()))
-						{
-                     String timeFormatErrorString = (String)rb.getFormattedMessage(
-                                                   "err_time", 
-                                                   new Object[]{Integer.valueOf(column.getLineNumber()),
-                                                                column.getColumnHeader()});
-
-							String parts[] = value.split(":");
-
-							if (parts.length == 1)
-							{
-								// Convert to minutes to get into one property field.
-								try
-								{
-									mapCellValue = Integer.valueOf(Integer.parseInt(parts[0]));
-								}
-								catch (NumberFormatException ex)
-								{
-									throw new ImportException(timeFormatErrorString);
-								}
-							}
-							else if (parts.length == 2)
-							{
-								// Convert to hours:minutes to get into one property field.
-								try
-								{
-									mapCellValue = Integer.valueOf(Integer.parseInt(parts[0]) * 60 + Integer.parseInt(parts[1]));
-								}
-								catch (NumberFormatException ex)
-								{
-									throw new ImportException(timeFormatErrorString);
-								}
-							}
-							else
-							{
-								// Not a legal format of mm or hh:mm
-								throw new ImportException(timeFormatErrorString);
-							}
-						}
-						else if (dateColumn != null && dateColumn.equals(column.getColumnHeader())
-								|| (endsColumn != null && endsColumn.equals(column.getColumnHeader())))
-						{
-                     DateFormat df = DateFormat.getDateInstance( DateFormat.SHORT, rb.getLocale() );
-                     df.setLenient(false);
-							try
-							{
-								mapCellValue = df.parse(value);
-							}
-							catch (ParseException e)
-							{
-                        String msg = (String)rb.getFormattedMessage("err_date", 
-                                                                    new Object[]{Integer.valueOf(column.getLineNumber()),
-                                                                                 column.getColumnHeader()});
-                        throw new ImportException( msg );
-							}
-						}
-						else if (intervalColumn != null && intervalColumn.equals(column.getColumnHeader())
-								|| repeatColumn != null && repeatColumn.equals(column.getColumnHeader()))
-						{
-							try
-							{
-								mapCellValue = Integer.valueOf(column.getCellValue());
-							}
-							catch (NumberFormatException ex)
-							{
-                        String msg = (String)rb.getFormattedMessage("err_interval", 
-                                                                    new Object[]{Integer.valueOf(column.getLineNumber()),
-                                                                                 column.getColumnHeader()});
-                        throw new ImportException( msg );
-							}
-						}
-						else if (ITEM_TYPE_DEFAULT_COLUMN_HEADER.equals(column.getColumnHeader())){
-							String cellValue = column.getCellValue();
-							if (cellValue!=null){
-								CalendarEventType.getEventTypeFromImportType(cellValue);
-							}
-							else { 
-								mapCellValue = cellValue; 
-							}
-						}
-						else
-						{
-							// Just a string...
-							mapCellValue = column.getCellValue();
-						}
-					}
-
-					// Store in the map for later reference.
-					eventProperties.put(column.getColumnHeader(), mapCellValue);
-				}
-
-				// Add the map of properties for this row to the list of rows.
-				rowList.add(eventProperties);
-			}
-		});
+		GenericImportRowHandler handler = new GenericImportRowHandler(columnMap, rb);
+		String calendarTzid = scheduleImport.importStreamFromDelimitedFile(importStream, handler);
+		rowList = handler.getRowList();
 
 		// Calendar time zone remains over user time zone
 		String tzid = calendarTzid==null ? userTzid:calendarTzid;
@@ -1134,7 +944,6 @@ public class GenericCalendarImporter implements CalendarImporterService
 			// Add our readers. This might be done from a
 			// config file in future versions.
 			readerMap.put(OUTLOOK_IMPORT, OutlookReader.class);
-			readerMap.put(MEETINGMAKER_IMPORT, MeetingMakerReader.class);
 			readerMap.put(CSV_IMPORT, CSVReader.class);
 			readerMap.put(ICALENDAR_IMPORT, IcalendarReader.class);
 		}
@@ -1151,4 +960,5 @@ public class GenericCalendarImporter implements CalendarImporterService
 	{
 		log.info("destroy()");
 	}
+
 }

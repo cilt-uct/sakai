@@ -19,7 +19,7 @@ package org.sakaiproject.gradebookng.business.util;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.wicket.model.StringResourceModel;
 import org.sakaiproject.gradebookng.business.GbCategoryType;
 import org.sakaiproject.gradebookng.business.GbRole;
@@ -132,20 +132,7 @@ public class CourseGradeFormatter {
 
 		// percentage
 		// not shown in final grade mode
-		final String calculatedGrade;
-		if (this.showOverride && StringUtils.isNotBlank(courseGrade.getEnteredGrade())) {
-
-			// if mapping doesn't exist for this grade override (mapping may have been changed!), map it to 0.
-			// TODO this should probably inform the instructor
-			Double mappedGrade = this.gradebook.getSelectedGradeMapping().getGradeMap().get(courseGrade.getEnteredGrade());
-			if (mappedGrade == null) {
-				mappedGrade = new Double(0);
-			}
-			calculatedGrade = FormatHelper.formatDoubleAsPercentage(mappedGrade);
-
-		} else {
-			calculatedGrade = FormatHelper.formatStringAsPercentage(courseGrade.getCalculatedGrade());
-		}
+		final String calculatedGrade = FormatHelper.formatStringAsPercentage(courseGrade.getCalculatedGrade());
 
 		if (StringUtils.isNotBlank(calculatedGrade)
 				&& (this.gradebook.isCourseAverageDisplayed() || shouldDisplayFullCourseGrade())) {

@@ -14,7 +14,7 @@
             </title>
 
             <!-- stylesheet and script widgets -->
-            <script language="javascript" type="text/JavaScript">
+            <script language="javascript">
                 <%@ include file="/js/samigotree.js" %>
                 function initPage()
                 {
@@ -22,7 +22,7 @@
                 }
               window.onload = initPage;
             </script>
-            <samigo:script path="/../library/js/spinner.js"/>
+            <script src="/library/js/spinner.js"></script>
         </head>
     <body onload="disableCheckboxes();<%= request.getAttribute("html.body.onload") %>">
 

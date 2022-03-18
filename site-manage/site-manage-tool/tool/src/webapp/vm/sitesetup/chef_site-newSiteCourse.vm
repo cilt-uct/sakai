@@ -1,13 +1,17 @@
 ##<!-- $Header: /cvs/sakai2/legacy/tools/src/webapp/vm/sitesetup/chef_site-newSiteCourse.vm,v 1.3 2005/05/25 17:42:01 gsilver.umich.edu Exp $ -->
 <div class="portletBody container-fluid">
-	#if (!$!site)
-		<h3>$tlang.getString("nscourse.creating")</h3>
-		<p class="step">
-			$tlang.getString("nscourse.course_sections_selection") - $term.title
-		</p>
-	#else
-		<h3>$tlang.getString("nscourse.edit") <span class="highlight">$!siteTitle</span></h3>
-	#end
+	#if($menu)#toolbar($menu)#end
+## header for edit class roster's editing course/section info
+	<div class="page-header">
+		#if (!$!site)
+			<h1>$tlang.getString("nscourse.creating")</h1>
+			<p class="step">
+				$tlang.getString("nscourse.course_sections_selection") - $term.title
+			</p>
+		#else
+			<h1>$tlang.getString("nscourse.edit") <span class="highlight">$!siteTitle</span></h1>
+		#end
+	</div>
 	#if ($alertMessage)<div class="alertMessage">$tlang.getString("gen.alert") $alertMessage</div>#end
 	<p class="instruction">
 		#if (!$!site)
@@ -73,23 +77,20 @@
 				
 				## display only subject, course number and section
 				##and finally - the labels work, but having commas in the id does not validate. Can we concatenate or replace with underscore? Here is reqs on ids and labels: an id attribute value must begin with a letter (A-Z or a-z) and consist of the following characters: (A-Z), (a-z), (0-9), hyphens (-), underscores (_), colons (:), and periods (.).
-				#set($crosslisted=0)	
 				#set($courseNumber=0)
+				#set($hasRosters=false)
 				#foreach($courseObject in $termCourseList)
 					<table class="listHier lines nolines specialLink" cellpadding="0" cellspacing="0"  summary="$tlang.getString("nscourse.courselist.summary")" border="0" style="width:auto">
 					<tr>	
 					<th colspan="2" title="$!courseObject.eid">
-                                        $!courseObject.title $!courseObject.description
-					#if ($!courseObject.courseOfferingObjects.size() > 1)
-						(cross-listed)
-						#set($crosslisted=1)	
-					#end
+						$!courseObject.title #if($!courseObject.description) - $!courseObject.description#end #if($!showRosterEIDs) ($!courseObject.eid)#end
 					</th>
 					<th>
 						$tlang.getString("useOfficialDescription")
 					</th>
 					</tr>
 					#foreach($courseOfferingObject in $courseObject.courseOfferingObjects)
+						#set($hasRosters=true)
 						<tr class="exclude"><td colspan="3" style="white-space:nowrap">
 						#if ($providerCourseList) 
 							#set($endKey = $courseNumber + $!courseOfferingObject.sections.size() - $!providerCourseList.size())
@@ -144,7 +145,7 @@
 								</td>
 								<td style="white-space:nowrap">
 									<h5>
-									<label for="course$courseNumber" title="$sectionObject.eid">$validator.escapeHtml($sectionObject.title) $!sectionObject.getCategoryDescription()</label>
+									<label for="course$courseNumber" title="$sectionObject.eid">$formattedText.escapeHtml($sectionObject.title) $!sectionObject.getCategoryDescription()</label>
 									#if ($!sectionObject.attached)
 										<span class="instruction">($tlang.getString("nscourse.site_exists") <a href="#" onclick="javascript:enableCheckBox($!courseNumber)">$tlang.getString("nscourse.select_anyways")</a>)</span>
 									#end
@@ -160,7 +161,7 @@
 												checked="checked"
 											#end 
 										/>
-                                        <label for="courseDesc$courseNumber" class="skip">$tlang.getString("useOfficialDescription"): $validator.escapeHtml($sectionObject.title) ($sectionObject.eid) $!sectionObject.getCategoryDescription()</label>
+                                        <label for="courseDesc$courseNumber" class="skip">$tlang.getString("useOfficialDescription"): $formattedText.escapeHtml($sectionObject.title) ($sectionObject.eid) $!sectionObject.getCategoryDescription()</label>
 									#end
 								</td>
 								</tr>
@@ -234,6 +235,19 @@
 					#if ($!basedOnTemplate) value="$tlang.getString('sitetype.done')" #else value="$tlang.getString('gen.continue')" #end
 					onclick="SPNR.disableControlsAndSpin( this, null );document.addCourseForm.option.value='continue'; document.addCourseForm.submit(); return false;"
 					/>
+				## SAK-28990 controlled via sakai.property sitemanage.continueWithNoRoster.enabled
+				#if( $!contNoRosterEnabled )
+				<input
+					#if( !$hasRosters ) class="active" #end
+					type="submit"
+					accesskey="x"
+					name="Cancel"
+					id="cancelButton"
+					value="$tlang.getString('nscourse.no_rosters')"
+					aria-label="$tlang.getString('nscourse.no_rosters')"
+					onclick="SPNR.disableControlsAndSpin( this, null );document.addCourseForm.option.value='norosters'; document.addCourseForm.submit(); return false;"
+					/>
+				#end
 				<input
 					type="submit" 
 					accesskey="b"
@@ -250,17 +264,6 @@
 					value="$tlang.getString('gen.cancel')"
 					onclick="SPNR.disableControlsAndSpin( this, null );document.addCourseForm.option.value='cancel'; document.addCourseForm.submit(); return false;"
 					/>
-				## SAK-28990 controlled via sakai.property sitemanage.continueWithNoRoster.enabled
-				#if( $!contNoRosterEnabled )
-				<input
-					type="submit" 
-					accesskey="x"
-					name="Cancel" 
-					id="cancelButton" 
-					value="$tlang.getString('nscourse.no_rosters')"
-					onclick="SPNR.disableControlsAndSpin( this, null );document.addCourseForm.option.value='norosters'; document.addCourseForm.submit(); return false;"
-					/>
-				#end
 				</p>
 			#else
 				#if( !$skipCourseSectionSelection || !$skipManualCourseCreation)
@@ -283,7 +286,7 @@
 					accesskey="x"
 					name="Cancel" 
 					id="Cancel" 
-					value="$tlang.getString('gen.cancel')"
+					value="$tlang.getString('gen.back')"
 					onclick="SPNR.disableControlsAndSpin( this, null ); document.getElementById('option').value='cancel_edit'; document.addCourseForm.submit(); return false;"
 				/>
 			</p>

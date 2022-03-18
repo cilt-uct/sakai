@@ -2,7 +2,7 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
 <%@ taglib uri="http://www.sakaiproject.org/samigo" prefix="samigo" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
   
 <!DOCTYPE html
      PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
@@ -40,6 +40,15 @@ $Id$
       </head>
       <body onload="<%= request.getAttribute("html.body.onload") %>">
 <!-- content... -->
+<script>
+  $(document).ready(function(){
+    // The current class is assigned using Javascript because we don't use facelets and the include directive does not support parameters.
+    var currentLink = $('#editTotalResults\\:submissionStatusMenuLink')
+    currentLink.addClass('current');
+    // Remove the link of the current option
+    currentLink.html(currentLink.find('a').text());
+  });
+</script>
 
 <!-- JAVASCRIPT -->
 <%@ include file="/js/delivery.js" %>
@@ -54,74 +63,17 @@ $Id$
   
   <div class="page-header">
     <h1>
-  	  <h:outputText value="#{evaluationMessages.sub_status}#{evaluationMessages.column} " escape="false"/>
-      <small>
-  	    <h:outputText value="#{totalScores.assessmentName} " escape="false"/>
-      </small>
+      <h:outputText value="#{evaluationMessages.sub_status}#{evaluationMessages.column} " escape="false"/>
+      <small><h:outputText value="#{totalScores.assessmentName} " escape="false"/></small>
     </h1>
   </div>
-  
-  <h:outputText value="<ul class='navIntraTool actionToolbar' role='menu'>" escape="false"/>
-    <h:outputText value="<li role='menuitem' class='firstToolBarItem'><span class='current'>" escape="false"/>
-    <h:outputText value="#{evaluationMessages.sub_status}" />
-    
-    <h:outputText value="</span><li role='menuitem'><span>" escape="false"/>
-    
-    <h:commandLink title="#{evaluationMessages.t_totalScores}" action="totalScores" immediate="true">
-    <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.evaluation.ResetTotalScoreListener" />
-    <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.evaluation.TotalScoreListener" />
-      <h:outputText value="#{commonMessages.total_scores}" />
-    </h:commandLink>
-    
-    <h:outputText value="</span><li role='menuitem'><span>" escape="false" rendered="#{totalScores.firstItem ne ''}" />
-    
-    <h:commandLink title="#{evaluationMessages.t_questionScores}" action="questionScores" immediate="true"
-      rendered="#{totalScores.firstItem ne ''}" >
-      <h:outputText value="#{evaluationMessages.q_view}" />
-      <f:actionListener
-        type="org.sakaiproject.tool.assessment.ui.listener.evaluation.QuestionScoreListener" />
-    </h:commandLink>
-    
-    <h:outputText value="</span><li role='menuitem'><span>" escape="false" rendered="#{totalScores.firstItem ne ''}" />
-   
-    <h:commandLink title="#{evaluationMessages.t_histogram}" action="histogramScores" immediate="true"
-      rendered="#{totalScores.firstItem ne ''}" >
-      <h:outputText value="#{evaluationMessages.stat_view}" />
-      <f:param name="hasNav" value="true"/>
-      <f:actionListener
-        type="org.sakaiproject.tool.assessment.ui.listener.evaluation.HistogramListener" />
-    </h:commandLink>
 
-    <h:outputText value="</span><li role='menuitem'><span>" escape="false" rendered="#{totalScores.firstItem ne ''}" />
-    
-    <h:commandLink title="#{evaluationMessages.t_itemAnalysis}" action="detailedStatistics" immediate="true"
-      rendered="#{totalScores.firstItem ne ''}" >
-      <h:outputText value="#{evaluationMessages.item_analysis}" />
-      <f:param name="hasNav" value="true"/>
-      <f:actionListener
-        type="org.sakaiproject.tool.assessment.ui.listener.evaluation.HistogramListener" />
-    </h:commandLink>
+  <!-- EVALUATION SUBMENU -->
+  <%@ include file="/jsf/evaluation/evaluationSubmenu.jsp" %>
 
-    <h:outputText value="</span><li role='menuitem'><span>" escape="false" />
-    
-    <h:commandLink title="#{commonMessages.export_action}" action="exportResponses" immediate="true">
-      <h:outputText value="#{commonMessages.export_action}" />
-  	  <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.evaluation.ExportResponsesListener" />
-    </h:commandLink>
+  <h:messages styleClass="sak-banner-error" rendered="#{! empty facesContext.maximumSeverity}" layout="table"/>
 
-    <h:outputText value="</span><li role='menuitem'><span>" escape="false" rendered="#{totalScores.hasFileUpload}"/>
-
-    <h:commandLink title="#{evaluationMessages.t_title_download_file_submissions}" action="downloadFileSubmissions" immediate="true" rendered="#{totalScores.hasFileUpload}">
-      <h:outputText value="#{evaluationMessages.title_download_file_submissions}" />
-        <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.evaluation.ResetQuestionScoreListener" />
-        <f:actionListener type="org.sakaiproject.tool.assessment.ui.listener.evaluation.DownloadFileSubmissionsListener" />
-    </h:commandLink>
-
-  <h:outputText value="</span></li></ul>" escape="false"/>
-
-  <h:messages styleClass="messageSamigo" rendered="#{! empty facesContext.maximumSeverity}" layout="table"/>
-  
-<sakai:flowState bean="#{submissionStatus}" />
+  <sakai:flowState bean="#{submissionStatus}" />
 
   <h:panelGroup rendered="#{!totalScores.hasRandomDrawPart}">
     <h:outputText value="<h2>#{evaluationMessages.max_score_poss}<small>: #{totalScores.maxScore}</small></h2>" escape="false"/>
@@ -189,7 +141,7 @@ $Id$
        <f:verbatim><br/></f:verbatim>
 	   <h:panelGroup styleClass="itemAction" rendered="#{totalScores.anonymous eq 'false' && description.email != null && description.email != '' && email.fromEmailAddress != null && email.fromEmailAddress != ''}">
 		 <h:outputText value="<a href=\"mailto:" escape="false" />
-	     <h:outputText value="#{description.email}" escape="false" />
+	     <h:outputText value="#{description.email}" />
 	     <h:outputText value="?subject=" escape="false" />
 		 <h:outputText value="#{totalScores.assessmentName} #{commonMessages.feedback}\">" escape="false" />
          <h:outputText value="  #{evaluationMessages.email}" escape="false"/>
@@ -234,7 +186,7 @@ $Id$
 	   <span class="itemAction">
 	   <h:panelGroup rendered="#{totalScores.anonymous eq 'false' && description.email != null && description.email != '' && email.fromEmailAddress != null && email.fromEmailAddress != ''}">
 		 <h:outputText value="<a href=\"mailto:" escape="false" />
-	     <h:outputText value="#{description.email}" escape="false" />
+	     <h:outputText value="#{description.email}" />
 	     <h:outputText value="?subject=" escape="false" />
 		 <h:outputText value="#{totalScores.assessmentName} #{commonMessages.feedback}\">" escape="false" />
          <h:outputText value="  #{evaluationMessages.email}" escape="false"/>
@@ -281,7 +233,7 @@ $Id$
 	   <span class="itemAction">
 	   <h:panelGroup rendered="#{totalScores.anonymous eq 'false' && description.email != null && description.email != '' && email.fromEmailAddress != null && email.fromEmailAddress != ''}">
 		 <h:outputText value="<a href=\"mailto:" escape="false" />
-	     <h:outputText value="#{description.email}" escape="false" />
+	     <h:outputText value="#{description.email}" />
 	     <h:outputText value="?subject=" escape="false" />
 		 <h:outputText value="#{totalScores.assessmentName} #{commonMessages.feedback}\">" escape="false" />
          <h:outputText value="  #{evaluationMessages.email}" escape="false"/>
@@ -398,7 +350,7 @@ $Id$
         </h:commandLink>
      </f:facet>
         <h:outputText rendered="#{description.submittedDate !=null && description.submittedDate ne ''}" value="#{description.submittedDate}">
-          <f:convertDateTime pattern="#{generalMessages.output_date_picker}"/>
+          <f:convertDateTime dateStyle="medium" timeStyle="short" timeZone="#{author.userTimeZone}" />
         </h:outputText>
 		<h:outputText rendered="#{description.submittedDate == null || description.submittedDate eq ''}" value="#{evaluationMessages.no_submission}"/>
     </h:column>
@@ -414,7 +366,7 @@ $Id$
           </h:commandLink>    
       </f:facet>
         <h:outputText rendered="#{description.submittedDate !=null && description.submittedDate ne ''}" value="#{description.submittedDate}">
-           <f:convertDateTime pattern="#{generalMessages.output_date_picker}"/>
+           <f:convertDateTime dateStyle="medium" timeStyle="short" timeZone="#{author.userTimeZone}" />
         </h:outputText>
 		<h:outputText rendered="#{description.submittedDate == null || description.submittedDate eq ''}" value="#{evaluationMessages.no_submission}"/>
     </h:column>
@@ -430,7 +382,7 @@ $Id$
           </h:commandLink>    
       </f:facet>
         <h:outputText rendered="#{description.submittedDate !=null && description.submittedDate ne ''}" value="#{description.submittedDate}">
-           <f:convertDateTime pattern="#{generalMessages.output_date_picker}"/>
+           <f:convertDateTime dateStyle="medium" timeStyle="short" timeZone="#{author.userTimeZone}" />
         </h:outputText>
 		<h:outputText rendered="#{description.submittedDate == null || description.submittedDate eq ''}" value="#{evaluationMessages.no_submission}"/>
     </h:column>

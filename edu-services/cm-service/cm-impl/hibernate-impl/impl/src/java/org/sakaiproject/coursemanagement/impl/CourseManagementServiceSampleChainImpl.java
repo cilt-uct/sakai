@@ -195,6 +195,10 @@ public class CourseManagementServiceSampleChainImpl implements CourseManagementS
 		return null;
 	}
 
+	public Map findSectionRoles(String userEid, String academicSessionEid) {
+		return null;
+	}
+
 	public Set getCourseOfferingsInCanonicalCourse(String canonicalCourseEid) throws IdNotFoundException {
 		throw new IdNotFoundException(canonicalCourseEid, CanonicalCourse.class.getName());
 	}
@@ -228,6 +232,10 @@ public class CourseManagementServiceSampleChainImpl implements CourseManagementS
 	}
 
 	public String getSectionCategoryDescription(String categoryCode) {
+		return null;
+	}
+
+	public String getEnrollmentStatusDescription(String statusId) {
 		return null;
 	}
 

@@ -30,14 +30,14 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import javax.faces.event.ValueChangeEvent;
 import javax.faces.application.FacesMessage;
-import javax.faces.context.ExternalContext;
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.ManagedProperty;
+import javax.faces.bean.SessionScoped;
 import javax.faces.context.FacesContext;
-import javax.servlet.ServletContext;
-import javax.servlet.http.HttpServletRequest;
+import javax.faces.event.ValueChangeEvent;
 
-import lombok.extern.slf4j.Slf4j;
+import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.service.gradebook.shared.GradebookExternalAssessmentService;
 import org.sakaiproject.spring.SpringBeanLocator;
@@ -50,36 +50,46 @@ import org.sakaiproject.tool.assessment.facade.QuestionPoolFacade;
 import org.sakaiproject.tool.assessment.integration.context.IntegrationContextFactory;
 import org.sakaiproject.tool.assessment.integration.helper.ifc.GradebookServiceHelper;
 import org.sakaiproject.tool.assessment.qti.constants.QTIVersion;
-import org.sakaiproject.tool.assessment.ui.listener.util.TimeUtil;
 import org.sakaiproject.tool.assessment.qti.util.XmlUtil;
 import org.sakaiproject.tool.assessment.services.assessment.AssessmentService;
 import org.sakaiproject.tool.assessment.services.qti.QTIService;
 import org.sakaiproject.tool.assessment.ui.bean.author.AssessmentBean;
 import org.sakaiproject.tool.assessment.ui.bean.author.AuthorBean;
 import org.sakaiproject.tool.assessment.ui.bean.author.ItemAuthorBean;
+import org.sakaiproject.tool.assessment.ui.bean.authz.AuthorizationBean;
 import org.sakaiproject.tool.assessment.ui.bean.questionpool.QuestionPoolBean;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
-import org.sakaiproject.util.FormattedText;
+import org.sakaiproject.tool.assessment.ui.listener.util.TimeUtil;
 import org.sakaiproject.util.ResourceLoader;
+import org.sakaiproject.util.api.FormattedText;
 import org.w3c.dom.Document;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * <p>Bean for QTI Import Data</p>
  */
 @Slf4j
-public class XMLImportBean implements Serializable
-{
-	
+@ManagedBean(name="xmlImport")
+@SessionScoped
+public class XMLImportBean implements Serializable {
 	  /** Use serialVersionUID for interoperability. */
 	  private final static long serialVersionUID = 418920360211039758L;
-	  
+	  private static final ResourceLoader rb = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AuthorImportExport");
+
   private int qtiVersion;
   private String uploadFileName;
   private String importType;
   private String pathToData;
+  @ManagedProperty(value="#{author}")
   private AuthorBean authorBean;
+  @ManagedProperty(value="#{assessmentBean}")
   private AssessmentBean assessmentBean;
+  @ManagedProperty(value="#{itemauthor}")
   private ItemAuthorBean itemAuthorBean;
+  @ManagedProperty(value="#{authorization}")
+  private AuthorizationBean authorizationBean;
+  @ManagedProperty(value="#{questionpool}")
   private QuestionPoolBean questionPoolBean;
   private boolean isCP;
   private String importType2;
@@ -107,18 +117,8 @@ public class XMLImportBean implements Serializable
 	  String uploadFile = (String) e.getNewValue();
 
 	  if (uploadFile!= null && uploadFile.startsWith("SizeTooBig:")) {
-		  FacesContext context = FacesContext.getCurrentInstance();
-		  ExternalContext external = context.getExternalContext();
-		  String paramValue = ((Long)((ServletContext)external.getContext()).getAttribute("FILEUPLOAD_SIZE_MAX")).toString();
-		  Long sizeMax = null;
-		  float sizeMax_float = 0f;
-		  if (paramValue != null) {
-			  sizeMax = Long.parseLong(paramValue);
-			  sizeMax_float = sizeMax.floatValue()/1024;
-		  } 
-		  int sizeMax_int = Math.round(sizeMax_float);
-		  ResourceLoader rb =new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AuthorImportExport");
-		  String sizeTooBigMessage = MessageFormat.format(rb.getString("import_size_too_big"), uploadFile.substring(11), sizeMax_int);
+		  Long sizeMax = Long.valueOf(ServerConfigurationService.getString("samigo.sizeMax", "20480"));
+		  String sizeTooBigMessage = MessageFormat.format(rb.getString("import_size_too_big"), uploadFile.substring(11), Math.round(sizeMax.floatValue()/1024));
 	      FacesMessage message = new FacesMessage(sizeTooBigMessage);
 	      FacesContext.getCurrentInstance().addMessage(null, message);
 	      // remove unsuccessful file
@@ -174,13 +174,11 @@ public class XMLImportBean implements Serializable
     catch (FileNotFoundException fnfex)
     {
       fileNotFound = true;
-      ResourceLoader rb = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AuthorImportExport");
       FacesMessage message = new FacesMessage( rb.getString("import_qti_not_found") );
       FacesContext.getCurrentInstance().addMessage(null, message);
     }
     catch (Exception ex)
     {
-      ResourceLoader rb = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AuthorImportExport");
       FacesMessage message = new FacesMessage( rb.getString("import_err") );
       FacesContext.getCurrentInstance().addMessage(null, message);
     }
@@ -290,7 +288,6 @@ public class XMLImportBean implements Serializable
     if (failedMatchingQuestions.size() > 0)
     {
       String importedFilename = getImportedFilename(uploadFile);	
-      ResourceLoader rb = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AuthorImportExport");
       StringBuffer sb = new StringBuffer("\"");
       sb.append(importedFilename);
       sb.append("\" ");
@@ -345,20 +342,26 @@ public class XMLImportBean implements Serializable
     List list = assessmentService.getBasicInfoOfAllActiveAssessments(
                      AssessmentFacadeQueries.TITLE,true);
 	TimeUtil tu = new TimeUtil();
-	String display_dateFormat= ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.GeneralMessages","output_data_picker_w_sec");
-	SimpleDateFormat displayFormat = new SimpleDateFormat(display_dateFormat, new ResourceLoader().getLocale());
     Iterator iter = list.iterator();
 	while (iter.hasNext()) {
 		AssessmentFacade assessmentFacade= (AssessmentFacade) iter.next();
-		assessmentFacade.setTitle(FormattedText.convertFormattedTextToPlaintext(assessmentFacade.getTitle()));
+		assessmentFacade.setTitle(ComponentManager.get(FormattedText.class).convertFormattedTextToPlaintext(assessmentFacade.getTitle()));
 		try {
-			String lastModifiedDateDisplay = tu.getDisplayDateTime(displayFormat, assessmentFacade.getLastModifiedDate(), false);
+			String lastModifiedDateDisplay = tu.getDateTimeWithTimezoneConversion(assessmentFacade.getLastModifiedDate());
 			assessmentFacade.setLastModifiedDateForDisplay(lastModifiedDateDisplay);  
 		} catch (Exception ex) {
 			log.warn("Unable to format date: " + ex.getMessage());
 		}
 	}
+    List allAssessments = new ArrayList<>();
+    if (authorizationBean.getEditAnyAssessment() || authorizationBean.getEditOwnAssessment()) {
+        allAssessments.addAll(list);
+    }
+    if (authorizationBean.getGradeAnyAssessment() || authorizationBean.getGradeOwnAssessment()) {
+        allAssessments.addAll(authorBean.getPublishedAssessments());
+    }
     authorBean.setAssessments(list);
+    authorBean.setAllAssessments(allAssessments);
   }
   
   private String getImportedFilename(String filename) {
@@ -443,6 +446,16 @@ public class XMLImportBean implements Serializable
     this.itemAuthorBean = itemAuthorBean;
   }
 
+  public AuthorizationBean getAuthorizationBean()
+  {
+    return authorizationBean;
+  }
+
+  public void setAuthorizationBean(AuthorizationBean authorizationBean)
+  {
+    this.authorizationBean = authorizationBean;
+  }
+
   /**
    * Value change on upload
    * @param e the event
@@ -457,7 +470,6 @@ public class XMLImportBean implements Serializable
     }
     catch (Exception ex)
     {
-      ResourceLoader rb = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AuthorImportExport");
       FacesMessage message = new FacesMessage( rb.getString("import_err_pool") );
       FacesContext.getCurrentInstance().addMessage(null, message);
     }

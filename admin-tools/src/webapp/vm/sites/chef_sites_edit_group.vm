@@ -12,7 +12,7 @@
 		<h3>
 			$tlang.getString("sitedigrp.edisit") $!site.Id / $tlang.getString("sitedigrp.grp") $!group.Id
 		</h3>
-		#if ($alertMessage)<div class="alertMessage">$tlang.getString("sitedigrp.alert") $validator.escapeHtml($alertMessage)</div>#end
+		#if ($alertMessage)<div class="sak-banner-error">$tlang.getString("sitedigrp.alert") $formattedText.escapeHtml($alertMessage)</div>#end
 		<div class="instruction">
 			$tlang.getString("sitedigrp.revandmod")
 		</div>
@@ -21,11 +21,11 @@
 			<h4>
 				$tlang.getString("sitedigrp.grp")
 			</h4>	
-			<table  summary="$tlang.getString("sitedigrp.revandmod")">
+			<table summary="$tlang.getString("sitedigrp.revandmod")">
 				<tr>
 					<td>$tlang.getString("sitedigrp.grp2")</td>
 					<td>
-						$validator.escapeHtml($group.Id)
+						$formattedText.escapeHtml($group.Id)
 					</td>
 				</tr>
 				<tr>
@@ -50,11 +50,11 @@
 				</tr>
 			</table>
 
-			#if ($group)
+			#if ($group && $group.Properties.PropertyNames)
 				<h4>
 					$tlang.getString("sitedi.pro")
 				</h4>
-				<table class="itemSummary" summary="$tlang.getString("sitedi.pro")">
+				<table class="table table-striped table-bordered" summary="$tlang.getString("sitedi.pro")">
 					#set ($paramNames = $group.Properties.PropertyNames)
 					#foreach ($paramName in $paramNames)
 						#set ($paramValue = $group.Properties.getPropertyFormatted($paramName))
@@ -65,7 +65,7 @@
 								</label>
 							</th>
 							<td>
-								<input type="text" disabled name="param_$paramName" id="param_$paramName" value="$validator.escapeHtml($paramValue)" />
+								<input type="text" disabled name="param_$paramName" id="param_$paramName" value="$formattedText.escapeHtml($paramValue)" />
 							</td>
 						</tr>
 					#end

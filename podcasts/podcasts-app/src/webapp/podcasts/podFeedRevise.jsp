@@ -9,10 +9,23 @@
 
   <f:view>
     <sakai:view toolCssHref="css/podcaster.css">
-    <h:form id="podFeedRev" >
+      <script>includeLatestJQuery("podFeedRevise");</script>
+      <script>
+        $(document).ready(function() {
 
+          var menuLink = $('#podcastMainMenuLink');
+          var menuLinkSpan = menuLink.closest('span');
+          menuLinkSpan.addClass('current');
+          menuLinkSpan.html(menuLink.text());
+
+        });
+      </script>
+    <h:form id="podFeedRev" >
+    <%@ include file="/podcasts/podcastMenu.jsp" %>
     <div>  <!-- Page title and Instructions -->
-      <h3><h:outputText value="#{msgs.podfeed_revise_title}" /></h3>
+      <div class="page-header">
+        <h1><h:outputText value="#{msgs.podfeed_revise_title}" /></h1>
+      </div>
       <div class="indnt1">
           <p class="instruction"> 
             <h:outputText value="#{msgs.podfeed_revise_directions}" />
@@ -58,7 +71,7 @@
       <sakai:button_bar_item action="#{podfeedBean.processRevisePodcast}" value="#{msgs.change_submit}" 
           accesskey="s" title="#{msgs.change_submit}" styleClass="active" />
       <sakai:button_bar_item action="#{podfeedBean.processCancelPodfeedRevise}" value="#{msgs.cancel}" 
-          accesskey="c" title="#{msgs.cancel}" />
+          accesskey="x" title="#{msgs.cancel}" />
     </sakai:button_bar>
 
     </h:form>

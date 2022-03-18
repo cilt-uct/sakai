@@ -19,11 +19,8 @@
  *
  **********************************************************************************/
  
-var courierRunning = false;
-
 var focus_path;
 
-var ignoreCourier = false;
 var doubleDeep = false;
 
 function inIframe () {
@@ -170,31 +167,6 @@ function buildQueryString(theFormName)
 	return qs;
 }
 
-// use if peer w/ courier, both frames in "top" parent
-function updCourier(dd, ic)
-{
-	if (ic) return;
-
-	if (dd)
-	{
-		parent.updCourier(false, false);
-		return;
-	}
-
-	if ((!courierRunning) && (window.courier) && (window.courier.location.toString().length > 1))
-	{
-		courierRunning = true;
-		window.courier.location.replace(window.courier.location);
-	}
-
-        // If we are using the httpCourier for event delivery, speed it up
-	try {
-		if ( httpCourier ) {
-		        setTimeout('httpCourier()', 200);
-		}
-	} catch (error) {}
-}
-
 function formSubmitOnEnter(field, event)
 {
 	var keycode;
@@ -283,7 +255,7 @@ function setMainFrameHeightWithMax(id, maxHeight)
 		clearTimeout(MainFrameHeightTimeOut);
 		MainFrameHeightTimeOut = false;
 	}
-	MainFrameHeightTimeOut = setTimeout("setMainFrameHeightNow('"+id+"',"+maxHeight+")", 1000);
+	MainFrameHeightTimeOut = setTimeout( function() { setMainFrameHeightNow(id, maxHeight); }, 1000);
 }
 
 function setMainFrameHeight(id)
@@ -513,26 +485,6 @@ function setFocus(elements)
 	}
 }
 
-// return the url with auto=courier appended, sensitive to ? already in there or not
-function addAuto(loc)
-{
-	var str = loc.toString();
-
-	// not if already there
-	if (str.indexOf("auto=courier") !== -1) return str;
-	
-	if (str.indexOf("?") !== -1)
-	{
-		// has a ?
-		return str + '&auto=courier';
-	}
-	else
-	{
-		// has no ?
-		return str + '?auto=courier';
-	}
-}
-
 function showNotif(item, button,formName)
 {
 	if (button !=="noBlock")
@@ -710,6 +662,11 @@ function disableBackButton(message) {
 	if (supports_history_api()) {
 		history.pushState(null, null, '');
 		window.addEventListener('popstate', function(event) {
+			// If there is a hash in the URL don't do anything.
+			// These are used in a11y jumps and on some Samigo features
+			if (window.location.hash) {
+				return;
+			}
 			history.pushState(null, null, '');
 			window.alert(message);
 		});
@@ -730,23 +687,23 @@ function includeLatestJQuery(where) {
 	if ( window.jQuery ) {
 		window.console && console.log('jQuery already loaded '+jQuery.fn.jquery+' in '+where);
 		if (typeof jQuery.migrateWarnings == 'undefined') { 
-			document.write('\x3Cscript type="text/javascript" src="'+webjars+'jquery-migrate/1.4.1/jquery-migrate.min.js'+ver+'">'+'\x3C/script>')
+			document.write('\x3Cscript src="'+webjars+'jquery-migrate/1.4.1/jquery-migrate.min.js'+ver+'">'+'\x3C/script>')
 			window.console && console.log('Adding jQuery migrate');
 		}
 		if ( typeof jQuery.fn.popover == 'undefined') {
-			document.write('\x3Cscript type="text/javascript" src="'+webjars+'bootstrap/3.3.7/js/bootstrap.min.js'+ver+'">'+'\x3C/script>')
+			document.write('\x3Cscript src="'+webjars+'bootstrap/3.3.7/js/bootstrap.min.js'+ver+'">'+'\x3C/script>')
 			window.console && console.log('Adding Bootstrap');
 		}
 		if (typeof jQuery.ui == 'undefined') {
-			document.write('\x3Cscript type="text/javascript" src="'+webjars+'jquery-ui/1.12.1/jquery-ui.min.js'+ver+'">'+'\x3C/script>')
+			document.write('\x3Cscript src="'+webjars+'jquery-ui/1.12.1/jquery-ui.min.js'+ver+'">'+'\x3C/script>')
 			document.write('\x3Clink rel="stylesheet" href="'+webjars+'jquery-ui/1.12.1/jquery-ui.min.css'+ver+'"/>');
 			window.console && console.log('Adding jQuery UI');
 		}
 	} else {
-		document.write('\x3Cscript type="text/javascript" src="'+webjars+'jquery/1.12.4/jquery.min.js'+ver+'">'+'\x3C/script>')
-		document.write('\x3Cscript type="text/javascript" src="'+webjars+'jquery-migrate/1.4.1/jquery-migrate.min.js'+ver+'">'+'\x3C/script>')
-		document.write('\x3Cscript type="text/javascript" src="'+webjars+'bootstrap/3.3.7/js/bootstrap.min.js'+ver+'">'+'\x3C/script>')
-		document.write('\x3Cscript type="text/javascript" src="'+webjars+'jquery-ui/1.12.1/jquery-ui.min.js'+ver+'">'+'\x3C/script>')
+		document.write('\x3Cscript src="'+webjars+'jquery/1.12.4/jquery.min.js'+ver+'">'+'\x3C/script>')
+		document.write('\x3Cscript src="'+webjars+'jquery-migrate/1.4.1/jquery-migrate.min.js'+ver+'">'+'\x3C/script>')
+		document.write('\x3Cscript src="'+webjars+'bootstrap/3.3.7/js/bootstrap.min.js'+ver+'">'+'\x3C/script>')
+		document.write('\x3Cscript src="'+webjars+'jquery-ui/1.12.1/jquery-ui.min.js'+ver+'">'+'\x3C/script>')
 		document.write('\x3Clink rel="stylesheet" href="'+webjars+'jquery-ui/1.12.1/jquery-ui.min.css'+ver+'"/>');
 		window.console && console.log("jQuery+migrate+BootStrap+UI Loaded by "+where+" from "+webjars);
 	}
@@ -790,33 +747,123 @@ function includeWebjarLibrary(library) {
 	window.console && console.log('Adding webjar library '+library+', version '+libraryVersion);
 }
 
+function includeWebjarLibrary(library) {
+	var webjars = "/library/webjars/";
+	var ver = "";
+	var libraryVersion = "";
+	if ( typeof portal !== 'undefined' ) {
+		if (portal.pageScriptPath) psp = portal.pageScriptPath;
+		if (portal.pageWebjarsPath) webjars = portal.pageWebjarsPath;
+		if (portal.portalCDNQuery) ver = portal.portalCDNQuery;
+	}
+
+	if (library == 'bootstrap') {
+		libraryVersion = "3.3.7";
+		document.write('\x3Cscript src="' + webjars + 'bootstrap/' + libraryVersion + '/js/bootstrap.min.js' + ver + '">' + '\x3C/script>');
+		document.write('\x3Clink rel="stylesheet" href="' + webjars + 'bootstrap/' + libraryVersion + '/css/bootstrap.min.css' + ver + '"/>');
+	} else if (library == 'bootstrap-multiselect') {
+    libraryVersion = "0.9.15";
+    document.write('\x3Cscript src="' + webjars + 'bootstrap-multiselect/' + libraryVersion + '/js/bootstrap-multiselect.js' + ver + '">' + '\x3C/script>');
+    document.write('\x3Clink rel="stylesheet" href="' + webjars + 'bootstrap-multiselect/' + libraryVersion + '/css/bootstrap-multiselect.css' + ver + '"/>');
+  } else if (library == 'jquery.tablesorter') {
+		libraryVersion = "2.27.7";
+    document.write('\x3Cscript src="' + webjars + 'jquery.tablesorter/' + libraryVersion + '/dist/js/jquery.tablesorter.combined.min.js' + ver + '">' + '\x3C/script>');
+    document.write('\x3Cscript src="' + webjars + 'jquery.tablesorter/' + libraryVersion + '/dist/js/extras/jquery.tablesorter.pager.min.js' + ver + '">' + '\x3C/script>');
+    document.write('\x3Cscript src="' + webjars + 'jquery.tablesorter/' + libraryVersion + '/dist/js/extras/jquery.metadata.min.js' + ver + '">' + '\x3C/script>');
+    document.write('\x3Clink rel="stylesheet" href="' + webjars + 'jquery.tablesorter/' + libraryVersion + '/dist/css/theme.jui.min.css' + ver + '"/>');
+    document.write('\x3Clink rel="stylesheet" href="' + webjars + 'jquery.tablesorter/' + libraryVersion + '/dist/css/jquery.tablesorter.pager.min.css' + ver + '"/>');
+	} else if (library == 'featherlight') {
+		libraryVersion = "1.7.13";
+		document.write('\x3Cscript src="' + webjars + 'featherlight/src/featherlight.js' + ver + '">' + '\x3C/script>');
+		document.write('\x3Clink rel="stylesheet" href="' + webjars + 'featherlight/src/featherlight.css' + ver + '"/>');
+	} else if (library == 'momentjs') {
+		libraryVersion = "2.24.0";
+		document.write('\x3Cscript src="' + webjars + 'momentjs/' + libraryVersion + '/min/moment-with-locales.min.js' + ver + '">' + '\x3C/script>');
+	} else if (library == 'dropzone') {
+		libraryVersion = "5.5.0";
+		document.write('\x3Cscript src="' + webjars + 'dropzone/'+libraryVersion + '/min/dropzone.min.js' + ver + '">' + '\x3C/script>');
+		document.write('\x3Clink rel="stylesheet" href="' + webjars + 'dropzone/'+libraryVersion + '/min/dropzone.min.css' + ver + '"/>');
+	} else if (library == 'select2') {
+		libraryVersion = "4.0.12";
+		document.write('\x3Cscript src="' + webjars + 'select2/' + libraryVersion + '/js/select2.full.min.js' + ver + '">' + '\x3C/script>');
+		document.write('\x3Clink rel="stylesheet" href="' + webjars + 'select2/' + libraryVersion + '/css/select2.min.css' + ver + '"/>');
+	} else if (library == 'datatables') {
+		libraryVersion = "1.10.20";
+		document.write('\x3Cscript src="' + webjars + 'datatables/' + libraryVersion + '/js/jquery.dataTables.min.js' + ver + '">' + '\x3C/script>');
+	} else if (library == 'datatables-rowgroup') {
+		libraryVersion = "1.1.1";
+		document.write('\x3Cscript src="' + webjars + 'datatables.net-rowgroup/js/dataTables.rowGroup.min.js' + ver + '">' + '\x3C/script>');
+	} else if (library == 'ckeditor') {
+		libraryVersion = "4.14.0";
+		document.write('\x3Cscript src="' + webjars + 'ckeditor/' + libraryVersion + '/full/ckeditor.js' + ver + '">' + '\x3C/script>');
+	} else if (library == 'awesomplete') {
+		libraryVersion = "1.1.5";
+		document.write('\x3Cscript src="' + webjars + 'awesomplete/' + libraryVersion + '/awesomplete.min.js' + ver + '">' + '\x3C/script>');
+		document.write('\x3Clink rel="stylesheet" href="' + webjars + 'awesomplete/' + libraryVersion + '/awesomplete.css' + ver + '"/>');
+	} else if (library == 'mathjs') {
+		libraryVersion = "6.5.0";
+		document.write('\x3Cscript src="' + webjars + 'mathjs/' + libraryVersion + '/dist/math.min.js' + ver + '">' + '\x3C/script>');
+	} else if (library == 'handlebars') {
+		libraryVersion = "4.0.6";
+		document.write('\x3Cscript src="' + webjars + 'handlebars/' + libraryVersion + '/handlebars.runtime.min.js' + ver + '">' + '\x3C/script>');
+	} else if (library == 'qtip2') {
+		libraryVersion = "3.0.3-1";
+		document.write('\x3Cscript src="' + webjars + 'qtip2/' + libraryVersion + '/jquery.qtip.min.js' + ver + '">' + '\x3C/script>');
+		document.write('\x3Clink rel="stylesheet" href="' + webjars + 'qtip2/' + libraryVersion + '/jquery.qtip.min.css' + ver + '"/>');
+	} else if (library == 'jstree') {
+		libraryVersion = "3.3.8";
+		document.write('\x3Cscript src="' + webjars + 'jstree/' + libraryVersion + '/jstree.min.js' + ver + '">' + '\x3C/script>');
+		document.write('\x3Clink rel="stylesheet" href="' + webjars + 'jstree/' + libraryVersion + '/themes/default/style.min.css' + ver + '"/>');
+	} else if (library == 'multiselect-two-sides') {
+		libraryVersion = "2.5.5";
+		document.write('\x3Cscript src="' + webjars + 'multiselect-two-sides/' + libraryVersion + '/dist/js/multiselect.min.js' + ver + '">' + '\x3C/script>');
+	} else if (library == 'fontawesome-iconpicker') {
+		libraryVersion = "1.4.1";
+		document.write('\x3Cscript src="' + webjars + 'fontawesome-iconpicker/' + libraryVersion + '/dist/js/fontawesome-iconpicker.min.js' + ver + '">' + '\x3C/script>');
+		document.write('\x3Clink rel="stylesheet" href="' + webjars + 'fontawesome-iconpicker/' + libraryVersion + '/dist/css/fontawesome-iconpicker.min.css' + ver + '"/>');
+	} else if (library === "flatpickr") {
+		libraryVersion = "4.6.3";
+		document.write('\x3Cscript src="' + webjars + 'flatpickr/' + libraryVersion + '/dist/flatpickr.min.js' + ver + '">\x3C/script>');
+		document.write('\x3Cscript src="' + webjars + 'flatpickr/' + libraryVersion + '/dist/plugins/confirmDate/confirmDate.js' + ver + '">\x3C/script>');
+		document.write('\x3Clink rel="stylesheet" href="' + webjars + 'flatpickr/' + libraryVersion + '/dist/flatpickr.min.css' + ver + '"/>');
+		document.write('\x3Clink rel="stylesheet" href="' + webjars + 'flatpickr/' + libraryVersion + '/dist/plugins/confirmDate/confirmDate.css' + ver + '"/>');
+		let lang = portal.locale.split("-")[0];
+		if (lang !== "en") {
+			document.write('\x3Cscript src="' + webjars + 'flatpickr/' + libraryVersion + '/dist/l10n/' + lang + '.js' + ver + '">\x3C/script>');
+		}
+	} else {
+		if (library.endsWith(".js")) {
+			document.write('\x3Cscript src="' + webjars + library + ver + '">' + '\x3C/script>');
+		} else if (library.endsWith(".css")) {
+			document.write('\x3Clink rel="stylesheet" type="text/css" href="' + webjars + library + ver + '" />');
+		}
+	}
+	window.console && console.log('Adding webjar library '+library+', version '+libraryVersion);
+}
+
 // Return the breakpoint between small and medium sized displays - for morpheus currently the same
 function portalSmallBreakPoint() { return 800; } 
 function portalMediumBreakPoint() { return 800; } 
 
 // A function to add an icon picker to a text input field
-var fontawesome_icons = false;
 function fontawesome_icon_picker(selector) {
-	if ( fontawesome_icons ) { // Already loaded
-		$(selector).fontIconPicker({
-			source: fontawesome_icons,
-			extraClass: 'fa',
-			placeHolder: '',
-			emptyIconValue: 'none'
-		});
-	} else {
-		$.getJSON( '/library/js/fontIconPicker/2.0.1-cs/icons.json', function( data ) {
-			fontawesome_icons = data;
-			$(selector).fontIconPicker({
-				source: fontawesome_icons,
-				extraClass: 'fa',
-				placeHolder: '',
-				emptyIconValue: 'none'
-			});
-		}).error(function() { 
-			window.console && console.log("Could not load icons for icon picker."); 
-		});
-	}
+	// Set the input to read only
+	$(selector).prop('readonly', true);
+	// Add the class to make this a form control
+	$(selector).addClass('form-control icp icp-auto');
+	// Add an input group to the parent to enable the preview icon
+	$(selector).parent().addClass("input-group");
+	// Add the preview icon
+	$(selector).before('<span class="input-group-addon"></span>');
+	// Enable the iconpicker
+	$(selector).iconpicker({
+		'hideOnSelect' : true, 
+		'collision': true
+	});
+	$(selector).parent().on('iconpickerShown', function(event) {
+		// Focus on the popover window since this attachs to the input-group
+		event.iconpickerInstance.popover.find('input').focus()
+	});
 }
 
 // Return the correct width for a modal dialog.
@@ -833,6 +880,14 @@ function modalDialogWidth() {
 	if ( dWidth < 300 ) dWidth = 300; // Should not happen
 	return Math.round(dWidth);
 }
+//
+// Return the correct height for a modal dialog.
+function modalDialogHeight() {
+	var wHeight = $(window).height();
+	var dHeight = wHeight * 0.8;
+	if ( dHeight < 300 ) dHeight = 300; // Should not happen
+	return Math.round(dHeight);
+}
 
 // Figure out the maximum z-index
 // http://stackoverflow.com/questions/1118198/how-can-you-figure-out-the-highest-z-index-in-your-document
@@ -847,4 +902,39 @@ function maxZIndex(elems)
 
     return maxIndex;
 }
+
+// Adapted from
+// https://dev.to/mornir/-how-to-easily-copy-text-to-clipboard-a1a
+// Added avoiding the scrolling effect by appending the new input
+// tag as a child of a nearby element (the parent element)
+// Usage:
+// <a href="#" onclick="copyToClipboardNoScroll(this, 'texttocopy');return false;">Copy</a>
+// <a href="#" onclick="copyToClipboardNoScroll(this, $('#pass').text());return false;">Copy</a>
+// <a href="#" onclick="copyToClipboardNoScroll(this, $('#myInput').val());return false;">Copy</a>
+function copyToClipboardNoScroll(parent_element, textToCopy) {
+  // 1) Add the text to the DOM (usually achieved with a hidden input field)
+  const input = document.createElement('input');
+
+  // 1.5) Move off to the left but inline with the current item to avoid scroll effects
+  input.style.position = 'absolute';
+  input.style.left = '-1000px';
+  parent_element.appendChild(input);
+  input.value = textToCopy.trim();
+
+  // 2) Select the text
+  input.focus();
+  input.select();
+
+  // 3) Copy text to clipboard
+  const isSuccessful = document.execCommand('copy');
+
+  // 4) Catch errors
+  if (!isSuccessful) {
+    console.error('Failed to copy text.');
+  }
+
+  // Remove the new input tag
+  input.remove();
+}
+
 

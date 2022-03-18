@@ -24,7 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-import org.hibernate.Query;
+import org.hibernate.query.Query;
 import org.hibernate.type.IntegerType;
 import org.hibernate.type.StringType;
 import org.sakaiproject.api.app.messageforums.EmailNotification;
@@ -39,8 +39,12 @@ import org.sakaiproject.tool.api.ToolManager;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserNotDefinedException;
-import org.springframework.orm.hibernate4.HibernateCallback;
-import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
+import org.springframework.orm.hibernate5.HibernateCallback;
+import org.springframework.orm.hibernate5.support.HibernateDaoSupport;
+import org.sakaiproject.site.api.Site;
+import org.sakaiproject.site.cover.SiteService;
+import org.sakaiproject.exception.IdUnusedException;
+import org.sakaiproject.exception.PermissionException;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -104,7 +108,18 @@ public class EmailNotificationManagerImpl extends HibernateDaoSupport implements
 			} catch (UserNotDefinedException e) {
 				log.error(e.getMessage());
 			}
-			String notificationDefault = ServerConfigurationService.getString("mc.notificationDefault", "1");
+			Site site = null;
+			try {
+				site = SiteService.getSiteVisit(getContextId());
+			}catch (IdUnusedException|PermissionException e){
+			}
+			String notificationDefaultGlobal = ServerConfigurationService.getString("mc.notificationDefault", "1");
+			String notificationDefault = notificationDefaultGlobal;
+			String notificationDefaultSite = site.getProperties().getProperty("mc.notificationDefault");
+			if (notificationDefaultSite != null)
+			{
+				notificationDefault = notificationDefaultSite;
+			}
 			EmailNotification newEmailNotification = new EmailNotificationImpl();
 			newEmailNotification.setContextId(getContextId());
 			newEmailNotification.setUserId(userId);

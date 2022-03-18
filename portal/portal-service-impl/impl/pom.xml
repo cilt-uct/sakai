@@ -5,18 +5,13 @@
     <parent>
         <artifactId>portal</artifactId>
         <groupId>org.sakaiproject.portal</groupId>
-        <version>12.5</version>
+        <version>21-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
     <name>sakai-portal-service-impl</name>
     <groupId>org.sakaiproject.portal</groupId>
     <artifactId>sakai-portal-service-impl</artifactId>
-    <organization>
-        <name>University of Michigan</name>
-        <url>http://sakaiproject.org/</url>
-    </organization>
-    <inceptionYear>2003</inceptionYear>
     <packaging>sakai-component</packaging>
     <properties>
         <deploy.target>components</deploy.target>
@@ -34,22 +29,6 @@
         <dependency>
             <groupId>org.sakaiproject.kernel</groupId>
             <artifactId>sakai-kernel-util</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.sakaiproject.announcement</groupId>
-            <artifactId>sakai-announcement-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.sakaiproject.assignment</groupId>
-            <artifactId>sakai-assignment-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.sakaiproject.message</groupId>
-            <artifactId>sakai-message-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.sakaiproject.profile2</groupId>
-            <artifactId>profile2-api</artifactId>
         </dependency>
         <dependency>
             <groupId>org.sakaiproject.lessonbuilder</groupId>
@@ -70,11 +49,11 @@
         </dependency>
         <dependency>
             <groupId>javax.servlet</groupId>
-            <artifactId>servlet-api</artifactId>
+            <artifactId>javax.servlet-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.pluto</groupId>
@@ -97,6 +76,14 @@
             <groupId>org.hibernate</groupId>
             <artifactId>hibernate-core</artifactId>
         </dependency>
+		<dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-tx</artifactId>
+        </dependency>
+		<dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
@@ -105,12 +92,6 @@
                 <directory>${basedir}/src/bundle</directory>
                 <includes>
                     <include>**/*.properties</include>
-                </includes>
-            </resource>
-            <resource>
-                <directory>${basedir}/src/sql</directory>
-                <includes>
-                    <include>**/*.sql</include>
                 </includes>
             </resource>
         </resources>

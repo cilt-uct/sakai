@@ -29,7 +29,9 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.faces.application.FacesMessage;
 import javax.faces.context.FacesContext;
@@ -47,11 +49,14 @@ import org.sakaiproject.event.api.LearningResourceStoreService.LRS_Statement;
 import org.sakaiproject.event.api.LearningResourceStoreService.LRS_Verb;
 import org.sakaiproject.event.api.LearningResourceStoreService.LRS_Verb.SAKAI_VERB;
 import org.sakaiproject.event.api.NotificationService;
+import org.sakaiproject.rubrics.logic.RubricsConstants;
+import org.sakaiproject.rubrics.logic.RubricsService;
 import org.sakaiproject.samigo.util.SamigoConstants;
 import org.sakaiproject.tool.assessment.data.dao.grading.AssessmentGradingData;
 import org.sakaiproject.tool.assessment.data.dao.grading.ItemGradingAttachment;
 import org.sakaiproject.tool.assessment.data.dao.grading.ItemGradingData;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AttachmentIfc;
+import org.sakaiproject.tool.assessment.data.ifc.assessment.EvaluationModelIfc;
 import org.sakaiproject.tool.assessment.facade.AgentFacade;
 import org.sakaiproject.tool.assessment.services.GradebookServiceException;
 import org.sakaiproject.tool.assessment.services.GradingService;
@@ -59,8 +64,10 @@ import org.sakaiproject.tool.assessment.ui.bean.evaluation.AgentResults;
 import org.sakaiproject.tool.assessment.ui.bean.evaluation.QuestionScoresBean;
 import org.sakaiproject.tool.assessment.ui.bean.evaluation.TotalScoresBean;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
+import org.sakaiproject.tool.assessment.util.ParameterUtil;
 import org.sakaiproject.tool.assessment.util.SamigoLRSStatements;
 import org.sakaiproject.tool.assessment.util.TextFormat;
+import org.sakaiproject.tool.cover.SessionManager;
 
 /**
  * <p>
@@ -78,6 +85,7 @@ import org.sakaiproject.tool.assessment.util.TextFormat;
   implements ActionListener
 {
   private final EventTrackingService eventTrackingService= ComponentManager.get( EventTrackingService.class );
+  private final RubricsService rubricsService = ComponentManager.get(RubricsService.class);
 
   //private static EvaluationListenerUtil util;
   //private static BeanSort bs;
@@ -124,21 +132,33 @@ import org.sakaiproject.tool.assessment.util.TextFormat;
    */
   public boolean saveQuestionScores(QuestionScoresBean bean, TotalScoresBean tbean)
   {
+    boolean hasNumberFormatException = false;
+    List<String> badAdjList = new ArrayList<>();
+    boolean isAnonymousGrading = false;
+    String numberFormatError = "";
+
     try
     {
+      if (bean.getPublishedAssessment() != null
+        && bean.getPublishedAssessment().getEvaluationModel() != null
+        && bean.getPublishedAssessment().getEvaluationModel().getAnonymousGrading() != null
+        && bean.getPublishedAssessment().getEvaluationModel().getAnonymousGrading().equals(EvaluationModelIfc.ANONYMOUS_GRADING)) {
+        numberFormatError = (String) ContextUtil.getLocalizedString(SamigoConstants.EVAL_BUNDLE, "number_format_error_submission_id");
+        isAnonymousGrading = true;
+      }
+      else {
+        numberFormatError = (String) ContextUtil.getLocalizedString(SamigoConstants.EVAL_BUNDLE, "number_format_error_user_id");
+      }
+
+      ParameterUtil paramUtil = new ParameterUtil();
       GradingService delegate = new GradingService();
       //String publishedId = ContextUtil.lookupParam("publishedId");
       String itemId = ContextUtil.lookupParam("itemId");
       String which = ContextUtil.lookupParam("allSubmissions");
       if (which == null)
         which = "false";
-      Collection agents = bean.getAgents();
-      //ArrayList items = new ArrayList();
-      Iterator iter = agents.iterator();
-      while (iter.hasNext())
-      {
-        // each agent has a list of modified itemGrading
-        AgentResults ar = (AgentResults) iter.next();
+      List<AgentResults> agents = (List<AgentResults>) bean.getAgents();
+      for(AgentResults ar : agents){
         // Get the itemgradingdata list for this result
         ArrayList datas = (ArrayList) bean.getScoresByItem().get
           (ar.getAssessmentGradingId() + ":" + itemId);
@@ -162,16 +182,28 @@ import org.sakaiproject.tool.assessment.util.TextFormat;
         while (iter2.hasNext()){
           Object obj = iter2.next();
           ItemGradingData data = (ItemGradingData) obj;
+          double newAutoScore = 0;
 
           // check if there is differnce in score, if so, update. Otherwise, do nothing
-          double newAutoScore = 0;
-          if ((bean.getTypeId().equals("8") || bean.getTypeId().equals("11")) && fibFinNumCorrect != 0) {
-        	  if (Boolean.TRUE.equals(data.getIsCorrect())) {
-        		  newAutoScore = (Double.valueOf(ar.getTotalAutoScore())).doubleValue() / (double) fibFinNumCorrect;
-        	  }
+          try {
+            if ((bean.getTypeId().equals("8") || bean.getTypeId().equals("11")) && fibFinNumCorrect != 0) {
+        	    if (Boolean.TRUE.equals(data.getIsCorrect())) {
+        		    newAutoScore = (Double.valueOf(ar.getTotalAutoScore())).doubleValue() / (double) fibFinNumCorrect;
+        	    }
+            }
+            else {
+        	    newAutoScore = (Double.valueOf(ar.getTotalAutoScore())).doubleValue() / (double) datas.size();
+            }
           }
-          else {
-        	  newAutoScore = (Double.valueOf(ar.getTotalAutoScore())).doubleValue() / (double) datas.size();
+          catch (NumberFormatException e) {
+            hasNumberFormatException = true;
+            if (isAnonymousGrading) {
+              badAdjList.add(ar.getAssessmentGradingId().toString());
+            }
+            else {
+              badAdjList.add(ar.getAgentEid());
+            }
+            continue;
           }
           String newComments = TextFormat.convertPlaintextToFormattedTextNoHighUnicode(ar.getComments());
           ar.setComments(newComments);
@@ -248,15 +280,22 @@ import org.sakaiproject.tool.assessment.util.TextFormat;
       log.error(e.getMessage(), e);
       return false;
     }
+
+    if (hasNumberFormatException) {
+      FacesContext context = FacesContext.getCurrentInstance();
+      context.addMessage(null, new FacesMessage(numberFormatError + " " + badAdjList.stream().collect(Collectors.joining(", ")) + "."));
+    }
     return true;
   }
 
   private void updateAttachment(ItemGradingData itemGradingData, AgentResults agentResults, QuestionScoresBean bean){
-	  List oldList = itemGradingData.getItemGradingAttachmentList();
+
+	  Set<ItemGradingAttachment> oldList = itemGradingData.getItemGradingAttachmentSet();
 	  List newList = agentResults.getItemGradingAttachmentList();
 	  if ((oldList == null || oldList.size() == 0 ) && (newList == null || newList.size() == 0)) return;
-	  List attachmentList = new ArrayList();
-	  HashMap map = getAttachmentIdHash(oldList);
+	  final Map<Long, ItemGradingAttachment> map
+		  = oldList.stream().collect(Collectors.toMap(a -> a.getAttachmentId(), a -> a));
+	  List<ItemGradingAttachment> attachmentList = new ArrayList<>();
 	  for (int i=0; i<newList.size(); i++){
 		  ItemGradingAttachment itemGradingAttachment = (ItemGradingAttachment) newList.get(i);
 		  if (map.get(itemGradingAttachment.getAttachmentId()) != null){
@@ -288,15 +327,6 @@ import org.sakaiproject.tool.assessment.util.TextFormat;
 		  eventTrackingService.post(eventTrackingService.newEvent(SamigoConstants.EVENT_ASSESSMENT_STUDENT_SCORE_UPDATE, 
 				  "siteId=" + AgentFacade.getCurrentSiteId() + ", Removing attachmentId = " + attachmentId, true));
 	  }
-	  bean.setIsAnyItemGradingAttachmentListModified(true);
-  }
-
-  private HashMap getAttachmentIdHash(List list){
-    HashMap map = new HashMap();
-    for (int i=0; i<list.size(); i++){
-    	ItemGradingAttachment a = (ItemGradingAttachment)list.get(i);
-      map.put(a.getAttachmentId(), a);
-    }
-    return map;
+	  bean.setAnyItemGradingAttachmentListModified(true);
   }
 }

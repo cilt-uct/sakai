@@ -8,10 +8,9 @@
 // It doesn't include anything that was already disabled.
 
 var disabledButtons = [];
+var counter = 0;
 
 // confirm box needs to disable autosave temporarily
-
-var doautosave = true;
 
 //    Links are more difficult, as there isn't a disabled
 // attribute for them. Currently I clear onmouseup and onclick.
@@ -24,6 +23,16 @@ var doautosave = true;
 var disabledLinks = [];
 
 function GetFormContent(formId, buttonName) {
+
+    try {
+        //If the autosave submits any fill in numeric question, validate it before submitting. Wipe the value if it's incorrect and notify the user.
+        $('.fillInNumericInput').each( function() {
+          validateFinInput(this);
+        });
+    } catch(error) {
+        //Fail silently if this validation fails.
+    }
+
     var theForm = document.getElementById(formId);
     var elements = theForm.elements;
     var pairs = [];
@@ -34,20 +43,21 @@ function GetFormContent(formId, buttonName) {
         pairs.push(encoded);
     }
     for (var i=0; i<elements.length; i++) {
-        var elt = elements[i]
-        var name = elt.name;
+        var elt = elements[i];
+        var eltName = elt.name;
+        if (!eltName) continue;
+
         var type = typeof(elt.type)=='string' ? elt.type.toLowerCase() : '';
         var value = elt.value;
-        var encoded = encodeURIComponent(name)+"="+encodeURIComponent(value);
-	if (name && type == "submit" && !elt.disabled) {
-	    // save name of buttons we are disabling, and disable
-	    disabledButtons.push(name);
-	    elt.disabled = true;
+        var encoded = encodeURIComponent(eltName) + "=" + encodeURIComponent(value);
+        if (type == "submit" && !elt.disabled) {
+            // save name of buttons we are disabling, and disable
+            disabledButtons.push(eltName);
+            elt.disabled = true;
         }
-        if (type != "submit" &&
-	    !((type == "radio" || type == "checkbox") && !elt.checked)){
-	    pairs.push(encoded);
-  	}
+        else if (type != "submit" && !((type == "radio" || type == "checkbox") && !elt.checked)) {
+            pairs.push(encoded);
+        }
     }
     // save attributes and disable links
     disabledLinks = [];
@@ -64,8 +74,6 @@ function GetFormContent(formId, buttonName) {
     return pairs.join("&");
 }
 
-var counter = 0
-
 function SaveFormContentAsync(toUrl, formId, buttonName, updateVar, updateVar2, repeatMilliseconds, ok ) {
     if (!ok) { 
 		return;
@@ -76,25 +84,12 @@ function SaveFormContentAsync(toUrl, formId, buttonName, updateVar, updateVar2, 
 	}
 
     // asyncronously send form content to toUrl, wait for response, sleep, repeat
-    //    var theStatus = document.getElementById(statusId);
-    counter += 1;
-    //    theStatus.innerHTML = "count "+counter+" saving form at "+Date();
-    var request = initXMLHTTPRequest();
-    var method = "POST";
-    var async = true;
-    var payload;
-    function onready_callback() {
-	var state = request.readyState;
-	if (state!=4) {
-	    // ignore intermediate states
-	    return;
-	}
+    function onready_callback(text) {
 	    // This is an Ajax response. It isn't normally processed.
 	// So if we need anything from it we have to get it.
 	// Get new date from response and update the form variable
 
 	var saveok = true;
-	var text = request.responseText;
         var i = text.indexOf('"' + updateVar);
 	if (i < 0) {
 	    i = text.indexOf('"' + updateVar2);	    
@@ -106,6 +101,7 @@ function SaveFormContentAsync(toUrl, formId, buttonName, updateVar, updateVar2, 
 	if (i >= 0) {
 	    j = text.indexOf('"', i+7);
 	}
+	var d = -1;
 	if (j >= 0) {
 	    var d = text.substring(i+7, j);
 	    if (document.forms[0].elements[updateVar] != null) {
@@ -118,22 +114,21 @@ function SaveFormContentAsync(toUrl, formId, buttonName, updateVar, updateVar2, 
 	} else {
 	    saveok = false;
 	}
+
 	// Now that we have the updated date, it's safe for the user to do submits.
 	// Reenable any buttons we disabled.
-
 	for (var i=0; i<disabledButtons.length; i++) {
-	    document.forms[0].elements[disabledButtons[i]].disabled=false;
+	    document.forms[formId].elements[disabledButtons[i]].disabled=false;
 	}
 
 	// And links
-
 	for (var i=0; i<disabledLinks.length; i++) {
 	    var item = disabledLinks[i];
 	    var link = document.getElementById(item[0]);
 	    link.onmouseup = item[1];
 	    link.onclick = item[2];
 	}
-	//	theStatus.innerHTML = "count "+counter+" save complete at "+Date();
+
         // wait and then call save form again
 	if (saveok) {
 	    var onTimeout = TimeOutAction(toUrl, formId, buttonName, updateVar, updateVar2, repeatMilliseconds);
@@ -143,23 +138,58 @@ function SaveFormContentAsync(toUrl, formId, buttonName, updateVar, updateVar2, 
 	}
 	window.status = "";
 
-        // when the request is done the scope of the function can be garbage collected...
-    }
-    if (doautosave && counter > 1) {
-	payload = GetFormContent(formId, buttonName);
-	request.open(method, toUrl, async);
-	request.onreadystatechange = onready_callback;
-	request.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-	//alert("about to send");
-	window.status = "Saving...";
-	request.send(payload);
-    } else {
-	//alert("first time" + 	    document.forms[0].elements['takeAssessmentForm:lastSubmittedDate1'].value);
-        var onTimeout = TimeOutAction(toUrl, formId, buttonName, updateVar, updateVar2, repeatMilliseconds);
-        setTimeout(onTimeout, repeatMilliseconds);
+    //check noLateSubmission or isRetracted controlled by pastDueDate()
+    if (text.indexOf("noLateSubmission") >= 0 || text.indexOf("isRetracted") >= 0 || text.indexOf("assessment_has_been_submitted") >= 0) {
+        $("#autosave-timeexpired-warning").show();
+        $("[id$=\\:submitNoCheck]")[0].click();
     }
 
-    // onready_callback called on request response.
+    if (d !== -1) {
+        var timeNow = Date.now();
+        var i = text.indexOf("retractDate");
+        if (i >= 0) {
+            i = text.indexOf("value=", i);
+        }
+        else {
+            i = text.indexOf("dueDate");
+            if (i >= 0) {
+                i = text.indexOf("value=", i);
+            }
+        }
+        var j = -1;
+        if (i >= 0) {
+            j = text.indexOf('"', i+7);
+        }
+        if (j >= 0) {
+            var dueDateorRetractDate = text.substring(i+7, j);
+            if (document.getElementById("progressbar") === null && dueDateorRetractDate - timeNow <= repeatMilliseconds) {
+                $("#autosave-timeleft-warning").show();
+            }
+        }
+    }
+
+        // when the request is done the scope of the function can be garbage collected...
+    }
+
+    if (counter > 0) {
+      var payload = GetFormContent(formId, buttonName);
+
+      $.ajax({ method: "POST", url: toUrl, data: payload }, function () {
+        // Promises below will allow handling of a connection failure
+      })
+        .done(function (html) {
+          onready_callback(html);
+        })
+        .fail(function () {
+          $("#autosave-failed-warning").show();
+          onready_callback("");
+        });
+    } else {
+	    var onTimeout = TimeOutAction(toUrl, formId, buttonName, updateVar, updateVar2, repeatMilliseconds);
+	    setTimeout(onTimeout, repeatMilliseconds);
+    }
+
+    counter += 1;
 }
 
 function TimeOutAction(toUrl, formId, buttonName, updateVar, updateVar2, repeatMilliseconds) {
@@ -167,19 +197,5 @@ function TimeOutAction(toUrl, formId, buttonName, updateVar, updateVar2, repeatM
 	SaveFormContentAsync(toUrl, formId, buttonName, updateVar, updateVar2, repeatMilliseconds, true);
     }
     return ActionResult;
-}
-
-function initXMLHTTPRequest() {
-        var result = null;
-        if (window.XMLHttpRequest) {
-                ////al("xmlhttp");
-                result = new XMLHttpRequest();
-        } else if (window.ActiveXObject) {
-                ////al("microsoft");
-                result = new ActiveXObject("Microsoft.XMLHTTP");
-        } else {
-                throw new Error("failed to create XMLHTTPRequest");
-        }
-        return result;
 }
 

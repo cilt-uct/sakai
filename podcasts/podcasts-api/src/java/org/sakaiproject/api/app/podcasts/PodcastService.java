@@ -27,9 +27,6 @@ import java.util.List;
 import org.sakaiproject.content.api.ContentCollection;
 import org.sakaiproject.content.api.ContentCollectionEdit;
 import org.sakaiproject.content.api.ContentHostingService;
-import org.sakaiproject.content.api.ContentResource;
-import org.sakaiproject.content.api.ContentResourceEdit;
-import org.sakaiproject.entity.api.ResourceProperties;
 import org.sakaiproject.exception.IdInvalidException;
 import org.sakaiproject.exception.IdLengthException;
 import org.sakaiproject.exception.IdUniquenessException;
@@ -41,7 +38,6 @@ import org.sakaiproject.exception.OverQuotaException;
 import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.exception.ServerOverloadException;
 import org.sakaiproject.exception.TypeException;
-import org.sakaiproject.time.api.Time;
 import org.sakaiproject.tool.api.ToolManager;
 
 // import org.sakaiproject.entity.api.EntityProducer;
@@ -72,17 +68,6 @@ public interface PodcastService // extends EntityProducer
 	/** This string is the name of the property for the title of a podcast in the feed **/
 	public static final String DISPLAY_TITLE = "displayTitle";
 	
-	/** This string gives the update function (permission) string for checking permissions
-	public static final String UPDATE_PERMISSIONS = "site.upd";
-	public static final String NEW_PERMISSIONS = "content.new";
-	public static final String READ_PERMISSIONS = "content.read";
-	public static final String REVISE_ANY_PERMISSIONS = "content.revise.any";
-	public static final String REVISE_OWN_PERMISSIONS = "content.revise.own";
-	public static final String DELETE_ANY_PERMISSIONS = "content.delete.any";
-	public static final String DELETE_OWN_PERMISSIONS = "content.delete.own";
-	public static final String ALL_GROUPS_PERMISSIONS = "content.all.groups";
-	public static final String HIDDEN_PERMISSIONS = "content.hidden";
- **/
 	/**
 	 * Determines if podcast folder is part of Resources of site.
 	 * If not, creates it.

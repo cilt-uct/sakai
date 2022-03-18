@@ -4,16 +4,11 @@
   <parent>
     <groupId>org.sakaiproject.msgcntr</groupId>
     <artifactId>msgcntr</artifactId>
-    <version>12.5</version>
+    <version>21-SNAPSHOT</version>
   </parent>
   <name>Sakai Message Forums Hibernate Module</name>
   <groupId>org.sakaiproject.msgcntr</groupId>
   <artifactId>messageforums-hbm</artifactId>
-  <organization>
-    <name>Sakai Project</name>
-    <url>http://sakaiproject.org/</url>
-  </organization>
-  <inceptionYear>2005</inceptionYear>
   <packaging>jar</packaging>
   <properties>
     <deploy.target>shared</deploy.target>
@@ -30,6 +25,10 @@
     <dependency>
       <groupId>org.sakaiproject.msgcntr</groupId>
       <artifactId>messageforums-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-core</artifactId>
     </dependency>
     <dependency>
       <groupId>commons-beanutils</groupId>

@@ -150,16 +150,7 @@ function disablePartialCreditField(){
 }
 
 function clickAddChoiceLink(){
-
-var newindex = 0;
-for (i=0; i<document.links.length; i++) {
-  if ( document.links[i].id.indexOf("hiddenAddChoicelink") >=0){
-    newindex = i;
-    break;
-  }
-}
-
-document.links[newindex].onclick();
+  $('#itemForm\\:hiddenAddChoicelink')[0].click();
 }
 
 function clickAddEmiAnswerOptionsLink(){
@@ -260,7 +251,7 @@ $( document ).ready( function() {
             // minField may not be on the page if disabled
             if (minField) {
                 var minValue = parseFloat(minField.val());
-                if (minValue < 0 || minValue >= pointValue) {
+                if (minValue < 0 || minValue > pointValue) {
                     validationWarningSetDefault(minField, "");
                 }
             }
@@ -271,8 +262,8 @@ $( document ).ready( function() {
     $( "#itemForm\\:minPoints\\:answerminptr" ).change( function() {
         var pointValue = parseFloat( $( "#itemForm\\:answerptr" ).val() );
         var minValue = parseFloat( $( this ).val() );
-        // minValue should not be equal to or greater than pointValue
-        if (minValue < 0 || minValue >= pointValue) {
+        // minValue should not be greater than pointValue
+        if (minValue < 0 || minValue > pointValue) {
             validationWarningSetDefault($( this ), "0")
         } else {
             // minValue is valid disable negative points
@@ -287,45 +278,42 @@ $( document ).ready( function() {
     });
 
     // validation for negative points
-    $( "#itemForm\\:answerdsc" ).change( function() {
-        var pointValue = parseFloat( $( "#itemForm\\:answerptr" ).val() );
-        var negValue = parseFloat ( $( this ).val() );
-        // minValue should not be equal to or greater than pointValue
-        if (negValue < 0 || negValue > pointValue) {
-            validationWarningSetDefault($( this ), "0")
+    const negField = document.getElementById("itemForm:answerdsc");
+    negField && negField.addEventListener("change", function () {
+
+      const pointValue = parseFloat(document.getElementById("itemForm:answerptr").value);
+      const negValue = parseFloat(this.value);
+      // minValue should not be equal to or greater than pointValue
+      if (negValue < 0 || negValue > pointValue) {
+          validationWarningSetDefault($(this), "0");
+      } else {
+        // negValue should 0 if using minPoints
+        const minField = document.getElementById("itemForm:minPoints:answerminptr");
+        const warning = document.getElementById("itemForm:minPoints:min-point-warning");
+        const info = document.getElementById("itemForm:minPoints:min-point-info");
+        if (negValue == 0.0) {
+          minField.disabled = false;
+          warning.style.display = "none";
+          info.style.display = "inline-block";
         } else {
-            // negValue should 0 if using minPoints
-            var minField = $( "#itemForm\\:minPoints\\:answerminptr" );
-            if (minField) {
-                var minValue = parseFloat(minField.val());
-                if (minValue > 0) {
-                    validationWarningSetDefault(minField, "");
-                }
-            }
+          if (minField) {
+            const minValue = parseFloat(minField.value);
+            minField.value = "";
+            minField.disabled = true;
+            warning.style.display = "inline-block";
+            info.style.display = "none";
+          }
         }
+      }
     });
 
-    $( function() {
-        // negValue should be 0 and minValue should be empty if using partial credit
-        var pcValue = $( "input[name='itemForm\\:partialCredit_NegativeMarking']:checked", "#itemForm" ).val();
-        if (pcValue == "true") {
-            var negField = $( "#itemForm\\:answerdsc" );
-            if (negField) {
-                var negValue = parseFloat(negField.val());
-                if (negValue > 0) {
-                    validationWarningSetDefault(negField, "0");
-                }
-            }
+    $(function() {
 
-            var minField = $( "#itemForm\\:minPoints\\:answerminptr" );
-            if (minField) {
-                var minValue = parseFloat(minField.val());
-                if (minValue > 0) {
-                    validationWarningSetDefault(minField, "");
-                }
-            }
+        if (document.querySelector("input[name='itemForm:partialCredit_NegativeMarking']:checked")) {
+          // This is the partial credit option
+          let minField = document.getElementById("itemForm:minPoints:answerminptr");
+          minField.value = "";
         }
-
     });
 
     // Fix the input value and display for the correct answer in Multiple Choice when entering with partial credit enabled.
@@ -350,6 +338,39 @@ $( document ).ready( function() {
             $("input", this).click();
         }
     });
+
+    // Setup extended time radios
+    $('input[name="assessmentSettingsAction\\:userOrGroup"]').change(function () {
+        var $t = $(this);
+        var $thisSelect;
+        var $otherSelect;
+
+        if($t.attr('id') === 'assessmentSettingsAction:extendedEnableUser') {
+            $thisSelect = $('#assessmentSettingsAction\\:newEntry-user');
+            $otherSelect = $('#assessmentSettingsAction\\:newEntry-group');
+        } else {
+            $thisSelect = $('#assessmentSettingsAction\\:newEntry-group');
+            $otherSelect = $('#assessmentSettingsAction\\:newEntry-user');
+        }
+
+        $thisSelect.prop('disabled', false);
+        $otherSelect.prop('disabled', true);
+        $otherSelect.val('');
+    });
+
+    if($('#assessmentSettingsAction\\:newEntry-user').val() === '') {
+        $('#assessmentSettingsAction\\:newEntry-user').prop('disabled', 'disabled');
+        $('#assessmentSettingsAction\\:extendedEnableUser').prop('checked', false);
+    } else {
+        $('#assessmentSettingsAction\\:extendedEnableUser').prop('checked', true);
+    }
+
+    if($('#assessmentSettingsAction\\:newEntry-group').val() === '') {
+        $('#assessmentSettingsAction\\:newEntry-group').prop('disabled', 'disabled');
+        $('#assessmentSettingsAction\\:extendedEnableGroup').prop('checked', false);
+    } else {
+        $('#assessmentSettingsAction\\:extendedEnableGroup').prop('checked', true);
+    }
 });
 
 function validationWarningSetDefault(element, value) {
@@ -396,12 +417,12 @@ function applyMenuListener(pulldown, feedbackContainerID, noFeedbackMsgID) {
 //improve feedback UI, get rid of page reload bugid:5574 -Qu 10/31/2013
 
 // If we select "No Feedback will be displayed to the student"
-// it will disable and uncheck feedback as well as blank out text, otherwise,
+// it will disable and uncheck feedback as well as blank out text, otherwise,	
 // if a different radio button is selected, we reenable feedback checkboxes & text.
 function disableAllFeedbackCheck(feedbackType)
 {
-	var noFeedback = 3;
-	
+    var noFeedback = 3;
+
     if (feedbackType == noFeedback){
      	$("#assessmentSettingsAction\\:feedbackComponentOption input").prop("disabled", true);
 		$(".respChoice input").prop({disabled:true, checked:false});
@@ -418,17 +439,23 @@ function disableAllFeedbackCheck(feedbackType)
     disableFeedbackDateCheck(feedbackType);
 }
 
+// Display the date selectors when the feedback is shown by date.
 function disableFeedbackDateCheck(feedbackType) {
 	var dateFeedback = 2;
 
     if (feedbackType == dateFeedback) {
-    	$("input#assessmentSettingsAction\\:feedbackDate.hasDatepicker").prop("disabled", false);
-    	$("td.feedbackColumn1 > img.ui-datepicker-trigger").prop("hidden", false);
+        $("#feedbackByDatePanel").show();
+        $("input#assessmentSettingsAction\\:feedbackDate.hasDatepicker").prop("disabled", false);
+        $("input#assessmentSettingsAction\\:feedbackEndDate.hasDatepicker").prop("disabled", false);
+        $("td.feedbackColumn1 > img.ui-datepicker-trigger").prop("hidden", false);
         $("td.feedbackColumn2").prop("hidden", false);
     } else {
-    	$("input#assessmentSettingsAction\\:feedbackDate.hasDatepicker").prop("disabled", true);
+        $("#feedbackByDatePanel").hide();
+        $("input#assessmentSettingsAction\\:feedbackDate.hasDatepicker").prop("disabled", true);
         $("input#assessmentSettingsAction\\:feedbackDate.hasDatepicker").val( "" );
-    	$("td.feedbackColumn1 > img.ui-datepicker-trigger").prop("hidden", true);
+        $("input#assessmentSettingsAction\\:feedbackEndDate.hasDatepicker").prop("disabled", true);
+        $("input#assessmentSettingsAction\\:feedbackEndDate.hasDatepicker").val( "" );
+        $("td.feedbackColumn1 > img.ui-datepicker-trigger").prop("hidden", true);
         $("td.feedbackColumn2").prop("hidden", true);
     }
 }
@@ -481,11 +508,15 @@ $(window).load( function() {
 
 function checkNoFeedbackOnLoad(){
 	var noFeedback = 3;
+	var feedbackByDate = 2;
 	var feedbackType = $("input[name=assessmentSettingsAction\\:feedbackDelivery]:checked").val();
 
 	if(feedbackType == noFeedback) {
 		$("#assessmentSettingsAction\\:feedbackComponentOption input").prop("disabled", true);
 		$(".respChoice input").prop('disabled', true);
+	}
+	if(feedbackType == feedbackByDate) {
+		$("#feedbackByDatePanel").show();
 	}
 	disableFeedbackDateCheck(feedbackType);
 }
@@ -631,19 +662,6 @@ function checkUncheckTimeBox(){
   }
 }
 
-function checkUncheckAllReleaseGroups(){
-  var checkboxState = document.getElementById("assessmentSettingsAction:checkUncheckAllReleaseGroups").checked;
-  var inputList= document.getElementsByTagName("INPUT");
-  for (i = 0; i <inputList.length; i++) 
-  {
-    if(inputList[i].type=='checkbox')
-    {
-      if(inputList[i].name.indexOf("groupsForSite")>=0)
-        inputList[i].checked=checkboxState;
-    }
-  }
-}
-
 function initTimedCheckBox(){
 		var timedHours = document.getElementById("assessmentSettingsAction\:timedHours");
 		var timedHoursVal = timedHours.options[timedHours.selectedIndex].value;
@@ -659,6 +677,7 @@ function lockdownAnonyGrading(value) {
 		$('#assessmentSettingsAction\\:anonymousGrading').prop('disabled', 'disabled');
 	} 
 	else {
+		$('#assessmentSettingsAction\\:anonymousGrading').prop('checked', '');
 		$('#assessmentSettingsAction\\:anonymousGrading').prop('disabled', '');
 	}
 }
@@ -778,7 +797,7 @@ function resetSelectMenus(){
 function clickInsertLink(field){
   var insertlinkid = field.id.replace("changeQType", "hiddenlink");
   var hiddenSelector = "#" + insertlinkid.replace( /(:|\.|\[|\]|,)/g, "\\$1" );
-  $(hiddenSelector).click();
+  $(hiddenSelector)[0].click()
 }
 
 // Show MathJax warning messages if applicable
@@ -787,3 +806,35 @@ if (typeof MathJax != 'undefined') {
     $(".mathjax-warning").show();
   });
 }
+
+function toggleCategories(checkbox) {
+    // Toggle categories selector. If categories are disabled it won't exist
+    // so check first.
+    var categoryDiv = $('#assessmentSettingsAction\\:toGradebookCategory');
+    if (categoryDiv.length) {
+        if ($(checkbox).prop("checked")) {
+            categoryDiv.fadeIn();
+        } else {
+            categoryDiv.fadeOut();
+        }
+    }
+}
+
+function expandAccordion(iframId){
+    $('div#jqueryui-accordion > .ui-accordion-content').show();
+    mySetMainFrameHeight(iframId);
+    $("#collapseLink").show();
+    $("#expandLink").hide();
+    $("div#jqueryui-accordion > h3.ui-accordion-header > span").removeClass("ui-icon-triangle-1-e").addClass("ui-icon-triangle-1-s");
+    $("div#jqueryui-accordion > h3.ui-accordion-header").addClass("ui-accordion-header-active ui-state-active");
+}
+
+function collapseAccordion(iframId){
+    $('.ui-accordion-content').hide();
+    mySetMainFrameHeight(iframId);
+    $("#collapseLink").hide();
+    $("#expandLink").show();
+    $("div#jqueryui-accordion > h3.ui-accordion-header > span").removeClass("ui-icon-triangle-1-s").addClass("ui-icon-triangle-1-e");
+    $("div#jqueryui-accordion > h3.ui-accordion-header").removeClass("ui-accordion-header-active ui-state-active");
+}
+

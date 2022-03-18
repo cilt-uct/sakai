@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Map.Entry;
 
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
@@ -62,51 +63,14 @@ import org.sakaiproject.user.api.UserPermissionException;
 @Slf4j
 public class CheckValidations implements Job {
 
-	private ValidationLogic validationLogic;
-	public void setValidationLogic(ValidationLogic vl) {
-		validationLogic = vl;
-	}
-
-	private UserDirectoryService userDirectoryService;
-	public void setUserDirectoryService(UserDirectoryService uds) {
-		userDirectoryService = uds;
-	}
-
-	private AuthzGroupService authzGroupService;	
-	public void setAuthzGroupService(AuthzGroupService authzGroupService) {
-		this.authzGroupService = authzGroupService;
-	}
-	
-	
-	private EmailTemplateService emailTemplateService;
-	public void setEmailTemplateService(EmailTemplateService emailTemplateService) {
-		this.emailTemplateService = emailTemplateService;
-	}
-
-	
-	private ServerConfigurationService serverConfigurationService;	
-	public void setServerConfigurationService(
-			ServerConfigurationService serverConfigurationService) {
-		this.serverConfigurationService = serverConfigurationService;
-	}
-
-	
-	public SiteService siteService;
-	public void setSiteService(SiteService siteService) {
-		this.siteService = siteService;
-	}
-	
-	private SessionManager sessionManager;
-	public void setSessionManager(SessionManager sessionManager) {
-		this.sessionManager = sessionManager;
-	}
-
-	
-	private PreferencesService preferencesService;	
-	public void setPreferencesService(PreferencesService preferencesService) {
-		this.preferencesService = preferencesService;
-	}
-
+	@Setter private ValidationLogic validationLogic;
+	@Setter private UserDirectoryService userDirectoryService;
+	@Setter private AuthzGroupService authzGroupService;	
+	@Setter private EmailTemplateService emailTemplateService;
+	@Setter private ServerConfigurationService serverConfigurationService;	
+	@Setter public SiteService siteService;
+	@Setter private SessionManager sessionManager;
+	@Setter private PreferencesService preferencesService;	
 
 	private int maxDays = 90;
 	
@@ -181,7 +145,7 @@ public class CheckValidations implements Job {
 					account.setStatus(ValidationAccount.STATUS_EXPIRED);
 					//set the received date so that it will create a new token the next time the user requests a reset
 					cal = new GregorianCalendar();
-					account.setvalidationReceived(cal.getTime());
+					account.setValidationReceived(cal.getTime());
 					validationLogic.save(account);
 				} 
 				else if (validationLogic.isTokenExpired(account))
@@ -219,7 +183,7 @@ public class CheckValidations implements Job {
 			String creatorId = entry.getKey();
 			try {
 				User creator = userDirectoryService.getUser(creatorId);
-				Locale locale = getUserLocale(creatorId);
+				Locale locale = preferencesService.getLocale(creatorId);
 				List<String> users = entry.getValue();
 				StringBuilder userText = new StringBuilder();
 				for (int i = 0; i < users.size(); i++) {
@@ -318,24 +282,4 @@ public class CheckValidations implements Job {
 		
 		return ret;
 	}
-
-	 protected Locale getUserLocale(String userId) {
-		   Locale loc = preferencesService.getLocale(userId);
-		   //the user has no preference set - get the system default
-		   if (loc == null ) {
-			   String lang = System.getProperty("user.language");
-			   String region = System.getProperty("user.region");
-
-			   if (region != null) {
-				   log.debug("getting system locale for: " + lang + "_" + region);
-				   loc = new Locale(lang,region);
-			   } else { 
-				   log.debug("getting system locale for: " + lang );
-				   loc = new Locale(lang);
-			   }
-		   }
-
-		   return loc;
-	   }
-	
 }

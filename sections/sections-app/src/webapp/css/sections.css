@@ -6,7 +6,7 @@
 .selected {width:210px; text-align:right; vertical-align:top;}
 
 .transferButtonTable {text-align:center; font-weight:bold;}
-.studentSectionInfo {font-weight:bold;}
+.sectionTable .studentSectionInfo {font-weight:bold;}
 .deleteButtons {margin-top:40px;}
 .verticalPadding {margin-top:20px;}
 
@@ -130,5 +130,37 @@ table.narrowTable tr th {
 /* Indent options checkboxes */
 .indent {text-indent: 1em;}
 
+/* Clear the text indent and use margin instead */
+.noIndent {
+    text-indent: 0px;
+    margin-left: 10px;
+}
 
+.ui-dialog-titlebar-close {
+    visibility: hidden;
+}
 
+.displayNone {
+    display: none;
+}
+ 
+.dialogConfirm {
+    float:left;
+    margin:12px 12px 20px 0;
+}
+
+form#optionsForm input {
+    margin-right: 5px;
+}
+
+form#optionsForm input[type="text"] {
+    margin-left: 5px;
+}
+
+form#addSectionsForm select {
+    margin: 0 5px 0 5px;
+}
+
+form#addSectionsForm input[type="radio"] {
+    margin-right: 5px;
+}

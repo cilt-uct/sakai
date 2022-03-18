@@ -46,10 +46,10 @@ import org.apache.commons.lang3.LocaleUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 
-import org.jdom.Document;
-import org.jdom.Element;
-import org.jdom.JDOMException;
-import org.jdom.input.SAXBuilder;
+import org.jdom2.Document;
+import org.jdom2.Element;
+import org.jdom2.JDOMException;
+import org.jdom2.input.SAXBuilder;
 
 import org.simpleframework.xml.core.Persister;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -221,7 +221,7 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
    public RenderedTemplate getRenderedTemplateForUser(String key, String userReference, Map<String, String> replacementValues) {
       log.debug("getRenderedTemplateForUser(" + key + ", " +userReference);
 	  String userId = developerHelperService.getUserIdFromRef(userReference);
-      Locale loc = getUserLocale(userId);
+      Locale loc = preferencesService.getLocale(userId);
       return getRenderedTemplate(key,loc,replacementValues);
    }
 
@@ -274,18 +274,6 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
 	   log.info("updated template: " + template.getId());
 	}
 
-   protected Locale getUserLocale(String userId) {
-	   Locale loc =  preferencesService.getLocale(userId);
-	   
-	   //the user has no preference set - get the system default
-	   if (loc == null ) {
-		 loc = Locale.getDefault();
-	   }
-
-	   return loc;
-   }
-
-
    protected String processText(String text, Map<String, String> values, String templateName) {
       return TextTemplateLogicUtils.processTextTemplate(text, values, templateName);
    }
@@ -336,7 +324,7 @@ public Map<EmailTemplateLocaleUsers, RenderedTemplate> getRenderedTemplates(
 	for (int i = 0; i < userReferences.size(); i++) {
 		String userReference = userReferences.get(i);
 		String userId = developerHelperService.getUserIdFromRef(userReference);
-        Locale loc = getUserLocale(userId);
+        Locale loc = preferencesService.getLocale(userId);
         //have we found this locale?
         if (! foundLocales.contains(loc)) {
         	//create a new EmailTemplateLocalUser

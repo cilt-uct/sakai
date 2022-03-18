@@ -15,12 +15,39 @@
  */
 package org.sakaiproject.search.elasticsearch;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
+import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
+import static org.elasticsearch.index.query.FilterBuilders.missingFilter;
+import static org.elasticsearch.index.query.FilterBuilders.orFilter;
+import static org.elasticsearch.index.query.FilterBuilders.termFilter;
+import static org.elasticsearch.index.query.QueryBuilders.boolQuery;
+import static org.elasticsearch.index.query.QueryBuilders.filteredQuery;
+import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
+import static org.elasticsearch.index.query.QueryBuilders.matchQuery;
+import static org.elasticsearch.index.query.QueryBuilders.simpleQueryStringQuery;
+import static org.elasticsearch.index.query.QueryBuilders.termQuery;
+import static org.elasticsearch.index.query.QueryBuilders.termsQuery;
+import static org.elasticsearch.search.facet.FacetBuilders.termsFacet;
+
+import java.io.IOException;
+import java.io.StringWriter;
+import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.StringUtils;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
@@ -67,38 +94,11 @@ import org.sakaiproject.search.api.SearchService;
 import org.sakaiproject.search.api.SearchStatus;
 import org.sakaiproject.search.elasticsearch.filter.SearchItemFilter;
 import org.sakaiproject.search.model.SearchBuilderItem;
-import org.sakaiproject.search.elasticsearch.ElasticSearchConstants;
+import org.slf4j.Logger;
 import org.springframework.util.Assert;
 
-import java.io.IOException;
-import java.io.StringWriter;
-import java.text.DecimalFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-
-import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
-import static org.elasticsearch.index.query.FilterBuilders.missingFilter;
-import static org.elasticsearch.index.query.FilterBuilders.orFilter;
-import static org.elasticsearch.index.query.FilterBuilders.termFilter;
-import static org.elasticsearch.index.query.QueryBuilders.boolQuery;
-import static org.elasticsearch.index.query.QueryBuilders.filteredQuery;
-import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
-import static org.elasticsearch.index.query.QueryBuilders.matchQuery;
-import static org.elasticsearch.index.query.QueryBuilders.termQuery;
-import static org.elasticsearch.index.query.QueryBuilders.termsQuery;
-import static org.elasticsearch.search.facet.FacetBuilders.termsFacet;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 /**
  *
@@ -287,6 +287,11 @@ public abstract class BaseElasticSearchIndexBuilder implements ElasticSearchInde
 
         getLog().info("Initializing ElasticSearch index builder [" + getName() + "]...");
 
+        String indexNamespace = serverConfigurationService.getString("search.indexNamespace", null);
+        if (StringUtils.isNotBlank(indexNamespace)) {
+            this.indexName = indexNamespace + "_" + this.indexName;
+        }
+
         this.eventRegistrar = eventRegistrar;
         this.client = client;
 
@@ -332,7 +337,7 @@ public abstract class BaseElasticSearchIndexBuilder implements ElasticSearchInde
     protected String initializeElasticSearchMapping(String injectedConfig) {
         // if there is a value here its been overridden by injection, we will use the overridden configuration
         String mappingConfig = injectedConfig;
-        if (org.apache.commons.lang.StringUtils.isEmpty(injectedConfig)) {
+        if (org.apache.commons.lang3.StringUtils.isEmpty(injectedConfig)) {
             try {
                 StringWriter writer = new StringWriter();
                 IOUtils.copy(getClass().getResourceAsStream(this.defaultMappingResource), writer, "UTF-8");
@@ -348,7 +353,7 @@ public abstract class BaseElasticSearchIndexBuilder implements ElasticSearchInde
 
     protected Map<String,String> initializeElasticSearchIndexSettings(String injectedConfig) {
         String defaultConfig = injectedConfig;
-        if (org.apache.commons.lang.StringUtils.isEmpty(injectedConfig)) {
+        if (org.apache.commons.lang3.StringUtils.isEmpty(injectedConfig)) {
             try {
                 StringWriter writer = new StringWriter();
                 IOUtils.copy(getClass().getResourceAsStream(this.defaultIndexSettingsResource), writer, "UTF-8");
@@ -1131,7 +1136,7 @@ public abstract class BaseElasticSearchIndexBuilder implements ElasticSearchInde
             query = query.must(termQuery(SearchService.FIELD_TYPE, "sakai:" + termType));
             query = query.must(matchQuery(SearchService.FIELD_CONTENTS, termValue));
         } else {
-            query = query.must(matchQuery(SearchService.FIELD_CONTENTS, searchTerms));
+            query = query.must(simpleQueryStringQuery(searchTerms));
         }
 
         return pairOf(builders.getLeft(), query);

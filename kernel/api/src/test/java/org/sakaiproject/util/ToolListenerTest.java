@@ -24,7 +24,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.tool.api.ActiveToolManager;
 
@@ -70,7 +70,7 @@ public class ToolListenerTest {
         sakaiHome = Files.createTempDirectory("ToolListenerTest");
         toolsFolder = Files.createDirectories(sakaiHome.resolve("tools"));
         when(serverConfigurationService.getSakaiHomePath()).thenReturn(sakaiHome.toString());
-        doAnswer(invocation -> "/webapp"+ invocation.getArgumentAt(0, String.class))
+        doAnswer(invocation -> "/webapp"+ invocation.getArgument(0))
                 .when(context).getRealPath(anyString());
     }
 
@@ -120,7 +120,6 @@ public class ToolListenerTest {
     public void testIgnoreFiles() {
         when(context.getResourcePaths("/WEB-INF/tools/")).thenReturn(Stream.of("/WEB-INF/tools/", "/WEB-INF/tools/sakai-tool.ignored", "/WEB-INF/tools/folder/").collect(Collectors.toSet()));
         InputStream inputStream = mock(InputStream.class);
-        when(context.getResourceAsStream(anyString())).thenReturn(inputStream);
         listener.contextInitialized(event);
         verify(activeToolManager, never()).register(inputStream, context);
     }

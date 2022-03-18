@@ -5,34 +5,36 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 <META HTTP-EQUIV="CACHE-CONTROL" CONTENT="NO-CACHE"/>
 <script rsf:id="scr=portal-matter" type="text/javascript" language="JavaScript" src="/library/js/headscripts.js"></script>
-<script type="text/javascript" src="$context/js/jquery-1.9.1.min.js"></script>
+<script>includeLatestJQuery('PagePicker.html');</script>
 <link rsf:id="scr=portal-matter" href="/library/skin/tool_base.css" type="text/css" rel="stylesheet" media="all" />
 <link rsf:id="scr=portal-matter" href="/library/skin/default/tool.css" type="text/css" rel="stylesheet" media="all" />
 <link rel="stylesheet" rsf:id="scr=rewrite-url" href="../css/Simplepagetool.css" type="text/css"/>
-<link type="text/css" href="$context/css/simplepage-theme/jquery-ui-1.11.1.smoothness.css" rel="stylesheet" />	
+<link type="text/css" href="/library/webjars/jquery-ui-themes/1.12.1/smoothness/jquery-ui.min.css" rel="stylesheet" />	
 <title rsf:id="msg=simplepage.page.chooser"></title>
 </head>
 <body rsf:id="scr=sakai-body">
 
 	<div class="portletBody PagePicker" role="application">
 		
-		<div id="error" rsf:id="error" class="messageError below-link-help" role="alert"></div>
+		<div id="error" rsf:id="error" class="sak-banner-error below-link-help" role="alert"></div>
 
 		<div class="navIntraTool" rsf:id="return-div" role="navigation">
                 <a href="#" rsf:id="return"></a> 
 		</div>
 
 		<div rsf:id="deleteAlert" class="ui-widget">
-			<div class="instruction"> 
+			<div class="instruction">
 				<p><span rsf:id="msg=simplepage.delete-message"></span></p>
 			</div>
 		</div>
 
         <h2 rsf:id="title"></h2>
 
-        <a href="#" id="show-items"><span rsf:id="msg=simplepage.page.showitems"></span></a>
-        <a href="#" id="hide-items"><span rsf:id="msg=simplepage.page.hideitems"></span></a>
-		<form action="#" rsf:id="page-picker">
+		<div rsf:id="hide-show-container">
+			<a href="#" id="show-items"><span rsf:id="msg=simplepage.page.showitems"></span></a>
+			<a href="#" id="hide-items"><span rsf:id="msg=simplepage.page.hideitems"></span></a>
+		</div>
+        <form action="#" rsf:id="page-picker">
 		<input type="hidden" rsf:id="csrf"/>
 		<span rsf:id="page-span"/>
 		<ul id="list" class="pageList" role="main">

@@ -30,8 +30,6 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.DateFormat;
@@ -43,9 +41,7 @@ import java.util.List;
 
 import javax.imageio.ImageIO;
 
-import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.CategoryAxis;
@@ -88,6 +84,9 @@ import org.sakaiproject.sitestats.api.ServerWideReportManager;
 import org.sakaiproject.sitestats.api.ServerWideStatsRecord;
 import org.sakaiproject.sitestats.api.StatsManager;
 import org.sakaiproject.util.ResourceLoader;
+
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Server Wide Report Manager handles running the database queries for each of the server wide reports.
@@ -151,7 +150,7 @@ public class ServerWideReportManagerImpl implements ServerWideReportManager
 				" sum(ACTIVITY_COUNT) as user_logins" +
 				" from " + getExternalDbNameAsPrefix() + "SST_SERVERSTATS" +
 				" where EVENT_ID='user.login'" +
-				" group by 1";
+				" group by period";
 		
 		String oracle = ("select TO_DATE(TO_CHAR(ACTIVITY_DATE, 'YYYY-MM-\"01\"'), 'YYYY-MM-DD') as period," +
 				" sum(ACTIVITY_COUNT) as user_logins" +
@@ -176,7 +175,9 @@ public class ServerWideReportManagerImpl implements ServerWideReportManager
 		});
 		
 		// remove the last entry, as it might not be a complete period
-		result.remove (result.size () - 1);
+		if (result.size() > 1) {
+			result.remove (result.size () - 1);
+		}
 
 		return result;
 	}
@@ -335,7 +336,9 @@ public class ServerWideReportManagerImpl implements ServerWideReportManager
 		});
 
 		// remove the last entry, as it might not be a complete period
-		result.remove (result.size () - 1);
+		if (result.size() > 1) {
+			result.remove (result.size () - 1);
+		}
 
 		return result;
 	}
@@ -350,7 +353,7 @@ public class ServerWideReportManagerImpl implements ServerWideReportManager
 				" count(distinct user_id) as unique_users" +
 				" from " + getExternalDbNameAsPrefix() + "SST_USERSTATS" +
 				" where LOGIN_DATE > DATE_SUB(CURDATE(), INTERVAL 90 DAY)" +
-				" group by 1";
+				" group by session_date";
 		
 		String oracle = "select trunc(LOGIN_DATE, 'DDD') as session_date, " +
 				" count(distinct user_id) as unique_users" +
@@ -375,7 +378,9 @@ public class ServerWideReportManagerImpl implements ServerWideReportManager
 		});
 
 		// remove the last entry, as it might not be a complete period
-		result.remove (result.size () - 1);
+		if (result.size() > 1) {
+			result.remove (result.size () - 1);
+		}
 
 		return result;
 	}
@@ -399,7 +404,7 @@ public class ServerWideReportManagerImpl implements ServerWideReportManager
 			mysql = mysql + "where ACTIVITY_DATE > DATE_SUB(CURDATE(), INTERVAL 90 DAY) ";
 		}
 		
-		mysql = mysql + "group by 1";
+		mysql = mysql + "group by event_period";
 		
 		
 		String oraclePeriod = "";
@@ -604,7 +609,9 @@ public class ServerWideReportManagerImpl implements ServerWideReportManager
 		});
 
 		// remove the last entry, as it might not be a complete period
-		result.remove (result.size () - 1);
+		if (result.size() > 1) {
+			result.remove (result.size () - 1);
+		}
 
 		return result;
 	}

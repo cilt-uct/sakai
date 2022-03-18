@@ -34,10 +34,10 @@ import javax.portlet.RenderRequest;
 import javax.portlet.RenderResponse;
 import javax.portlet.ValidatorException;
 
-import com.sun.syndication.feed.synd.SyndFeed;
+import com.rometools.rome.feed.synd.SyndFeed;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringEscapeUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.text.StringEscapeUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import au.edu.anu.portal.portlets.rss.model.Attachment;
 import au.edu.anu.portal.portlets.rss.utils.Constants;
@@ -46,6 +46,14 @@ import au.edu.anu.portal.portlets.rss.utils.Messages;
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.memory.api.Cache;
 import org.sakaiproject.memory.api.MemoryService;
+import org.sakaiproject.site.api.Site;
+import org.sakaiproject.site.api.SitePage;
+import org.sakaiproject.site.api.SiteService;
+import org.sakaiproject.site.api.ToolConfiguration;
+import org.sakaiproject.tool.api.Placement;
+import org.sakaiproject.tool.api.ToolManager;
+import org.sakaiproject.event.api.EventTrackingService;
+import org.sakaiproject.exception.IdUnusedException;
 
 /**
  * SimpleRssPortlet
@@ -77,6 +85,15 @@ public class SimpleRSSPortlet extends GenericPortlet{
 	private final String PREF_FEED_URL = "feed_url";
 	private final String PREF_MAX_ITEMS = "max_items";
 
+	// events
+	private static final String NEWS_READ_EVENT = "news.read";
+	private static final String NEWS_REVISE_EVENT = "news.revise";
+	private static final String EVENT_REF_TEMPLATE = "/news/site/%s/placement/%s";
+
+	private EventTrackingService eventServ;
+	private SiteService siteServ;
+	private ToolManager toolMan;
+
 	public void init(PortletConfig config) throws PortletException {	   
 	   super.init(config);
 	   log.info("Simple RSS Portlet init()");
@@ -91,6 +108,11 @@ public class SimpleRSSPortlet extends GenericPortlet{
 	   memoryService = ComponentManager.get(MemoryService.class);
 	   feedCache = memoryService.getCache(FEED_CACHE_NAME);
 	   mediaCache = memoryService.getCache(MEDIA_CACHE_NAME);
+
+	   // setup event tracking
+	   eventServ = ComponentManager.get(EventTrackingService.class);
+	   siteServ = ComponentManager.get(SiteService.class);
+	   toolMan = ComponentManager.get(ToolManager.class);
 	   
 	}
 
@@ -139,7 +161,9 @@ public class SimpleRSSPortlet extends GenericPortlet{
 		request.setAttribute("SyndFeed", feed);
 		request.setAttribute("Media", media);
 		request.setAttribute("maxItems", maxItems);
-		
+
+		postEvent(NEWS_READ_EVENT, false);
+
 		dispatch(request, response, viewUrl);
 	}	
 	
@@ -198,13 +222,17 @@ public class SimpleRSSPortlet extends GenericPortlet{
 		boolean success = true;
 		//get prefs and submitted values
 		PortletPreferences prefs = request.getPreferences();
-		String portletTitle = StringEscapeUtils.escapeHtml(StringUtils.trim(request.getParameter("portletTitle")));
+		String portletTitle = StringEscapeUtils.escapeHtml4(StringUtils.trim(request.getParameter("portletTitle")));
 		String maxItems = StringUtils.trim(request.getParameter("maxItems"));
 		String feedUrl = StringUtils.trim(request.getParameter("feedUrl"));
-		
+		Placement placement = toolMan.getCurrentPlacement();
+
 		//portlet title could be blank, set to default
 		if(StringUtils.isBlank(portletTitle)){
 			portletTitle=Constants.PORTLET_TITLE_DEFAULT;
+			if (placement != null) {
+				portletTitle = placement.getTitle();
+			}
 		}
 
 		boolean feedUrlIsLocked = isPrefLocked(request, PREF_FEED_URL);
@@ -215,6 +243,25 @@ public class SimpleRSSPortlet extends GenericPortlet{
 			//only do this if we know its not locked, ie this is not a preconfigured portlet
 			if(!portletTitleIsLocked) {
 				prefs.setValue(PREF_PORTLET_TITLE, portletTitle);
+
+				//Save the page and tool title
+				try{
+					Site siteEdit = siteServ.getSite(placement.getContext());
+					for (SitePage sitePage : siteEdit.getPages()) {
+						for(ToolConfiguration toolConfiguration : sitePage.getTools()){
+							if (toolConfiguration.getId().equals(placement.getId())) {
+								sitePage.setTitle(portletTitle);
+								toolConfiguration.setTitle(portletTitle);
+							}
+						}
+					}
+
+					siteServ.save(siteEdit);
+
+				}catch(Exception ex){
+					log.error("Error saving the news title.", ex);
+				}
+
 			}
 			
 			//only do this if we know its not locked, ie this is not a preconfigured portlet
@@ -233,6 +280,7 @@ public class SimpleRSSPortlet extends GenericPortlet{
 			try {
 				prefs.store();
 				response.setPortletMode(PortletMode.VIEW);
+				postEvent(NEWS_REVISE_EVENT, true);
 				
 			} catch (ValidatorException e) {
 				//PORT-672 present entered data on the form again
@@ -349,7 +397,15 @@ public class SimpleRSSPortlet extends GenericPortlet{
 	 */
 	private String getConfiguredPortletTitle(RenderRequest request) {
 		PortletPreferences pref = request.getPreferences();
-		return pref.getValue(PREF_PORTLET_TITLE, Constants.PORTLET_TITLE_DEFAULT);
+		String defaultTitle = Constants.PORTLET_TITLE_DEFAULT;
+		Placement placement = toolMan.getCurrentPlacement();
+
+		//Get the default title from the current placement
+		if (placement != null) {
+			return placement.getTitle();
+		}
+
+		return pref.getValue(PREF_PORTLET_TITLE, defaultTitle);
 	}
 
 	/**
@@ -473,6 +529,19 @@ public class SimpleRSSPortlet extends GenericPortlet{
 		} catch (IllegalArgumentException e){
 			log.debug("Preference does not exist: " + prefName);
 			return false;
+		}
+	}
+
+	private void postEvent(String eventType, boolean modification) {
+
+		try {
+			Placement placement = toolMan.getCurrentPlacement();
+			String siteId = siteServ.getSite(placement.getContext()).getId();
+			String eventRef = String.format(EVENT_REF_TEMPLATE, siteId, placement.getId());
+			eventServ.post(eventServ.newEvent(eventType, eventRef, modification));
+		}
+		catch (IdUnusedException e) {
+			log.debug("Failed to post " + eventType + " due to invalid siteId", e);
 		}
 	}
 	

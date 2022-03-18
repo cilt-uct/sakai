@@ -14,12 +14,10 @@
  * limitations under the License.
  *
  */
-
-
-
 package org.sakaiproject.tool.assessment.ui.bean.author;
 
 import java.io.Serializable;
+import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -30,14 +28,18 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
 import java.util.TreeMap;
+
+import javax.annotation.Resource;
 import javax.faces.application.FacesMessage;
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.SessionScoped;
 import javax.faces.context.ExternalContext;
 import javax.faces.context.FacesContext;
 import javax.faces.model.SelectItem;
 
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.content.api.ContentResource;
 import org.sakaiproject.content.api.FilePickerHelper;
 import org.sakaiproject.entity.api.Reference;
@@ -45,14 +47,19 @@ import org.sakaiproject.entity.cover.EntityManager;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.exception.TypeException;
-import org.sakaiproject.tool.assessment.facade.*;
 import org.sakaiproject.samigo.util.SamigoConstants;
 import org.sakaiproject.section.api.SectionAwareness;
 import org.sakaiproject.section.api.coursemanagement.EnrollmentRecord;
 import org.sakaiproject.section.api.facade.Role;
+import org.sakaiproject.service.gradebook.shared.CategoryDefinition;
+import org.sakaiproject.service.gradebook.shared.GradebookInformation;
+import org.sakaiproject.service.gradebook.shared.GradebookService;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.cover.SiteService;
+import org.sakaiproject.time.api.UserTimeService;
+import org.sakaiproject.tool.api.SessionManager;
+import org.sakaiproject.tool.api.ToolManager;
 import org.sakaiproject.tool.api.ToolSession;
 import org.sakaiproject.tool.assessment.api.SamigoApiFactory;
 import org.sakaiproject.tool.assessment.data.dao.assessment.AssessmentAccessControl;
@@ -66,6 +73,10 @@ import org.sakaiproject.tool.assessment.data.ifc.assessment.AttachmentIfc;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.EvaluationModelIfc;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.RegisteredSecureDeliveryModuleIfc;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.SecuredIPAddressIfc;
+import org.sakaiproject.tool.assessment.facade.AgentFacade;
+import org.sakaiproject.tool.assessment.facade.AssessmentFacade;
+import org.sakaiproject.tool.assessment.facade.AuthzQueriesFacadeAPI;
+import org.sakaiproject.tool.assessment.facade.ExtendedTimeFacade;
 import org.sakaiproject.tool.assessment.integration.context.IntegrationContextFactory;
 import org.sakaiproject.tool.assessment.integration.helper.ifc.GradebookServiceHelper;
 import org.sakaiproject.tool.assessment.integration.helper.ifc.PublishingTargetHelper;
@@ -75,22 +86,24 @@ import org.sakaiproject.tool.assessment.shared.api.assessment.SecureDeliveryServ
 import org.sakaiproject.tool.assessment.ui.listener.author.SaveAssessmentAttachmentListener;
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 import org.sakaiproject.tool.assessment.ui.listener.util.TimeUtil;
-import org.sakaiproject.tool.cover.SessionManager;
-import org.sakaiproject.tool.cover.ToolManager;
-import org.sakaiproject.util.FormattedText;
 import org.sakaiproject.util.ResourceLoader;
+import org.sakaiproject.util.api.FormattedText;
+import org.sakaiproject.util.comparator.AlphaNumericComparator;
+import org.springframework.web.context.ContextLoader;
+import org.springframework.web.context.WebApplicationContext;
+
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+import org.sakaiproject.tool.assessment.util.ExtendedTimeValidator;
 
 /**
- *
- * To change the template for this generated type comment go to
- * Window&gt;Preferences&gt;Java&gt;Code Generation&gt;Code and Comments
- *
- * Used to be org.navigoproject.ui.web.asi.author.assessment.AssessmentActionForm.java
+ * For author: Assessment Settings backing bean.
  */
 @Slf4j
-public class AssessmentSettingsBean
-    implements Serializable {
-
+@ManagedBean(name="assessmentSettings")
+@SessionScoped
+public class AssessmentSettingsBean implements Serializable {
     private static final IntegrationContextFactory integrationContextFactory =
       IntegrationContextFactory.getInstance();
     private static final GradebookServiceHelper gbsHelper =
@@ -124,6 +137,9 @@ public class AssessmentSettingsBean
   private Date dueDate;
   private Date retractDate;
   private Date feedbackDate;
+  @Getter @Setter private Date feedbackEndDate;
+  private boolean feedbackScoreThresholdEnabled = false;
+  @Getter @Setter private String feedbackScoreThreshold;
   private Integer timeLimit = 0; // in seconds, calculated from timedHours & timedMinutes
   private Integer timedHours = 0;
   private Integer timedMinutes = 0;
@@ -190,16 +206,23 @@ public class AssessmentSettingsBean
   private boolean isValidDueDate = true;
   private boolean isValidRetractDate = true;
   private boolean isValidFeedbackDate = true;
+  private boolean isValidFeedbackEndDate = true;
+  private boolean isRetractAfterDue = true;
   
   private String originalStartDateString;
   private String originalDueDateString;
   private String originalRetractDateString;
   private String originalFeedbackDateString;
+  @Getter @Setter private String originalFeedbackEndDateString;
   
   private boolean isMarkForReview;
   private boolean honorPledge;
   private String releaseToGroupsAsString;
   private String blockDivs;
+
+  private boolean categoriesEnabled;
+  private List<SelectItem> categoriesSelectList;
+  private String categorySelected;
   
   private List<ExtendedTime> extendedTimes;
   private ExtendedTime extendedTime;
@@ -212,23 +235,38 @@ public class AssessmentSettingsBean
   private final String HIDDEN_END_DATE_FIELD = "endDateISO8601";
   private final String HIDDEN_RETRACT_DATE_FIELD = "retractDateISO8601";
   private final String HIDDEN_FEEDBACK_DATE_FIELD = "feedbackDateISO8601";
+  private final String HIDDEN_FEEDBACK_END_DATE_FIELD = "feedbackEndDateISO8601";
   
   private SimpleDateFormat displayFormat;
 
-  private ResourceLoader assessmentSettingMessages;
+  private static final ResourceLoader assessmentSettingMessages = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AssessmentSettingsMessages");
+
+  @Resource(name = "org.sakaiproject.service.gradebook.GradebookService")
+  private GradebookService gradebookService;
+  @Resource(name = "org.sakaiproject.tool.api.SessionManager")
+  private SessionManager sessionManager;
+  @Resource(name = "org.sakaiproject.tool.api.ToolManager")
+  private ToolManager toolManager;
+  @Resource(name = "org.sakaiproject.util.api.FormattedText")
+  private FormattedText formattedText;
+  @Resource(name = "org.sakaiproject.time.api.UserTimeService")
+  private UserTimeService userTimeService;
 
   /*
    * Creates a new AssessmentBean object.
    */
   public AssessmentSettingsBean() {
-      this.assessmentSettingMessages = new ResourceLoader("org.sakaiproject.tool.assessment.bundle.AssessmentSettingsMessages");
+    this(ContextLoader.getCurrentWebApplicationContext());
+  }
+
+  public AssessmentSettingsBean(WebApplicationContext context) {
+    context.getAutowireCapableBeanFactory().autowireBean(this);
   }
 
   public AssessmentFacade getAssessment() {
     return assessment;
   }
 
- 
   public void setAssessment(AssessmentFacade assessment) {
     try {
       //1.  set the template info
@@ -290,6 +328,9 @@ public class AssessmentSettingsBean
         this.dueDate = accessControl.getDueDate();
         this.retractDate = accessControl.getRetractDate();
         this.feedbackDate = accessControl.getFeedbackDate();
+        this.feedbackEndDate = accessControl.getFeedbackEndDate();
+        this.feedbackScoreThreshold = accessControl.getFeedbackScoreThreshold() != null ? String.valueOf(accessControl.getFeedbackScoreThreshold()) : StringUtils.EMPTY;
+        this.feedbackScoreThresholdEnabled = StringUtils.isNotBlank(this.feedbackScoreThreshold);
         // deal with releaseTo
         this.releaseTo = accessControl.getReleaseTo(); // list of String
         this.publishingTargets = getPublishingTargets();
@@ -324,8 +365,11 @@ public class AssessmentSettingsBean
           this.submissionsSaved = accessControl.getSubmissionsSaved().toString();
 
         this.isMarkForReview = accessControl.getMarkForReview() != null && (Integer.valueOf(1)).equals(accessControl.getMarkForReview());
-        if (accessControl.getHonorPledge() != null)
+        if (accessControl.getHonorPledge() != null) {
           this.honorPledge = accessControl.getHonorPledge();
+        } else {
+          this.honorPledge = false;
+        }
         // default to unlimited if control value is null
         if (accessControl.getUnlimitedSubmissions()!=null && !accessControl.getUnlimitedSubmissions()){
           this.unlimitedSubmissions=AssessmentAccessControlIfc.LIMITED_SUBMISSIONS.toString();
@@ -383,6 +427,10 @@ public class AssessmentSettingsBean
 
         String currentSiteId = AgentFacade.getCurrentSiteId();
         this.gradebookExists = gbsHelper.isGradebookExist(currentSiteId);
+
+        this.categoriesSelectList = populateCategoriesSelectList();
+        this.categorySelected = initializeCategorySelected(assessment.getData().getCategoryId());
+
       }
 
       // ip addresses
@@ -420,6 +468,28 @@ public class AssessmentSettingsBean
     	log.error(ex.getMessage(), ex);
     }
   }
+
+    /**
+     * Returns the saved category id if it's there. Otherwise returns
+     * "-1". This is needed to choose which select item is selected
+     * when the authorSettings page loads.
+     * @param categoryId
+     * @return
+     */
+    private String initializeCategorySelected(Long categoryId) {
+
+        String catSelected = "-1";
+        if (categoryId != null) {
+            String catId;
+            for (SelectItem catIdAndName : categoriesSelectList) {
+                catId = catIdAndName.getValue().toString();
+                if (catId.equals(categoryId.toString())) {
+                    catSelected = catId;
+                }
+            }
+        }
+        return catSelected;
+    }
 
  public String getBgColorSelect()
     {
@@ -1079,33 +1149,37 @@ public class AssessmentSettingsBean
    * @return date String "MM-dd-yyyy hh:mm:ss a"
    */
   private String getDisplayFormatFromDate(Date date) {
-    String dateString = "";
-    if (date == null) {
-      return dateString;
-    }
+    if (date == null) return StringUtils.EMPTY;
 
     if (displayFormat == null) {   
     	setDisplayFormat(ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.GeneralMessages","output_data_picker_w_sec"));
     }
 
     try {
-      // Do not manipulate the date based on the client browser timezone.
-      dateString = tu.getDisplayDateTime(displayFormat, date, false);
+      return tu.getDisplayDateTime(displayFormat, date);
     }
     catch (Exception ex) {
       // we will leave it as an empty string
       log.warn("Unable to format date.", ex);
     }
-    return dateString;
+    return StringUtils.EMPTY;
   }
 
-  public String getStartDateString()
-  {
+  public String getStartDateInClientTimezoneString() {
+    if (!this.isValidStartDate) {
+      return this.originalStartDateString;
+    }
+    else {
+      return userTimeService.dateTimeFormat(startDate, new ResourceLoader().getLocale(), DateFormat.MEDIUM);
+    }
+  }
+
+  public String getStartDateString() {
 	if (!this.isValidStartDate) {
 		return this.originalStartDateString;
 	}
 	else {
-		return getDisplayFormatFromDate(startDate);
+      return getDisplayFormatFromDate(startDate);
 	}
   }
    
@@ -1131,15 +1205,24 @@ public class AssessmentSettingsBean
     }
   }
 
-  public String getDueDateString()
-  {
+  public String getDueDateInClientTimezoneString() {
+    if (!this.isValidDueDate) {
+      return this.originalDueDateString;
+    }
+    else {
+      return userTimeService.dateTimeFormat(dueDate, new ResourceLoader().getLocale(), DateFormat.MEDIUM);
+    }
+  }
+
+  public String getDueDateString() {
     if (!this.isValidDueDate) {
 		return this.originalDueDateString;
 	}
 	else {
-		return getDisplayFormatFromDate(dueDate);
+      return getDisplayFormatFromDate(dueDate);
 	}	  
   }
+
   public void setDueDateString(String dueDateString)
   {
     if (dueDateString == null || dueDateString.trim().equals("")) {
@@ -1177,12 +1260,15 @@ public class AssessmentSettingsBean
     if (retractDateString == null || retractDateString.trim().equals("")) {
       this.isValidRetractDate = true;
       this.retractDate = null;
+      this.isRetractAfterDue = true;
     }
     else {
 
       Date tempDate = tu.parseISO8601String(ContextUtil.lookupParam(HIDDEN_RETRACT_DATE_FIELD));
+      Date tempDueDate = tu.parseISO8601String(ContextUtil.lookupParam(HIDDEN_END_DATE_FIELD));
 
       if (tempDate != null) {
+        this.isRetractAfterDue = !(tempDueDate == null || tempDate.before(tempDueDate));
         this.isValidRetractDate = true;
         this.retractDate = tempDate;
       } else {
@@ -1194,8 +1280,16 @@ public class AssessmentSettingsBean
     }
   }
 
-  public String getFeedbackDateString()
-  {
+  public String getFeedbackDateInClientTimezoneString() {
+    if (!this.isValidFeedbackDate) {
+      return this.originalFeedbackDateString;
+    }
+    else {
+      return userTimeService.dateTimeFormat(feedbackDate, new ResourceLoader().getLocale(), DateFormat.MEDIUM);
+    }
+  }
+
+  public String getFeedbackDateString() {
     if (!this.isValidFeedbackDate) {
 		return this.originalFeedbackDateString;
 	}
@@ -1223,6 +1317,51 @@ public class AssessmentSettingsBean
       this.originalFeedbackDateString = feedbackDateString;
       }
     }
+  }
+
+  public String getFeedbackEndDateInClientTimezoneString() {
+    if (!this.isValidFeedbackEndDate) {
+      return this.originalFeedbackEndDateString;
+    }
+    else {
+      return userTimeService.dateTimeFormat(feedbackEndDate, new ResourceLoader().getLocale(), DateFormat.MEDIUM);
+    }
+  }
+
+  public String getFeedbackEndDateString() {
+    if (!this.isValidFeedbackEndDate) {
+      return this.originalFeedbackEndDateString;
+    }
+    else {
+      return getDisplayFormatFromDate(feedbackEndDate);
+    }
+  }
+
+  public void setFeedbackEndDateString(String feedbackEndDateString) {
+    if (StringUtils.isBlank(feedbackEndDateString)) {
+      this.isValidFeedbackEndDate = true;
+      this.feedbackEndDate = null;
+    } else {
+
+      Date tempDate = tu.parseISO8601String(ContextUtil.lookupParam(HIDDEN_FEEDBACK_END_DATE_FIELD));
+
+      if (tempDate != null) {
+        this.isValidFeedbackEndDate = true;
+        this.feedbackEndDate = tempDate;
+      } else {
+        log.error("setFeedbackEndDateString could not parse hidden date field {}.", ContextUtil.lookupParam(HIDDEN_FEEDBACK_DATE_FIELD));
+        this.isValidFeedbackEndDate = false;
+        this.originalFeedbackEndDateString = feedbackEndDateString;
+      }
+    }
+  }
+
+  public boolean getFeedbackScoreThresholdEnabled() {
+    return feedbackScoreThresholdEnabled;
+  }
+
+  public void setFeedbackScoreThresholdEnabled(boolean feedbackScoreThresholdEnabled) {
+    this.feedbackScoreThresholdEnabled = feedbackScoreThresholdEnabled;
   }
 
   public String getTemplateTitle() {
@@ -1379,7 +1518,7 @@ public class AssessmentSettingsBean
       if (attachmentList != null){
         filePickerList = prepareReferenceList(attachmentList);
       }
-      ToolSession currentToolSession = SessionManager.getCurrentToolSession();
+      ToolSession currentToolSession = sessionManager.getCurrentToolSession();
       currentToolSession.setAttribute(FilePickerHelper.FILE_PICKER_ATTACHMENTS, filePickerList);
       ExternalContext context = FacesContext.getCurrentInstance().getExternalContext();
       context.redirect("sakai.filepicker.helper/tool");
@@ -1455,17 +1594,27 @@ public class AssessmentSettingsBean
   {
 	  return this.isValidRetractDate;
   }
+
+  public boolean getIsRetractAfterDue()
+  {
+	  return this.isRetractAfterDue;
+  }
   
   public boolean getIsValidFeedbackDate()
   {
 	  return this.isValidFeedbackDate;
   }
-  
+
+  public boolean getIsValidFeedbackEndDate() {
+    return this.isValidFeedbackEndDate;
+  }
+
   public void resetIsValidDate() {
 	  this.isValidStartDate = true;
 	  this.isValidDueDate = true;
 	  this.isValidRetractDate = true;
 	  this.isValidFeedbackDate = true;
+	  this.isValidFeedbackEndDate = true;
   }
   
   public void resetOriginalDateString() {
@@ -1473,6 +1622,7 @@ public class AssessmentSettingsBean
 	  this.originalDueDateString = "";
 	  this.originalRetractDateString = "";
 	  this.originalFeedbackDateString = "";
+	  this.originalFeedbackEndDateString = "";
   }
   
   /**
@@ -1481,30 +1631,20 @@ public class AssessmentSettingsBean
    */
   public SelectItem[] getGroupsForSite(){
       SelectItem[] groupSelectItems = new SelectItem[0];
-      TreeMap sortedSelectItems = new TreeMap();
-      Site site;
+      // This TreeMap will sort the group names nicely in AlphaNumeric order
+      SortedMap<String, SelectItem> sortedSelectItems = new TreeMap<>(new AlphaNumericComparator());
       try {
-          site = SiteService.getSite(ToolManager.getCurrentPlacement().getContext());
-          Collection groups = site.getGroups();
+          Site site = SiteService.getSite(toolManager.getCurrentPlacement().getContext());
+          Collection<Group> groups = site.getGroups();
           if (groups != null && groups.size() > 0) {
-              groupSelectItems = new SelectItem[groups.size()];
-              Iterator groupIter = groups.iterator();
-              while (groupIter.hasNext()) {
-                  Group group = (Group) groupIter.next();
-                  String title = group.getTitle();
-                  String groupId = group.getId();
-                  String uniqueTitle = title + groupId;
-                  sortedSelectItems.put(uniqueTitle.toUpperCase(), new SelectItem(group.getId(), title));
+              for (Group group : groups) {
+                  sortedSelectItems.put(group.getTitle(), new SelectItem(group.getId(), group.getTitle()));
               }
-              Set keySet = sortedSelectItems.keySet();
-              groupIter = keySet.iterator();
-              int i = 0;
-              while (groupIter.hasNext()) {
-                  groupSelectItems[i++] = (SelectItem) sortedSelectItems.get(groupIter.next());
-              }
+
+              groupSelectItems = sortedSelectItems.values().toArray(new SelectItem[0]);
           }
       } catch (IdUnusedException ex) {
-          // No site available
+          log.warn("No site found while attempting to get groups, {}", ex.toString());
       }
       return groupSelectItems;
   }
@@ -1528,7 +1668,7 @@ public class AssessmentSettingsBean
   public int getNumberOfGroupsForSite(){
 	  int numGroups = 0;
 	  try {
-		 Site site = SiteService.getSite(ToolManager.getCurrentPlacement().getContext());
+		 Site site = SiteService.getSite(toolManager.getCurrentPlacement().getContext());
 		 Collection groups = site.getGroups();
 	     if (groups != null) {
 	    	 numGroups = groups.size();
@@ -1600,6 +1740,22 @@ public class AssessmentSettingsBean
   {
 	  this.isMarkForReview = isMarkForReview;
   }
+
+    public List getCategoriesSelectList() {
+        return categoriesSelectList;
+    }
+
+    public void setCategoriesSelectList(List categoriesSelectList) {
+        this.categoriesSelectList = categoriesSelectList;
+    }
+
+    public String getCategorySelected() {
+        return categorySelected;
+    }
+
+    public void setCategorySelected(String categorySelected) {
+        this.categorySelected = categorySelected;
+    }
   
   public void setReleaseToGroupsAsString(String releaseToGroupsAsString){
 	  this.releaseToGroupsAsString = releaseToGroupsAsString;
@@ -1610,7 +1766,7 @@ public class AssessmentSettingsBean
   }
   
   public String getReleaseToGroupsAsHtml() {
-	  return FormattedText.escapeHtml(releaseToGroupsAsString,false);
+	  return formattedText.escapeHtml(releaseToGroupsAsString,false);
   }
   
   public void setBlockDivs(String blockDivs){
@@ -1637,6 +1793,40 @@ public class AssessmentSettingsBean
 	  return selections;
   }
 
+    public void setCategoriesEnabled(boolean categoriesEnabled) {
+        this.categoriesEnabled = categoriesEnabled;
+    }
+
+    public boolean getCategoriesEnabled() {
+        return categoriesEnabled;
+    }
+
+    /**
+     * Populate the categoriesSelectList property with a list of string names
+     * of the categories in the gradebook
+     */
+    private List populateCategoriesSelectList() {
+        List<CategoryDefinition> categoryDefinitions;
+        List<SelectItem> selectList = new ArrayList<>();
+
+        if (this.gradebookExists) {
+            String gradebookUid = toolManager.getCurrentPlacement().getContext();
+            categoryDefinitions = gradebookService.getCategoryDefinitions(gradebookUid);
+
+            selectList.add(new SelectItem("-1", assessmentSettingMessages.getString("gradebook_uncategorized"))); // -1 for a cat id means unassigned
+            for (CategoryDefinition categoryDefinition: categoryDefinitions) {
+                selectList.add(new SelectItem(categoryDefinition.getId().toString(), categoryDefinition.getName()));
+            }
+            // Also set if categories are enabled based on category type
+            GradebookInformation gbInfo = gradebookService.getGradebookInformation(gradebookUid);
+            if (gbInfo != null) {
+                this.categoriesEnabled = gbInfo.getCategoryType() != GradebookService.CATEGORY_TYPE_NO_CATEGORY;
+            } else {
+                this.categoriesEnabled = false;
+            }
+        }
+        return selectList;
+    }
 
 	public void setExtendedTimes(List<ExtendedTime> extendedTimes) {
 		this.extendedTimes = extendedTimes;
@@ -1659,42 +1849,32 @@ public class AssessmentSettingsBean
 		Site site;
 
 		try {
-			site = SiteService.getSite(ToolManager.getCurrentPlacement().getContext());
+			site = SiteService.getSite(toolManager.getCurrentPlacement().getContext());
 			SectionAwareness sectionAwareness = PersistenceService.getInstance().getSectionAwareness();
-			// List sections = sectionAwareness.getSections(site.getId());
 			List enrollments = sectionAwareness.getSiteMembersInRole(site.getId(), Role.STUDENT);
-
-			// Treemaps are used here because they auto-sort
-			TreeMap studentTargets = new TreeMap<>();
+			Map<String, String> studentTargets = new HashMap<>();
+			Map<String, String> orderedStudents = new HashMap<>();
 
 			// Add students to target set
 			if (enrollments != null && enrollments.size() > 0) {
 				for (Iterator iter = enrollments.iterator(); iter.hasNext();) {
 					EnrollmentRecord enrollmentRecord = (EnrollmentRecord) iter.next();
 					String userId = enrollmentRecord.getUser().getUserUid();
-					String userDisplayName = String.format("%s (%s)",
-							enrollmentRecord.getUser().getSortName(),
-							enrollmentRecord.getUser().getDisplayId());
-					studentTargets.put(userDisplayName, userId);
+					String userDisplayName = enrollmentRecord.getUser().getSortName() + " (" + enrollmentRecord.getUser().getDisplayId() + ")";
+					studentTargets.put(userId, userDisplayName);
 				}
 			}
 
-			// Add targets to selectItem array. We put the alpha name in as the
-			// key so it would
-			// be alphabetized. Now we pull it out and build the select item
-			// list.
-			int listSize = 1 + studentTargets.size();
+			// Order students map
+			orderedStudents = ContextUtil.sortByValue(studentTargets);
+
+			// Add in students to select item list
+			int listSize = 1 + orderedStudents.size();
 			usersInSite = new SelectItem[listSize];
 			usersInSite[0] = new SelectItem("", assessmentSettingMessages.getString("extendedTime_select_User"));
 			int selectCount = 1;
-
-			// Add in students to select item list
-			Set keySet = studentTargets.keySet();
-			Iterator iter = keySet.iterator();
-			while (iter.hasNext()) {
-				String alphaName = (String) iter.next();
-				String sakaiId = (String) studentTargets.get(alphaName);
-				usersInSite[selectCount++] = new SelectItem(sakaiId, alphaName);
+			for (Map.Entry<String,String> student : orderedStudents.entrySet()) {
+				usersInSite[selectCount++] = new SelectItem(student.getKey(), student.getValue());
 			}
 
 		} catch (IdUnusedException ex) {
@@ -1744,23 +1924,17 @@ public class AssessmentSettingsBean
         this.transitoryExtendedTime = newExTime;
     }
 
-    //From the form
-    public void addExtendedTime() {
-  	  addExtendedTime(true);
-    }
-
     //Internal to be able to supress error easier
-    public void addExtendedTime(boolean errorToContext) {
+    public void addExtendedTime() {
         ExtendedTime entry = this.extendedTime;
-        if (StringUtils.isBlank(entry.getUser()) && StringUtils.isBlank(entry.getGroup())) {
-            if (errorToContext) {
-                FacesContext context = FacesContext.getCurrentInstance();
-                String errorString = ContextUtil.getLocalizedString("org.sakaiproject.tool.assessment.bundle.AssessmentSettingsMessages", "extended_time_user_and_group_set");
-                context.addMessage(null, new FacesMessage(FacesMessage.SEVERITY_WARN, errorString, null));
-            }
-        }
-        else {
-            this.extendedTime.syncDates();
+        FacesContext context = FacesContext.getCurrentInstance();
+        if (new ExtendedTimeValidator().validateEntry(entry, context, this)) {
+            AssessmentAccessControlIfc accessControl = new AssessmentAccessControl();
+            accessControl.setStartDate(this.startDate);
+            accessControl.setDueDate(this.dueDate);
+            accessControl.setLateHandling(Integer.valueOf(this.lateHandling));
+            accessControl.setRetractDate(this.retractDate);
+            this.extendedTime.syncDates(accessControl);
             this.extendedTimes.add(this.extendedTime);
             resetExtendedTime();
         }

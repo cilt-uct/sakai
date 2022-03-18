@@ -24,16 +24,34 @@ package org.sakaiproject.authz.impl;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.*;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Observable;
+import java.util.Observer;
+import java.util.Set;
+import java.util.Vector;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import lombok.extern.slf4j.Slf4j;
-
 import org.apache.commons.lang3.StringUtils;
-
-import org.sakaiproject.authz.api.*;
+import org.sakaiproject.authz.api.AuthzGroup;
+import org.sakaiproject.authz.api.AuthzGroup.RealmLockMode;
+import org.sakaiproject.authz.api.GroupFullException;
+import org.sakaiproject.authz.api.GroupNotDefinedException;
+import org.sakaiproject.authz.api.Member;
+import org.sakaiproject.authz.api.MemberWithRoleId;
+import org.sakaiproject.authz.api.Role;
+import org.sakaiproject.authz.api.SimpleRole;
 import org.sakaiproject.db.api.SqlReader;
 import org.sakaiproject.db.api.SqlService;
 import org.sakaiproject.entity.api.Entity;
@@ -45,19 +63,16 @@ import org.sakaiproject.javax.PagingPosition;
 import org.sakaiproject.memory.api.Cache;
 import org.sakaiproject.memory.api.MemoryService;
 import org.sakaiproject.site.api.SiteService;
-import org.sakaiproject.time.api.Time;
 import org.sakaiproject.user.api.UserNotDefinedException;
 import org.sakaiproject.util.BaseDbFlatStorage;
 import org.sakaiproject.util.BaseResourceProperties;
 import org.sakaiproject.util.BaseResourcePropertiesEdit;
 import org.sakaiproject.util.StringUtil;
 
-import org.sakaiproject.component.cover.ComponentManager;
-import org.sakaiproject.coursemanagement.api.CourseManagementService;
-import org.sakaiproject.coursemanagement.api.exception.IdNotFoundException;
-import org.sakaiproject.coursemanagement.api.Membership;
-import org.sakaiproject.component.cover.HotReloadConfigurationService;
-
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * <p>
@@ -109,6 +124,7 @@ public abstract class DbAuthzGroupService extends BaseAuthzGroupService implemen
 	 * and role to provided
 	 */
 	protected boolean m_promoteUsersToProvided = true;
+	protected boolean m_promoteUsersToProvidedRole = false;
 	private MemoryService m_memoryService;
 	// KNL-600 CACHING for the realm role groups
 	private Cache m_realmRoleGRCache;
@@ -118,6 +134,8 @@ public abstract class DbAuthzGroupService extends BaseAuthzGroupService implemen
 	private CourseManagementService courseManagementService;
 
     private Cache maintainRolesCache;
+
+    private Cache realmLocksCache;
 
 	/** KNL-1325 provide a more efficent refreshAuthzGroup */
     public static final String REFRESH_MAX_TIME_PROPKEY = "authzgroup.refresh.max.time";
@@ -212,6 +230,18 @@ public abstract class DbAuthzGroupService extends BaseAuthzGroupService implemen
 	{
 		m_promoteUsersToProvided = promoteUsersToProvided;
 	}
+
+	/**
+	 * Configuration: Whether or not to automatically promote non-provided users with same status
+	 * to their provided role
+	 *
+	 * @param promoteUsersToProvidedRole
+	 * 	'true' to promote non-provided users to their provided role, 'false' to maintain their non-provided status or to prevent a role change
+	 */
+	public void setPromoteUsersToProvidedRole(boolean promoteUsersToProvidedRole)
+	{
+		m_promoteUsersToProvidedRole = promoteUsersToProvidedRole;
+	}
 	
 	public void setRefreshTaskInterval(long refreshTaskInterval) {
 		log.info(REFRESH_INTERVAL_PROPKEY + " changed from " + this.refreshTaskInterval + " to " + refreshTaskInterval);
@@ -228,6 +258,8 @@ public abstract class DbAuthzGroupService extends BaseAuthzGroupService implemen
 	 */
 	public void init()
 	{
+		log.info("table: {} external locks: {}", m_realmTableName, m_useExternalLocks);
+
 		try
 		{
 			// The observer will be notified whenever there are new events. Priority observers get notified first, before normal observers.
@@ -245,20 +277,19 @@ public abstract class DbAuthzGroupService extends BaseAuthzGroupService implemen
 			// pre-cache role and function names
 			cacheRoleNames();
 			cacheFunctionNames();
+
 			m_realmRoleGRCache = m_memoryService.getCache("org.sakaiproject.authz.impl.DbAuthzGroupService.realmRoleGroupCache");
-			log.info("init(): table: " + m_realmTableName + " external locks: " + m_useExternalLocks);
-
 			authzUserGroupIdsCache = m_memoryService.getCache("org.sakaiproject.authz.impl.DbAuthzGroupService.authzUserGroupIdsCache");
+			maintainRolesCache = m_memoryService.getCache("org.sakaiproject.authz.impl.DbAuthzGroupService.maintainRolesCache");
+			realmLocksCache = m_memoryService.getCache("org.sakaiproject.authz.impl.DbAuthzGroupService.realmLocksCache");
 
-            maintainRolesCache = m_memoryService.getCache("org.sakaiproject.authz.impl.DbAuthzGroupService.maintainRolesCache");
-			courseManagementService = (CourseManagementService)ComponentManager.get("org.sakaiproject.coursemanagement.api.CourseManagementService");
             //get the set of maintain roles and cache them on startup
             getMaintainRoles();
 
             refreshTaskInterval = initConfig(REFRESH_INTERVAL_PROPKEY, serverConfigurationService().getString(REFRESH_INTERVAL_PROPKEY), refreshTaskInterval);
             refreshMaxTime = initConfig(REFRESH_MAX_TIME_PROPKEY, serverConfigurationService().getString(REFRESH_MAX_TIME_PROPKEY), refreshMaxTime);
 
-            refreshQueue = Collections.synchronizedMap(new HashMap<String, AuthzGroup>());
+            refreshQueue = Collections.synchronizedMap(new LinkedHashMap<>());
 
             refreshScheduler = Executors.newSingleThreadScheduledExecutor();
             refreshScheduler.scheduleWithFixedDelay(
@@ -298,12 +329,12 @@ public abstract class DbAuthzGroupService extends BaseAuthzGroupService implemen
 	{
 		refreshScheduler.shutdown();
 
-		authzUserGroupIdsCache.close();
-
 		// done with event watching
 		eventTrackingService().deleteObserver(this);
 
-        maintainRolesCache.close();
+		authzUserGroupIdsCache.close();
+		maintainRolesCache.close();
+		realmLocksCache.close();
 
 		log.info(this +".destroy()");
 	}
@@ -317,6 +348,7 @@ public abstract class DbAuthzGroupService extends BaseAuthzGroupService implemen
 	{
 		DbStorage storage = new DbStorage(entityManager(), siteService);
 		storage.setPromoteUsersToProvided(m_promoteUsersToProvided);
+		storage.setPromoteUsersToProvidedRole(m_promoteUsersToProvidedRole);
 		return storage;
 
 	} // newStorage
@@ -615,13 +647,15 @@ public abstract class DbAuthzGroupService extends BaseAuthzGroupService implemen
 			String realmId = extractEntityId(event.getResource());
 
 			if (realmId != null) {
+				if (log.isDebugEnabled()) {
+					log.debug("clear authzUserGroupIdsCache/realmRoleGRCache/realmLocksCache for {}", realmId);
+				}
+
 				for (String user : getAuthzUsersInGroups(new HashSet<String>(Arrays.asList(realmId)))) {
 					authzUserGroupIdsCache.remove(user);
 				}
-				if (log.isDebugEnabled()) {
-					log.debug("DbAuthzGroupService update(): clear realm role cache for " + realmId);
-				}
 				m_realmRoleGRCache.remove(realmId);
+				realmLocksCache.remove(realmId);
 			} else {
 				// This should never happen as the events we generate should always have
 				// a /realm/ prefix on the resource.
@@ -725,12 +759,13 @@ public abstract class DbAuthzGroupService extends BaseAuthzGroupService implemen
 	/**
 	 * Covers for the BaseXmlFileStorage, providing AuthzGroup and RealmEdit parameters
 	 */
-	protected class DbStorage extends BaseDbFlatStorage implements Storage, SqlReader
+	protected class DbStorage extends BaseDbFlatStorage implements BaseAuthzGroupService.Storage, SqlReader
 	{
 
 		private static final String REALM_USER_GRANTS_CACHE = "REALM_USER_GRANTS_CACHE";
 		private static final String REALM_ROLES_CACHE = "REALM_ROLES_CACHE";
 		private boolean promoteUsersToProvided = true;
+		private boolean promoteUsersToProvidedRole = false;
 		private EntityManager entityManager;
 		private SiteService siteService;
 
@@ -760,6 +795,16 @@ public abstract class DbAuthzGroupService extends BaseAuthzGroupService implemen
 		 */
 		public void setPromoteUsersToProvided(boolean promoteUsersToProvided) {
 			this.promoteUsersToProvided = promoteUsersToProvided;
+		}
+
+		/**
+		 * Configure whether or not users with same status will be "promoted" to their provided role.
+		 *
+		 * @param promoteUsersToProvidedRole Whether or not to promote non-provided users to their provided role
+		 * with no consideration of whether the role is identical.
+		 */
+		public void setPromoteUsersToProvidedRole(boolean promoteUsersToProvidedRole) {
+			this.promoteUsersToProvidedRole = promoteUsersToProvidedRole;
 		}
 
 		public boolean check(String id)
@@ -826,7 +871,7 @@ public abstract class DbAuthzGroupService extends BaseAuthzGroupService implemen
 			Map <String, Map> realmRoleGRCache = (Map<String, Map>)m_realmRoleGRCache.get(realm.getId());
 
 			if (log.isDebugEnabled()) {
-				log.debug("DbAuthzGroupService: found " + realm.getId() + " in cache? " + (realmRoleGRCache != null));
+				log.debug("realmRoleGRCache: found {} in cache? {}", realm.getId(), (realmRoleGRCache != null));
 			}
 
 			if (realmRoleGRCache != null) {
@@ -976,6 +1021,33 @@ public abstract class DbAuthzGroupService extends BaseAuthzGroupService implemen
 				payLoad.put(REALM_ROLES_CACHE, roleProperties);
 				payLoad.put(REALM_USER_GRANTS_CACHE, membersWithRoleIds);
 				m_realmRoleGRCache.put(realm.getId(), payLoad);
+			}
+
+			// RealmLock handling
+			Set<RealmLock> cachedRealmLock = (Set<RealmLock>) realmLocksCache.get(realm.getId());
+
+			if (log.isDebugEnabled()) {
+				log.debug("cachedRealmLock: found {} in cache? {}", realm.getId(), (cachedRealmLock != null));
+			}
+
+			if (cachedRealmLock != null) {
+				realm.m_realmLocks = cachedRealmLock;
+			} else {
+				String realmLocksSql = dbAuthzGroupSql.getSelectRealmLocksSql();
+				m_sql.dbRead(conn, realmLocksSql, new String[] {realm.getId()}, (SqlReader) result -> {
+					try {
+						Integer key = result.getInt(1);
+						String reference = result.getString(2);
+						Integer lockType = result.getInt(3);
+
+						RealmLock realmLock = new RealmLock(key, reference, RealmLockMode.values()[lockType]);
+						realm.m_realmLocks.add(realmLock);
+					} catch (SQLException se) {
+						log.warn("Could not read locks for realm {}, Exception: {}", realm.getId(), se.getMessage());
+					}
+					return null;
+				});
+				realmLocksCache.put(realm.getId(), realm.m_realmLocks);
 			}
 		}
 
@@ -1492,6 +1564,9 @@ public abstract class DbAuthzGroupService extends BaseAuthzGroupService implemen
 			// update SAKAI_REALM_ROLE_DESC
 			save_REALM_ROLE_DESC(edit);
 
+			// update SAKAI_REALM_LOCKS
+			save_REALM_LOCKS(edit);
+
 			// update the main realm table and properties
 			super.commitResource(edit, fields(edit.getId(), ((BaseAuthzGroup) edit), true), edit.getProperties(), ((BaseAuthzGroup) edit).getKey());
 		}
@@ -1814,6 +1889,62 @@ public abstract class DbAuthzGroupService extends BaseAuthzGroupService implemen
 			}
 		}
 
+		protected void save_REALM_LOCKS(AuthzGroup azg)
+		{
+			// add what we have in the azg, unless we see it in the db
+			final Set<RealmLock> toAdd = new HashSet<>();
+			((BaseAuthzGroup)azg).m_realmLocks.forEach(l -> toAdd.add(new RealmLock(l)));
+
+			// delete anything we see in the db we don't have in the azg
+			final Set<RealmLock> toDelete = new HashSet<>();
+
+			// read what we have there now
+			final String selectSql = dbAuthzGroupSql.getSelectRealmLocksSql();
+			final String azgId = caseId(azg.getId());
+			Object[] selectFields = new Object[1];
+			selectFields[0] = azgId;
+			m_sql.dbRead(selectSql, selectFields, result -> {
+				try {
+					Integer key = result.getInt(1);
+					String reference = result.getString(2);
+					Integer lockType = result.getInt(3);
+
+					RealmLock realmLock = new RealmLock(key, reference, RealmLockMode.values()[lockType]);
+					// if it exists in the database
+					if (toAdd.contains(realmLock)) {
+						// remove it from toAdd
+						toAdd.remove(realmLock);
+					} else {
+						// add it to toDelete
+						toDelete.add(realmLock);
+					}
+				} catch (SQLException se) {
+					log.warn("Could not read locks for realm {}, Exception: {}", azgId, se.getMessage());
+				}
+				return null;
+			});
+
+
+			// delete what we need to
+			final String deleteSql = dbAuthzGroupSql.getDeleteRealmLocksForRealmWithReferenceSql();
+			toDelete.forEach(l -> {
+				Object[] deleteFields = new Object[2];
+				deleteFields[0] = azgId;
+				deleteFields[1] = l.getReference();
+				m_sql.dbWrite(deleteSql, deleteFields);
+			});
+
+			// add what we need to
+			final String insertSql = dbAuthzGroupSql.getInsertRealmLocksSql();
+			toAdd.forEach(l -> {
+				Object[] insertFields = new Object[3];
+				insertFields[0] = azgId;
+				insertFields[1] = l.getReference();
+				insertFields[2] = l.getLockMode().ordinal();
+				m_sql.dbWrite(insertSql, insertFields);
+			});
+		}
+
 		public void cancel(AuthzGroup edit)
 		{
 			super.cancelResource(edit);
@@ -1855,6 +1986,9 @@ public abstract class DbAuthzGroupService extends BaseAuthzGroupService implemen
 			statement = dbAuthzGroupSql.getDeleteRealmRoleDescription2Sql();
 			m_sql.dbWrite(statement, fields);
 
+			statement = dbAuthzGroupSql.getDeleteRealmLocksForRealmSql();
+			m_sql.dbWrite(statement, fields);
+
 			// delete the realm and properties
 			super.removeResource(edit, ((BaseAuthzGroup) edit).getKey());
 		}
@@ -1886,7 +2020,7 @@ public abstract class DbAuthzGroupService extends BaseAuthzGroupService implemen
 				// if no current user, since we are working up a new user record, use the user id as creator...
 				if (current == null) current = "";
 
-				Time now = timeService().newTime();
+				Instant now = Instant.now();
 
 				rv[1] = "";
 				rv[2] = "";
@@ -1898,12 +2032,12 @@ public abstract class DbAuthzGroupService extends BaseAuthzGroupService implemen
 
 			else
 			{
-				rv[1] = StringUtil.trimToZero(edit.m_providerRealmId);
-				rv[2] = StringUtil.trimToZero(edit.m_maintainRole);
-				rv[3] = StringUtil.trimToZero(edit.m_createdUserId);
-				rv[4] = StringUtil.trimToZero(edit.m_lastModifiedUserId);
-				rv[5] = edit.getCreatedTime();
-				rv[6] = edit.getModifiedTime();
+				rv[1] = StringUtils.trimToEmpty(edit.m_providerRealmId);
+				rv[2] = StringUtils.trimToEmpty(edit.m_maintainRole);
+				rv[3] = StringUtils.trimToEmpty(edit.m_createdUserId);
+				rv[4] = StringUtils.trimToEmpty(edit.m_lastModifiedUserId);
+				rv[5] = edit.getCreatedDate();
+				rv[6] = edit.getModifiedDate();
 			}
 
 			return rv;
@@ -1926,16 +2060,16 @@ public abstract class DbAuthzGroupService extends BaseAuthzGroupService implemen
 				String createdBy = result.getString(4);
 				String modifiedBy = result.getString(5);
 				java.sql.Timestamp ts = result.getTimestamp(6, sqlService().getCal());
-				Time createdOn = null;
+				Instant createdOn = null;
 				if (ts != null)
 				{
-					createdOn = timeService().newTime(ts.getTime());
+					createdOn = ts.toInstant();
 				}
 				ts = result.getTimestamp(7, sqlService().getCal());
-				Time modifiedOn = null;
+				Instant modifiedOn = null;
 				if (ts != null)
 				{
-					modifiedOn = timeService().newTime(ts.getTime());
+					modifiedOn = ts.toInstant();
 				}
 
 				// the special local integer 'db' id field, read after the field list
@@ -2833,8 +2967,10 @@ public abstract class DbAuthzGroupService extends BaseAuthzGroupService implemen
 						String userEid = userDirectoryService().getUserEid(userId);
 						String targetRole = (String) target.get(userEid);
 
-						if (role.equals(targetRole))
+						if (role.equals(targetRole) || (StringUtils.isNotBlank(targetRole) && promoteUsersToProvidedRole))
 						{
+							log.debug("promoting user={} from role={} to targetRole={}", userEid, role, targetRole);
+
 							// remove from non-provided and add as provided
 							toDelete.add(userId);
 
@@ -2844,7 +2980,7 @@ public abstract class DbAuthzGroupService extends BaseAuthzGroupService implemen
 								active = false;
 							}
 
-							toInsert.add(new UserAndRole(userId, role, active, true));
+							toInsert.add(new UserAndRole(userId, targetRole, active, true));
 						}
 					}
 					catch (UserNotDefinedException e)
@@ -3078,6 +3214,10 @@ public abstract class DbAuthzGroupService extends BaseAuthzGroupService implemen
             return maintainRoles;
         }
 
+        public RealmLock newRealmLock(Integer key, String reference, RealmLockMode lockMode) {
+            return new RealmLock(key, reference, lockMode);
+        }
+
 		private class UserAndGroups
 		{
 			String user;
@@ -3304,6 +3444,21 @@ public abstract class DbAuthzGroupService extends BaseAuthzGroupService implemen
 			}
 		}
 
+		@Data
+		@AllArgsConstructor
+		@EqualsAndHashCode
+		class RealmLock {
+
+			private Integer key;
+			private String reference;
+			@EqualsAndHashCode.Exclude private RealmLockMode lockMode;
+
+			public RealmLock(RealmLock realmLock) {
+				this.key = realmLock.getKey();
+				this.reference = realmLock.getReference();
+				this.lockMode = realmLock.getLockMode();
+			}
+		}
 	} // DbStorage
 	
 	private Set<Integer> getRealmRoleKeys(Set<String> roles) {

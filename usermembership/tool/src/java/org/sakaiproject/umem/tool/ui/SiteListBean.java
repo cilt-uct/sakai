@@ -45,7 +45,6 @@ import javax.faces.event.ActionEvent;
 
 import lombok.extern.slf4j.Slf4j;
 
-import org.apache.commons.lang.StringUtils;
 import org.sakaiproject.authz.api.AuthzGroup;
 import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.authz.api.AuthzPermissionException;
@@ -83,7 +82,7 @@ public class SiteListBean {
 	private static final String			SORT_USER_STATUS	= "userStatus";
 	private static final String			SORT_SITE_TERM		= "siteTerm";
 	/** Resource bundle */
-	private transient ResourceLoader	msgs				= new ResourceLoader("org.sakaiproject.umem.tool.bundle.Messages");
+	private static final ResourceLoader	msgs				= new ResourceLoader("org.sakaiproject.umem.tool.bundle.Messages");
 	/** Controller fields */
 	private List<UserSitesRow>			userSitesRows;
 	/** Getter vars */
@@ -372,7 +371,7 @@ public class SiteListBean {
 		thisUserId = M_session.getCurrentSessionUserId();
 		setSakaiSessionUser(userId);
 		log.debug("Switched CurrentSessionUserId: " + M_session.getCurrentSessionUserId());
-		List siteList = org.sakaiproject.site.cover.SiteService.getSites(SelectionType.MEMBER, null, null, null, SortType.TITLE_ASC, null);
+		List siteList = org.sakaiproject.site.cover.SiteService.getSites(SelectionType.ACCESS, null, null, null, SortType.TITLE_ASC, null);
 		setSakaiSessionUser(thisUserId);
 
 		Iterator i = siteList.iterator();

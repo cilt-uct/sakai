@@ -1,21 +1,39 @@
+/**
+ * Copyright (c) 2006-2018 The Apereo Foundation
+ *
+ * Licensed under the Educational Community License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *             http://opensource.org/licenses/ecl2
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.sakaiproject.sitestats.impl;
 
-import com.zaxxer.hikari.HikariDataSource;
-import lombok.extern.slf4j.Slf4j;
+import java.io.IOException;
+import java.util.Properties;
+
+import javax.annotation.PreDestroy;
+import javax.annotation.Resource;
+
 import org.hibernate.SessionFactory;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.springframework.orm.hibernate.AdditionalHibernateMappings;
 import org.sakaiproject.springframework.orm.hibernate.impl.AdditionalHibernateMappingsImpl;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.orm.hibernate4.HibernateTransactionManager;
-import org.springframework.orm.hibernate4.LocalSessionFactoryBuilder;
+import org.springframework.orm.hibernate5.HibernateTransactionManager;
+import org.springframework.orm.hibernate5.LocalSessionFactoryBuilder;
 import org.springframework.transaction.PlatformTransactionManager;
 
-import javax.annotation.PreDestroy;
-import javax.annotation.Resource;
-import java.io.IOException;
-import java.util.Properties;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class SiteStatsPersistenceConfig {
@@ -80,6 +98,7 @@ public class SiteStatsPersistenceConfig {
         return new String[] {
                 "org/sakaiproject/sitestats/impl/hbm/PrefsImpl.hbm.xml",
                 "org/sakaiproject/sitestats/impl/hbm/EventStatImpl.hbm.xml",
+                "org/sakaiproject/sitestats/impl/hbm/DetailedEventImpl.hbm.xml",
                 "org/sakaiproject/sitestats/impl/hbm/LessonBuilderStatImpl.hbm.xml",
                 "org/sakaiproject/sitestats/impl/hbm/ResourceStatImpl.hbm.xml",
                 "org/sakaiproject/sitestats/impl/hbm/SiteVisitsImpl.hbm.xml",
@@ -115,22 +134,29 @@ public class SiteStatsPersistenceConfig {
 
         p.setProperty("hibernate.hbm2ddl.auto", autoDdl);
         p.setProperty("hibernate.show_sql", serverConfigurationService.getString("sitestats.externalDb.hibernate.show_sql", "false"));
-        p.setProperty("hibernate.query.substitutions", "true 1, false 0, yes 'Y', no 'N'");
-        p.setProperty("hibernate.jdbc.use_streams_for_binary", "true");
-        p.setProperty("hibernate.cache.use_query_cache", "true");
-        p.setProperty("hibernate.cache.region.factory_class", "org.hibernate.cache.SingletonEhCacheRegionFactory");
+        p.setProperty("hibernate.query.substitutions", serverConfigurationService.getString("sitestats.externalDb.hibernate.query.substitutions", "true 1, false 0, yes 'Y', no 'N'"));
+        p.setProperty("hibernate.jdbc.use_streams_for_binary", serverConfigurationService.getString("sitestats.externalDb.hibernate.jdbc.use_streams_for_binary", "true"));
+        // TODO with the removal of ehcache as hibernate cache provider
+        //  if we want to do caching in the external db will likely need to setup
+        //  an ignite cache for the external for now we will be disabling caching
+        //  Ignite region factory org.apache.ignite.cache.hibernate.HibernateRegionFactory
+        //  Ehcache region factory org.hibernate.cache.SingletonEhCacheRegionFactory
+        p.setProperty("hibernate.cache.region.factory_class", serverConfigurationService.getString("sitestats.externalDb.hibernate.cache.region.factory_class", ""));
+        p.setProperty("hibernate.cache.use_query_cache", serverConfigurationService.getString("sitestats.externalDb.hibernate.cache.use_query_cache", "false"));
+        p.setProperty("hibernate.cache.use_second_level_cache", serverConfigurationService.getString("sitestats.externalDb.hibernate.cache.use_second_level_cache", "false"));
         return p;
     }
 
     private HikariDataSource getExternalDataSource() {
         if (externalDataSource == null) {
-            externalDataSource = new HikariDataSource();
-            externalDataSource.setUsername(serverConfigurationService.getString("sitestats.externalDb.username", serverConfigurationService.getString("username@org.sakaiproject.sitestats.externalDbDataSource", "sa")));
-            externalDataSource.setPassword(serverConfigurationService.getString("sitestats.externalDb.password", serverConfigurationService.getString("password@org.sakaiproject.sitestats.externalDbDataSource", "")));
-            externalDataSource.setJdbcUrl(serverConfigurationService.getString("sitestats.externalDb.jdbcUrl", serverConfigurationService.getString("url@org.sakaiproject.sitestats.externalDbDataSource", "jdbc:hsqldb:mem:sitestats_db")));
-            externalDataSource.setDriverClassName(serverConfigurationService.getString("sitestats.externalDb.driverClassName", serverConfigurationService.getString("driverClassName@org.sakaiproject.sitestats.externalDbDataSource", "org.hsqldb.jdbcDriver")));
-            externalDataSource.setConnectionTestQuery(serverConfigurationService.getString("sitestats.externalDb.connectionTestQuery", "SELECT 1"));
-            externalDataSource.setPoolName(serverConfigurationService.getString("sitestats.externalDb.poolName", "externalDBCP"));
+            HikariConfig config = new HikariConfig();
+            config.setUsername(serverConfigurationService.getString("sitestats.externalDb.username", serverConfigurationService.getString("username@org.sakaiproject.sitestats.externalDbDataSource", "sa")));
+            config.setPassword(serverConfigurationService.getString("sitestats.externalDb.password", serverConfigurationService.getString("password@org.sakaiproject.sitestats.externalDbDataSource", "")));
+            config.setJdbcUrl(serverConfigurationService.getString("sitestats.externalDb.jdbcUrl", serverConfigurationService.getString("url@org.sakaiproject.sitestats.externalDbDataSource", "jdbc:hsqldb:mem:sitestats_db")));
+            config.setDriverClassName(serverConfigurationService.getString("sitestats.externalDb.driverClassName", serverConfigurationService.getString("driverClassName@org.sakaiproject.sitestats.externalDbDataSource", "org.hsqldb.jdbcDriver")));
+            config.setPoolName(serverConfigurationService.getString("sitestats.externalDb.poolName", "externalDBCP"));
+            config.setMaximumPoolSize(serverConfigurationService.getInt("sitestats.externalDb.maxPoolSize", 5));
+            externalDataSource = new HikariDataSource(config);
             log.info("SiteStats configuring external database with pool name {}", externalDataSource.getPoolName());
         }
         return externalDataSource;

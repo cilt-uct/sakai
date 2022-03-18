@@ -26,8 +26,7 @@ import java.util.List;
 
 import javax.servlet.http.Cookie;
 
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.Component;
 import org.apache.wicket.ajax.AjaxRequestTarget;
@@ -36,7 +35,6 @@ import org.apache.wicket.ajax.markup.html.form.AjaxButton;
 import org.apache.wicket.behavior.Behavior;
 import org.apache.wicket.extensions.ajax.markup.html.IndicatingAjaxButton;
 import org.apache.wicket.extensions.ajax.markup.html.modal.ModalWindow;
-import org.apache.wicket.markup.head.IHeaderResponse;
 import org.apache.wicket.markup.html.WebMarkupContainer;
 import org.apache.wicket.markup.html.basic.Label;
 import org.apache.wicket.markup.html.form.CheckBox;
@@ -63,7 +61,6 @@ import org.apache.wicket.util.cookies.CookieUtils;
 import org.sakaiproject.profile2.model.Person;
 import org.sakaiproject.profile2.model.ProfileSearchTerm;
 import org.sakaiproject.profile2.tool.components.HashMapChoiceRenderer;
-import org.sakaiproject.profile2.tool.components.IconWithClueTip;
 import org.sakaiproject.profile2.tool.components.ProfileImage;
 import org.sakaiproject.profile2.tool.components.ProfileStatusRenderer;
 import org.sakaiproject.profile2.tool.models.FriendAction;
@@ -73,6 +70,8 @@ import org.sakaiproject.profile2.types.PrivacyType;
 import org.sakaiproject.profile2.util.ProfileConstants;
 import org.sakaiproject.profile2.util.ProfileUtils;
 import org.sakaiproject.site.api.Site;
+
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class MySearch extends BasePage {
@@ -132,8 +131,6 @@ public class MySearch extends BasePage {
         searchField.setMarkupId("searchinput");
         searchField.setOutputMarkupId(true);
         searchForm.add(searchField);
-        searchForm.add(new IconWithClueTip("searchToolTip", ProfileConstants.INFO_IMAGE, new ResourceModel("text.search.terms.tooltip")).setVisible(false));
-		
         //by name or by interest radio group        
 		searchTypeRadioGroup = new RadioGroup<String>("searchTypeRadioGroup");
 		// so we can repaint after clicking on search history links
@@ -376,7 +373,7 @@ public class MySearch extends BasePage {
 								public void onClose(AjaxRequestTarget target){
 					            	if(friendActionModel.isRequested()) { 
 					            		connectionLabel.setDefaultModel(new ResourceModel("text.friend.requested"));
-										add(new AttributeModifier("class", true, new Model<String>("instruction icon connection-request")));
+										add(new AttributeModifier("class", true, new Model<String>("instruction connection-request")));
 					            		setEnabled(false);
 					            		target.add(c1);
 					            	}
@@ -400,19 +397,19 @@ public class MySearch extends BasePage {
 					//setup 'add connection' link
 					if(StringUtils.equals(userUuid, currentUserUuid)) {
 						connectionLabel.setDefaultModel(new ResourceModel("text.friend.self"));
-						connectionLink.add(new AttributeModifier("class", true, new Model<String>("instruction icon profile")));
+						connectionLink.add(new AttributeModifier("class", true, new Model<String>("instruction profile")));
 						connectionLink.setEnabled(false);
 					} else if(friend) {
 						connectionLabel.setDefaultModel(new ResourceModel("text.friend.confirmed"));
-						connectionLink.add(new AttributeModifier("class", true, new Model<String>("instruction icon connection-confirmed")));
+						connectionLink.add(new AttributeModifier("class", true, new Model<String>("instruction connection-confirmed")));
 						connectionLink.setEnabled(false);
 					} else if (connectionStatus == ProfileConstants.CONNECTION_REQUESTED) {
 						connectionLabel.setDefaultModel(new ResourceModel("text.friend.requested"));
-						connectionLink.add(new AttributeModifier("class", true, new Model<String>("instruction icon connection-request")));
+						connectionLink.add(new AttributeModifier("class", true, new Model<String>("instruction connection-request")));
 						connectionLink.setEnabled(false);					
 					} else if (connectionStatus == ProfileConstants.CONNECTION_INCOMING) {
 						connectionLabel.setDefaultModel(new ResourceModel("text.friend.pending"));
-						connectionLink.add(new AttributeModifier("class", true, new Model<String>("instruction icon connection-request")));
+						connectionLink.add(new AttributeModifier("class", true, new Model<String>("instruction connection-request")));
 						connectionLink.setEnabled(false);
 					} else {
 						connectionLabel.setDefaultModel(new ResourceModel("link.friend.add"));

@@ -17,6 +17,7 @@ package org.sakaiproject.content.providers;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -208,20 +209,8 @@ public class BaseEventDelayHandler implements EventDelayHandler, ScheduledInvoca
 		return ids;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.sakaiproject.content.providers.EventDelayHandler#createDelay(org.sakaiproject.event.api.Event)
-	 */
-	public String createDelay(Event event, Time fireTime)
-	{
-		return createDelay(event, event.getUserId(), fireTime);
-	}
-
-	/* (non-Javadoc)
-	 * @see org.sakaiproject.content.providers.EventDelayHandler#createDelay(org.sakaiproject.event.api.Event, java.lang.String)
-	 */
-	@SuppressWarnings("unchecked")
-	public String createDelay(Event event, String userId, Time fireTime)
-	{
+	@Override
+	public String createDelay(Event event, String userId, Instant fireTime) {
 		// delete previous like delays
 		deleteDelay(event);
 
@@ -238,6 +227,13 @@ public class BaseEventDelayHandler implements EventDelayHandler, ScheduledInvoca
 		schedInvocMgr.createDelayedInvocation(fireTime, BaseEventDelayHandler.class.getName(), id);
 		return id;
 	}
+
+
+	@Override
+	public String createDelay(Event event, Instant fireTime) {
+		return createDelay(event, event.getUserId(), fireTime);
+	}
+
 
 	/* (non-Javadoc)
 	 * @see org.sakaiproject.content.providers.EventDelayHandler#deleteDelayById(java.lang.String)
@@ -401,6 +397,10 @@ public class BaseEventDelayHandler implements EventDelayHandler, ScheduledInvoca
 		public LRS_Statement getLrsStatement() {
 			//Don't do anything right now on a rerun
 			return null;
+		}
+
+		public boolean isTransient() {
+			return false;
 		}
 	}
 }

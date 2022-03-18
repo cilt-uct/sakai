@@ -13,11 +13,9 @@
     <parent>
 		<groupId>org.sakaiproject</groupId>
 		<artifactId>master</artifactId>
-		<version>12.5</version>
+		<version>21-SNAPSHOT</version>
 		<relativePath>../master/pom.xml</relativePath>
   	</parent>
-  	
-    <inceptionYear>2011</inceptionYear>
 	
 	<licenses>
 		<license>
@@ -47,7 +45,6 @@
       	<dependency>
          	<groupId>javax.servlet</groupId>
          	<artifactId>jstl</artifactId>
-         	<version>1.2</version>
       	</dependency>
 		<dependency>
 			<groupId>taglibs</groupId>
@@ -55,9 +52,12 @@
 			<version>1.1.2</version>
 		</dependency>
 		<dependency>
-			<groupId>commons-lang</groupId>
-			<artifactId>commons-lang</artifactId>
-			<version>2.6</version>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-text</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>commons-io</groupId>
@@ -76,9 +76,9 @@
 		</dependency>
 		
 		<dependency>
-			<groupId>rome</groupId>
+			<groupId>com.rometools</groupId>
 			<artifactId>rome</artifactId>
-			<version>1.0</version>
+			<version>1.15.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.jdom</groupId>
@@ -100,13 +100,11 @@
 		<dependency>
       		<groupId>javax.portlet</groupId>
       		<artifactId>portlet-api</artifactId>
-      		<version>1.0</version>
       		<scope>provided</scope>
     	</dependency>
     	<dependency>
       		<groupId>javax.servlet</groupId>
-      		<artifactId>servlet-api</artifactId>
-      		<version>2.4</version>
+      		<artifactId>javax.servlet-api</artifactId>
       		<scope>provided</scope>
     	</dependency>
 		<dependency>
@@ -156,7 +154,6 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-war-plugin</artifactId>
-				<version>2.2</version>
 				<configuration>
 					<webResources>
             			<resource>

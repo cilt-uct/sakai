@@ -6,40 +6,25 @@
 	<bean id="org.sakaiproject.user.api.UserDirectoryProvider"
 		class="org.sakaiproject.unboundid.UnboundidDirectoryProvider" init-method="init"
 		destroy-method="destroy">
+
+		<property name="securityService" ref="org.sakaiproject.authz.api.SecurityService"/>
+		<property name="memoryService" ref="org.sakaiproject.memory.api.MemoryService"/>
 		
-		<!-- Required. Round-robin set of hostnames that will be placed into Unboundid connection pool. -->
+		<!-- Required. Uses Unboundid SingleServerSet by default. Easy to modify code to use FailoverServerSet or RoundRobinServerSet. -->
 		<property name="ldapHost">
 			<list>
 				<value>10.1.1.1</value>
-				<value>10.2.1.1</value>
-				<value>10.3.1.1</value>
 			</list>
 		</property>
 
-		<!-- Required. LDAP connection ports. Typically defaults to 
-			UnboundidDirectoryProvider.DEFAULT_LDAP_PORT (389). Secured
-			connections are usually on 636 -->
+		<!-- Required. LDAP connection port. Typically defaults to 
+			UnboundidDirectoryProvider.DEFAULT_LDAP_PORT (389). Secure
+			connection is usually on 636 -->
 		<property name="ldapPort">
 			<list>
 				<value>389</value>
-				<value>389</value>
-				<value>389</value>
 			</list>
 		</property>
-
-		<!--  If secureConnection is true, a keystore location must be provided
-			unless javax.net.ssl.trustStore system property has already been 
-			set -->
-		<!--property name="keystoreLocation">
-			<value>/usually/set/at/startup</value>
-		</property-->
-
-		<!--  If secureConnection is true, a keystore password must be provided
-			unless javax.net.ssl.trustStorePassword system property has already
-			been set -->
-		<!--property name="keystorePassword">
-			<value>usually-set-at-startup</value>
-		</property-->
 
 		<!-- Optional. DN to which to bind for directory searches. 
 			Typically only necessary if autoBind is true -->
@@ -56,15 +41,6 @@
 			defaults to UnboundidDirectoryProvider.DEFAULT_IS_SECURE_CONNECTION (false) -->
 		<!-- property name="secureConnection">
 			<value>false</value>
-		</property -->
-
-		<!-- Optional. If secureConnection is true, this socket factory
-			will be assigned globally to LDAPConnections. Defaults to an
-			instance of com.novell.ldap.LDAPJSSESecureSocketFactory, which
-			is appropriate for SSL connections. Use 
-			com.novell.ldap.LDAPJSSEStartTLSFactory for TLS. -->
-		<!-- property name="secureSocketFactory">
-			<bean class="com.novell.ldap.LDAPJSSESecureSocketFactory" />
 		</property -->
 
 		<!-- Optional. Indicate if connection allocation should
@@ -86,9 +62,9 @@
 		</property -->
 
 		<!-- Optional. LDAP operation timeout in millis. Defaults 
-			to UnboundidDirectoryProvider.DEFAULT_OPERATION_TIMEOUT_MILLIS (5000) -->
+			to UnboundidDirectoryProvider.DEFAULT_OPERATION_TIMEOUT_MILLIS (9000) -->
 		<!-- property name="operationTimeout">
-			<value>5000</value>
+			<value>9000</value>
 		</property -->
 		
 		<!-- Optional. Control depth of all searches. Possible values:
@@ -100,15 +76,6 @@
 			<value>2</value>
 		</property -->
 
-		<!-- Setting a cacheTTL in jldap-beans.xml is longer supported! 
-			 If you are attempting to cache your users for one hour instead of the default of 5 minutes, 
-			 set the central UserDirectoryService.callCache
-			 memory.org.sakaiproject.user.api.UserDirectoryService.callCache=timeToLiveSeconds=3600
-		-->
-
-		<!-- Setting caseSensitiveCacheKeys is no longer supported!
-			 We assume that user jdoe is the same as user JDoe!! -->
-		
 		<!--  Optional. Control the return value of 
 		      UnboundidDirectoryProvider.authenticateWithProviderFirst(String)
 		      on a global basis. Defaults to
@@ -126,25 +93,80 @@
 		<!--  property name="allowAuthentication">
 			<value>true</value>
 		</property -->
-		
+
+		<!--  Optional. Controls whether or not users who are super users (admin)
+                      may be authenticated from the directory. Defaults to
+		      UnboundidDirectoryProvider.DEFAULT_ALLOW_AUTHENTICATION_ADMIN  -->
+		<!--  property name="allowAuthenticationAdmin">
+			<value>false</value>
+		</property -->
+
+		<!--  Optional. Controls whether or not external users (who are not in
+                      the internal user database) can be authenticated from the directory.
+		      If false, LDAP will authenticate internal users only. Defaults to
+		      UnboundidDirectoryProvider.DEFAULT_ALLOW_AUTHENTICATION_EXTERNAL  -->
+		<!-- property name="allowAuthenticationExternal">
+			<value>true</value>
+		</property -->
+
+                <!--  Optional. Control whether or not the directory may be searched for
+                      users that match given search criteria. Defaults to
+                      UnboundidDirectoryProvider.DEFAULT_ALLOW_SEARCH_EXTERNAL  -->
+                <!--  property name="allowSearchExternal">
+                        <value>true</value>
+                </property -->
+
+                <!--  Optional. Control whether or not external users (who are not in
+                      the internal user database) can be loaded from the directory.
+                      If false, LDAP will  be used for authentication only. Defaults to
+                      UnboundidDirectoryProvider.DEFAULT_ALLOW_GET_EXTERNAL  -->
+		<!-- property name="allowGetExternal">
+			<value>true</value>
+		</property -->
+
 		<!-- Optional. Defaults to an instance of 
 		org.sakaiproject.unboundid.SimpleLdapConnectionManager -->
 		<!-- property name="ldapConnectionManager">
 			<bean class="org.sakaiproject.unboundid.SimpleLdapConnectionManager" />
 		</property -->
 
-		<!-- Optional. Use Connection Pooling?
-			Defaults to UnboundidDirectoryProvider.DEFAULT_POOLING (false). 
-			Has no effect if ldapConnectionManager has been explicitly
-			assigned (unless that object honors this flag, of course). -->
-		<!--  property name="pooling">
-			<value>false</value>
-		</property -->
-
-		<!-- Optional. Maxmimum number of connections in the pool
+		<!-- Maxmimum number of connections in the pool
 			Defaults to UnboundidDirectoryProvider.DEFAULT_POOL_MAX_CONNS (10) -->
 		<!--  property name="poolMaxConns">
 			<value>10</value>
+		</property -->
+
+		<!-- Specifies whether attempts to process operations should be retried on a
+		     newly-created connection if the initial attempt fails in a manner that
+		     indicates that the connection used to process that request may no longer
+		     be valid. May help with networks that close idle connections
+		     Defaults to UnboundidDirectoryProvider.DEFAULT_RETRY_FAILED_OPERATIONS_DUE_TO_INVALID_CONNECTIONS (false) -->
+		<!-- property name="retryFailedOperationsDueToInvalidConnections">
+			<value>false</value>
+		</property -->
+
+		<!-- Specifies the length of time in milliseconds between periodic background
+			health checks against the available connections in this pool.
+			Requires healthCheckMappings's invokeForBackgroundChecks to be set to true
+			Defaults to 180000 (three minutes) -->
+		<!-- property name="healthCheckIntervalMillis">
+			<value>300000</value>
+		</property -->
+
+		<!-- Provides mapping to create an LDAP connection pool health check implementation
+			that may be used to check the health of the associated server by verifying that
+			a specified entry can be retrieved in an acceptable period of time
+			Defaults to null (invokes the Unboundid defaut implementation, which does not do any checks) -->
+		<!-- property name="healthCheckMappings">
+			<map>
+				<entry key="maxResponseTime"><value>10000</value></entry>
+				<entry key="invokeOnCreate"><value>false</value></entry>
+				<entry key="invokeAfterAuthentication"><value>false</value></entry>
+				<entry key="invokeOnCheckout"><value>false</value></entry>
+				<entry key="invokeOnRelease"><value>false</value></entry>
+				<entry key="invokeForBackgroundChecks"><value>true</value></entry>
+				<entry key="invokeOnException"><value>false</value></entry>
+			</map>
 		</property -->
 
 		<!-- Optional. Size of batch when loading multiple users at once.
@@ -213,7 +235,7 @@
     example describes availabel configuration options for SimpleLdapAttributeMapper
     (the default LdapAttributeMapper implementation). -->
 	<bean id="org.sakaiproject.unboundid.LdapAttributeMapper"
-			class="edu.nyu.classes.providers.NYULdapAttributeMapper"
+			class="org.sakaiproject.unboundid.SimpleLdapAttributeMapper"
 			init-method="init">
 			
 		<!-- A typical set of attribute mappings. Keys are logical

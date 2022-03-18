@@ -56,7 +56,7 @@
       <jsp:expression>request.getAttribute("sakai.html.head")</jsp:expression>
     </head>
     <jsp:element name="body">
-      <jsp:attribute name="onload">setMainFrameHeightNoScroll('<jsp:expression>request.getAttribute("sakai.tool.placement.id")</jsp:expression>');autoSaveOn('pageName','pageVersion','wiki-textarea-content','restoreContent','restoreVersion','restoreDate','autosave','tabHeadOff','<c:out value="${requestScope.rsacMap.loadAutoSave}" />');setFocus(focus_path);parent.updCourier(doubleDeep,ignoreCourier); callAllLoaders(); </jsp:attribute>
+      <jsp:attribute name="onload">setMainFrameHeightNoScroll('<jsp:expression>request.getAttribute("sakai.tool.placement.id")</jsp:expression>');autoSaveOn('pageName','pageVersion','wiki-textarea-content','restoreContent','restoreVersion','restoreDate','autosave','tabHeadOff','<c:out value="${requestScope.rsacMap.loadAutoSave}" />');setFocus(focus_path); callAllLoaders(); </jsp:attribute>
       <jsp:directive.include file="header.jsp"/>
       <div id="rwiki_container">
       	<div class="portletBody">
@@ -231,7 +231,7 @@
 					  		<c:if test="${requestScope.rsacMap.withnotification}" >
 					  			<input type="checkbox" name="smallchange" value="smallchange" /> <c:out value="${rlb.jsp_minor_change}"/> <br />
 					  		</c:if>
-					 		<input id="saveButton" type="submit" name="command_save" value="Save"  /><c:out value=" "/>
+					 		<input id="saveButton" class="active" type="submit" name="command_save" value="Save"  /><c:out value=" "/>
 					  		<c:if test="${((editBean.saveType eq 'preview' or fn:startsWith(editBean.saveType, 'attach')) and nameHelperBean.submittedContent != null) or (editBean.saveType ne null and editBean.saveType ne 'preview' and not(fn:startsWith(editBean.saveType, 'attach')))}">
 					    		<jsp:element name="input">
 									<jsp:attribute name="id">saveButton</jsp:attribute> 

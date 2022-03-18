@@ -15,10 +15,10 @@
  */
 package org.sakaiproject.component.app.scheduler.jobs.logmessage;
 
-import lombok.extern.slf4j.Slf4j;
-
 import org.quartz.JobExecutionException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
@@ -35,21 +35,27 @@ public class LogMessageJob extends AbstractConfigurableJob {
 
     @Override
     public void runJob() throws JobExecutionException {
+        boolean includeException = getJobExecutionContext().getMergedJobDataMap().getBooleanFromString("stacktrace");
         String level = getConfiguredProperty("level");
         String message = getConfiguredProperty("message");
         String logger = getConfiguredProperty("logger");
+        Throwable throwable = null;
+        if (includeException) {
+            throwable = new Exception("Test Exception").fillInStackTrace();
+        }
+        Logger log = LoggerFactory.getLogger(logger);
         if ("trace".equalsIgnoreCase(level)) {
-            log.trace(message);
+            log.trace(message, throwable);
         } else if ("debug".equalsIgnoreCase(level)) {
-            log.debug(message);
+            log.debug(message, throwable);
         } else if ("info".equalsIgnoreCase(level)) {
-            log.info(message);
+            log.info(message, throwable);
         } else if ("warn".equalsIgnoreCase(level)) {
-            log.warn(message);
+            log.warn(message, throwable);
         } else if ("error".equalsIgnoreCase(level)) {
-            log.error(message);
+            log.error(message, throwable);
         } else if ("fatal".equalsIgnoreCase(level)) {
-            log.error(fatal, message);
+            log.error(fatal, message, throwable);
         }
     }
 }

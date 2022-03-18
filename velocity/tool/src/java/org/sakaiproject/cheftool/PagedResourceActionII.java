@@ -32,13 +32,13 @@ import org.sakaiproject.cheftool.api.MenuItem;
 import org.sakaiproject.cheftool.menu.MenuDivider;
 import org.sakaiproject.cheftool.menu.MenuEntry;
 import org.sakaiproject.cheftool.menu.MenuField;
-import org.sakaiproject.courier.api.ObservingCourier;
 import org.sakaiproject.event.api.SessionState;
 import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.tool.cover.SessionManager;
 import org.sakaiproject.util.ResourceLoader;
 
 import javax.servlet.http.HttpServletRequest;
+import org.sakaiproject.javax.PagingPosition;
 
 /**
  * <p>
@@ -241,25 +241,6 @@ public abstract class PagedResourceActionII extends VelocityPortletPaneledAction
 	} // addSearchMenus
 
 	/**
-	 * Add the menus for manual / auto - refresh.
-	 */
-	protected void addRefreshMenus(Menu bar, SessionState state)
-	{
-		// only offer if there's an observer
-		ObservingCourier observer = (ObservingCourier) state.getAttribute(STATE_OBSERVER);
-		if (observer == null) return;
-
-		bar.add(new MenuDivider());
-		bar.add(new MenuEntry((observer.getEnabled() ? rb_praII.getString("ref.manref") : rb_praII.getString("ref.autoref")),
-				"doAuto"));
-		if (!observer.getEnabled())
-		{
-			bar.add(new MenuEntry(rb_praII.getString("ref.refresh"), "doRefresh"));
-		}
-
-	} // addRefreshMenus
-
-	/**
 	 * Prepare the current page of messages to display.
 	 * 
 	 * @return List of MailArchiveMessage to display on this page.
@@ -370,7 +351,17 @@ public abstract class PagedResourceActionII extends VelocityPortletPaneledAction
 
 		// compute the end to a page size, adjusted for the number of messages available
 		int posEnd = posStart + (pageSize - 1);
-		if (posEnd >= numMessages) posEnd = numMessages - 1;
+		PagingPosition page = new PagingPosition(posStart, posEnd);
+		page.validate(numMessages);
+		if (page.getFirst() >= numMessages)
+		{
+			posStart = 0;
+		}
+		else
+		{
+			posStart = page.getFirst();
+		}
+		posEnd = page.getLast();
 
 		// select the messages on this page
 		List messagePage = readResourcesPage(state, posStart + 1, posEnd + 1);
@@ -531,7 +522,9 @@ public abstract class PagedResourceActionII extends VelocityPortletPaneledAction
 		boolean goLPButton = state.getAttribute(STATE_LAST_PAGE_EXISTS) != null;
 		context.put("goLPButton", Boolean.toString(goLPButton));
 
-		context.put("pagesize", state.getAttribute(STATE_PAGESIZE));
+		int pageSize = state.getAttribute(STATE_PAGESIZE) != null ? (Integer) state.getAttribute(STATE_PAGESIZE) : DEFAULT_PAGE_SIZE;
+		context.put("pagesize", Integer.toString(pageSize));
+		context.put("pagesizeInt", pageSize);
 		context.put("pagesizes", PAGESIZES);
 
 	} // pagingInfoToContext
@@ -701,22 +694,6 @@ public abstract class PagedResourceActionII extends VelocityPortletPaneledAction
 		// start paging again from the top of the list
 		resetPaging(state);
 
-		// if we are searching, turn off auto refresh
-		if (search != null)
-		{
-			ObservingCourier observer = (ObservingCourier) state.getAttribute(STATE_OBSERVER);
-			if (observer != null)
-			{
-				observer.disable();
-			}
-		}
-
-		// else turn it back on
-		else
-		{
-			enableObserver(state);
-		}
-
 	} // doSearch
 
 	/**
@@ -734,9 +711,6 @@ public abstract class PagedResourceActionII extends VelocityPortletPaneledAction
 		// start paging again from the top of the list
 		resetPaging(state);
 
-		// turn on auto refresh
-		enableObserver(state);
-
 	} // doSearch_clear
 
 	/**
@@ -750,67 +724,6 @@ public abstract class PagedResourceActionII extends VelocityPortletPaneledAction
 		state.setAttribute(STATE_CURRENT_PAGE, new Integer(1));
 
 	} // resetPaging
-
-	/**
-	 * Toggle auto-update
-	 */
-	public void doAuto(RunData data, Context context)
-	{
-		// access the portlet element id to find our state
-		String peid = ((JetspeedRunData) data).getJs_peid();
-		SessionState state = ((JetspeedRunData) data).getPortletSessionState(peid);
-
-		// get the observer
-		ObservingCourier observer = (ObservingCourier) state.getAttribute(STATE_OBSERVER);
-		if (observer != null)
-		{
-			boolean enabled = observer.getEnabled();
-			if (enabled)
-			{
-				observer.disable();
-				state.setAttribute(STATE_MANUAL_REFRESH, "manual");
-			}
-			else
-			{
-				observer.enable();
-				state.removeAttribute(STATE_MANUAL_REFRESH);
-			}
-		}
-
-	} // doAuto
-
-	/**
-	 * The action for when the user want's an update
-	 */
-	public void doRefresh(RunData data, Context context)
-	{
-		// access the portlet element id to find our state
-		String peid = ((JetspeedRunData) data).getJs_peid();
-		SessionState state = ((JetspeedRunData) data).getPortletSessionState(peid);
-
-	} // doRefresh
-
-	/**
-	 * Enable the observer, unless we are in search mode, where we want it disabled.
-	 */
-	public void enableObserver(SessionState state)
-	{
-		// get the observer
-		ObservingCourier observer = (ObservingCourier) state.getAttribute(STATE_OBSERVER);
-		if (observer != null)
-		{
-			// we leave it disabled if we are searching, or if the user has last selected to be manual
-			if ((state.getAttribute(STATE_SEARCH) != null) || (state.getAttribute(STATE_MANUAL_REFRESH) != null))
-			{
-				observer.disable();
-			}
-			else
-			{
-				observer.enable();
-			}
-		}
-
-	} // enableObserver
 
 } // PagedResourceAction
 

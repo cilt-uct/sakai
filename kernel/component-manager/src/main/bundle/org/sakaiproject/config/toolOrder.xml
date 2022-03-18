@@ -33,7 +33,7 @@ Don't make changes here or they'll be WIPED OUT!  Goodness!
 		<tool id = "sakai.assignment" />
 		<tool id = "sakai.assignment.grades" />
 		<tool id = "sakai.samigo" />
-		<tool id = "sakai.gradebook.tool" />
+		<tool id = "sakai.gradebookng" />
 		<tool id = "sakai.dropbox" />
 		<tool id = "sakai.chat" />
 		<tool id = "sakai.rwiki" />
@@ -62,7 +62,7 @@ Don't make changes here or they'll be WIPED OUT!  Goodness!
 		<tool id = "sakai.assignment" />
 		<tool id = "sakai.assignment.grades" />
 		<tool id = "sakai.samigo" />
-		<tool id = "sakai.gradebook.tool" />
+		<tool id = "sakai.gradebookng" />
 		<tool id = "sakai.dropbox" />
 		<tool id = "sakai.chat" />
 		<tool id = "sakai.rwiki" />

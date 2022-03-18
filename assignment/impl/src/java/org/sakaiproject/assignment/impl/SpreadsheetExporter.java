@@ -34,7 +34,7 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.sakaiproject.util.Validator;
 
-import au.com.bytecode.opencsv.CSVWriter;
+import com.opencsv.CSVWriter;
 
 /**
  * Abstracts away writing to a CSV or Excel file.
@@ -103,7 +103,7 @@ class CsvExporter extends SpreadsheetExporter {
         } catch (IOException e) {
             // tried
         }
-        gradesBuffer = new CSVWriter(osw, csvSep.charAt(0));
+        gradesBuffer = new CSVWriter(osw, csvSep.charAt(0), CSVWriter.DEFAULT_QUOTE_CHARACTER, CSVWriter.DEFAULT_ESCAPE_CHARACTER, CSVWriter.RFC4180_LINE_END);
         addRow(title, gradeType);
         addRow("");
     }

@@ -21,6 +21,8 @@
 
 package org.sakaiproject.announcement.tool;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -32,28 +34,21 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.NoSuchElementException;
 import java.util.Properties;
-import java.util.Stack;
 import java.util.Vector;
 
 import lombok.extern.slf4j.Slf4j;
 
-import org.apache.commons.lang.StringUtils;
-
-import org.sakaiproject.component.cover.HotReloadConfigurationService;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.announcement.api.AnnouncementChannel;
 import org.sakaiproject.announcement.api.AnnouncementChannelEdit;
 import org.sakaiproject.announcement.api.AnnouncementMessage;
 import org.sakaiproject.announcement.api.AnnouncementMessageEdit;
-import org.sakaiproject.announcement.api.AnnouncementMessageHeader;
 import org.sakaiproject.announcement.api.AnnouncementMessageHeaderEdit;
 import org.sakaiproject.announcement.cover.AnnouncementService;
 import org.sakaiproject.alias.api.AliasService;
 import org.sakaiproject.alias.api.Alias;
 import org.sakaiproject.announcement.tool.MenuBuilder.ActiveTab;
-import org.sakaiproject.authz.api.PermissionsHelper;
+import org.sakaiproject.announcement.tool.AnnouncementActionState;
 import org.sakaiproject.authz.api.SecurityAdvisor;
 import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.cheftool.Context;
@@ -99,10 +94,7 @@ import org.sakaiproject.tool.cover.SessionManager;
 import org.sakaiproject.tool.cover.ToolManager;
 import org.sakaiproject.user.api.Preferences;
 import org.sakaiproject.user.api.PreferencesService;
-import org.sakaiproject.user.api.ContextualUserDisplayService;
-import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
-import org.sakaiproject.util.FormattedText;
 import org.sakaiproject.util.MergedList;
 import org.sakaiproject.util.MergedListEntryProviderBase;
 import org.sakaiproject.util.MergedListEntryProviderFixedListWrapper;
@@ -110,6 +102,7 @@ import org.sakaiproject.util.ParameterParser;
 import org.sakaiproject.util.ResourceLoader;
 import org.sakaiproject.util.SortedIterator;
 import org.sakaiproject.util.StringUtil;
+import org.sakaiproject.util.api.FormattedText;
 
 /**
  * AnnouncementAction is an implementation of Announcement service, which provides the complete function of announcements. User could check the announcements, create own new and manage all the announcement items, under certain permission check.
@@ -221,8 +214,7 @@ public class AnnouncementAction extends PagedResourceActionII
    private static final String VIEW_MODE_BYGROUP  = "view.bygroup";
    private static final String VIEW_MODE_MYGROUPS = "view.mygroups";
 
-   // hours * minutes * seconds * milliseconds
-   private static final long MILLISECONDS_IN_DAY = (24 * 60 * 60 * 1000);
+   /** The number of days, by default, before retraction. */
    private static final long FUTURE_DAYS = 7;
    
    private static final String HIDDEN = "hidden";
@@ -230,8 +222,6 @@ public class AnnouncementAction extends PagedResourceActionII
    
    private static final String SYNOPTIC_ANNOUNCEMENT_TOOL = "sakai.synoptic.announcement";
  
-   private static final String UPDATE_PERMISSIONS = "site.upd";
-
    public static final String SAK_PROP_ANNC_REORDER = "sakai.announcement.reorder";
    public static final boolean SAK_PROP_ANNC_REORDER_DEFAULT = true;
 	
@@ -250,6 +240,8 @@ public class AnnouncementAction extends PagedResourceActionII
    private UserDirectoryService userDirectoryService;
 
    private ServerConfigurationService serverConfigurationService;
+   
+   private FormattedText formattedText;
 
    
    private static final String DEFAULT_TEMPLATE="announcement/chef_announcements";
@@ -259,7 +251,8 @@ public class AnnouncementAction extends PagedResourceActionII
         super();
         aliasService = ComponentManager.get(AliasService.class);
         userDirectoryService = ComponentManager.get(UserDirectoryService.class);
-		serverConfigurationService = ComponentManager.get(ServerConfigurationService.class);
+        serverConfigurationService = ComponentManager.get(ServerConfigurationService.class);
+        formattedText = ComponentManager.get(FormattedText.class);
     }
    /*
 	 * Returns the current order
@@ -462,354 +455,9 @@ public class AnnouncementAction extends PagedResourceActionII
 	}
 
 	/**
-	 * Decorator for the "Message" class. It adds various properties to the decorated real Announcement message.
-	 */
-	static public class AnnouncementWrapper implements AnnouncementMessage
-	{
-		private boolean enforceMaxNumberOfChars;
-
-		private AnnouncementMessage announcementMesssage;
-
-		private boolean editable;
-
-		private String channelDisplayName;
-
-		private int maxNumberOfChars;
-
-		private String range;
-		
-		private String authorDisplayName;
-		
-		public AnnouncementMessage getMessage()
-		{
-			return this.announcementMesssage;
-		}
-
-		/**
-		 * Constructor
-		 * 
-		 * @param message
-		 *        The message to be wrapped.
-		 * @param currentChannel
-		 *        The channel in which the message is contained.
-		 * @param hostingChannel
-		 *        The channel into which the message is being merged.
-		 * @param maxNumberOfChars
-		 *        The maximum number of characters that will be returned by getTrimmedBody().
-		 */
-		public AnnouncementWrapper(AnnouncementMessage message, AnnouncementChannel currentChannel,
-				AnnouncementChannel hostingChannel, AnnouncementActionState.DisplayOptions options, String range)
-		{
-			if (options != null)
-			{
-				this.maxNumberOfChars = options.getNumberOfCharsPerAnnouncement();
-				this.enforceMaxNumberOfChars = options.isEnforceNumberOfCharsPerAnnouncement();
-			}
-			else
-			{
-				// default settings from DisplayOptions class
-				this.maxNumberOfChars = Integer.MAX_VALUE;
-				this.enforceMaxNumberOfChars = false;
-			}
-			this.announcementMesssage = message;
-
-			// This message is editable only if the site matches.
-			this.editable = currentChannel.getReference().equals(hostingChannel.getReference());
-
-			Site site = null;
-
-			try
-			{
-				site = SiteService.getSite(currentChannel.getContext());
-			}
-			catch (IdUnusedException e)
-			{
-				// No site available.
-			}
-
-			if (site != null)
-			{
-				this.channelDisplayName = site.getTitle();
-			}
-			else
-			{
-				this.channelDisplayName = "";
-			}
-
-			// TODO Let's not retrieve the service for each and every message....
-			ContextualUserDisplayService contextualUserDisplayService = (ContextualUserDisplayService) ComponentManager.get("org.sakaiproject.user.api.ContextualUserDisplayService");
-			User author = message.getAnnouncementHeader().getFrom();
-			if ((site != null) && (!this.editable) && (contextualUserDisplayService != null))
-			{
-				this.authorDisplayName = contextualUserDisplayService.getUserDisplayName(author, site.getReference());
-			}
-			if (this.authorDisplayName == null)
-			{
-				this.authorDisplayName = author.getDisplayName();
-			}
-
-			if (range != null)
-			{
-				this.range = range;
-			}
-		}
-
-		/**
-		 * Constructor
-		 * 
-		 * @param announcementWrapper
-		 *        The message to be wrapped.
-		 */
-		public AnnouncementWrapper(AnnouncementWrapper mWrapper)
-		{
-			this.maxNumberOfChars = mWrapper.maxNumberOfChars;
-			this.enforceMaxNumberOfChars = mWrapper.enforceMaxNumberOfChars;
-			this.announcementMesssage = mWrapper.getMessage();
-			
-			this.channelDisplayName = mWrapper.channelDisplayName;
-			this.range = mWrapper.range;
-		}
-
-		/**
-		 * See if the given message was posted in the last N days, where N is the value of the maxDaysInPast parameter.
-		 */
-		private static boolean isMessageWithinLastNDays(AnnouncementMessage message, int maxDaysInPast)
-		{
-			long currentTime = TimeService.newTime().getTime();
-
-			long timeDeltaMSeconds = currentTime - message.getHeader().getDate().getTime();
-
-			long numDays = timeDeltaMSeconds / MILLISECONDS_IN_DAY;
-
-			return (numDays <= maxDaysInPast);
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see org.chefproject.core.Message#getHeader()
-		 */
-		public MessageHeader getHeader()
-		{
-			return announcementMesssage.getHeader();
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see org.chefproject.core.Message#getBody()
-		 */
-		public String getBody()
-		{
-			return announcementMesssage.getBody();
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see org.chefproject.core.Message#getBody()
-		 */
-		public String getTrimmedBody()
-		{
-			if (this.enforceMaxNumberOfChars)
-			{
-				// trim the body, as formatted text
-				String body = announcementMesssage.getBody();
-				StringBuilder buf = new StringBuilder();
-				body = FormattedText.escapeHtmlFormattedTextSupressNewlines(body);
-				boolean didTrim = FormattedText.trimFormattedText(body, this.maxNumberOfChars, buf);
-				if (didTrim)
-				{
-					if (buf.toString().length() != 0)
-					{
-						buf.append("...");
-					}
-				}
-
-				return buf.toString();
-			}
-			else
-			{
-				return announcementMesssage.getBody();
-			}
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see org.chefproject.core.Resource#getUrl()
-		 */
-		public String getUrl()
-		{
-			return announcementMesssage.getUrl();
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see org.chefproject.core.Resource#getReference()
-		 */
-		public String getReference()
-		{
-			return announcementMesssage.getReference();
-		}
-
-		/**
-		 * @inheritDoc
-		 */
-		public String getReference(String rootProperty)
-		{
-			return getReference();
-		}
-
-		/**
-		 * @inheritDoc
-		 */
-		public String getUrl(String rootProperty)
-		{
-			return getUrl();
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see org.chefproject.core.Resource#getId()
-		 */
-		public String getId()
-		{
-			return announcementMesssage.getId();
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see org.chefproject.core.Resource#getProperties()
-		 */
-		public ResourceProperties getProperties()
-		{
-			return announcementMesssage.getProperties();
-		}
-		
-		/**
-		 * returns the range string
-		 * 
-		 * @return
-		 */
-		public String getRange()
-		{
-			return range;
-		}
-
-		/**
-		 * Set the range string
-		 * 
-		 * @return
-		 */
-		public void setRange(String range)
-		{
-			this.range = range;
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see org.chefproject.core.Resource#toXml(org.w3c.dom.Document, java.util.Stack)
-		 */
-		public Element toXml(Document doc, Stack stack)
-		{
-			return announcementMesssage.toXml(doc, stack);
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see java.lang.Comparable#compareTo(java.lang.Object)
-		 */
-		public int compareTo(Object arg0)
-		{
-			return announcementMesssage.compareTo(arg0);
-		}
-
-		/**
-		 * Returns true if the message is editable.
-		 */
-		public boolean isEditable()
-		{
-			return editable;
-		}
-
-		/**
-		 * Returns the string that is used to show the channel to the user.
-		 */
-		public String getChannelDisplayName()
-		{
-			return channelDisplayName;
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see org.chefproject.core.AnnouncementMessage#getAnnouncementHeader()
-		 */
-		public AnnouncementMessageHeader getAnnouncementHeader()
-		{
-			return announcementMesssage.getAnnouncementHeader();
-		}
-		
-		public String getAuthorDisplayName()
-		{
-			return authorDisplayName;
-		}
-
-		/**
-		 * Constructs a list of wrapped/decorated AnnouncementMessages when given a list of unwrapped/undecorated AnnouncementMessages.
-		 * 
-		 * @param messages
-		 *        The list of messages.
-		 * @param currentChannel
-		 *        The current channel being processed.
-		 * @param hostingChannel
-		 *        The default channel of the page into which this list is being merged.
-		 * @param maxNumberOfDaysInThePast
-		 *        Messages over this limit will not be included in the list.
-		 * @param maxCharsPerAnnouncement
-		 *        The maximum number of characters that will be returned when getTrimmedBody() is called.
-		 */
-		static private List<AnnouncementWrapper> wrapList(List<AnnouncementMessage> messages, AnnouncementChannel currentChannel, AnnouncementChannel hostingChannel,
-				AnnouncementActionState.DisplayOptions options)
-		{
-			// 365 is the default in DisplayOptions
-			int maxNumberOfDaysInThePast = (options != null) ? options.getNumberOfDaysInThePast() : 365;
-			 
-
-			List<AnnouncementWrapper> messageList = new ArrayList<>();
-
-			Iterator<AnnouncementMessage> it = messages.iterator();
-
-			while (it.hasNext())
-			{
-				AnnouncementMessage message = it.next();
-
-				// See if the message falls within the filter window.
-				// note: the default of enforceNumberOfDaysInThePastLimit is false
-				if (options != null && options.isEnforceNumberOfDaysInThePastLimit() && !isMessageWithinLastNDays(message, maxNumberOfDaysInThePast))
-				{
-					continue;
-				}
-
-				messageList.add(new AnnouncementWrapper(message, currentChannel, hostingChannel, options,
-						getAnnouncementRange(message)));
-			}
-
-			return messageList;
-		}
-
-	}
-
-	/**
 	 * get announcement range information
 	 */
-	private static String getAnnouncementRange(AnnouncementMessage a)
+	static String getAnnouncementRange(AnnouncementMessage a)
 	{
 		if (a.getProperties().getProperty(ResourceProperties.PROP_PUBVIEW) != null
 				&& a.getProperties().getProperty(ResourceProperties.PROP_PUBVIEW).equals(Boolean.TRUE.toString()))
@@ -849,24 +497,6 @@ public class AnnouncementAction extends PagedResourceActionII
 				// No site available.
 			}
 			return allGroupString;
-		}
-	}
-
-	/**
-	 * Enable or disable the observer
-	 * 
-	 * @param enable
-	 *        if true, the observer is enabled, if false, it is disabled
-	 */
-	protected void enableObserver(SessionState sstate, boolean enable)
-	{
-		if (enable)
-		{
-			enableObservers(sstate);
-		}
-		else
-		{
-			disableObservers(sstate);
 		}
 	}
 
@@ -1101,7 +731,7 @@ public class AnnouncementAction extends PagedResourceActionII
 							// If any message is allowed to be removed
 							// Also check to see if the AnnouncementWrapper object thinks
 							// that this message is editable from the default site.
-							if (message.editable && channel.allowRemoveMessage(message))
+							if (message.isEditable() && channel.allowRemoveMessage(message))
 							{
 								menu_delete = true;
 								break;
@@ -1227,6 +857,11 @@ public class AnnouncementAction extends PagedResourceActionII
 				activeTab = ActiveTab.DELETE;
 				break;
 		}
+		
+		// So, when reload after save/cancel permission actions, default page will be shown
+		if(MODE_PERMISSIONS.equals(statusName)) {
+			state.setStatus(LIST_STATUS);
+		}
 
 		// "View" announcement menu bar has already been built by this point (buildShowMetadataContext)
 		if( !ActiveTab.VIEW.equals(activeTab)) {
@@ -1294,10 +929,6 @@ public class AnnouncementAction extends PagedResourceActionII
 		{
 			context.put("view", sstate.getAttribute(STATE_SELECTED_VIEW));
 		}
-
-		// inform the observing courier that we just updated the page...
-		// if there are pending requests to do so they can be cleared
-		justDelivered(sstate);
 
 		return template;
 
@@ -1421,6 +1052,11 @@ public class AnnouncementAction extends PagedResourceActionII
 		{
 			template = buildReorderContext(portlet, context, rundata, state, sstate);
 		}
+		else if (statusName.equals(MODE_PERMISSIONS))
+		{
+			template = build_permissions_context(portlet, context, rundata, sstate);
+		}
+		
 		return template;
 
 	} // getTemplate
@@ -1444,7 +1080,7 @@ public class AnnouncementAction extends PagedResourceActionII
 		if ( ! aliasList.isEmpty() )
 		{
 			String alias[] = ((Alias)aliasList.get(0)).getId().split("\\.");
-			context.put("rssAlias", FormattedText.escapeHtmlFormattedTextSupressNewlines(alias[0]) );
+			context.put("rssAlias", formattedText.escapeHtmlFormattedTextSupressNewlines(alias[0]) );
 		}
 
 		// Add Announcement RSS URL
@@ -1488,11 +1124,6 @@ public class AnnouncementAction extends PagedResourceActionII
 	{
 		return SiteService.allowUpdateSite(ToolManager.getCurrentPlacement().getContext()) && !isOnWorkspaceTab();
 	}
-
-	/*
-	 * what i've done to make this tool automaticlly updated includes some corresponding imports in buildMail, tell observer just the page is just refreshed in the do() functions related to show the list, enable the obeserver in other do() functions
-	 * related to not show the list, disable the obeserver in the do(), define the session sstate object, and protlet. add initState add updateObservationOfChannel() add state attribute STATE_CHANNEL_REF
-	 */
 
 	/**
 	 * Returns true if it is okay to show the merge button in the menu.
@@ -1582,8 +1213,10 @@ public class AnnouncementAction extends PagedResourceActionII
 										channelIdStrArray.add(channeIDD);
 									}
 								}
+							} catch(IdUnusedException e) {
+								log.debug("No announcement channel for ID: {}", channeIDD);
 							} catch(Exception e) {
-								log.warn(e.getMessage());
+								log.warn("ChannelID: {}", channeIDD, e);
 							}
 						}
 						if (channelIdStrArray.size()>0) {
@@ -1896,7 +1529,7 @@ public class AnnouncementAction extends PagedResourceActionII
 		}
 
 		boolean b = m_securityService.unlock(AnnouncementService.SECURE_ANNC_READ_DRAFT, msg.getReference())
-							 || m_securityService.unlock(UPDATE_PERMISSIONS, "/site/"+ siteId);
+							 || m_securityService.unlock(SiteService.SECURE_UPDATE_SITE, "/site/"+ siteId);
 		if (roleswap==null)
 		{
 			b = b || msg.getHeader().getFrom().getId().equals(SessionManager.getCurrentSessionUserId()) ; 
@@ -2171,13 +1804,12 @@ public class AnnouncementAction extends PagedResourceActionII
 			else
 				context.put("pubview", Boolean.FALSE);
 
-			// Set inital release date to today
+			// TODO: Track any usage of these Time objects and convert to java.time
+			// Set initial release date to today
 			final Time currentTime = TimeService.newTime();
 			context.put(AnnouncementService.RELEASE_DATE, currentTime);
 			
-			// Set inital retract date to 60 days from now
-			final long futureTimeLong = currentTime.getTime() + MILLISECONDS_IN_DAY * FUTURE_DAYS;			
-			final Time futureTime = TimeService.newTime(futureTimeLong);
+			final Time futureTime = defaultRetractTime();
 
 			context.put(AnnouncementService.RETRACT_DATE, futureTime);
 			
@@ -2232,15 +1864,13 @@ public class AnnouncementAction extends PagedResourceActionII
 			try 
 			{
 				retractDate = edit.getProperties().getTimeProperty(AnnouncementService.RETRACT_DATE);
-				
+
 				context.put("useRetractDate", Boolean.valueOf(true));
 				specify = true;
 			} 
 			catch (Exception e) 
 			{
-				// Set inital retract date to approx 2 months from today
-				final long futureTimeLong = TimeService.newTime().getTime() + MILLISECONDS_IN_DAY * FUTURE_DAYS;			
-				retractDate = TimeService.newTime(futureTimeLong);
+				retractDate = defaultRetractTime();
 			}
 
 			context.put(AnnouncementService.RETRACT_DATE, retractDate);
@@ -2307,17 +1937,14 @@ public class AnnouncementAction extends PagedResourceActionII
 				}
 				else
 				{
-					// Set inital retract date to 60 days from now				
-				final long futureTimeLong = TimeService.newTime().getTime() + MILLISECONDS_IN_DAY * FUTURE_DAYS;			
-				retractDate = TimeService.newTime(futureTimeLong);
+				retractDate = defaultRetractTime();
+
 				context.put("useRetractDate", Boolean.valueOf(false));
 				}
 			} 
 			catch (Exception e) 
 			{
-				// Set inital retract date to approx 2 months from today
-				final long futureTimeLong = TimeService.newTime().getTime() + MILLISECONDS_IN_DAY * FUTURE_DAYS;			
-				retractDate = TimeService.newTime(futureTimeLong);
+				retractDate = defaultRetractTime();
 			}
 
 			context.put(AnnouncementService.RETRACT_DATE, retractDate);
@@ -2364,6 +1991,27 @@ public class AnnouncementAction extends PagedResourceActionII
 		return template + "-revise";
 
 	} // buildReviseAnnouncementContext
+
+	/**
+	 * Calculate the default retract date from now.
+	 *
+	 * The duration in days is set in {@link #FUTURE_DAYS}.
+	 * @deprecated Migrate away from Time and use @link{defaultRetractDate}
+	 * @return a Time in the future when the message will be retracted.
+	 **/
+	@Deprecated
+	private Time defaultRetractTime() {
+		return TimeService.newTime(defaultRetractDate().toEpochMilli());
+	}
+
+	/** Calculate the default retract date from now.
+	 *
+	 * The duration in days is set in {@link #FUTURE_DAYS}.
+	 * @return an instant in the future when the message will be retracted.
+	 **/
+	private Instant defaultRetractDate() {
+		return Instant.now().plus(Duration.ofDays(FUTURE_DAYS));
+	}
 
 	/**
 	 * Build the context for viewing announcement content
@@ -2670,9 +2318,6 @@ public class AnnouncementAction extends PagedResourceActionII
 		state.setIsNewAnnouncement(false);
 		state.setStatus(VIEW_STATUS);
 
-		// disable auto-updates while in view mode
-		disableObservers(sstate);
-
 	} // doShowMetadata
 
 	/**
@@ -2738,9 +2383,6 @@ public class AnnouncementAction extends PagedResourceActionII
 
 		sstate.setAttribute(AnnouncementAction.SSTATE_PUBLICVIEW_VALUE, null);
 		sstate.setAttribute(AnnouncementAction.SSTATE_NOTI_VALUE, null);
-
-		// disable auto-updates while in view mode
-		disableObservers(sstate);
 
 	} // doNewannouncement
 
@@ -2823,7 +2465,7 @@ public class AnnouncementAction extends PagedResourceActionII
 				addAlert(sstate, rb.getString("java.alert.youneed"));
 			}
 			else if (body == null ||body.replaceAll("<br>", "").replaceAll("<br/>","").replaceAll("&nbsp;", "").replaceAll("&lt;br type=&quot;_moz&quot; /&gt;", "").trim().equals("")  || body.length() == 0 ||  
-					FormattedText.escapeHtml(body,false).equals("&lt;br type=&quot;_moz&quot; /&gt;"))
+					formattedText.escapeHtml(body,false).equals("&lt;br type=&quot;_moz&quot; /&gt;"))
 			{
 				body="";
 				addAlert(sstate, rb.getString("java.alert.youfill"));
@@ -2982,9 +2624,6 @@ public class AnnouncementAction extends PagedResourceActionII
 		{
 			state.setIsListVM(false);
 			state.setStatus("stayAtRevise");
-
-			// disable auto-updates while in view mode
-			disableObservers(sstate);
 		}
 		else
 		{
@@ -3199,9 +2838,6 @@ public class AnnouncementAction extends PagedResourceActionII
 
 					state.setIsListVM(false);
 					state.setStatus("stayAtRevise");
-
-					// disable auto-updates while in view mode
-					disableObservers(sstate);
 					return;
 				}
 				catch (Exception ignore)
@@ -3231,23 +2867,21 @@ public class AnnouncementAction extends PagedResourceActionII
 				if (!state.getIsNewAnnouncement())
 				{
 					state.setEdit(null);
-				} // if-else
-				
-				// for event tracking
-				if (titleChanged)
-				{
-					// title changed
-					eventTrackingService.post(eventTrackingService.newEvent(AnnouncementService.EVENT_ANNC_UPDATE_TITLE, msg.getReference(), true));
-				}
-				if (accessChanged)
-				{
-					// access changed
-					eventTrackingService.post(eventTrackingService.newEvent(AnnouncementService.EVENT_ANNC_UPDATE_ACCESS, msg.getReference(), true));
-				}
-				if (availabilityChanged)
-				{
-					// availablity changed
-					eventTrackingService.post(eventTrackingService.newEvent(AnnouncementService.EVENT_ANNC_UPDATE_AVAILABILITY, msg.getReference(), true));
+					if (titleChanged)
+					{
+						// title changed
+						eventTrackingService.post(eventTrackingService.newEvent(AnnouncementService.EVENT_ANNC_UPDATE_TITLE, msg.getReference(), true));
+					}
+					if (accessChanged)
+					{
+						// access changed
+						eventTrackingService.post(eventTrackingService.newEvent(AnnouncementService.EVENT_ANNC_UPDATE_ACCESS, msg.getReference(), true));
+					}
+					if (availabilityChanged)
+					{
+						// availablity changed
+						eventTrackingService.post(eventTrackingService.newEvent(AnnouncementService.EVENT_ANNC_UPDATE_AVAILABILITY, msg.getReference(), true));
+					}
 				}
 			}
 			catch (IdUnusedException e)
@@ -3272,9 +2906,6 @@ public class AnnouncementAction extends PagedResourceActionII
 			//state.setCurrentSortAsc(Boolean.TRUE.booleanValue());
 			sstate.setAttribute(STATE_CURRENT_SORTED_BY, getCurrentOrder());
 			sstate.setAttribute(STATE_CURRENT_SORT_ASC, state.getCurrentSortAsc());
-
-			// make sure auto-updates are enabled
-			enableObservers(sstate);
 		}
 	} // postOrSaveDraft
 	
@@ -3320,9 +2951,6 @@ public class AnnouncementAction extends PagedResourceActionII
 
 		state.setStatus("backToReviseAnnouncement");
 
-		// disable auto-updates while in view mode
-		disableObservers(sstate);
-
 	} // doPreviewrevise
 
 	/**
@@ -3357,9 +2985,6 @@ public class AnnouncementAction extends PagedResourceActionII
 					//AnnouncementMessageEdit edit = channel.editAnnouncementMessage(message.getId());
 					//channel.removeMessage(edit); 
 					channel.removeAnnouncementMessage(message.getId());
-
-					// make sure auto-updates are enabled
-					enableObservers(sstate);
 				}
 				else
 				{
@@ -3437,17 +3062,11 @@ public class AnnouncementAction extends PagedResourceActionII
 				state.setDeleteMessages(v);
 				state.setIsListVM(false);
 				state.setStatus(DELETE_ANNOUNCEMENT_STATUS);
-
-				// disable auto-updates while in view mode
-				disableObservers(sstate);
 			}
 			else
 			{
 				state.setIsListVM(true);
 				state.setStatus("noSelectedForDeletion");
-
-				// make sure auto-updates are enabled
-				enableObservers(sstate);
 			}
 
 		}
@@ -3489,9 +3108,6 @@ public class AnnouncementAction extends PagedResourceActionII
 				state.setStatus(DELETE_ANNOUNCEMENT_STATUS);
 			}
 		}
-
-		// disable auto-updates while in confirm mode
-		disableObservers(sstate);
 
 	} // doDeleteannouncement	
 
@@ -3574,9 +3190,6 @@ public class AnnouncementAction extends PagedResourceActionII
 			// ReferenceVector attachmentList = (message.getHeader()).getAttachments();
 			List attachmentList = (edit.getHeader()).getAttachments();
 			state.setAttachments(attachmentList);
-
-			// disable auto-updates while in confirm mode
-			disableObservers(sstate);
 		}
 		catch (IdUnusedException e)
 		{
@@ -3627,9 +3240,6 @@ public class AnnouncementAction extends PagedResourceActionII
 					state.setIsListVM(true);
 					state.setStatus("moreThanOneSelectedForRevise");
 
-					// make sure auto-updates are enabled
-					enableObservers(sstate);
-
 				}
 				else if (messageReferences.length == 1)
 				{
@@ -3678,9 +3288,6 @@ public class AnnouncementAction extends PagedResourceActionII
 						addAlert(sstate, rb.getString("java.alert.thisis"));
 						state.setIsListVM(false);
 						state.setStatus(VIEW_STATUS);
-
-						// make sure auto-updates are enabled
-						disableObservers(sstate);
 					}
 				}
 			}
@@ -3688,9 +3295,6 @@ public class AnnouncementAction extends PagedResourceActionII
 			{
 				state.setIsListVM(true);
 				state.setStatus(NOT_SELECTED_FOR_REVISE_STATUS);
-
-				// make sure auto-updates are enabled
-				enableObservers(sstate);
 			}
 		}
 		// if the user is viewing a certain announcement already
@@ -3738,9 +3342,6 @@ public class AnnouncementAction extends PagedResourceActionII
 				addAlert(sstate, rb.getString("java.alert.thisis"));
 				state.setIsListVM(false);
 				state.setStatus(VIEW_STATUS);
-
-				// disable auto-updates while in view mode
-				disableObservers(sstate);
 			}
 		}
 
@@ -3768,9 +3369,6 @@ public class AnnouncementAction extends PagedResourceActionII
 		{
 			state.setStatus("revisePreviw");
 		} // if-else
-
-		// disable auto-updates while in view mode
-		disableObservers(sstate);
 
 	} // doRevisepreview
 
@@ -3831,9 +3429,6 @@ public class AnnouncementAction extends PagedResourceActionII
 		// we are done with customization... back to the main (list) mode
 		sstate.removeAttribute(STATE_MODE);
 
-		// re-enable auto-updates when going back to list mode
-		enableObservers(sstate);
-		
 		try
 		{
 			if (state.getEdit() != null)
@@ -3855,9 +3450,6 @@ public class AnnouncementAction extends PagedResourceActionII
 			if (log.isDebugEnabled()) log.debug("{}doCancel()", this, e);
 		}
 
-		// make sure auto-updates are enabled
-		enableObservers(sstate);
-
 	} // doCancel
 
 	/**
@@ -3877,9 +3469,6 @@ public class AnnouncementAction extends PagedResourceActionII
 		state.setSelectedAttachments(null);
 		state.setDeleteMessages(null);
 		state.setStatus(CANCEL_STATUS);
-
-		// make sure auto-updates are enabled
-		enableObservers(sstate);
 
 	} // doLinkcancel
 
@@ -3991,10 +3580,6 @@ public class AnnouncementAction extends PagedResourceActionII
 	} // doSortbyfor
 
 	// ********* ending for sorting *********
-	/*
-	 * what i've done to make this tool automaticlly updated includes some corresponding imports in buildMail, tell observer just the page is just refreshed in the do() functions related to show the list, enable the obeserver in other do() functions
-	 * related to not show the list, disable the obeserver in the do(), define the session sstate object, and protlet. add initState add updateObservationOfChannel() add state attribute STATE_CHANNEL_REF
-	 */
 
 	/**
 	 * Populate the state object, if needed.
@@ -4051,7 +3636,6 @@ public class AnnouncementAction extends PagedResourceActionII
 			state.setAttribute(STATE_SELECTED_VIEW, VIEW_MODE_ALL);
 		}
 
-		// setup the observer to notify our main panel
 		if (state.getAttribute(STATE_INITED) == null)
 		{
 			state.setAttribute(STATE_INITED, STATE_INITED);
@@ -4149,77 +3733,18 @@ public class AnnouncementAction extends PagedResourceActionII
 	} // initState
 
 	/**
-	 * Setup our observer to be watching for change events for our channel.
-	 */
-	private void updateObservationOfChannel(MergedList mergedAnnouncementList, RunData runData, SessionState state,
-			AnnouncementActionState annState)
-	{
-		// String peid = ((JetspeedRunData) runData).getJs_peid();
-		//		
-		// ObservingCourier observer =
-		// (ObservingCourier) state.getAttribute(STATE_OBSERVER);
-		//
-		// addMergedAnnouncementsToObserver(mergedAnnouncementList, annState, observer);
-		//
-		// // the delivery location for this tool
-		// String deliveryId = clientWindowId(state, peid);
-		// observer.setDeliveryId(deliveryId);
-
-	} // updateObservationOfChannel
-
-	/**
 	 * Fire up the permissions editor
 	 */
-	public void doPermissions(RunData data, Context context)
+	public void doPermissions(RunData runData, Context context)
 	{
-		// get into helper mode with this helper tool
-		startHelper(data.getRequest(), "sakai.permissions.helper");
+		AnnouncementActionState state = (AnnouncementActionState) getState(context, runData, AnnouncementActionState.class);
+		String peid = ((JetspeedRunData) runData).getJs_peid();
+		SessionState sstate = ((JetspeedRunData) runData).getPortletSessionState(peid);
 
-		// setup the parameters for the helper
-		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
-		AnnouncementActionState stateObj = (AnnouncementActionState) getState(context, data, AnnouncementActionState.class);
+		state.setStatus(MODE_PERMISSIONS);
 
-		String channelRefStr = stateObj.getChannelId();
-		Reference channelRef = EntityManager.newReference(channelRefStr);
-		
-		/* 
-		   SAK-19526
-		   Setting the site reference for the permission target ref only makes sense for a site
-		   not for a channel reference like '/announcement/channel/!site/motd' 
-		*/
-		if (SiteService.siteExists(channelRef.getContext())) {
-			String siteRef = SiteService.siteReference(channelRef.getContext());
-	
-			// setup for editing the permissions of the site for this tool, using the roles of this site, too
-			state.setAttribute(PermissionsHelper.TARGET_REF, siteRef);
-			// ... with this description
-			state.setAttribute(PermissionsHelper.DESCRIPTION, rb.getString("java.set")
-				+ SiteService.getSiteDisplay(channelRef.getContext()));
-		} else {
-			// setup for editing the permissions of the site for this tool, using the roles of this site, too
-			state.setAttribute(PermissionsHelper.TARGET_REF, channelRefStr);
-			// ... with this description
-			state.setAttribute(PermissionsHelper.DESCRIPTION, rb.getString("java.set") + channelRefStr);
-		}
-		// ... showing only locks that are prpefixed with this
-		state.setAttribute(PermissionsHelper.PREFIX, "annc.");
-
-		// load the permissions.properties file
-		ResourceLoader pRb = new ResourceLoader("permissions");
-		HashMap<String, String> pRbValues = new HashMap<String, String>();
-		for (Iterator iterator = pRb.entrySet().iterator(); iterator.hasNext();)
-		{
-			Map.Entry<String, String> entry= (Map.Entry<String, String>)iterator.next();
-			pRbValues.put(entry.getKey(), entry.getValue());
-		//String key = (String) iKeys.next();
-		//pRbValues.put(key, (String) pRb.get(key));
-
-		}
-		state.setAttribute("permissionDescriptions", pRbValues);
-		String groupAware = ToolManager.getCurrentTool().getRegisteredConfig().getProperty("groupAware");
-		state.setAttribute("groupAware", groupAware != null?Boolean.valueOf(groupAware):Boolean.FALSE);
-		state.removeAttribute("menu"); //Menu not required in the permission view
-		
+		sstate.setAttribute(STATE_TOOL_KEY, "annc");
+		sstate.setAttribute(STATE_BUNDLE_KEY, "announcement");
 	}
 
 	/**
@@ -4236,9 +3761,6 @@ public class AnnouncementAction extends PagedResourceActionII
 		// if we didn't end up in options mode, bail out
 		if (!MODE_OPTIONS.equals(sstate.getAttribute(STATE_MODE))) return;
 
-		// Disable the observer
-		enableObserver(sstate, false);
-
 		state.setStatus(MERGE_STATUS);
 	} // doMerge
 	
@@ -4250,14 +3772,6 @@ public class AnnouncementAction extends PagedResourceActionII
 		AnnouncementActionState state = (AnnouncementActionState) getState(context, runData, AnnouncementActionState.class);
 		String peid = ((JetspeedRunData) runData).getJs_peid();
 		SessionState sstate = ((JetspeedRunData) runData).getPortletSessionState(peid);
-
-		//doOptions(runData, context);
-
-		// if we didn't end up in options mode, bail out
-		//if (!MODE_OPTIONS.equals(sstate.getAttribute(STATE_MODE))) return;
-
-		// Disable the observer
-		//enableObserver(sstate, false);
 
 		state.setStatus(REORDER_STATUS);
 	} // doMerge
@@ -4338,11 +3852,6 @@ public class AnnouncementAction extends PagedResourceActionII
 
 		// commit the change
 		saveOptions();
-
-		updateObservationOfChannel(mergedChannelList, runData, sstate, state);
-
-		// Turn the observer back on.
-		enableObserver(sstate, true);
 
 		state.setStatus(null);
 
@@ -4485,7 +3994,7 @@ public class AnnouncementAction extends PagedResourceActionII
 			
 			// SAK-17786 Check for XSS
 			StringBuilder alertMsg = new StringBuilder();
-			alias = FormattedText.processFormattedText(alias, alertMsg);
+			alias = formattedText.processFormattedText(alias, alertMsg);
 			if (alertMsg.length() > 0) 
 			{
 				addAlert(sstate, alertMsg.toString());
@@ -4528,11 +4037,6 @@ public class AnnouncementAction extends PagedResourceActionII
 
 		// commit the change
 		saveOptions();
-
-		// Turn the observer back on.
-		enableObserver(sstate, true);
-
-		//state.setStatus(null);
 
 		sstate.removeAttribute(STATE_MODE);
 		
@@ -4617,7 +4121,7 @@ public class AnnouncementAction extends PagedResourceActionII
 		StringBuilder alertMsg = new StringBuilder();
 		try
 		{
-			String text = FormattedText.processFormattedText(strFromBrowser, alertMsg);
+			String text = formattedText.processFormattedText(strFromBrowser, alertMsg);
 			if (alertMsg.length() > 0) addAlert(state, alertMsg.toString());
 			return text;
 		}

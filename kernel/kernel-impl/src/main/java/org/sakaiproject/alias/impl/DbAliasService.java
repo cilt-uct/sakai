@@ -30,8 +30,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.Vector;
 
-import lombok.extern.slf4j.Slf4j;
-
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.alias.api.Alias;
 import org.sakaiproject.alias.api.AliasEdit;
 import org.sakaiproject.db.api.SqlReader;
@@ -42,7 +41,10 @@ import org.sakaiproject.time.api.Time;
 import org.sakaiproject.util.BaseDbFlatStorage;
 import org.sakaiproject.util.BaseDbSingleStorage;
 import org.sakaiproject.util.SingleStorageUser;
+import org.sakaiproject.util.StorageUtils;
 import org.sakaiproject.util.StringUtil;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * <p>
@@ -453,7 +455,7 @@ public abstract class DbAliasService extends BaseAliasService
 			}
 
 			Object[] fields = new Object[2];
-			fields[0] = "%" + criteria.toUpperCase() + "%";
+			fields[0] = "%" + StorageUtils.escapeSqlLike(criteria.toUpperCase()) + "%";
 			fields[1] = fields[0];
 			List all = super.getSelectedResources("UPPER(ALIAS_ID) LIKE ? OR UPPER(TARGET) LIKE ?", fields, first,
 					last);
@@ -483,7 +485,7 @@ public abstract class DbAliasService extends BaseAliasService
 			}
 
 			Object[] fields = new Object[2];
-			fields[0] = "%" + criteria.toUpperCase() + "%";
+			fields[0] = "%" + StorageUtils.escapeSqlLike(criteria.toUpperCase()) + "%";
 			fields[1] = fields[0];
 			int rv = super.countSelectedResources("UPPER(ALIAS_ID) LIKE ? OR UPPER(TARGET) LIKE ?", fields);
 
@@ -538,8 +540,8 @@ public abstract class DbAliasService extends BaseAliasService
 			{
 				rv[1] = edit.getTarget();
 				ResourceProperties props = edit.getProperties();
-				rv[2] = StringUtil.trimToZero(((BaseAliasEdit) edit).m_createdUserId);
-				rv[3] = StringUtil.trimToZero(((BaseAliasEdit) edit).m_lastModifiedUserId);
+				rv[2] = StringUtils.trimToEmpty(((BaseAliasEdit) edit).m_createdUserId);
+				rv[3] = StringUtils.trimToEmpty(((BaseAliasEdit) edit).m_lastModifiedUserId);
 				rv[4] = edit.getCreatedTime();
 				rv[5] = edit.getModifiedTime();
 			}

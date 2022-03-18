@@ -31,17 +31,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.SessionScoped;
 import javax.faces.event.ActionEvent;
 import javax.faces.model.SelectItem;
 
 import lombok.extern.slf4j.Slf4j;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.entity.api.ResourceProperties;
-import org.sakaiproject.jsf.model.PhaseAware;
+import org.sakaiproject.jsf2.model.PhaseAware;
 import org.sakaiproject.section.api.coursemanagement.CourseSection;
 import org.sakaiproject.section.api.coursemanagement.EnrollmentRecord;
 import org.sakaiproject.site.api.Site;
@@ -65,14 +67,11 @@ import org.sakaiproject.tool.assessment.ui.listener.evaluation.TotalScoreListene
 import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 import org.sakaiproject.tool.assessment.util.AttachmentUtil;
 
-/**
- * <p>Description: class form for evaluating total scores</p>
- *
- */
+/* For evaluation: Total Scores backing bean. */
 @Slf4j
-public class TotalScoresBean
-  implements Serializable, PhaseAware
-{
+@ManagedBean(name="totalScores")
+@SessionScoped
+public class TotalScoresBean implements Serializable, PhaseAware {
   private String assessmentId;
   private String publishedId;
 

@@ -162,6 +162,8 @@ public class ResourceLoader extends DummyMap implements InternationalizedMessage
 	 * 
 	 * @param userId user's internal sakai id (e.g. user.getId())
 	 * @param name  default ResourceBundle base filename
+	 *
+	 * @deprecated
 	 */
 	public ResourceLoader(String userId, String name)
 	{
@@ -340,7 +342,7 @@ public class ResourceLoader extends DummyMap implements InternationalizedMessage
 	    }
 
 	    if (loc == null) {
-	        log.info("getLocale() Locale not found in preferences or session, returning default");
+	        log.debug("getLocale() Locale not found in preferences or session, returning default");
 	        loc = Locale.getDefault();
 	    } 
 	    	
@@ -517,26 +519,17 @@ public class ResourceLoader extends DummyMap implements InternationalizedMessage
 	    }
 	    catch (MissingResourceException e)
 	    {
-	        if (log.isWarnEnabled()) {
-	            log.warn("bundle \'"+baseName +"\'  missing key: \'" + key 
-	                    + "\'  from: " + e.getStackTrace()[3] ); // 3-deep gets us out of ResourceLoader
-	        }
+	        log.warn("bundle \'{}\'  missing key: \'{}\'  from: ", baseName, key, e);
 	        return "[missing key (mre): " + baseName + " " + key + "]";
 	    }
 	    catch (NullPointerException e)
 	    {
-	        if (log.isWarnEnabled()) {
-	            log.warn("bundle \'"+baseName +"\'  null pointer exception: \'" + key 
-	                    + "\'  from: " + e.getStackTrace()[3] ); // 3-deep gets us out of ResourceLoader
-	        }
+	        log.warn("bundle \'{}\'  null pointer exception: \'{}\'  from: ", baseName, key, e);
 	        return "[missing key (npe): " + baseName + " " + key + "]";			
 	    }
 	    catch (ClassCastException e)
 	    {
-	        if (log.isWarnEnabled()) {
-	            log.warn("bundle \'"+baseName +"\'  class cast exception: \'" + key 
-	                    + "\'  from: " + e.getStackTrace()[3] ); // 3-deep gets us out of ResourceLoader
-	        }
+	        log.warn("bundle \'{}\'  class cast exception: \'{}\'  from: ", baseName, key, e);
 	        return "[missing key (clc): " + baseName + " " + key + "]";						
 	    }
 	}
@@ -684,20 +677,17 @@ public class ResourceLoader extends DummyMap implements InternationalizedMessage
 			bundle = loadBundle(context, loc);
 		}
 
-        if (ServerConfigurationService.getBoolean("load.bundles.from.db", false)) {
+		if (!ComponentManager.isTestingMode()) {
+			Map<String, String> bundleFromDbMap = getMessageBundleService().getBundle(baseName, context, loc);
+			if (!bundleFromDbMap.isEmpty()) {
+				// skip if there are no modified bundle data
+				Map<String, Object> bundleMap = getBundleAsMap(bundle);
+				bundleMap.putAll(bundleFromDbMap);
+				bundle = new MapResourceBundle(bundleMap, baseName, loc);
 
-            Map<String, String> bundleFromDbMap = getMessageBundleService().getBundle(baseName, context, loc);
-            if (!bundleFromDbMap.isEmpty()) {
-                // skip if there are no modified bundle data
-                Map<String, Object> bundleMap = getBundleAsMap(bundle);
-                bundleMap.putAll(bundleFromDbMap);
-                bundle = new MapResourceBundle(bundleMap, baseName, loc);
-            }
-            if (log.isDebugEnabled()) {
-                log.debug("Bundle from db added " + bundleFromDbMap.size() +
-                        " properties to " + baseName + "/" + context + "/" + loc.toString());
-            }
-        }
+				log.debug("Bundle from db added {} properties to [{}|{}|{}]", bundleFromDbMap.size(), baseName, context, loc);
+			}
+		}
 		return bundle;
 	}
 
@@ -743,16 +733,11 @@ public class ResourceLoader extends DummyMap implements InternationalizedMessage
 			// IGNORE FAILURE
 		}
 
-		if (ServerConfigurationService.getBoolean("load.bundles.from.db", false)) {
-		    // typically bundles with an empty context are from shared
-		    // and we are not adding bundles with an empty context to MessageBundleService
-	        if (StringUtils.isNotBlank(context)) {
-	            getMessageBundleService().saveOrUpdate(baseName, context, newBundle, loc);
-	            setBundle(loc, newBundle);
-	        }
-		} else {
-		    setBundle(loc, newBundle);
+		if (StringUtils.isNotBlank(context) && !ComponentManager.isTestingMode()) {
+			getMessageBundleService().saveOrUpdate(baseName, context, newBundle, loc);
 		}
+
+	    setBundle(loc, newBundle);
 		return newBundle;
 	}
 

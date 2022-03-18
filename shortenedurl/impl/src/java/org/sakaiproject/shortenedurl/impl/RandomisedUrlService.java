@@ -24,10 +24,9 @@ package org.sakaiproject.shortenedurl.impl;
 import java.net.URI;
 import java.net.URL;
 
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.RandomStringUtils;
-import org.apache.commons.lang.StringUtils;
-import org.hibernate.Query;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.hibernate.query.Query;
 import org.hibernate.type.StringType;
 import org.springframework.orm.hibernate4.HibernateCallback;
 import org.springframework.orm.hibernate4.support.HibernateDaoSupport;
@@ -38,6 +37,10 @@ import org.sakaiproject.memory.api.Cache;
 import org.sakaiproject.memory.api.MemoryService;
 import org.sakaiproject.shortenedurl.api.ShortenedUrlService;
 import org.sakaiproject.shortenedurl.model.RandomisedUrl;
+import org.springframework.orm.hibernate5.HibernateCallback;
+import org.springframework.orm.hibernate5.support.HibernateDaoSupport;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * An implementation of {@link org.sakaiproject.shortenedurl.api.ShortenedUrlService} to provide randomised URLs

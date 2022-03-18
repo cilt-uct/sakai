@@ -15,25 +15,27 @@
  */
 package org.sakaiproject.content.entityproviders;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.*;
-import java.net.URI;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
-import java.io.UnsupportedEncodingException;
-import java.net.URISyntaxException;
 
-import lombok.Getter;
-import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import javax.servlet.http.HttpServletResponse;
+
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.content.api.ContentCollection;
@@ -42,6 +44,7 @@ import org.sakaiproject.content.api.ContentHostingService;
 import org.sakaiproject.content.api.ContentResource;
 import org.sakaiproject.content.api.ResourceTypeRegistry;
 import org.sakaiproject.content.tool.ListItem;
+import org.sakaiproject.entitybroker.exception.EntityException;
 import org.sakaiproject.entity.api.EntityManager;
 import org.sakaiproject.entity.api.EntityPermissionException;
 import org.sakaiproject.entity.api.Reference;
@@ -68,20 +71,19 @@ import org.sakaiproject.site.api.ToolConfiguration;
 import org.sakaiproject.time.api.Time;
 import org.sakaiproject.time.cover.TimeService;
 import org.sakaiproject.tool.api.ToolManager;
-import org.sakaiproject.tool.api.Session;
-import org.sakaiproject.tool.cover.SessionManager;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserNotDefinedException;
 
-import java.util.Properties;
-import org.sakaiproject.site.api.SitePage;
-import org.sakaiproject.site.api.Site;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Entity provider for the Content / Resources tool
  */
 @Slf4j
+@Setter
 public class ContentEntityProvider extends AbstractEntityProvider implements EntityProvider, AutoRegisterEntityProvider, ActionsExecutable, Outputable, Describeable {
 
 	public final static String ENTITY_PREFIX = "content";
@@ -90,6 +92,13 @@ public class ContentEntityProvider extends AbstractEntityProvider implements Ent
 	private static final String STATE_RESOURCES_TYPE_REGISTRY = PREFIX + SYS + "type_registry";
 	private static final String PARAMETER_DEPTH = "depth";
 	private static final String PARAMETER_TIMESTAMP = "timestamp";
+
+	private ContentHostingService contentHostingService;
+	private SiteService siteService;
+	private ToolManager toolManager;
+	private SecurityService securityService;
+	private UserDirectoryService userDirectoryService;
+	private EntityManager entityManager;
 
 	@Override
 	public String getEntityPrefix() {
@@ -169,24 +178,17 @@ public class ContentEntityProvider extends AbstractEntityProvider implements Ent
 		// get siteId
 		String siteId = view.getPathSegment(2);
 
-
-		if(log.isDebugEnabled()) {
-			log.debug("Content for site: " + siteId);
-		}
+		log.debug("Content for site: {}", siteId);
 
 		// check siteId supplied
 		if (StringUtils.isBlank(siteId)) {
 			throw new IllegalArgumentException("siteId a must be set in order to get the resources for a site, via the URL /content/site/siteId");
 		}
-		
-		if (siteHasHiddenResourcesTool(siteId)) {
-		    return new ArrayList<ContentItem>();
-		}
 
 		// return the ListItem list for the site
 		return getSiteListItems(siteId);
-		
 	}
+
 	@EntityCustomAction(action="resources", viewKey=EntityView.VIEW_LIST)
 	public List<EntityContent> getResources(EntityView view, Map<String, Object> params)
 			throws EntityPermissionException {
@@ -244,6 +246,18 @@ public class ContentEntityProvider extends AbstractEntityProvider implements Ent
 			}
 		}
 		return resourceDetails;
+	}
+
+	@EntityCustomAction(action="htmlForRef", viewKey=EntityView.VIEW_SHOW)
+	public String getHtmlForRef(EntityView view, Map<String, Object> params) throws EntityPermissionException {
+
+		String ref = (String) params.get("ref");
+
+		if (StringUtils.isBlank(ref)) {
+			throw new EntityException("You need to supply the ref parameter.", null, HttpServletResponse.SC_BAD_REQUEST);
+		}
+
+		return contentHostingService.getHtmlForRef(ref).orElse("");
 	}
 
 	/**
@@ -738,32 +752,10 @@ public class ContentEntityProvider extends AbstractEntityProvider implements Ent
 		return items;
 	}
 	
-	
 	@Override
 	public String[] getHandledOutputFormats() {
-		return new String[] { Formats.XML, Formats.JSON};
+		return new String[] { Formats.XML, Formats.JSON, Formats.HTML};
 	}
-
-	@Setter
-	private ContentHostingService contentHostingService;
-
-	@Setter
-	private SiteService siteService;
-	
-	@Setter
-	private ToolManager toolManager;
-	
-	@Setter
-	private SecurityService securityService;
-	
-	@Setter
-	private UserDirectoryService userDirectoryService;
-	
-	@Setter
-	private EntityManager entityManager;
-	
-	
-
 	
 	/**
 	 * Simplified helper class to represent an individual content item
@@ -842,6 +834,4 @@ public class ContentEntityProvider extends AbstractEntityProvider implements Ent
 			return null;
 		}
 	}
-	
-	
 }

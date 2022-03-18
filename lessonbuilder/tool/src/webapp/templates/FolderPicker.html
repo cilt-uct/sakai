@@ -6,7 +6,7 @@
 		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 		<META HTTP-EQUIV="CACHE-CONTROL" CONTENT="NO-CACHE"/>
 		<script rsf:id="scr=portal-matter" type="text/javascript" language="JavaScript" src="/library/js/headscripts.js"></script>
-		<script type="text/javascript" src="$context/js/jquery-1.9.1.min.js"></script>
+		<script>includeLatestJQuery('FolderPicker.html');</script>
 		<script type="text/javascript" src="/library/editor/ckextraplugins/folder-listing/js/file-tree.js"></script>
 		<script type="text/javascript" src="/library/editor/ckextraplugins/folder-listing/js/folder-listing.js"></script>
 		<script type="text/javascript" src="/library/editor/ckextraplugins/folder-listing/js/get-available-sites.js"></script>
@@ -19,9 +19,8 @@
 	<body rsf:id="scr=sakai-body">
 		<div class="portletBody">
 			<div rsf:id="error-div" class="ui-widget">
-				<div class="messageError below-link-help">
-					<p><span class="ui-icon ui-icon-info" style="float: left; margin-right: .3em;"></span>
-					<span rsf:id="error"></span> </p>
+				<div class="sak-banner-error below-link-help">
+					<p><span rsf:id="error"></span></p>
 				</div>
 			</div>
 			<form action="#" rsf:id="folder-picker" id="folder-picker">

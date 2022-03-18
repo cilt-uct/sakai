@@ -1,6 +1,6 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h"%>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f"%>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai"%>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai"%>
 <%@ taglib uri="http://www.sakaiproject.org/samigo" prefix="samigo" %>
 
 <!DOCTYPE html
@@ -43,7 +43,7 @@ $Id: createNewEmail.jsp 18063 2006-11-09 00:00:17Z ktsao@stanford.edu $
 </h3>
 
 <p>
- <h:messages styleClass="messageSamigo" rendered="#{! empty facesContext.maximumSeverity}" layout="table"/></p>
+ <h:messages styleClass="sak-banner-error" rendered="#{! empty facesContext.maximumSeverity}" layout="table"/></p>
 <h:commandButton id="close" onclick="window.close();" onkeypress="window.close();"  value="#{evaluationMessages.close}"/>
 
 </div>	

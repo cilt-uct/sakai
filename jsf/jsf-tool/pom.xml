@@ -5,17 +5,12 @@
     <parent>
         <groupId>org.sakaiproject.jsf</groupId>
         <artifactId>jsf</artifactId>
-        <version>12.5</version>
+        <version>21-SNAPSHOT</version>
     </parent>
 
     <name>Sakai JSF Tool Servlet (jsf-tool)</name>
     <groupId>org.sakaiproject.jsf</groupId>
     <artifactId>jsf-tool</artifactId>
-    <organization>
-        <name>University of Michigan</name>
-        <url>http://sakaiproject.org/</url>
-    </organization>
-    <inceptionYear>2003</inceptionYear>
     <packaging>jar</packaging>
 
     <dependencies>
@@ -30,7 +25,6 @@
         <dependency>
             <groupId>javax.servlet</groupId>
             <artifactId>javax.servlet-api</artifactId>
-            <version>3.1.0</version>
             <scope>provided</scope>
         </dependency>
         <dependency>

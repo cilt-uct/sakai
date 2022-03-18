@@ -1,5 +1,5 @@
 .profile-popup {
-    background-color: #FFFFFF;
+    background-color: var(--sakai-background-color-1);
 
     a, a:hover {
         text-decoration: none;
@@ -24,21 +24,25 @@
 
     button {
         width: 100%;
-        border-radius: 0px;
         margin: 0px;
-        border: none;
+        @include sakai_primary_button();
+        border-radius: 0px !important;
     }
 
     .profile-popup-incoming-block {
         button {
             width: 50%;
         }
+        .profile-popup-ignore-button {
+          @include sakai_secondary_button();
+        }
     }
 }
 
+
 .qtip.profile-popup-qtip {
-    border: 0px #E0E0E0 solid !important;
-    background-color: #FFFFFF !important;
+    border: 0px var(--sakai-border-color) solid !important;
+    background-color: var(--sakai-background-color-1) !important;
     max-width: 310px;
     padding: 0px !important;
     .qtip-content {

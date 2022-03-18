@@ -7,17 +7,10 @@ ${includeLatestJQuery}
 <script type="text/javascript" src="/library/webjars/jquery-ui/1.12.1/jquery-ui.min.js"></script>
 <link type="text/css" href="/library/webjars/jquery-ui/1.12.1/jquery-ui.min.css" rel="stylesheet" media="screen" />
 
-	<!-- Tablesorter: required -->
-	<link rel="stylesheet" href="/basiclti-admin-tool/css/blue/style.css">
-	<script src="/basiclti-admin-tool/js/jquery.tablesorter.js"></script>
+    <!-- Tablesorter: required -->
+    <script type="text/javascript">includeWebjarLibrary('jquery.tablesorter/2.27.7/dist/css/theme.blue.min.css');</script>
+    <script type="text/javascript">includeWebjarLibrary('jquery.tablesorter');</script>
 
-	<!-- Tablesorter: pager optional -->
-	<link rel="stylesheet" href="/basiclti-admin-tool/addons/pager/jquery.tablesorter.pager.css">
-	<script src="/basiclti-admin-tool/addons/pager/jquery.tablesorter.pager.js"></script>
-
-	<!-- Tablesorter: search -->
-	<script src="/basiclti-admin-tool/js/jquery.tablesorter.widgets.js"></script>
-	
 	<script id="js">$(function(){
 
 	// **********************************
@@ -64,6 +57,7 @@ ${includeLatestJQuery}
 	// initialize the tablersorter for the system external tool table
 	$("#tools_system")
 		.tablesorter({
+            theme: 'blue',
 			widthFixed: true,
 			widgets: ['zebra', "filter"],
 			widgetOptions : { 
@@ -111,22 +105,21 @@ ${includeLatestJQuery}
 	<ul class="navIntraTool actionToolBar">
 		<li class="firstToolBarItem"><span class="current">$tlang.getString("tool.in.system")</span></li>
 		<li><span><a href="" title="$tlang.getString("tool.in.site")" onclick="location = '$sakai_ActionURL.setPanel("ToolSite")';return false;"> $tlang.getString("tool.in.site")</a></span></li>
-		#if ( $isAdmin)<li><span><a href="" title="$tlang.getString("deploy.in.system")" onclick="location = '$sakai_ActionURL.setPanel("DeploySystem")';return false;"> $tlang.getString("deploy.in.system")</a></span></li>#end
 	</ul>
-	#if ($messageSuccess)<div class="messageSuccess">$tlang.getString("gen.success") $validator.escapeHtml($messageSuccess)</div><div class="clear"></div>#end
-	#if ($alertMessage)<div class="alertMessage">$tlang.getString("gen.alert") $validator.escapeHtml($alertMessage)</div><div class="clear"></div>#end
-        #if ($configMessage)<div class="alertMessage">$tlang.getString("gen.alert") $validator.escapeHtml($configMessage)</div><div class="clear"></div>#end
-	#if ($isAdmin || $allowMaintainerAddSystemTool)<div align="right"><a href="" title="$tlang.getString("add.to.system")" onclick="location = '$sakai_ActionURL.setPanel("ToolInsert")';return false;"> $tlang.getString("add.to.system")</a></a></div>#end
+	#if ($messageSuccess)<div class="sak-banner-success">$tlang.getString("gen.success") $formattedText.escapeHtml($messageSuccess)</div>#end
+	#if ($alertMessage)<div class="sak-banner-error">$tlang.getString("gen.alert") $formattedText.escapeHtml($alertMessage)</div>#end
+        #if ($configMessage)<div class="sak-banner-error">$tlang.getString("gen.alert") $formattedText.escapeHtml($configMessage)</div>#end
+	#if ($isAdmin || $allowMaintainerAddSystemTool)<div align="right"><a href="" title="$tlang.getString("add.to.system")" onclick="location = '$sakai_ActionURL.setPanel("ToolInsert")';return false;"> $tlang.getString("add.to.system")</a>#if ($isAdmin )<br/><a href="" title="$tlang.getString("add.auto")" onclick="location = '$sakai_ActionURL.setPanel("AutoInsert")';return false;"> $tlang.getString("add.auto")</a>#end</div>#end
 	<br/>
 	#if ($!ltiTools && $ltiTools.size() > 0 )
 		$tlang.getString("tool.description.system")
 		<br/>
 		<div id="tools_system_pager" class="pager">
-			<img src="/basiclti-admin-tool/addons/pager/icons/first.png" class="first" alt="First" />
-			<img src="/basiclti-admin-tool/addons/pager/icons/prev.png" class="prev" alt="Prev" />
+			<img src="/basiclti-admin-tool/icons/first.png" class="first" alt="First" />
+			<img src="/basiclti-admin-tool/icons/prev.png" class="prev" alt="Prev" />
 			<span class="pagedisplay"></span> <!-- this can be any element, including an input -->
-			<img src="/basiclti-admin-tool/addons/pager/icons/next.png" class="next" alt="Next" />
-			<img src="/basiclti-admin-tool/addons/pager/icons/last.png" class="last" alt="Last" />
+			<img src="/basiclti-admin-tool/icons/next.png" class="next" alt="Next" />
+			<img src="/basiclti-admin-tool/icons/last.png" class="last" alt="Last" />
 			<select class="pagesize">
 				<option selected="selected" value="100">100</option>
 				<option value="200">200</option>
@@ -150,7 +143,7 @@ ${includeLatestJQuery}
             #foreach($tool in $ltiTools)
             	
 				<tr>
-	                <td headers="title"><a href="$sakai_ActionURL.setPanel("ToolView")&id=$tool.get("id")">$validator.escapeHtml($tool.get("title"))</td>
+	                <td headers="title"><a href="$sakai_ActionURL.setPanel("ToolView")&id=$tool.get("id")">$formattedText.escapeHtml($tool.get("title"))</td>
 	                <td headers="launch">
 						#set($launch="")
 						#set($launch=$tool.get("launch"))
@@ -167,8 +160,20 @@ ${includeLatestJQuery}
 	                #if ( $isAdmin || $allowMaintainerAddSystemTool) 
 		                <td headers="action">
 		                	#if ( $isAdmin || ($allowMaintainerAddSystemTool && $getContext == $tool.get("SITE_ID")))
-	                        	<a href="$sakai_ActionURL.setPanel("ToolEdit")&id=$tool.get("id")">$tlang.getString("gen.edit")</a> / 
-	                        	<a href="$sakai_ActionURL.setPanel("ToolDelete")&id=$tool.get("id")">$tlang.getString("gen.delete")</a>
+                                <ul style="list-style: none;">
+	                        	<li style="display:inline"><a href="$sakai_ActionURL.setPanel("ToolEdit")&id=$tool.get("id")">$tlang.getString("gen.edit")</a></li>
+	                        	<li style="display:inline"><span aria-hidden="true"> / </span> <a href="$sakai_ActionURL.setPanel("ToolDelete")&id=$tool.get("id")">$tlang.getString("gen.delete")</a> </li>
+                                #if ( $tool.get("lti_content_count") > 0 ) 
+                                <li style="display:inline"><span aria-hidden="true"> / </span> <a href="$sakai_ActionURL.setPanel("ToolTransfer")&id=$tool.get("id")">$tlang.getString("gen.transfer")</a></li>
+                                #end
+                                #set($privacy=0)
+                                #set($privacy=$tool.get("pl_privacy"))
+                                #set($lti13=0)
+                                #set($lti13=$tool.get("lti13"))
+                                #if ( $lti13 == 1 && $privacy == 1 )
+                                <li style="display:inline"><span aria-hidden="true"> / </span> <a href="$tool.get("privacy_url")" target="_blank">$tlang.getString("gen.privacy")</a></li>
+                                #end
+                                </ul>
 	                        #end
 		                </td>
 	                 #end

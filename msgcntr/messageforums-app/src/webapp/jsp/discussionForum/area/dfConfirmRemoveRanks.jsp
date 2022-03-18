@@ -2,7 +2,7 @@
                  javax.faces.el.*, org.sakaiproject.tool.messageforums.*"%>
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://sakaiproject.org/jsf/messageforums" prefix="mf" %>
 <jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
    <jsp:setProperty name="msgs" property="baseName" value="org.sakaiproject.api.app.messagecenter.bundle.Messages"/>
@@ -15,9 +15,9 @@
         <link rel="stylesheet" href="/messageforums-tool/css/forum_rank.css" type="text/css" />
     
         <h:form id="revise">
-            <script type="text/javascript" src="/library/js/fluid/1.5/MyInfusion.js"></script>
-            <script type="text/javascript" src="/messageforums-tool/js/forum_rank.js"></script>
-            <script type="text/javascript" src="/messageforums-tool/js/forum.js"></script>
+            <script src="/library/js/fluid/1.5/MyInfusion.js"></script>
+            <script src="/messageforums-tool/js/forum_rank.js"></script>
+            <script src="/messageforums-tool/js/forum.js"></script>
     
             <sakai:tool_bar_message value="#{msgs.delete_rank}" />
             <f:verbatim><div style="padding:1em 0;"></f:verbatim>

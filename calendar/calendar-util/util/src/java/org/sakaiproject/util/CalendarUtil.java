@@ -76,6 +76,7 @@ public class CalendarUtil
 	private Map<String, String> eventIconMap = new HashMap<String, String>();
 
 	public final static String NEW_ASSIGNMENT_DUEDATE_CALENDAR_ASSIGNMENT_ID = "new_assignment_duedate_calendar_assignment_id";
+	public final static String NEW_ASSIGNMENT_OPEN_DATE_ANNOUNCED = "new_assignment_open_date_announced";
 	/**
 	* Construct.
 	*/
@@ -594,7 +595,7 @@ public class CalendarUtil
 	static String getLocalAMString(DateTime now) {
 		//we need an AM date
 		DateTime dt = now.withTimeAtStartOfDay();
-		Locale locale= new ResourceLoader("calendar").getLocale();
+		Locale locale = new ResourceLoader().getLocale();
 		DateTimeFormatter df = new DateTimeFormatterBuilder().appendHalfdayOfDayText().toFormatter().withLocale(locale);
 		return df.print(dt);
 	}
@@ -611,7 +612,7 @@ public class CalendarUtil
 	static String getLocalPMString(DateTime now) {
 		//we need an PM date
 		DateTime dt = now.withTimeAtStartOfDay().plusHours(14);
-		Locale locale = new ResourceLoader("calendar").getLocale();
+		Locale locale = new ResourceLoader().getLocale();
 		DateTimeFormatter df = new DateTimeFormatterBuilder().appendHalfdayOfDayText().toFormatter().withLocale(locale);
 		return df.print(dt);
 	}

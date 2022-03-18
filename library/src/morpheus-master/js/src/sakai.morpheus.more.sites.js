@@ -56,6 +56,7 @@ var dhtml_view_sites = function(){
     
     if (modal.hasClass('outscreen') ) {
       $PBJQ('body').toggleClass('active-more-sites');
+      $PBJQ('#viewAllSites').attr('aria-expanded', 'true');
 
       // Align with the bottom of the main header in desktop mode
       var allSitesButton = $PBJQ('.view-all-sites-btn:visible');
@@ -102,6 +103,7 @@ var dhtml_view_sites = function(){
     else {
       // hide the dropdown
       $PBJQ('body').toggleClass('active-more-sites');
+      $PBJQ('#viewAllSites').attr('aria-expanded', 'false');
       $PBJQ('#selectSiteModal').toggleClass('outscreen'); //hide the box
 
       // Restore the button's zIndex so it doesn't hover over other overlays
@@ -367,12 +369,24 @@ $PBJQ(document).ready(function($){
   var container = $PBJQ('#selectSite');
   var favoritesPane = $PBJQ('#otherSitesCategorWrap');
   var organizePane = $PBJQ('#organizeFavorites');
+  var topNavPane = $PBJQ('#topnav');
+
+  // Keep a copy of the order of the sites across the top bar in case a user
+  // unpins and then repins a site to the top bar without refreshing: the order
+  // of the sites should remain the same
+  var setInitialTopBarSiteDisplayOrder = function() {
+    return $PBJQ('.Mrphs-sitesNav__favbtn', topNavPane).map(function () {
+      return $PBJQ(this).data('site-id');
+    }).toArray();
+  };
+  
+  var initialTopBarSiteDisplayOrder = setInitialTopBarSiteDisplayOrder();
 
   // Build up a map of siteid => list item.  Do this instead of an ID
   // selector to cope with Site IDs containing strange characters.
   var itemsBySiteId = {};
   $PBJQ('.site-favorite-btn', favoritesPane).each(function (i, e) {
-    itemsBySiteId[$PBJQ(e).data('site-id')] = $PBJQ(e).parent();
+    itemsBySiteId[$PBJQ(e).attr('data-site-id')] = $PBJQ(e).parent();
   });
 
   var button_states = {
@@ -467,7 +481,7 @@ $PBJQ(document).ready(function($){
 
   var renderFavorites = function (favorites) {
     $PBJQ('.site-favorite-btn', favoritesPane).each(function (idx, btn) {
-      var buttonSiteId = $PBJQ(btn).data('site-id');
+      var buttonSiteId = $PBJQ(btn).attr('data-site-id');
 
       if ($PBJQ(btn).closest('.my-workspace').length > 0) {
         setButton(btn, 'myworkspace');
@@ -497,9 +511,92 @@ $PBJQ(document).ready(function($){
   var listFavorites = function () {
     // Any favorite button with the 'site-favorite' class has been starred.
     return $PBJQ('.site-favorite-btn', favoritesPane).has('.site-favorite').map(function () {
-      return $PBJQ(this).data('site-id');
+      return $PBJQ(this).attr('data-site-id');
     }).toArray();
   }
+  
+  /**
+   * @func syncFavoritesToServer
+   * @desc Reusable method to sync fav changes to the server
+   * @param {Array} favs  - List of SiteIds to be used as favourites
+   * @param {Function} onError  - Error function to be called on AJAX failure 
+   */
+  var syncFavoritesToServer = function(favs, onError) {
+
+    if (!onError) {
+      onError = function (err) {};
+    }
+    
+    var newState = {
+      favoriteSiteIds: favs,
+      autoFavoritesEnabled: autoFavoritesEnabled,
+    };
+
+    $PBJQ.ajax({
+      url: '/portal/favorites/update',
+      method: 'POST',
+      data: {
+        userFavorites: JSON.stringify(newState),
+      },
+      error: onError
+    });
+
+    // Update the list
+    favoritesList = favs;
+  }
+        
+  /**
+   * @func topNavFavorite
+   * @desc Toggles favouriting from the top navigation
+   * @param {*} event  - jQuery Event for item clicked
+   */
+  var toggleTopNavFavorite = function(event) {
+    event.preventDefault();
+    
+    var thisFavButton = $PBJQ(event.target);
+    var newFavId = thisFavButton.data("site-id");
+    
+    getUserFavorites(function(list){
+      var favs = list; 
+      var ind = favs.indexOf(newFavId); 
+
+      if(ind === -1) {
+        // Add Fav
+        var favIdIndex = initialTopBarSiteDisplayOrder.indexOf(newFavId);
+        if(favIdIndex !== -1) {
+          // Inserting the site id into the previous location of the favorites array to 
+          // maintain the site's location on the top bar, if toggled off then back on 
+          // without a page reload:
+          favs.splice(favIdIndex, 0, newFavId);
+        } else {
+          // Was not in the original list of favorites, so we'll add the site to the end:
+          favs.push(newFavId);
+        }
+      } else {
+        // Remove Fav
+        favs.splice(ind,1)
+      }
+
+      // Toggle the classes, so the opposite star appears
+      thisFavButton.toggleClass("non-fav");
+      thisFavButton.toggleClass("fav");
+      
+      // Use plain JS to toggle the value of the aria-checked attribute
+      var thisFavButtonForJS = thisFavButton[0];
+      if(thisFavButtonForJS.getAttribute("aria-checked") === "true") {
+        thisFavButtonForJS.setAttribute("aria-checked", "false");
+      } else {
+        thisFavButtonForJS.setAttribute("aria-checked", "true");
+      }
+      
+      syncFavoritesToServer(favs);
+    });
+  };
+
+  // Add the fav toggle to the top-nav buttons
+  $PBJQ(".Mrphs-sitesNav__favbtn").each(function(i, e) {
+    return $PBJQ(e).click(toggleTopNavFavorite);
+  });
 
   var loadFromServer = function (attempt) {
     if (syncInProgress) {
@@ -573,6 +670,7 @@ $PBJQ(document).ready(function($){
       $PBJQ.ajax({
         url: '/portal/favorites/update',
         method: 'POST',
+        dataType: 'json',
         data: {
           userFavorites: JSON.stringify(newState),
         },
@@ -663,7 +761,7 @@ $PBJQ(document).ready(function($){
   $PBJQ(favoritesPane).on('click', '.site-favorite-btn', function () {
     var self = this;
 
-    var siteId = $PBJQ(self).data('site-id');
+    var siteId = $PBJQ(self).attr('data-site-id');
     var originalState = $PBJQ(self).data('favorite-state');
 
     if (originalState === 'myworkspace') {
@@ -839,8 +937,8 @@ $PBJQ(document).ready(function($){
           highlightMaxItems();
 
           // Update our ordering based on the new selection
-          favoritesList = list.find('.organize-favorite-item').map(function () {
-            return $PBJQ(this).data('site-id');
+          favoritesList = list.find('.organize-favorite-item *[data-site-id]').map(function () {
+            return $PBJQ(this).attr('data-site-id');
           }).toArray();
 
           // and send it all to the server
@@ -889,7 +987,7 @@ $PBJQ(document).ready(function($){
       // The clicked item was currently in "purgatory", having been unfavorited
       // in the process of organizing favorites.  This click will promote it
       // back to a favorite
-      var siteId = $PBJQ(self).data('site-id');
+      var siteId = $PBJQ(self).attr('data-site-id');
       returnElementToOriginalPositionIfPossible(siteId)
 
       var newIndex = favoritesList.indexOf(siteId);
@@ -915,7 +1013,7 @@ $PBJQ(document).ready(function($){
     // Set the favorite state for both the entry under "Organize" and the
     // original entry under "Sites"
     setButton(self, buttonState);
-    setButton(itemsBySiteId[$PBJQ(self).data('site-id')].find('.site-favorite-btn'),
+    setButton(itemsBySiteId[$PBJQ(self).attr('data-site-id')].find('.site-favorite-btn'),
               buttonState);
 
     setAllOrNoneStarStates();

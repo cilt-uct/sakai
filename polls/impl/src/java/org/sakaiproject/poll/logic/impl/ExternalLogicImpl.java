@@ -32,6 +32,7 @@ import java.util.Set;
 import java.util.TimeZone;
 
 import lombok.extern.slf4j.Slf4j;
+import lombok.Setter;
 
 import org.sakaiproject.authz.api.AuthzGroup;
 import org.sakaiproject.authz.api.AuthzGroupService;
@@ -71,9 +72,14 @@ import org.sakaiproject.tool.api.ToolSession;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserNotDefinedException;
+import org.sakaiproject.util.ResourceLoader;
+import org.sakaiproject.util.api.FormattedText;
 
 @Slf4j
+@Setter
 public class ExternalLogicImpl implements ExternalLogic {
+	
+	private static final ResourceLoader RB = new ResourceLoader("notifyDeletedOption");
 
 	 private static final String
 	 	/* Email template constants */
@@ -91,96 +97,23 @@ public class ExternalLogicImpl implements ExternalLogic {
 	 */
 	
     private LearningResourceStoreService learningResourceStoreService;
-    
-	public void setLearningResourceStoreService(
-			LearningResourceStoreService learningResourceStoreService) {
-		this.learningResourceStoreService = learningResourceStoreService;
-	}
-    
 	private DeveloperHelperService developerHelperService;
-	public void setDeveloperHelperService(
-			DeveloperHelperService developerHelperService) {
-		this.developerHelperService = developerHelperService;
-	}
-	
-	
     private AuthzGroupService authzGroupService;
-    public void setAuthzGroupService(AuthzGroupService authzGroupService) {
-        this.authzGroupService = authzGroupService;
-    }
-	
     private EntityManager entityManager;
-    public void setEntityManager(EntityManager em) {
-        entityManager = em;
-    }
-
     private EmailService emailService;
-    public void setEmailService(EmailService emailService) {
-    	this.emailService = emailService;
-    }
-    
     private EmailTemplateService emailTemplateService;
-    public void setEmailTemplateService(EmailTemplateService emailTemplateService) {
-    	this.emailTemplateService = emailTemplateService;
-    }
-
     private ArrayList<String> emailTemplates;
-    public void setEmailTemplates(ArrayList<String> emailTemplates) {
-    	this.emailTemplates = emailTemplates;
-    }
-    
     private EventTrackingService eventTrackingService;
-    public void setEventTrackingService(EventTrackingService ets) {
-        eventTrackingService = ets;
-    }
-    
     private FunctionManager functionManager;
-    public void setFunctionManager(FunctionManager fm) {
-        functionManager = fm;
-    }
-
     private SiteService siteService;
-    public void setSiteService(SiteService siteService) {
-		this.siteService = siteService;
-	}
-
-
     private SecurityService securityService;
-	public void setSecurityService(SecurityService securityService) {
-		this.securityService = securityService;
-	}
-	
 	private ServerConfigurationService serverConfigurationService;
-	public void setServerConfigurationService(
-			ServerConfigurationService serverConfigurationService) {
-		this.serverConfigurationService = serverConfigurationService;
-	}
-	
 	private SessionManager sessionManager;
-	public void setSessionManager(SessionManager sessionManager) {
-		this.sessionManager = sessionManager;
-	}
-	
 	private UserDirectoryService userDirectoryService;
-	public void setUserDirectoryService(UserDirectoryService userDirectoryService) {
-		this.userDirectoryService = userDirectoryService;
-	}
-	
 	private UserTimeService userTimeService;
-	public void setUserTimeService(UserTimeService userTimeService) {
-		this.userTimeService = userTimeService;
-	}
-
-
 	private String fromEmailAddress;
-	public void setFromEmailAddress(String fromEmailAddress) {
-		this.fromEmailAddress = fromEmailAddress;
-	}
-	
 	private String replyToEmailAddress;
-	public void setReplyToEmailAddress(String replyToEmailAddress) {
-		this.replyToEmailAddress = replyToEmailAddress;
-	}
+	@Setter private FormattedText formattedText;
 	
 	/**
      * Methods
@@ -218,6 +151,11 @@ public class ExternalLogicImpl implements ExternalLogic {
 	public String getCurrentLocationReference() {
 		log.debug("getCurrentLocationReference");
         return developerHelperService.getCurrentLocationReference();
+	}
+	
+	public String getCurrentToolURL()
+	{
+		return serverConfigurationService.getPortalUrl() + getCurrentLocationReference() + "/tool/" + getCurrentToolSession().getPlacementId();
 	}
 
 	public boolean isAllowedInLocation(String permission, String locationReference, String userReference) {
@@ -275,8 +213,8 @@ public class ExternalLogicImpl implements ExternalLogic {
 		
 	}
 
-	public void registerFunction(String function) {
-		functionManager.registerFunction(function);
+	public void registerFunction(String function, boolean userMutable) {
+		functionManager.registerFunction(function, userMutable);
 		
 	}
 
@@ -462,6 +400,14 @@ public class ExternalLogicImpl implements ExternalLogic {
 				replacementValues.put("recipientDisplayName", user.getDisplayName());
 				replacementValues.put("pollQuestion", pollQuestion);
 				replacementValues.put("siteTitle", siteTitle); 
+				
+				// Values of "src/bundle/notifyDeletedOption.properties"
+				replacementValues.put("subject", RB.getString("subject"));
+				replacementValues.put("message1", RB.getString("message1"));
+				replacementValues.put("message2", RB.getString("message2"));
+				replacementValues.put("message3", RB.getString("message3"));
+				replacementValues.put("message4", RB.getString("message4"));
+				replacementValues.put("message5", RB.getString("message5"));				
 
 				RenderedTemplate template = emailTemplateService.getRenderedTemplateForUser(EMAIL_TEMPLATE_NOTIFY_DELETED_OPTION,
 						user.getReference(), replacementValues);
@@ -548,6 +494,10 @@ public class ExternalLogicImpl implements ExternalLogic {
         return new LRS_Statement(student, verb, lrsObject);
     }
 
+    private String getPollRef(String pollId) {
+        return "poll" + getCurrentLocationReference() + "/poll/" + pollId;
+    }
+
     /**
      * @see org.sakaiproject.poll.logic.ExternalLogic#registerStatement(java.lang.String, org.sakaiproject.poll.model.Vote)
      */
@@ -555,21 +505,45 @@ public class ExternalLogicImpl implements ExternalLogic {
     public void registerStatement(String pollText, Vote vote) {
         if (null != learningResourceStoreService) {
             LRS_Statement statement = getStatementForUserVotedInPoll(pollText, vote);
-            Event event = eventTrackingService.newEvent("poll.vote", "vote", null, true, NotificationService.NOTI_OPTIONAL, statement);
+            Event event = eventTrackingService.newEvent("poll.vote", getPollRef(vote.getPollId().toString()), null, true, NotificationService.NOTI_OPTIONAL, statement);
             eventTrackingService.post(event);
         }
     }
 
     /**
-     * @see org.sakaiproject.poll.logic.ExternalLogic#registerStatement(java.lang.String, boolean)
+     * @see org.sakaiproject.poll.logic.ExternalLogic#registerStatement(java.lang.String, boolean, java.lang.String)
      */
     @Override
-    public void registerStatement(String pollText, boolean newPoll) {
+    public void registerStatement(String pollText, boolean newPoll, String pollId) {
         if (null != learningResourceStoreService) {
             LRS_Statement statement = getStatementForUserEditPoll(pollText, newPoll);
-            Event event = eventTrackingService.newEvent("poll.edit", "edit poll", null, true, NotificationService.NOTI_OPTIONAL, statement);
+            String eventType = newPoll ? "poll.add" : "poll.update";
+            Event event = eventTrackingService.newEvent(eventType, getPollRef(pollId), null, true, NotificationService.NOTI_OPTIONAL, statement);
             eventTrackingService.post(event);
         }
+    }
+    
+    @Override
+    public int getNumberUsersCanVote() {
+    	ArrayList<String> siteGroupRefs = new ArrayList<>();
+    	siteGroupRefs.add(siteService.siteReference(developerHelperService.getCurrentLocationId()));
+    	return (authzGroupService.getUsersIsAllowed(PollListManager.PERMISSION_VOTE, siteGroupRefs).size());
+    }
+
+    @Override
+    public String convertFormattedTextToPlaintext(String text) {
+        return formattedText.convertFormattedTextToPlaintext(text);
+    }
+
+    @Override
+    public String processFormattedText(String text, StringBuilder errorMessages) {
+        return formattedText.processFormattedText(text, errorMessages);
+    }
+
+    @Override
+    public String processFormattedText(String strFromBrowser, StringBuilder errorMessages, boolean checkForEvilTags,
+           boolean replaceWhitespaceTags) {
+        return formattedText.processFormattedText(strFromBrowser, errorMessages, checkForEvilTags, replaceWhitespaceTags);
     }
 
 }

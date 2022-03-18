@@ -21,34 +21,27 @@
 
 package org.sakaiproject.site.impl;
 
-import java.util.Arrays;
 import java.util.Date;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 import java.util.Stack;
-import java.util.Iterator;
-import java.util.stream.Collectors;
-
-import lombok.extern.slf4j.Slf4j;
-
-import org.apache.commons.lang3.StringUtils;
-
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
 
 import org.sakaiproject.authz.api.AuthzGroup;
+import org.sakaiproject.authz.api.AuthzRealmLockException;
 import org.sakaiproject.authz.api.GroupNotDefinedException;
 import org.sakaiproject.authz.api.Member;
 import org.sakaiproject.authz.api.Role;
 import org.sakaiproject.authz.api.RoleAlreadyDefinedException;
-import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.entity.api.ResourceProperties;
 import org.sakaiproject.entity.api.ResourcePropertiesEdit;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
-import org.sakaiproject.time.api.Time;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.util.BaseResourceProperties;
 import org.sakaiproject.util.BaseResourcePropertiesEdit;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * <p>
@@ -129,8 +122,11 @@ public class BaseGroup implements Group, Identifiable
 		if (site == null) log.warn("BaseGroup(other, site...) created with null site");
 
 		BaseGroup bOther = (BaseGroup) other;
+		BaseResourceProperties bOtherProperties = (BaseResourceProperties) other.getProperties();
 
-		m_site = (Site) site;
+		m_site = site;
+		BaseResourcePropertiesEdit properties = new BaseResourcePropertiesEdit();
+		properties.addAll(other.getProperties());
 
 		if (exact)
 		{
@@ -141,12 +137,10 @@ public class BaseGroup implements Group, Identifiable
 			m_id = siteService.idManager().createUuid();
 		}
 
+		properties.setLazy(bOtherProperties.isLazy());
+		m_properties = properties;
 		m_title = bOther.m_title;
 		m_description = bOther.m_description;
-
-		m_properties = new BaseResourcePropertiesEdit();
-		m_properties.addAll(other.getProperties());
-		((BaseResourcePropertiesEdit) m_properties).setLazy(((BaseResourceProperties) other.getProperties()).isLazy());
 	}
 
 	/**
@@ -415,18 +409,18 @@ public class BaseGroup implements Group, Identifiable
 
 	public void addMember(String userId, String roleId, boolean active, boolean provided)
 	{
-		if(this.isLocked()) {
-			log.error("Error, cannot add {} with role {} into a locked group", userId, roleId);
-			return;
+		try {
+			insertMember(userId, roleId, active, provided);
+		} catch (AuthzRealmLockException | IllegalStateException e) {
+			log.warn(e.toString());
 		}
-		m_azgChanged = true;
-		getAzg().addMember(userId, roleId, active, provided);
 	}
 
-	public void insertMember(String userId, String roleId, boolean active, boolean provided) throws IllegalStateException
+	public void insertMember(String userId, String roleId, boolean active, boolean provided) throws AuthzRealmLockException, IllegalStateException
 	{
-		if(this.isLocked()) {
-			throw new IllegalStateException("Error, cannot add " + userId + " with role " + roleId + " into a locked group");
+		RealmLockMode lockMode = getRealmLock();
+		if(RealmLockMode.ALL.equals(lockMode) || RealmLockMode.MODIFY.equals(lockMode)) {
+			throw new AuthzRealmLockException("Can't add member " + userId + " with role " + roleId + " to a locked group");
 		}
 		m_azgChanged = true;
 		try
@@ -473,10 +467,6 @@ public class BaseGroup implements Group, Identifiable
 		return getAzg().getCreatedBy();
 	}
 
-	public Time getCreatedTime()
-	{
-		return getAzg().getCreatedTime();
-	}
 	
 	public Date getCreatedDate()
 	{
@@ -504,11 +494,6 @@ public class BaseGroup implements Group, Identifiable
 		return getAzg().getModifiedBy();
 	}
 
-	public Time getModifiedTime()
-	{
-		return getAzg().getModifiedTime();
-	}
-	
 	public Date getModifiedDate() {
 		
 		return getAzg().getModifiedDate();
@@ -571,18 +556,18 @@ public class BaseGroup implements Group, Identifiable
 
 	public void removeMember(String userId)
 	{
-		if(this.isLocked()) {
-			log.error("Error, can not remove a member from a locked group");
-			return;
+		try {
+			deleteMember(userId);
+		} catch (AuthzRealmLockException arle) {
+			log.warn(arle.getMessage());
 		}
-		m_azgChanged = true;
-		getAzg().removeMember(userId);
 	}
 
-	public void deleteMember(String userId) throws IllegalStateException
+	public void deleteMember(String userId) throws AuthzRealmLockException
 	{
-		if(this.isLocked()) {
-			throw new IllegalStateException("Error, can not remove a member from a locked group");
+		RealmLockMode lockMode = getRealmLock();
+		if(RealmLockMode.MODIFY.equals(lockMode) || RealmLockMode.ALL.equals(lockMode)) {
+			throw new AuthzRealmLockException("Member " + userId + " can't be removed from a locked group " + m_id);
 		}
 		m_azgChanged = true;
 		getAzg().removeMember(userId);
@@ -590,18 +575,18 @@ public class BaseGroup implements Group, Identifiable
 
 	public void removeMembers()
 	{
-		if(this.isLocked()) {
-			log.error("Error, can not remove members from a locked group");
-			return;
+		try {
+			deleteMembers();
+		} catch (AuthzRealmLockException arle) {
+			log.warn(arle.getMessage());
 		}
-		m_azgChanged = true;
-		getAzg().removeMembers();
 	}
 
-	public void deleteMembers() throws IllegalStateException
+	public void deleteMembers() throws AuthzRealmLockException
 	{
-		if(this.isLocked()) {
-			throw new IllegalStateException("Error, can not remove members from a locked group");
+		RealmLockMode lockMode = getRealmLock();
+		if(RealmLockMode.MODIFY.equals(lockMode) || RealmLockMode.ALL.equals(lockMode)) {
+			throw new AuthzRealmLockException("Can't remove members from a locked group " + m_id);
 		}
 		m_azgChanged = true;
 		getAzg().removeMembers();
@@ -638,54 +623,24 @@ public class BaseGroup implements Group, Identifiable
 		return changed;
 	}
 
-	public void lockGroup(Entity entity) {
-		lockGroup(entity.getReference());
+	@Override
+	public RealmLockMode getRealmLock() {
+		return getAzg().getRealmLock();
 	}
 
-	public void lockGroup(String lock) {
-		if(StringUtils.isBlank(lock)) {
-			log.warn("lockGroup: null or empty lock");
-			return;
-		}
-		//TODO : this should be changed by addPropertyToList (When implemented in Kernel)
-		String prop = this.getProperties().getProperty(GROUP_PROP_LOCKED_BY);
-		if(StringUtils.isNotBlank(prop)) {
-			prop += GROUP_PROP_SEPARATOR + lock;
-		} else {
-			prop = lock;
-		}
-		this.getProperties().addProperty(GROUP_PROP_LOCKED_BY, prop);
+	@Override
+	public RealmLockMode getLockForReference(String reference) {
+		return getAzg().getLockForReference(reference);
 	}
 
-	public void unlockGroup(Entity entity) {
-		unlockGroup(entity.getReference());
+	@Override
+	public void setLockForReference(String reference, RealmLockMode type) {
+		getAzg().setLockForReference(reference, type);
+		m_azgChanged = true;
 	}
 
-	public void unlockGroup(String lock) {
-		if(StringUtils.isBlank(lock)) {
-			log.warn("unlockGroup: null or empty lock");
-			return;
-		}
-		//TODO : this should be changed by addPropertyToList (When implemented in Kernel)
-		String prop = this.getProperties().getProperty(GROUP_PROP_LOCKED_BY);
-		if(StringUtils.isNotBlank(prop)) {           
-			this.getProperties().addProperty(GROUP_PROP_LOCKED_BY, Arrays.stream(prop.split(GROUP_PROP_SEPARATOR)).filter(s -> !lock.equals(s)).collect(Collectors.joining(GROUP_PROP_SEPARATOR)));
-		}
-	}
-
-	public void unlockGroup() {
-		this.getProperties().removeProperty(GROUP_PROP_LOCKED_BY);
-	}
-
-	public boolean isLocked() {
-		return (StringUtils.isNotBlank(this.getProperties().getProperty(GROUP_PROP_LOCKED_BY)));
-	}
-
-	public boolean isLocked(String lock) {
-		String prop = this.getProperties().getProperty(GROUP_PROP_LOCKED_BY);
-		if (StringUtils.contains(prop, lock)) {
-			return true;
-		}
-		return false;
+	@Override
+	public List<String[]> getRealmLocks() {
+		return getAzg().getRealmLocks();
 	}
 }

@@ -22,24 +22,28 @@
 package org.sakaiproject.authz.impl;
 
 
+import java.time.Instant;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.Stack;
-
-import lombok.ToString;
-import lombok.extern.slf4j.Slf4j;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
-
-import org.sakaiproject.authz.api.*;
+import org.sakaiproject.authz.api.AuthzGroup;
+import org.sakaiproject.authz.api.AuthzGroupService;
+import org.sakaiproject.authz.api.Member;
+import org.sakaiproject.authz.api.Role;
+import org.sakaiproject.authz.api.RoleAlreadyDefinedException;
+import org.sakaiproject.authz.impl.DbAuthzGroupService.DbStorage.RealmLock;
 import org.sakaiproject.entity.api.Reference;
 import org.sakaiproject.entity.api.ResourceProperties;
 import org.sakaiproject.entity.api.ResourcePropertiesEdit;
-import org.sakaiproject.time.api.Time;
 import org.sakaiproject.time.api.TimeService;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
@@ -50,6 +54,9 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+
+import lombok.ToString;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * <p>
@@ -78,6 +85,8 @@ public class BaseAuthzGroup implements AuthzGroup
 	/** Map of Role id to a Role defined in this AuthzGroup. */
 	protected Map m_roles = null;
 
+	protected Set<RealmLock> m_realmLocks;
+
 	/** The external azGroup id, or null if not defined. */
 	protected String m_providerRealmId = null;
 
@@ -91,10 +100,10 @@ public class BaseAuthzGroup implements AuthzGroup
 	protected String m_lastModifiedUserId = null;
 
 	/** The time created. */
-	protected Time m_createdTime = null;
+	protected Instant m_createdTime = null;
 
 	/** The time last modified. */
-	protected Time m_lastModifiedTime = null;
+	protected Instant m_lastModifiedTime = null;
 
 	/** Set while the azGroup is not fully loaded from the storage. */
 	protected boolean m_lazy = false;
@@ -133,6 +142,7 @@ public class BaseAuthzGroup implements AuthzGroup
 
 		m_userGrants = new HashMap();
 		m_roles = new HashMap();
+		m_realmLocks = new HashSet<>();
 
 		// if the id is not null (a new azGroup, rather than a reconstruction)
 		// add the automatic (live) properties
@@ -172,8 +182,8 @@ public class BaseAuthzGroup implements AuthzGroup
 	 * @param modifiedOn
 	 *        The time modified.
 	 */
-	public BaseAuthzGroup(BaseAuthzGroupService baseAuthzGroupService, Integer dbid, String id, String providerId, String maintainRole, String createdBy, Time createdOn,
-			String modifiedBy, Time modifiedOn)
+	public BaseAuthzGroup(BaseAuthzGroupService baseAuthzGroupService, Integer dbid, String id, String providerId, String maintainRole, String createdBy, Instant createdOn,
+			String modifiedBy, Instant modifiedOn)
 	{
 		this.baseAuthzGroupService = baseAuthzGroupService;
 		this.userDirectoryService = baseAuthzGroupService.userDirectoryService();
@@ -183,6 +193,7 @@ public class BaseAuthzGroup implements AuthzGroup
 
 		m_userGrants = new HashMap();
 		m_roles = new HashMap();
+		m_realmLocks = new HashSet<>();
 
 		m_key = dbid;
 		m_id = id;
@@ -213,6 +224,7 @@ public class BaseAuthzGroup implements AuthzGroup
 		TimeService timeService = baseAuthzGroupService.timeService();
 		m_userGrants = new HashMap();
 		m_roles = new HashMap();
+		m_realmLocks = new HashSet<>();
 
 		// setup for properties
 		m_properties = new BaseResourcePropertiesEdit();
@@ -227,13 +239,13 @@ public class BaseAuthzGroup implements AuthzGroup
 		String time = StringUtils.trimToNull(el.getAttribute("created-time"));
 		if (time != null)
 		{
-			m_createdTime = timeService.newTimeGmt(time);
+			m_createdTime = Instant.ofEpochMilli(timeService.newTimeGmt(time).getTime());
 		}
 
 		time = StringUtils.trimToNull(el.getAttribute("modified-time"));
 		if (time != null)
 		{
-			m_lastModifiedTime = timeService.newTimeGmt(time);
+			m_lastModifiedTime = Instant.ofEpochMilli(timeService.newTimeGmt(time).getTime());
 		}
 
 		// process the children (properties, grants, abilities, roles)
@@ -407,7 +419,7 @@ public class BaseAuthzGroup implements AuthzGroup
 		{
 			try
 			{
-				m_createdTime = m_properties.getTimeProperty("DAV:creationdate");
+				m_createdTime = m_properties.getInstantProperty("DAV:creationdate");
 			}
 			catch (Exception ignore)
 			{
@@ -417,7 +429,7 @@ public class BaseAuthzGroup implements AuthzGroup
 		{
 			try
 			{
-				m_lastModifiedTime = m_properties.getTimeProperty("DAV:getlastmodified");
+				m_lastModifiedTime = m_properties.getInstantProperty("DAV:getlastmodified");
 			}
 			catch (Exception ignore)
 			{
@@ -431,17 +443,17 @@ public class BaseAuthzGroup implements AuthzGroup
 		// make sure we have our times
 		if ((m_createdTime == null) && (m_lastModifiedTime != null))
 		{
-			m_createdTime = (Time) m_lastModifiedTime.clone();
+			m_createdTime = m_lastModifiedTime;
 		}
 
 		if (m_createdTime == null)
 		{
-			m_createdTime = timeService.newTime();
+			m_createdTime = Instant.now();
 		}
 
 		if (m_lastModifiedTime == null)
 		{
-			m_lastModifiedTime = (Time) m_createdTime.clone();
+			m_lastModifiedTime =  m_createdTime;
 		}
 
 		// and our users
@@ -539,9 +551,9 @@ public class BaseAuthzGroup implements AuthzGroup
 		m_createdUserId = ((BaseAuthzGroup) azGroup).m_createdUserId;
 		m_lastModifiedUserId = ((BaseAuthzGroup) azGroup).m_lastModifiedUserId;
 		if (((BaseAuthzGroup) azGroup).m_createdTime != null)
-			m_createdTime = (Time) ((BaseAuthzGroup) azGroup).m_createdTime.clone();
+			m_createdTime =  ((BaseAuthzGroup) azGroup).m_createdTime;
 		if (((BaseAuthzGroup) azGroup).m_lastModifiedTime != null)
-			m_lastModifiedTime = (Time) ((BaseAuthzGroup) azGroup).m_lastModifiedTime.clone();
+			m_lastModifiedTime = ((BaseAuthzGroup) azGroup).m_lastModifiedTime;
 
 		// make a deep copy of the roles as new Role objects
 		m_roles = new HashMap();
@@ -565,6 +577,9 @@ public class BaseAuthzGroup implements AuthzGroup
 			m_userGrants.put(id, new BaseMember((Role) m_roles.get(grant.role.getId()), grant.active, grant.provided, grant.userId,
 					userDirectoryService));
 		}
+
+		m_realmLocks = new HashSet<>();
+		azGroup.getRealmLocks().forEach(a -> setLockForReference(a[0], RealmLockMode.valueOf(a[1])));
 
 		m_properties = new BaseResourcePropertiesEdit();
 		m_properties.addAll(azGroup.getProperties());
@@ -730,30 +745,23 @@ public class BaseAuthzGroup implements AuthzGroup
 	/**
 	 * {@inheritDoc}
 	 */
-	public Time getCreatedTime()
-	{
-		return m_createdTime;
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
 	public Date getCreatedDate()
 	{
-		return new Date(m_createdTime.getTime());
-	}
-	/**
-	 * {@inheritDoc}
-	 */
-	public Time getModifiedTime()
-	{
-		return m_lastModifiedTime;
+		Date date = null;
+		if (m_createdTime != null) {
+		 date = new Date(m_createdTime.toEpochMilli());
+		}
+		return date;
 	}
 
 	
 
 	public Date getModifiedDate() {
-		return new Date(m_lastModifiedTime.getTime());
+		Date date = null;
+		if (m_lastModifiedTime != null) {
+			date = new Date(m_lastModifiedTime.toEpochMilli());
+		}
+		return date;
 	}
 	
 	/**
@@ -1228,6 +1236,81 @@ public class BaseAuthzGroup implements AuthzGroup
 		}
 
 		return rv;
+	}
+
+	@Override
+	public RealmLockMode getRealmLock() {
+		RealmLockMode highestLockMode = RealmLockMode.NONE;
+		if (m_lazy) {
+			baseAuthzGroupService.m_storage.completeGet(this);
+		}
+
+		for (RealmLock realmLock : m_realmLocks) {
+			RealmLockMode lockMode = realmLock.getLockMode();
+			switch (lockMode) {
+				case ALL:
+					highestLockMode = RealmLockMode.ALL;
+					break;
+				case MODIFY:
+					if (highestLockMode.equals(RealmLockMode.DELETE)) {
+						highestLockMode = RealmLockMode.ALL;
+					} else {
+						highestLockMode = RealmLockMode.MODIFY;
+					}
+					break;
+				case DELETE:
+					if (highestLockMode.equals(RealmLockMode.MODIFY)) {
+						highestLockMode = RealmLockMode.ALL;
+					} else {
+						highestLockMode = RealmLockMode.DELETE;
+					}
+					break;
+				default:
+					break;
+			}
+			if (RealmLockMode.ALL.equals(highestLockMode)) {
+				break;
+			}
+		}
+		return highestLockMode;
+	}
+
+	@Override
+	public RealmLockMode getLockForReference(String reference) {
+		if (StringUtils.isNotBlank(reference)) {
+			if (m_lazy) {
+				baseAuthzGroupService.m_storage.completeGet(this);
+			}
+			Optional<RealmLock> lock = m_realmLocks.stream().filter(l -> reference.equals(l.getReference())).findAny();
+			if (lock.isPresent()) {
+				return lock.get().getLockMode();
+			}
+		}
+		return RealmLockMode.NONE;
+	}
+
+	@Override
+	public void setLockForReference(String reference, RealmLockMode type) {
+		if (StringUtils.isNotBlank(reference)) {
+			if (m_lazy) {
+				baseAuthzGroupService.m_storage.completeGet(this);
+			}
+
+			RealmLock realmLock = baseAuthzGroupService.m_storage.newRealmLock(getKey(), reference, type);
+			if (RealmLockMode.NONE.equals(type)) {
+				m_realmLocks.remove(realmLock);
+			} else {
+				m_realmLocks.add(realmLock);
+			}
+		}
+	}
+
+	@Override
+	public List<String[]> getRealmLocks() {
+		if (m_lazy) {
+			baseAuthzGroupService.m_storage.completeGet(this);
+		}
+		return m_realmLocks.stream().map(l -> new String[] {l.getReference(), l.getLockMode().toString()}).collect(Collectors.toList());
 	}
 
 	/**

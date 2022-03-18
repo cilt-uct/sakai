@@ -29,6 +29,8 @@ import javax.servlet.ServletContext;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
+
+import org.sakaiproject.component.cover.ComponentManager;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.context.support.WebApplicationContextUtils;
 
@@ -85,8 +87,7 @@ public class SakaiVariableResolver extends VariableResolver
 		
 		try
 		{
-			wac	 = WebApplicationContextUtils.getWebApplicationContext((ServletContext) context
-				.getExternalContext().getContext());
+			wac	 = WebApplicationContextUtils.getWebApplicationContext((ServletContext) context.getExternalContext().getContext());
 		}
 		catch (Exception e)
 		{

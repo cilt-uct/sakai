@@ -21,9 +21,8 @@ import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
 import java.util.Map;
 
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.core.StopAnalyzer;
@@ -47,6 +46,8 @@ import org.sakaiproject.search.api.PortalUrlEnabledProducer;
 import org.sakaiproject.search.api.SearchResult;
 import org.sakaiproject.search.api.SearchService;
 import org.sakaiproject.search.api.TermFrequency;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Created by IntelliJ IDEA.
@@ -201,16 +202,16 @@ public class ElasticSearchResult implements SearchResult {
         sb.append("<result");
         sb.append(" index=\"").append(getIndex()).append("\" ");
         sb.append(" score=\"").append(getScore()).append("\" ");
-        sb.append(" sid=\"").append(StringEscapeUtils.escapeXml(getId())).append("\" ");
-        sb.append(" site=\"").append(StringEscapeUtils.escapeXml(getSiteId())).append("\" ");
-        sb.append(" reference=\"").append(StringEscapeUtils.escapeXml(getReference())).append("\" ");
+        sb.append(" sid=\"").append(StringEscapeUtils.escapeXml11(getId())).append("\" ");
+        sb.append(" site=\"").append(StringEscapeUtils.escapeXml11(getSiteId())).append("\" ");
+        sb.append(" reference=\"").append(StringEscapeUtils.escapeXml11(getReference())).append("\" ");
         try {
             sb.append(" title=\"").append(new String(Base64.encodeBase64(getTitle().getBytes("UTF-8")), "UTF-8")).append("\" ");
         } catch (UnsupportedEncodingException e) {
-            sb.append(" title=\"").append(StringEscapeUtils.escapeXml(getTitle())).append("\" ");
+            sb.append(" title=\"").append(StringEscapeUtils.escapeXml11(getTitle())).append("\" ");
         }
-        sb.append(" tool=\"").append(StringEscapeUtils.escapeXml(getTool())).append("\" ");
-        sb.append(" url=\"").append(StringEscapeUtils.escapeXml(getUrl())).append("\" />");
+        sb.append(" tool=\"").append(StringEscapeUtils.escapeXml11(getTool())).append("\" ");
+        sb.append(" url=\"").append(StringEscapeUtils.escapeXml11(getUrl())).append("\" />");
     }
 
     @Override

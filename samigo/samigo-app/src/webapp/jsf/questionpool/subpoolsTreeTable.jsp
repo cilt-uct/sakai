@@ -83,7 +83,7 @@
   <f:param name="qpid" value="#{pool.questionPoolId}"/>
   <f:param name="outCome" value="editPool"/>
 </h:commandLink>
-<h:outputText  rendered="#{questionpool.importToAuthoring != 'true' && pool.ownerId==questionpool.agentId}" value=" | " />
+<h:outputText  rendered="#{questionpool.importToAuthoring != 'true'}" value=" | " />
 
 <!-- Move Pool -->
 <h:commandLink title="#{questionPoolMessages.t_movePool}" rendered="#{questionpool.importToAuthoring != 'true' && pool.ownerId==questionpool.agentId}"  id="movelink" immediate="true" action="#{questionpool.startMovePool}">
@@ -171,7 +171,7 @@
      </f:facet>
      <h:panelGroup id="thirdcolumn">
         <h:outputText value="#{pool.lastModified}">
-          <f:convertDateTime pattern="#{generalMessages.output_date_picker}"/>
+          <f:convertDateTime dateStyle="medium" timeStyle="short" timeZone="#{author.userTimeZone}" />
         </h:outputText>
      </h:panelGroup>
     </h:column>

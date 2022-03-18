@@ -5,18 +5,13 @@
     <parent>
         <groupId>org.sakaiproject.presence</groupId>
         <artifactId>presence</artifactId>
-        <version>12.5</version>
+        <version>21-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
     
     <name>sakai-presence-util</name>
     <groupId>org.sakaiproject.presence</groupId>
     <artifactId>sakai-presence-util</artifactId>
-    <organization>
-        <name>The Sakai Foundation</name>
-        <url>http://sakaiproject.org/</url>
-    </organization>
-    <inceptionYear>2003</inceptionYear>
     <packaging>jar</packaging>
     
     <dependencies>
@@ -35,14 +30,6 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>sakai-presence-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.sakaiproject.courier</groupId>
-            <artifactId>sakai-courier-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.sakaiproject.courier</groupId>
-            <artifactId>sakai-courier-util</artifactId>
         </dependency>
     </dependencies>
 </project>

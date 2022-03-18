@@ -36,6 +36,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.authz.api.AuthzGroup;
 import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.authz.api.AuthzPermissionException;
+import org.sakaiproject.authz.api.AuthzRealmLockException;
 import org.sakaiproject.authz.api.FunctionManager;
 import org.sakaiproject.authz.api.GroupAlreadyDefinedException;
 import org.sakaiproject.authz.api.GroupIdInvalidException;
@@ -134,23 +135,6 @@ public class RealmsAction extends PagedResourceActionII
 	protected void initState(SessionState state, VelocityPortlet portlet, JetspeedRunData rundata)
 	{
 		super.initState(state, portlet, rundata);
-
-		// // setup the observer to notify our main panel
-		// if (state.getAttribute(STATE_OBSERVER) == null)
-		// {
-		// // the delivery location for this tool
-		// String deliveryId = clientWindowId(state, portlet.getID());
-		//
-		// // the html element to update on delivery
-		// String elementId = mainPanelUpdateId(portlet.getID());
-		//
-		// // the event resource reference pattern to watch for
-		// String pattern = authzGroupService.realmReference("");
-		//
-		// state.setAttribute(STATE_OBSERVER, new EventObservingCourier(deliveryId, elementId, pattern));
-		// }
-
-
 	} // initState
 
 
@@ -296,10 +280,7 @@ public class RealmsAction extends PagedResourceActionII
 		//addListPagingMenus(bar, state);
 
 		// add the search commands
-		addSearchMenus(bar, state);
-
-		// add the refresh commands
-		addRefreshMenus(bar, state);
+		addSearchMenus(bar, state, rb.getString("realm.list.search.acc"));
 
 		if (bar.size() > 0)
 		{
@@ -308,11 +289,6 @@ public class RealmsAction extends PagedResourceActionII
 		
 		context.put("viewAllowed", isAccessAllowed());
 		context.put("serviceTeam", isServiceTeamUser());
-
-
-		// inform the observing courier that we just updated the page...
-		// if there are pending requests to do so they can be cleared
-		justDelivered(state);
 
 		return "_list";
 
@@ -688,9 +664,6 @@ public class RealmsAction extends PagedResourceActionII
 		// mark the realm as new, so on cancel it can be deleted
 		state.setAttribute("new", "true");
 
-		// disable auto-updates while in view mode
-		disableObservers(state);
-
 	} // doNew
 
 	/**
@@ -709,9 +682,6 @@ public class RealmsAction extends PagedResourceActionII
 			state.setAttribute("realm", realm);
 
 			state.setAttribute("mode", "edit");
-
-			// disable auto-updates while in view mode
-			disableObservers(state);
 		}
 		catch (GroupNotDefinedException e)
 		{
@@ -719,18 +689,7 @@ public class RealmsAction extends PagedResourceActionII
 
 			addAlert(state, rb.getFormattedMessage("realm.notfound", new Object[]{id}));
 			state.removeAttribute("mode");
-
-			// make sure auto-updates are enabled
-			enableObserver(state);
 		}
-		// catch (AuthzPermissionException e)
-		// {
-		// addAlert(state, rb.getString("realm.notpermis1") + " " + id);
-		// state.removeAttribute("mode");
-		//
-		// // make sure auto-updates are enabled
-		// enableObserver(state);
-		// }
 
 	} // doEdit
 
@@ -798,9 +757,6 @@ public class RealmsAction extends PagedResourceActionII
 		// return to main mode
 		state.removeAttribute("mode");
 
-		// make sure auto-updates are enabled
-		enableObserver(state);
-
 		// TODO: hard coding this frame id is fragile, portal dependent, and needs to be fixed -ggolden
 		schedulePeerFrameRefresh("sitenav");
 
@@ -833,6 +789,10 @@ public class RealmsAction extends PagedResourceActionII
 				{
 					addAlert(state, rb.getFormattedMessage("realm.notpermis2", new Object[]{realm.getId()}));
 				}
+				catch (AuthzRealmLockException arle)
+				{
+					log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
+				}
 			}
 		}
 
@@ -841,9 +801,6 @@ public class RealmsAction extends PagedResourceActionII
 
 		// return to main mode
 		state.removeAttribute("mode");
-
-		// make sure auto-updates are enabled
-		enableObserver(state);
 
 	} // doCancel
 
@@ -859,9 +816,6 @@ public class RealmsAction extends PagedResourceActionII
 
 		// go to remove confirm mode
 		state.setAttribute("mode", "confirm");
-
-		// disable auto-updates while in view mode
-		disableObservers(state);
 
 	} // doRemove
 
@@ -889,15 +843,16 @@ public class RealmsAction extends PagedResourceActionII
 			{
 				addAlert(state, rb.getFormattedMessage("realm.notpermis2", new Object[]{realm.getId()}));
 			}
+			catch (AuthzRealmLockException arle)
+			{
+				log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
+			}
 	
 			// cleanup
 			cleanState(state);
 	
 			// go to main mode
 			state.removeAttribute("mode");
-	
-			// make sure auto-updates are enabled
-			enableObserver(state);
 		}
 
 	} // doRemove_confirmed
@@ -934,9 +889,6 @@ public class RealmsAction extends PagedResourceActionII
 			state.setAttribute("realm", realm);
 
 			state.setAttribute("mode", "view");
-
-			// disable auto-updates while in view mode
-			disableObservers(state);
 		}
 		catch (GroupNotDefinedException e)
 		{
@@ -944,9 +896,6 @@ public class RealmsAction extends PagedResourceActionII
 
 			addAlert(state, rb.getFormattedMessage("realm.notfound", new Object[]{id}));
 			state.removeAttribute("mode");
-
-			// make sure auto-updates are enabled
-			enableObserver(state);
 		}
 
 	} // doView

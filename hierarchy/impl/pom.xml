@@ -5,7 +5,7 @@
     <parent>
         <artifactId>hierarchy</artifactId>
         <groupId>org.sakaiproject</groupId>
-        <version>12.5</version>
+        <version>21-SNAPSHOT</version>
     </parent>
 
     <name>Sakai Hierarchy Implementation</name>
@@ -33,11 +33,6 @@
                 <dependency>
                     <groupId>org.javassist</groupId>
                     <artifactId>javassist</artifactId>
-                    <scope>test</scope>
-                </dependency>
-                <dependency>
-                    <groupId>org.hibernate</groupId>
-                    <artifactId>hibernate-ehcache</artifactId>
                     <scope>test</scope>
                 </dependency>
                 <dependency>
@@ -112,9 +107,8 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>dom4j</groupId>
+            <groupId>org.dom4j</groupId>
             <artifactId>dom4j</artifactId>
-            <version>1.6.1</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -141,8 +135,7 @@
         <!-- testing dependencies -->
         <dependency>
             <groupId>org.springframework</groupId>
-            <artifactId>spring-mock</artifactId>
-            <version>2.0.6</version>
+            <artifactId>spring-test</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -171,6 +164,7 @@
                 <directory>${basedir}/src/java</directory>
                 <includes>
                     <include>**/*.xml</include>
+                    <include>**/*.xslt</include>
                 </includes>
                 <filtering>false</filtering>
             </resource>
@@ -189,12 +183,11 @@
                 -->
             </plugin>
         </plugins>
-        <testResources>
+       <testResources>
             <testResource>
                 <directory>${basedir}/src/webapp/WEB-INF</directory>
                 <includes>
                     <include>spring-hibernate.xml</include>
-                    <include>logic-support.xml</include>
                 </includes>
             </testResource>
             <testResource>

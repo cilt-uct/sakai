@@ -5,17 +5,19 @@
     #if (!${loginTopLogin})
 
         #if (${userIsLoggedIn})
+
+            #if (${usePortalSearch})
+            <sakai-search page-size="${portalSearchPageSize}"></sakai-search>
+            #end
+
             #if ($viewAsStudentLink)
                 #parse("/vm/morpheus/snippets/roleSwitch-snippet.vm")
             #end ## END of IF ($viewAsStudentLink)
 
             #if (${useBullhornAlerts})
             <div class="Mrphs-sitesNav__menuitem portal-bullhorns-buttons">
-                <a id="Mrphs-academic-bullhorn" href="javascript:void(0);" title="${rloader.sit_academic_bullhorn_title}" aria-haspopup="true">
-                    <span class="icon-sakai--academic-bullhorn"></span>
-                </a>
-                <a id="Mrphs-social-bullhorn" href="javascript:void(0);" title="${rloader.sit_social_bullhorn_title}" aria-haspopup="true">
-                    <span class="icon-sakai--social-bullhorn"></span>
+                <a id="Mrphs-bullhorn" href="javascript:void(0);" title="${rloader.sit_academic_bullhorn_title}" aria-haspopup="true" aria-expanded="false">
+                    <span class="icon-sakai--alerts"></span>
                 </a>
             </div>
             #end
@@ -27,36 +29,38 @@
                     <a href="javascript:void(0);" class="js-toggle-quick-links-nav" title="${rloader.sit_quick_links_title}" aria-haspopup="true">
                         <i class="fa fa-th fa-external-link-square" aria-hidden="true"></i><span class="quicklinks-label">${rloader.sit_quick_links}</span>
                     </a>
-                </li>
 
-                <ul class="Mrphs-quickLinksNav__subnav is-hidden" role="menu">
-                    <li id="quickLinks-header" class="Mrphs-quickLinksNav__submenuitem">
-                        <span class="Mrphs-quickLinks-header--info">${quickLinksInfo}</span>
-                        <a id="quickLinks-close" href="javascript:void(0);"><i class="fa fa-times" aria-hidden="true"></i></a>
-                    </li>
-                    <div id="selectQuickLink">
-                        <div class="tab-box">
-                            #foreach($quickLink in $quickLinks)
-                                <li class="Mrphs-quickLinksNav__submenuitem">
-                                    <a role="menuitem" href="${quickLink.url}" title="$quickLink.title" target="_blank">
-                                        #if(${quickLink.iconType} == "image")
-                                            <span id="quicklink-icon" style="background-image:url(${quickLink.imageURI})"></span>
-                                        #elseif (${quickLink.iconType} == "icon")
-                                            <span id="quicklink-icon" class="${quickLink.iconClass}"></span>
-                                        #end
-                                        <span class="Mrphs-quickLinks__submenuitem--title">${quickLink.name}</span>
-                                    </a>
-                                </li>
-                            #end
+                    <ul class="Mrphs-quickLinksNav__subnav is-hidden" role="menu">
+                        <li id="quickLinks-header" class="Mrphs-quickLinksNav__submenuitem">
+                            <span class="Mrphs-quickLinks-header--info">${quickLinksInfo}</span>
+                            <a id="quickLinks-close" href="javascript:void(0);">
+                                <span class="fa fa-times" aria-hidden="true"></span>
+                            </a>
+                        </li>
+                        <div id="selectQuickLink">
+                            <div class="tab-box">
+                                #foreach($quickLink in $quickLinks)
+                                    <li class="Mrphs-quickLinksNav__submenuitem">
+                                        <a role="menuitem" href="${quickLink.url}" title="$quickLink.title" target="_blank">
+                                            #if(${quickLink.iconType} == "image")
+                                                <span id="quicklink-icon" style="background-image:url(${quickLink.imageURI})"></span>
+                                            #elseif (${quickLink.iconType} == "icon")
+                                                <span id="quicklink-icon" class="${quickLink.iconClass}"></span>
+                                            #end
+                                            <span class="Mrphs-quickLinks__submenuitem--title">${quickLink.name}</span>
+                                        </a>
+                                    </li>
+                                #end
+                            </div>
                         </div>
-                    </div>
-                </ul>
+                    </ul>
+                </li>
             </ul>
         #end
 
         #if (${userIsLoggedIn})
             <div class="Mrphs-sitesNav__menuitem view-all-sites-btn">
-                <a href="javascript:void(0);" title="${rloader.sit_allsites}" aria-haspopup="true">
+                <a href="javascript:void(0);" id="viewAllSites" title="${rloader.sit_allsites}" aria-haspopup="true" aria-expanded="false">
                     <i class="fa fa-th all-sites-icon" aria-hidden="true"></i> <span class="all-sites-label">${rloader.sit_worksites}</span>
                 </a>
             </div>
@@ -74,8 +78,13 @@
 
                                     #if (${tabsSites.mrphs_profileToolUrl})
 
+                                        ## https://www.w3.org/WAI/tutorials/menus/flyout/
+                                        ## https://www.smashingmagazine.com/2017/11/building-accessible-menu-systems/
+                                        ## https://accessibility.oit.ncsu.edu/it-accessibility-at-nc-state/developers/accessibility-handbook/mouse-and-keyboard-events/links/link-behavior/
                                         <div id="loginUser" class="has-avatar Mrphs-userNav__submenuitem--userlink #if (${site.isCurrentSite}) current-site #end">
-                                            <a href="javascript:void(0);" role="button" aria-haspopup="true" class="Mrphs-userNav__drop-btn Mrphs-userNav__submenuitem--username">
+                                            <a href="javascript:void(0);"
+						title="${loginUserFirstName} ${rloader.sit_profile_drop_down}"
+						aria-haspopup="true" aria-expanded="false" class="Mrphs-userNav__drop-btn Mrphs-userNav__submenuitem--username">
                                                 <span class="Mrphs-userNav__submenuitem--profilepicture" style="background-image:url(/direct/profile/${loginUserId}/image/thumb)"></span>
                                                 <span class="textlink">${loginUserFirstName}</span>
                                             </a>
@@ -83,7 +92,10 @@
 
                                     #else
 
-                                        <a id="loginUser" href="javascript:void(0);" class="Mrphs-userNav__drop-btn no-avatar Mrphs-userNav__submenuitem--userlink #if (${site.isCurrentSite}) current-site #end">
+                                        <a id="loginUser" href="javascript:void(0);"
+					title="${loginUserFirstName} ${rloader.sit_profile_drop_down}"
+					aria-haspopup="true" aria-expanded="false"
+					class="Mrphs-userNav__drop-btn no-avatar Mrphs-userNav__submenuitem--userlink #if (${site.isCurrentSite}) current-site #end">
                                             <span class="Mrphs-userNav__submenuitem--username">${loginUserFirstName}</span>
                                             <span class="Mrphs-userNav__submenuitem--userid">${loginUserDispId}</span>
                                         </a>
@@ -138,6 +150,16 @@
             
                                     #end ## END of IF (${tabsSites.calendarToolUrl})
 
+                                    #if (${tabsSites.calendarToolUrl})
+            
+                                        <li class="Mrphs-userNav__submenuitem Mrphs-userNav__submenuitem-indented">
+                                            <a role="menuitem" href="${tabsSites.calendarToolUrl}" class="Mrphs-userNav__submenuitem--calendar">
+                                                <span>${rloader.sit_calendar}</span>
+                                            </a>
+                                        </li>
+            
+                                    #end ## END of IF (${tabsSites.calendarToolUrl})
+
                                     #if (${tabsSites.prefsToolUrl})
 
                                         <li class="Mrphs-userNav__submenuitem Mrphs-userNav__submenuitem-indented">
@@ -157,6 +179,19 @@
                                         </li>
 
                                     #end ## END of IF (${tabsSites.tutorial})
+
+                                    #if (${sakaiThemesEnabled} && ${themeSwitcher})
+
+                                        <li class="Mrphs-userNav__submenuitem Mrphs-userNav__submenuitem-indented Mrphs-userNav__submenuitem-toggle">
+                                            <label for="sakai-darkThemeSwitcher" class="sakaiThemeSwitch">${rloader.sit_themeSwitcher}</label>
+                                            <button role="switch" aria-checked="false"
+                                                id="sakai-darkThemeSwitcher" class="Mrphs-userNav__submenuitem--themeSwitcher switch">
+                                                <span>${rloader.sit_themeSwitcherOff}</span>
+                                                <span>${rloader.sit_themeSwitcherOn}</span>
+                                            </button>
+                                        </li>
+
+                                    #end ## END of IF (${sakaiThemesEnabled} && ${themeSwitcher})
 
                             #end ## END of IF (${site.isMyWorkspace})
 

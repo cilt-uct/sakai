@@ -15,10 +15,10 @@
  */
 package org.sakaiproject.site.util;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.sakaiproject.component.cover.ComponentManager;
+import org.sakaiproject.util.api.FormattedText;
 
-import org.sakaiproject.util.FormattedText;
-import org.sakaiproject.util.Validator;
 
 public class SiteTextEditUtil {
 	/**
@@ -31,6 +31,7 @@ public class SiteTextEditUtil {
 	 */
 	public String doPlainTextAndLimit(String formattedText, int maxNumOfChars, String ellipse)
 	{
+		FormattedText FormattedText = ComponentManager.get(FormattedText.class);
 		formattedText = StringUtils.trimToNull(formattedText);
 		if(formattedText == null || formattedText.equalsIgnoreCase("<br/>") || formattedText.equalsIgnoreCase("<br>")||
 				formattedText.equals("&nbsp;") || FormattedText.escapeHtml(formattedText,false).equals("&lt;br type=&quot;_moz&quot; /&gt;")){
@@ -39,13 +40,13 @@ public class SiteTextEditUtil {
 		}
 
 		StringBuilder sb = new StringBuilder();
-		String text = FormattedText.convertFormattedTextToPlaintext(formattedText);				
+		String text = FormattedText.convertFormattedTextToPlaintext(formattedText);
 		if(maxNumOfChars>text.length()){
 			maxNumOfChars=text.length();
 		}
 		String trimmedText=text.substring(0, maxNumOfChars);
 		sb.setLength(0);
 		sb.append(trimmedText).append(ellipse);
-		return Validator.escapeHtml(sb.toString());				
+		return FormattedText.escapeHtml(sb.toString());
 	}
 }

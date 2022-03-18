@@ -31,15 +31,18 @@ import org.apache.wicket.markup.head.StringHeaderItem;
 import org.apache.wicket.markup.html.WebMarkupContainer;
 import org.apache.wicket.markup.html.WebPage;
 import org.apache.wicket.markup.html.basic.Label;
+import org.apache.wicket.markup.html.link.BookmarkablePageLink;
 import org.apache.wicket.markup.html.link.Link;
 import org.apache.wicket.model.Model;
 import org.apache.wicket.request.mapper.parameter.PageParameters;
 import org.apache.wicket.spring.injection.annot.SpringBean;
-import org.sakaiproject.component.cover.ServerConfigurationService;
+import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.gradebookng.business.GbRole;
 import org.sakaiproject.gradebookng.business.GradebookNgBusinessService;
 import org.sakaiproject.gradebookng.business.exception.GbAccessDeniedException;
 import org.sakaiproject.gradebookng.tool.component.GbFeedbackPanel;
+import org.sakaiproject.portal.util.PortalUtils;
+import org.sakaiproject.rubrics.logic.RubricsService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -56,6 +59,12 @@ public class BasePage extends WebPage {
 
 	@SpringBean(name = "org.sakaiproject.gradebookng.business.GradebookNgBusinessService")
 	protected GradebookNgBusinessService businessService;
+
+	@SpringBean(name = "org.sakaiproject.rubrics.logic.RubricsService")
+	protected RubricsService rubricsService;
+
+	@SpringBean(name = "org.sakaiproject.component.api.ServerConfigurationService")
+	protected ServerConfigurationService serverConfigService;
 
 	Link<Void> gradebookPageLink;
 	Link<Void> settingsPageLink;
@@ -102,14 +111,12 @@ public class BasePage extends WebPage {
 
 		};
 
-		// grades page
-		this.gradebookPageLink = new Link<Void>("gradebookPageLink") {
-			private static final long serialVersionUID = 1L;
+		nav.setOutputMarkupId(true);
+		nav.setMarkupId("gradebook-navbar");
 
-			@Override
-			public void onClick() {
-				setResponsePage(GradebookPage.class);
-			}
+		// grades page
+		this.gradebookPageLink = new BookmarkablePageLink<Void>("gradebookPageLink", GradebookPage.class) {
+			private static final long serialVersionUID = 1L;
 
 			@Override
 			public boolean isVisible() {
@@ -121,30 +128,20 @@ public class BasePage extends WebPage {
 		nav.add(this.gradebookPageLink);
 
 		// import/export page
-		this.importExportPageLink = new Link<Void>("importExportPageLink") {
+		this.importExportPageLink = new BookmarkablePageLink<Void>("importExportPageLink", ImportExportPage.class) {
 			private static final long serialVersionUID = 1L;
 
 			@Override
-			public void onClick() {
-				setResponsePage(ImportExportPage.class);
-			}
-
-			@Override
 			public boolean isVisible() {
-				return (BasePage.this.role == GbRole.INSTRUCTOR);
+				return (businessService.isUserAbleToEditAssessments());
 			}
 		};
 		this.importExportPageLink.add(new Label("screenreaderlabel", getString("link.screenreader.tabnotselected")));
 		nav.add(this.importExportPageLink);
 
 		// permissions page
-		this.permissionsPageLink = new Link<Void>("permissionsPageLink") {
+		this.permissionsPageLink = new BookmarkablePageLink<Void>("permissionsPageLink", PermissionsPage.class) {
 			private static final long serialVersionUID = 1L;
-
-			@Override
-			public void onClick() {
-				setResponsePage(PermissionsPage.class);
-			}
 
 			@Override
 			public boolean isVisible() {
@@ -155,17 +152,12 @@ public class BasePage extends WebPage {
 		nav.add(this.permissionsPageLink);
 
 		// settings page
-		this.settingsPageLink = new Link<Void>("settingsPageLink") {
+		this.settingsPageLink = new BookmarkablePageLink<Void>("settingsPageLink", SettingsPage.class) {
 			private static final long serialVersionUID = 1L;
 
 			@Override
-			public void onClick() {
-				setResponsePage(SettingsPage.class);
-			}
-
-			@Override
 			public boolean isVisible() {
-				return (BasePage.this.role == GbRole.INSTRUCTOR);
+				return (businessService.isUserAbleToEditAssessments());
 			}
 		};
 		this.settingsPageLink.add(new Label("screenreaderlabel", getString("link.screenreader.tabnotselected")));
@@ -195,7 +187,7 @@ public class BasePage extends WebPage {
 	public void renderHead(final IHeaderResponse response) {
 		super.renderHead(response);
 
-		final String version = ServerConfigurationService.getString("portal.cdn.version", "");
+		final String version = PortalUtils.getCDNQuery();
 
 		// get the Sakai skin header fragment from the request attribute
 		final HttpServletRequest request = (HttpServletRequest) getRequest().getContainerRequest();
@@ -215,15 +207,15 @@ public class BasePage extends WebPage {
 		response.render(
 				new PriorityHeaderItem(
 						JavaScriptHeaderItem
-								.forUrl(String.format("/library/webjars/jquery/1.12.4/jquery.min.js?version=%s", version))));
+								.forUrl(String.format("/library/webjars/jquery/1.12.4/jquery.min.js%s", version))));
 		// And pair this instance of jQuery with a Bootstrap version we've tested with
 		response.render(
 				new PriorityHeaderItem(
 						JavaScriptHeaderItem
-								.forUrl(String.format("/library/webjars/bootstrap/3.3.7/js/bootstrap.min.js?version=%s", version))));
+								.forUrl(String.format("/library/webjars/bootstrap/3.3.7/js/bootstrap.min.js%s", version))));
 		// Some global gradebookng styles
 		response.render(CssHeaderItem
-				.forUrl(String.format("/gradebookng-tool/styles/gradebook-shared.css?version=%s", version)));
+				.forUrl(String.format("/gradebookng-tool/styles/gradebook-shared.css%s", version)));
 
 	}
 
@@ -240,15 +232,20 @@ public class BasePage extends WebPage {
 	 * Helper to build a notification flag with a Bootstrap popover
 	 */
 	public WebMarkupContainer buildFlagWithPopover(final String componentId, final String message) {
+		return buildFlagWithPopover(componentId, message, "manual", "#gradebookGrades");
+	}
+
+	public WebMarkupContainer buildFlagWithPopover(final String componentId, final String message,
+			final String trigger, final String container) {
 		final WebMarkupContainer flagWithPopover = new WebMarkupContainer(componentId);
 
 		flagWithPopover.add(new AttributeModifier("title", message));
 		flagWithPopover.add(new AttributeModifier("aria-label", message));
 		flagWithPopover.add(new AttributeModifier("data-toggle", "popover"));
-		flagWithPopover.add(new AttributeModifier("data-trigger", "manual"));
+		flagWithPopover.add(new AttributeModifier("data-trigger", trigger));
 		flagWithPopover.add(new AttributeModifier("data-placement", "bottom"));
 		flagWithPopover.add(new AttributeModifier("data-html", "true"));
-		flagWithPopover.add(new AttributeModifier("data-container", "#gradebookGrades"));
+		flagWithPopover.add(new AttributeModifier("data-container", container));
 		flagWithPopover.add(new AttributeModifier("data-template",
 				"<div class=\"gb-popover popover\" role=\"tooltip\"><div class=\"arrow\"></div><div class=\"popover-content\"></div></div>"));
 		flagWithPopover.add(new AttributeModifier("data-content", generatePopoverContent(message)));
@@ -294,7 +291,7 @@ public class BasePage extends WebPage {
 
 	/**
 	 * Performs role checks for instructor-only pages and redirects users to appropriate pages based on their role.
-	 * No role -> AccessDeniedPage. Student -> StudentPage. TA -> GradebookPage.
+	 * No role -> AccessDeniedPage. Student -> StudentPage. TA -> GradebookPage (if ta does not have the gradebook.editAssignments permission)
 	 */
 	protected final void defaultRoleChecksForInstructorOnlyPage()
 	{
@@ -306,6 +303,9 @@ public class BasePage extends WebPage {
 			case STUDENT:
 				throw new RestartResponseException(StudentPage.class);
 			case TA:
+				if(businessService.isUserAbleToEditAssessments()) {
+					break;
+				}
 				throw new RestartResponseException(GradebookPage.class);
 			default:
 				break;

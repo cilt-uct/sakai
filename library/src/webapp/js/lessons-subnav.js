@@ -69,11 +69,11 @@
 
             if (sub_page.hidden == 'true') {
                 $submenu_action.classList.add('is-invisible');
-                if (sub_page.releaseDate) {
-                    title_string += ' ' + self.i18n.hidden_with_release_date.replace(/\{releaseDate\}/, sub_page.releaseDate);
-                } else {
-                    title_string += ' ' + self.i18n.hidden;
-                }
+            }
+
+            if(sub_page.disabled == 'true'){
+                $submenu_action.classList.add('is-invisible');
+                title_string += ' ' + self.i18n.hidden_with_release_date.replace(/\{releaseDate\}/, sub_page.releaseDate);
             }
 
             if(sub_page.required == 'true') {
@@ -288,7 +288,7 @@
          });
 
         if ($li.classList.contains('is-current')) {
-            $expandedMenuPlaceholder.style.display = 'block';
+            $expandedMenuPlaceholder.style.display = 'flex';
             $menu.style.display = 'none';
 
             $li.classList.add('expanded');
@@ -399,8 +399,6 @@
                 cache: false,
                 dataType: 'json',
                 success: function(json) {
-                    // json is keyed on the sakai page id to an array of lesson page ids that
-                    // are not accessible due to prerequisites
                     self.applyPrerequisites(json);
                 }
             });
@@ -416,7 +414,7 @@
                 var sub_pages = self.data[page_id];
                 sub_pages.forEach(function(sub_page) {
                     if (prereqData.hasOwnProperty(sub_page.sakaiPageId)) {
-                        if (sub_page.prerequisite == 'true' && $PBJQ.inArray(sub_page.sendingPage, prereqData[sub_page.sakaiPageId]) >= 0) {
+                        if (sub_page.prerequisite == 'true' && $PBJQ.inArray(sub_page.itemId, prereqData[sub_page.sakaiPageId].unavailable) >= 0) {
                             var $link = $PBJQ(sub_page.submenu_item).find('> a');
                             $link.addClass('has-prerequisite');
                             var title_string = $link.attr('title');
@@ -434,16 +432,6 @@
             }
         }
     };
-
-
-    LessonsSubPageNavigation.prototype.truncateTitle = function(title) {
-        if (title.length > LESSON_TITLE_TRUNCATE_AT_LENGTH) {
-          return title.substring(0, LESSON_TITLE_TRUNCATE_AT_LENGTH) + '&hellip;';
-        } else {
-          return title;
-        }
-    };
-
 
     window.LessonsSubPageNavigation = LessonsSubPageNavigation;
 })();

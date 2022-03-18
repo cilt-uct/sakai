@@ -42,7 +42,7 @@ import org.sakaiproject.util.ResourceLoader;
 public class ResourcesMetadata
 {
 	/** Resource bundle using current language locale */
-	private ResourceLoader rb = new ResourceLoader("content");
+	private static final ResourceLoader rb = new ResourceLoader("content");
     
 	public static final String WIDGET_STRING = "string";
 	public static final String WIDGET_TEXTAREA = "textarea";
@@ -75,7 +75,7 @@ public class ResourcesMetadata
 	public static final String XSD_NORMALIZED_STRING = "normalizedString";
 	
 	
-	public static final String CLASS_SAKAI_RESOURCE_NAMESPACE = "http://sakaiproject.org/metadata#";
+	public static final String CLASS_SAKAI_RESOURCE_NAMESPACE = "https://www.sakailms.org/metadata#";
 	public static final String CLASS_SAKAI_RESOURCE_LOCALNAME = "Resource";
 	public static final String CLASS_SAKAI_RESOURCE_LABEL = "Resource";
 	

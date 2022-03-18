@@ -22,12 +22,14 @@
 package org.sakaiproject.util;
 
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.net.URLEncoder;
 import java.util.Enumeration;
 
 import javax.servlet.http.HttpServletRequest;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 
 import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.exception.IdInvalidException;
@@ -104,7 +106,7 @@ public class Validator
 	 * @param value
 	 *        The string to escape.
 	 * @return value fully escaped for HTML.
-     * @deprecated this is a passthrough for {@link FormattedText#escapeHtml(String, boolean)} so use that instead
+     * @deprecated this is a passthrough for {@link org.sakaiproject.util.api.FormattedText#escapeHtml(String, boolean)} so use that instead
 	 */
 	public static String escapeHtml(String value)
 	{
@@ -113,7 +115,7 @@ public class Validator
 
 	/**
 	 * Escape plaintext for display inside a plain textarea.
-     * @deprecated this is a passthrough for {@link FormattedText#escapeHtml(String, boolean)} so use that instead
+     * @deprecated this is a passthrough for {@link org.sakaiproject.util.api.FormattedText#escapeHtml(String, boolean)} so use that instead
 	 */
 	public static String escapeHtmlTextarea(String value)
 	{
@@ -122,7 +124,7 @@ public class Validator
 
 	/**
 	 * Escape HTML-formatted text in preparation to include it in an HTML document.
-     * @deprecated this is a passthrough for {@link FormattedText#escapeHtmlFormattedText(String)} so use that instead
+     * @deprecated this is a passthrough for {@link org.sakaiproject.util.api.FormattedText#escapeHtmlFormattedText(String)} so use that instead
 	 */
 	public static String escapeHtmlFormattedText(String value)
 	{
@@ -135,7 +137,7 @@ public class Validator
 	 * @param value
 	 *        The formatted text to escape
 	 * @return The string to use as the value of the formatted textarea widget
-     * @deprecated this is a passthrough for {@link FormattedText#escapeHtmlFormattedTextarea(String)} so use that instead
+     * @deprecated this is a passthrough for {@link org.sakaiproject.util.api.FormattedText#escapeHtmlFormattedTextarea(String)} so use that instead
 	 */
 	public static String escapeHtmlFormattedTextarea(String value)
 	{
@@ -148,11 +150,11 @@ public class Validator
      * @param value
      *        The string to escape.
      * @return value fully escaped using javascript / html identifier rules.
-     * @deprecated use commons-lang StringEscapeUtils
+     * @deprecated use commons-text {@link org.apache.commons.text.StringEscapeUtils}
      */
     public static String escapeJavascript(String value)
     {
-        if (value == null || "".equals(value)) return "";
+        if (StringUtils.isEmpty(value)) return StringUtils.EMPTY;
         try
         {
             StringBuilder buf = new StringBuilder();
@@ -194,13 +196,13 @@ public class Validator
 	 * One reason for this existing is that the standard URLEncoder in Java will encode slashes ('/') but this method doesn't.
 	 * Also watch out as it trims trailing spaces, and other character get lost here too.
 	 * 
-	 * Note: java.net.URLEncode.encode() provides a more standard option
-	 *       FormattedText.decodeNumericCharacterReferences() undoes this op
+	 * Note: {@link java.net.URLEncode#encode(String, String)} provides a more standard option
+	 *       {@link FormattedText#decodeNumericCharacterReferences(String)} undoes this op
 	 * 
 	 * @param id
 	 *        The string to escape.
 	 * @return id fully escaped using URL rules.
-	 * @deprecated use java.net.URLEncode.encode()
+	 * @deprecated use {@link java.net.URLEncoder#encode(String, String)}
 	 */
 	public static String escapeUrl(String id)
 	{
@@ -209,7 +211,7 @@ public class Validator
 		try
 		{
 			// convert the string to bytes in UTF-8
-			byte[] bytes = id.getBytes("UTF-8");
+			byte[] bytes = id.getBytes(StandardCharsets.UTF_8.name());
 
 			StringBuilder buf = new StringBuilder();
 			for (int i = 0; i < bytes.length; i++)
@@ -249,7 +251,7 @@ public class Validator
     
     /**
      * Is this a valid local part of an email id?
-     * @deprecated use commons-validator EmailValidator
+     * @deprecated use commons-validator {@link org.apache.commons.validator.routines.EmailValidator}
      */
     public static boolean checkEmailLocal(String id)
     {
@@ -532,7 +534,7 @@ public class Validator
 	 * @param fullName
 	 *        The full file name from a local os file system (mac, unix, windoze)
 	 * @return Just the name (and extension) of the file, without the drive or path.
-	 * @deprecated use commons-io FilenameUtils.getName() instead
+	 * @deprecated use commons-io: {@link org.apache.commons.io.FilenameUtils#getName(String)} instead
 	 */
 	public static String getFileName(String fullName)
 	{
@@ -877,6 +879,7 @@ public class Validator
 
 	/**
 	 * Validate whether the date input is valid
+	 * @deprecated {@link org.sakaiproject.util.DateFormatterUtil#checkDate(int, int, int)}
 	 */
 	public static boolean checkDate(int day, int month, int year)
 	{

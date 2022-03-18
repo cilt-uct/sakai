@@ -35,6 +35,7 @@ import org.sakaiproject.poll.logic.ExternalLogic;
 import org.sakaiproject.poll.logic.PollListManager;
 import org.sakaiproject.poll.logic.PollVoteManager;
 import org.sakaiproject.poll.model.Poll;
+import org.sakaiproject.poll.tool.constants.NavigationConstants;
 import org.sakaiproject.poll.tool.params.PollViewParameters;
 import org.sakaiproject.poll.tool.params.VoteBean;
 
@@ -46,6 +47,7 @@ import uk.org.ponder.rsf.components.UICommand;
 import uk.org.ponder.rsf.components.UIContainer;
 import uk.org.ponder.rsf.components.UIELBinding;
 import uk.org.ponder.rsf.components.UIForm;
+import uk.org.ponder.rsf.components.UIInput;
 import uk.org.ponder.rsf.components.UIInternalLink;
 import uk.org.ponder.rsf.components.UILink;
 import uk.org.ponder.rsf.components.UIMessage;
@@ -76,10 +78,6 @@ DefaultView,NavigationCaseReporter {
 	private MessageLocator messageLocator;
 	private LocaleGetter localegetter;
 	private PollVoteManager pollVoteManager;  
-
-	private static final String NAVIGATE_ADD = "actions-add";
-	private static final String NAVIGATE_PERMISSIONS = "actions-permissions";
-	private static final String NAVIGATE_VOTE = "poll-vote";
 
 	public String getViewID() {
 		return VIEW_ID;
@@ -134,22 +132,16 @@ DefaultView,NavigationCaseReporter {
 		UIOutput.make(tofill, "poll-list-title", messageLocator.getMessage("poll_list_title"));	
 		
 		boolean renderDelete = false;
-		//populate the action links
-		if (this.isAllowedPollAdd() || this.isSiteOwner() ) {
-			UIBranchContainer actions = UIBranchContainer.make(tofill,"actions:",Integer.toString(0));
-			log.debug("this user has some admin functions");
-			if (this.isAllowedPollAdd()) {
-				log.debug("User can add polls");
-				//UIOutput.make(tofill, "poll-add", messageLocator
-				//       .getMessage("action_add_poll"));
-				UIInternalLink.make(actions,NAVIGATE_ADD,UIMessage.make("action_add_poll"),
-						new PollViewParameters(AddPollProducer.VIEW_ID, "New 0"));
-			} 
-			if (this.isSiteOwner()) {
-				UIInternalLink.make(actions, NAVIGATE_PERMISSIONS, UIMessage.make("action_set_permissions"),new SimpleViewParameters(PermissionsProducer.VIEW_ID));
-			} 
-		}
 
+		// Menu links
+		UIBranchContainer actions = UIBranchContainer.make(tofill,"actions:",Integer.toString(0));
+		UIInternalLink.make(actions, NavigationConstants.NAVIGATE_MAIN, UIMessage.make(NavigationConstants.NAVIGATE_MAIN_MESSAGE), new SimpleViewParameters(PollToolProducer.VIEW_ID));
+		if (this.isAllowedPollAdd()) {
+			UIInternalLink.make(actions, NavigationConstants.NAVIGATE_ADD, UIMessage.make(NavigationConstants.NAVIGATE_ADD_MESSAGE), new PollViewParameters(AddPollProducer.VIEW_ID, "New 0"));
+		}
+		if (this.isSiteOwner()) {
+			UIInternalLink.make(actions, NavigationConstants.NAVIGATE_PERMISSIONS, UIMessage.make(NavigationConstants.NAVIGATE_PERMISSIONS_MESSAGE), new SimpleViewParameters(PermissionsProducer.VIEW_ID));
+		}
 
 		List<Poll> polls = new ArrayList<Poll>();
 
@@ -202,7 +194,7 @@ DefaultView,NavigationCaseReporter {
 		UIMessage.make(deleteForm, "poll-open-title", "poll_open_title");
 		UIMessage.make(deleteForm, "poll-close-title", "poll_close_title");*/
 		UIMessage.make(deleteForm, "poll-result-title", "poll_result_title");
-		UIMessage.make(deleteForm, "poll-remove-title", "poll_remove_title");
+		UIMessage.make(deleteForm, "poll_select_title_all", "poll_select_title_all");
 		
 		UILink question = UILink.make(tofill,"poll-question-title",messageLocator.getMessage("poll_question_title"), "#");
 		question.decorators = new DecoratorList(new UITooltipDecorator(messageLocator.getMessage("poll_question_title_tooltip")));
@@ -211,7 +203,9 @@ DefaultView,NavigationCaseReporter {
 		UILink close = UILink.make(tofill,"poll-close-title",messageLocator.getMessage("poll_close_title"), "#");
 		close.decorators = new DecoratorList(new UITooltipDecorator(messageLocator.getMessage("poll_close_title_tooltip")));
 
-
+		UIInput removeAll = UIInput.make(deleteForm, "remove-all", null);
+ 		removeAll.decorators = new DecoratorList(new UITooltipDecorator(messageLocator.getMessage("poll_select_title_all")));
+		
 		StringList deletable = new StringList();
 		
 		
@@ -226,8 +220,7 @@ DefaultView,NavigationCaseReporter {
 			log.debug("adding poll row for " + poll.getText());
 
 			if (canVote) {
-				UIInternalLink voteLink = UIInternalLink.make(pollrow, NAVIGATE_VOTE, poll.getText(),
-						new PollViewParameters(PollVoteProducer.VIEW_ID, poll.getPollId().toString()));
+				UIInternalLink voteLink = UIInternalLink.make(pollrow, NavigationConstants.NAVIGATE_VOTE, poll.getText(), new PollViewParameters(PollVoteProducer.VIEW_ID, poll.getPollId().toString()));
 				//we need to add a decorator for the alt text
 				voteLink.decorators = new DecoratorList(new UITooltipDecorator(messageLocator.getMessage("poll_vote_title") +":" + poll.getText()));
 
@@ -236,7 +229,7 @@ DefaultView,NavigationCaseReporter {
 				poll.setOptions(pollListManager.getOptionsForPoll(poll.getPollId()));
 				
 				//is this not votable because of no options?
-				if (poll.getPollOptions().size() == 0 )
+				if (poll.getOptions().size() == 0 )
 					UIOutput.make(pollrow,"poll-text",poll.getText() + " (" + messageLocator.getMessage("poll_no_options") + ")");
 				else
 					UIOutput.make(pollrow,"poll-text",poll.getText());
@@ -295,25 +288,13 @@ DefaultView,NavigationCaseReporter {
 		}
 	}
 
+    private boolean isAllowedPollAdd() {
+        return externalLogic.isUserAdmin() || externalLogic.isAllowedInLocation(PollListManager.PERMISSION_ADD, externalLogic.getCurrentLocationReference());
+    }
 
-	private boolean isAllowedPollAdd() {
-		if (externalLogic.isUserAdmin())
-			return true;
-
-		if (externalLogic.isAllowedInLocation(PollListManager.PERMISSION_ADD, externalLogic.getCurrentLocationReference()))
-			return true;
-
-		return false;
-	}
-
-	private boolean isSiteOwner(){
-		if (externalLogic.isUserAdmin())
-			return true;
-		else if (externalLogic.isAllowedInLocation("site.upd", externalLogic.getCurrentLocationReference()))
-			return true;
-		else
-			return false;
-	}
+    private boolean isSiteOwner() {
+        return externalLogic.isUserAdmin() || externalLogic.isAllowedInLocation("site.upd", externalLogic.getCurrentLocationReference());
+    }
 
 	public List<NavigationCase> reportNavigationCases() {
 		List<NavigationCase> togo = new ArrayList<NavigationCase>(); // Always navigate back to this view.

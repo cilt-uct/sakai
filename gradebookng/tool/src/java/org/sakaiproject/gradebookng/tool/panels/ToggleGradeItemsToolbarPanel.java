@@ -20,7 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.ajax.markup.html.form.AjaxCheckBox;
@@ -83,8 +83,7 @@ public class ToggleGradeItemsToolbarPanel extends BasePanel {
 			@Override
 			protected void populateItem(final ListItem<String> categoryItem) {
 				final String categoryName = categoryItem.getModelObject();
-				final Long categoryID = categoryNameToIdMap.get(categoryName);
-				final String categoryColor = settings.getCategoryColor(categoryName, categoryID);
+				final String categoryColor = settings.getCategoryColor(categoryName);
 
 				WebMarkupContainer categoryFilter = new WebMarkupContainer("categoryFilter");
 				if (!categoriesEnabled) {

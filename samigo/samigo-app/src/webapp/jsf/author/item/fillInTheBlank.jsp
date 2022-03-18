@@ -2,7 +2,7 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
 <%@ taglib uri="http://www.sakaiproject.org/samigo" prefix="samigo" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <!DOCTYPE html
      PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -32,7 +32,7 @@
     <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
       <head><%= request.getAttribute("html.head") %>
       <title><h:outputText value="#{authorMessages.item_display_author}"/></title>
-      <samigo:script path="/js/authoring.js?_=1481259675"/>
+      <script src="/samigo-app/js/authoring.js"></script>
       </head>
       <body onload="<%= request.getAttribute("html.body.onload") %>">
 
@@ -44,7 +44,7 @@
 <%@ include file="/jsf/author/item/itemHeadings.jsp" %>
 
 <%-- warning for editing FIB questions. SAM-2334 --%>
-<h:panelGroup rendered="#{!author.isEditPendingAssessmentFlow}" styleClass="messageSamigo2">
+<h:panelGroup rendered="#{!author.isEditPendingAssessmentFlow}" styleClass="sak-banner-warn">
 	<h:panelGrid  columns="1">
 		<h:outputText value="#{authorMessages.edit_fib_warning}" />
 	</h:panelGrid>
@@ -88,9 +88,9 @@
     </div>
     
     <div class="form-group row">
-        <h:outputLabel value="#{authorMessages.answer_point_value_display}" styleClass="col-md-4 col-lg-2 form-control-label"/>
+        <h:outputLabel for="itemScore" value="#{authorMessages.answer_point_value_display}" styleClass="col-md-4 col-lg-2 form-control-label"/>
         <div class="col-md-5 samigo-inline-radio">
-            <h:selectOneRadio value="#{itemauthor.currentItem.itemScoreDisplayFlag}" >
+            <h:selectOneRadio value="#{itemauthor.currentItem.itemScoreDisplayFlag}" id="itemScore">
                 <f:selectItem itemValue="true" itemLabel="#{authorMessages.yes}" />
                 <f:selectItem itemValue="false" itemLabel="#{authorMessages.no}" />
             </h:selectOneRadio>
@@ -100,7 +100,7 @@
     <!-- 1.2 Min POINTS -->
     <f:subview id="minPoints" rendered="#{itemauthor.allowMinScore}">
         <div class="form-group row">   
-            <h:outputLabel value="#{authorMessages.answer_min_point_value}" styleClass="col-md-4 col-lg-2 form-control-label"/>
+            <h:outputLabel for="answerminptr" value="#{authorMessages.answer_min_point_value}" styleClass="col-md-4 col-lg-2 form-control-label"/>
             <div class="col-md-2">
                 <h:inputText id="answerminptr" value="#{itemauthor.currentItem.itemMinScore}" styleClass="form-control ConvertPoint">
                     <f:validateDoubleRange/>
@@ -111,8 +111,11 @@
         </div>
     </f:subview>
 
+    <!-- Extra Credit -->
+    <%@ include file="/jsf/author/inc/extraCreditSetting.jspf" %>
+
     <%-- 2 QUESTION TEXT --%> 
-    <h:outputLabel value="#{authorMessages.q_text}" /><br/>
+    <h:outputLabel for="questionItemText_textinput" value="#{authorMessages.q_text}" /><br/>
     <h:outputText value="#{authorMessages.defining_answers}<br/>" escape="false"/>  
     <h:outputText value="#{authorMessages.fib_note_1}<br /><br />" escape="false"/>
     <h:outputText value="#{authorMessages.fib_note_2}<br /><br />" escape="false"/>
@@ -120,15 +123,13 @@
 
     <div class="mathjax-warning" style="display: none;">
       <h:outputText value="#{authorMessages.accepted_characters}" escape="false"/>
-      <div class="alert alert-warning">
-        LaTeX and AsciiMath markup may conflict with notation required for this question type.
-        Use the <a href="http://www.nyu.edu/servicelink/041310214003342" target="_blank">WIRIS or MathML plugins</a> in the editor instead.
+      <div class="sak-banner-warn">
+          <h:outputText value="#{authorMessages.mathjax_usage_warning}" escape="false"/>
       </div>
     </div>
 
     <h:panelGrid>
-        <samigo:wysiwyg
-                 rows="140" value="#{itemauthor.currentItem.itemText}" hasToggle="yes" mode="author">
+        <samigo:wysiwyg identity="questionItemText" rows="140" value="#{itemauthor.currentItem.itemText}" hasToggle="yes" mode="author">
                 <f:validateLength maximum="60000"/>
         </samigo:wysiwyg>
     </h:panelGrid>
@@ -162,7 +163,7 @@
         <div class="samigo-checkbox">
             <h:selectBooleanCheckbox id="spaces" value="#{itemauthor.currentItem.ignoreSpacesForFib}">
             </h:selectBooleanCheckbox>
-            <h:outputLabel for="espaces" value="#{authorMessages.ignore_spaces}" escape="false"/>
+            <h:outputLabel for="spaces" value="#{authorMessages.ignore_spaces}" escape="false"/>
         </div>
         <p>
             <h:outputText value="#{authorMessages.ignore_spaces_note}" escape="false"/><br/>
@@ -176,7 +177,7 @@
 
     <%-- 3 PART --%>
     <h:panelGroup styleClass="form-group row" layout="block" rendered="#{itemauthor.target == 'assessment'  && !author.isEditPoolFlow}">
-        <h:outputLabel value="#{authorMessages.assign_to_p}" styleClass="col-md-4 col-lg-2 form-control-label"/>
+        <h:outputLabel for="assignToPart" value="#{authorMessages.assign_to_p}" styleClass="col-md-4 col-lg-2 form-control-label"/>
         <div class="col-md-8">
             <h:selectOneMenu id="assignToPart" value="#{itemauthor.currentItem.selectedSection}">
                 <f:selectItems  value="#{itemauthor.sectionSelectList}" />
@@ -188,7 +189,7 @@
     <%-- 5 POOL --%>
     <h:panelGroup styleClass="form-group row" layout="block" 
                     rendered="#{itemauthor.target == 'assessment' && author.isEditPendingAssessmentFlow}">
-        <h:outputLabel value="#{authorMessages.assign_to_question_p}" styleClass="col-md-4 col-lg-2 form-control-label"/>
+        <h:outputLabel for="assignToPool" value="#{authorMessages.assign_to_question_p}" styleClass="col-md-4 col-lg-2 form-control-label"/>
         <div class="col-md-8">
             <h:selectOneMenu id="assignToPool" value="#{itemauthor.currentItem.selectedPool}">
                 <f:selectItem itemValue="" itemLabel="#{authorMessages.select_a_pool_name}" />
@@ -204,22 +205,22 @@
             <h:outputLabel value="#{authorMessages.correct_incorrect_an}" styleClass="col-md-12 form-control-label"/>
         </div>
         <div class="form-group row">
-            <h:outputLabel value="#{authorMessages.correct_answer_opti}" styleClass="col-md-4 col-lg-2 form-control-label"/>
+            <h:outputLabel for="questionFeedbackCorrect_textinput" value="#{authorMessages.correct_answer_opti}" styleClass="col-md-4 col-lg-2 form-control-label"/>
             <!-- WYSIWYG -->
             <div class="col-md-8">
                 <h:panelGrid>
-                    <samigo:wysiwyg rows="140" value="#{itemauthor.currentItem.corrFeedback}" hasToggle="yes" mode="author">
+                    <samigo:wysiwyg identity="questionFeedbackCorrect" rows="140" value="#{itemauthor.currentItem.corrFeedback}" hasToggle="yes" mode="author">
                         <f:validateLength maximum="60000"/>
                     </samigo:wysiwyg>
                 </h:panelGrid>
             </div>
        </div>
         <div class="form-group row">
-            <h:outputLabel value="#{authorMessages.incorrect_answer_op}" styleClass="col-md-4 col-lg-2 form-control-label"/>
+            <h:outputLabel for="questionFeedbackIncorrect_textinput" value="#{authorMessages.incorrect_answer_op}" styleClass="col-md-4 col-lg-2 form-control-label"/>
             <!-- WYSIWYG -->
             <div class="col-md-8"> 
                 <h:panelGrid>
-                    <samigo:wysiwyg rows="140" value="#{itemauthor.currentItem.incorrFeedback}" hasToggle="yes" mode="author">
+                    <samigo:wysiwyg identity="questionFeedbackIncorrect" rows="140" value="#{itemauthor.currentItem.incorrFeedback}" hasToggle="yes" mode="author">
                         <f:validateLength maximum="60000"/>
                     </samigo:wysiwyg>
                  </h:panelGrid>

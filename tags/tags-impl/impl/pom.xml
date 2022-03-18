@@ -12,7 +12,7 @@
   <parent>
     <artifactId>tags-base</artifactId>
     <groupId>org.sakaiproject.tags</groupId>
-    <version>12.5</version>
+    <version>21-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
 
@@ -78,14 +78,17 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>jdom</groupId>
-      <artifactId>jdom</artifactId>
-      <version>${jdom.version}</version>
+      <groupId>org.jdom</groupId>
+      <artifactId>jdom2</artifactId>
     </dependency>
     <dependency>
       <groupId>org.sakaiproject.tags</groupId>
       <artifactId>tags-api</artifactId>
       <version>${sakai.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>javax</groupId>
+      <artifactId>javaee-api</artifactId>
     </dependency>
     <dependency>
       <groupId>org.springframework</groupId>

@@ -16,16 +16,16 @@
   <h:outputText value="Quiz: #{pdfAssessmentBean.title}" />
   </title>
   
-  <samigo:stylesheet path="/css/print/print.css"/>
+  <link rel="stylesheet" type="text/css" href="/samigo-app/css/print/print.css">
   
     
   <%@ include file="/jsf/delivery/deliveryjQuery.jsp" %>
   
-	<samigo:script path="/js/selection.author.preview.js"/>
+	<script src="/samigo-app/js/selection.author.preview.js"></script>
 		
-	<samigo:stylesheet path="/css/imageQuestion.author.css"/>
+	<link rel="stylesheet" type="text/css" href="/samigo-app/css/imageQuestion.author.css">
 		
-	<script type="text/JavaScript">		
+	<script>		
 		jQuery(window).load(function(){
 			
 			$('input:hidden[id^=hiddenSerializedCoords_]').each(function(){
@@ -45,8 +45,7 @@
 	</script>
 	    
   
-  <script type="text/JavaScript">
-<!--
+  <script>
 function resetSelectMenus(){
   var selectlist = document.getElementsByTagName("SELECT");
 
@@ -72,23 +71,8 @@ for (i=0; i<document.links.length; i++) {
 document.links[newindex].onclick(); 
 }
  
-//-->
 </script>
-
-<style type="text/css">
-        .TableColumn {
-          text-align: center
-        }
-       .TableClass {
-         border-style: dotted;
-         border-width: 0.5px;
-         border-color: light grey;
-       }
-</style>
 </head>
-
-
-
 
 <body 
   onload="document.forms[0].reset(); resetSelectMenus(); ;<%= request.getAttribute("html.body.onload") %>; qb_init('print');"
@@ -101,13 +85,11 @@ document.links[newindex].onclick();
   <h:form id="assessmentForm">
   
   <!-- HEADINGS (NOT PRINTED) -->
-      <p>        
-        <h:commandLink action="#{pdfAssessment.getActionString}">
+        <h:commandLink styleClass="printReturnLink" action="#{pdfAssessment.getActionString}">
           <h:outputText value="#{printMessages.back_to_assessmt}" rendered="#{pdfAssessment.actionString == 'editAssessment'}" escape="false" />
-		  <h:outputText value="#{printMessages.back_to_landingpage}" rendered="#{pdfAssessment.actionString != 'editAssessment'}" escape="false" />
+          <h:outputText value="#{printMessages.back_to_landingpage}" rendered="#{pdfAssessment.actionString != 'editAssessment'}" escape="false" />
         </h:commandLink>
-      </p>
-      
+
     <h:messages/>
     
     <div id="header">

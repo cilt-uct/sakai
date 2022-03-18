@@ -19,15 +19,18 @@
 package org.sakaiproject.sitestats.tool.wicket.components;
 
 import java.util.Date;
+import java.util.TimeZone;
 
 import org.apache.wicket.markup.html.WebMarkupContainer;
 import org.apache.wicket.markup.html.basic.Label;
 import org.apache.wicket.markup.html.panel.Panel;
 import org.apache.wicket.model.Model;
+import org.apache.wicket.model.StringResourceModel;
 import org.sakaiproject.sitestats.api.StatsManager;
 import org.sakaiproject.sitestats.api.StatsUpdateManager;
 import org.sakaiproject.sitestats.tool.facade.Locator;
 import org.sakaiproject.sitestats.tool.wicket.pages.NotAuthorizedPage;
+import org.sakaiproject.time.api.UserTimeService;
 
 import org.sakaiproject.db.cover.SqlService;
 import org.sakaiproject.time.api.TimeService;
@@ -40,8 +43,6 @@ public class LastJobRun extends Panel {
 	private static final long		serialVersionUID	= 1L;
 
 	private String					realSiteId;
-	private String					siteId;
-	private String					siteTitle;
 
 	public LastJobRun(String id) {
 		this(id, null);
@@ -53,14 +54,21 @@ public class LastJobRun extends Panel {
 		if(siteId == null){
 			siteId = realSiteId;
 		}
-		boolean allowed = Locator.getFacade().getStatsAuthz().isUserAbleToViewSiteStats(siteId);
-		if(allowed) {
-			renderBody();
-		}else{
+		boolean allowedView = Locator.getFacade().getStatsAuthz().isUserAbleToViewSiteStats(siteId);
+		boolean allowedOwn = Locator.getFacade().getStatsAuthz().isUserAbleToViewSiteStatsOwn(siteId);
+		if(!allowedView && !allowedOwn) {
 			setResponsePage(NotAuthorizedPage.class);
-		}		
+		}
 	}
 	
+	@Override
+	protected void onInitialize()
+	{
+		super.onInitialize();
+
+		renderBody();
+	}
+
 	private void renderBody() {
 		StatsManager statsManager = Locator.getFacade().getStatsManager();
 		StatsUpdateManager statsUpdateManager = Locator.getFacade().getStatsUpdateManager();
@@ -72,32 +80,25 @@ public class LastJobRun extends Panel {
 		lastJobRun.setVisible(lastJobRunVisible);
 		add(lastJobRun);
 		final Label lastJobRunDate = new Label("lastJobRunDate");
+		final Label lastJobRunServerDate = new Label("lastJobRunServerDate");
 		if(lastJobRunVisible) {
 			try{
 				Date d = statsUpdateManager.getEventDateFromLatestJobRun();
-
-				long time = d.getTime();
-
-				if ("oracle".equals(SqlService.getVendor())) {
-					// CLASSES-3250 Oracle stores event
-					// times in UTC whereas MySQL seems to
-					// be storing them in server time.  Now
-					// apparently that's my problem.
-
-					time += TimeZone.getDefault().getOffset(time);
-				}
-
-				TimeService timeService = Locator.getFacade().getTimeService();
-				String dStr = timeService.newTime(time).toStringLocalFull();
-				String zoneStr = timeService.getLocalTimeZone().getID().replace("_", " ");
-				lastJobRunDate.setDefaultModel(new Model(String.format("%s (%s)", dStr, zoneStr)));
-			}catch(RuntimeException e) {
-				lastJobRunDate.setDefaultModel(new Model());
+				UserTimeService timeServ = Locator.getFacade().getUserTimeService();
+				String dStr = timeServ.shortLocalizedTimestamp(d.toInstant(), getSession().getLocale());
+				String serverDateStr = timeServ.shortLocalizedTimestamp(d.toInstant(), TimeZone.getDefault(), getSession().getLocale());
+				lastJobRunDate.setDefaultModel(new Model(dStr));
+				String localSakaiName = Locator.getFacade().getStatsManager().getLocalSakaiName();
+				StringResourceModel model = new StringResourceModel("lastJobRun_server_time", getPage(), null,
+						new Object[] {localSakaiName, serverDateStr});
+				lastJobRunServerDate.setDefaultModel(model);
 			}catch(Exception e){
 				lastJobRunDate.setDefaultModel(new Model());
+				lastJobRunServerDate.setDefaultModel(new Model());
 			}
 		}
 		lastJobRun.add(lastJobRunDate);
+		lastJobRun.add(lastJobRunServerDate);
 	}
 
 }

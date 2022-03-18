@@ -38,7 +38,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Answers;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 import org.sakaiproject.authz.api.FunctionManager;
 import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.component.api.ServerConfigurationService;
@@ -62,7 +62,6 @@ import org.sakaiproject.mailsender.MailsenderException;
 import org.sakaiproject.mailsender.logic.ExternalLogic;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
-import org.sakaiproject.time.api.TimeService;
 import org.sakaiproject.tool.api.SessionManager;
 import org.sakaiproject.tool.api.ToolManager;
 import org.sakaiproject.user.api.User;
@@ -81,8 +80,6 @@ public class ExternalLogicImplTest {
 
 	@Mock
 	FunctionManager functionManager;
-	@Mock
-	TimeService timeService;
 	@Mock
 	MailArchiveService mailArchiveService;
 	@Mock
@@ -132,7 +129,6 @@ public class ExternalLogicImplTest {
 
 		impl = new ExternalLogicImpl();
         impl.setEmailService(emailService);
-		impl.setTimeService(timeService);
 		impl.setFunctionManager(functionManager);
 		impl.setMailArchiveService(mailArchiveService);
 		impl.setSecurityService(securityService);
@@ -150,8 +146,8 @@ public class ExternalLogicImplTest {
 
 	@Test
 	public void init() throws Exception {
-		verify(functionManager).registerFunction(ExternalLogic.PERM_ADMIN);
-		verify(functionManager).registerFunction(ExternalLogic.PERM_SEND);
+		verify(functionManager).registerFunction(ExternalLogic.PERM_ADMIN, true);
+		verify(functionManager).registerFunction(ExternalLogic.PERM_SEND, true);
 	}
 
 	@Test

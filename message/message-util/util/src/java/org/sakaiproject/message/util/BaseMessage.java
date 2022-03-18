@@ -24,35 +24,61 @@ package org.sakaiproject.message.util;
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.util.*;
+import java.time.Instant;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Observable;
+import java.util.Properties;
+import java.util.Set;
+import java.util.Stack;
+import java.util.Vector;
+
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import lombok.extern.slf4j.Slf4j;
-
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-
 import org.sakaiproject.api.app.scheduler.ScheduledInvocationManager;
 import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.authz.api.AuthzPermissionException;
+import org.sakaiproject.authz.api.AuthzRealmLockException;
 import org.sakaiproject.authz.api.GroupNotDefinedException;
 import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.component.cover.ComponentManager;
-import org.sakaiproject.entity.api.*;
+import org.sakaiproject.entity.api.Entity;
+import org.sakaiproject.entity.api.EntityManager;
+import org.sakaiproject.entity.api.EntityNotDefinedException;
+import org.sakaiproject.entity.api.EntityPermissionException;
+import org.sakaiproject.entity.api.HttpAccess;
+import org.sakaiproject.entity.api.Reference;
+import org.sakaiproject.entity.api.ResourceProperties;
+import org.sakaiproject.entity.api.ResourcePropertiesEdit;
+import org.sakaiproject.entity.api.Summary;
 import org.sakaiproject.event.api.Event;
 import org.sakaiproject.event.api.EventTrackingService;
 import org.sakaiproject.event.api.NotificationService;
-import org.sakaiproject.exception.*;
+import org.sakaiproject.exception.IdInvalidException;
+import org.sakaiproject.exception.IdUnusedException;
+import org.sakaiproject.exception.IdUsedException;
+import org.sakaiproject.exception.InUseException;
+import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.id.api.IdManager;
 import org.sakaiproject.javax.Filter;
 import org.sakaiproject.javax.PagingPosition;
+import org.sakaiproject.memory.api.Cache;
 import org.sakaiproject.memory.api.MemoryService;
-import org.sakaiproject.message.api.*;
+import org.sakaiproject.message.api.Message;
+import org.sakaiproject.message.api.MessageChannel;
+import org.sakaiproject.message.api.MessageChannelEdit;
+import org.sakaiproject.message.api.MessageEdit;
+import org.sakaiproject.message.api.MessageHeader;
+import org.sakaiproject.message.api.MessageHeaderEdit;
+import org.sakaiproject.message.api.MessageService;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
@@ -60,16 +86,33 @@ import org.sakaiproject.site.api.ToolConfiguration;
 import org.sakaiproject.thread_local.api.ThreadLocalManager;
 import org.sakaiproject.time.api.Time;
 import org.sakaiproject.time.api.TimeService;
-import org.sakaiproject.tool.api.*;
+import org.sakaiproject.tool.api.Session;
+import org.sakaiproject.tool.api.SessionBindingEvent;
+import org.sakaiproject.tool.api.SessionBindingListener;
+import org.sakaiproject.tool.api.SessionManager;
+import org.sakaiproject.tool.api.ToolSession;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserNotDefinedException;
-import org.sakaiproject.util.*;
+import org.sakaiproject.util.BaseResourcePropertiesEdit;
+import org.sakaiproject.util.DoubleStorageUser;
+import org.sakaiproject.util.EntityCollections;
+import org.sakaiproject.util.Validator;
+import org.sakaiproject.util.api.FormattedText;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+
+import lombok.Setter;
+import lombok.experimental.Accessors;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * BaseMessage is...
  */
 @Slf4j
+@Accessors(prefix = "m_" )
 public abstract class BaseMessage implements MessageService, DoubleStorageUser
 {
 	/** A Storage object for persistent storage. */
@@ -86,7 +129,50 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 	/** added to allow for scheduled notifications */
 	private static final String SCHED_INV_UUID = "schInvUuid";
 	//private static final String SCHINV_DELETE_EVENT = "schInv.delete";
+
+	private Cache<String, List<Message>> messagesCache;
+
+	/**********************************************************************************************************************************************************************************************************************************************************
+	 * Constructors, Dependencies and their setter methods
+	 *********************************************************************************************************************************************************************************************************************************************************/
+
+	/** Dependency: MemoryService. */
+	@Setter protected MemoryService m_memoryService;
+
+	/** Dependency: ServerConfigurationService. */
+	@Setter protected ServerConfigurationService m_serverConfigurationService;
+
+	/** Dependency: SessionManager. */
+	@Setter protected SessionManager m_sessionManager;
+
+	/** Dependency: AuthzGroupService. */
+	@Setter protected AuthzGroupService m_authzGroupService;
+
+	/** Dependency: SecurityService. */
+	@Setter protected SecurityService m_securityService;
+
+	/** Dependency: TimeService. */
+	@Setter protected TimeService m_timeService;
+
+	/** Dependency: EventTrackingService. */
+	@Setter protected EventTrackingService m_eventTrackingService;
+
+	/** Dependency: IdManager. */
+	@Setter protected IdManager m_idManager;
+
+	/** Dependency: SiteService. */
+	@Setter protected SiteService m_siteService;
+
+	/** Dependency: UserDirectoryService. */
+	@Setter protected UserDirectoryService m_userDirectoryService;
+
+	/** Dependency: ThreadLocalManager. */
+	@Setter protected ThreadLocalManager m_threadLocalManager;
+
+	/** Dependency: EntityManager. */
+	@Setter protected EntityManager m_entityManager;
 	
+	@Setter protected FormattedText m_formattedText;
 
 	/**
 	 * Access this service from the inner classes.
@@ -94,164 +180,6 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 	protected BaseMessage service()
 	{
 		return this;
-	}
-
-	/**********************************************************************************************************************************************************************************************************************************************************
-	 * Constructors, Dependencies and their setter methods
-	 *********************************************************************************************************************************************************************************************************************************************************/
-
-	/** Dependency: MemoryService. */
-	protected MemoryService m_memoryService = null;
-
-	/**
-	 * Dependency: MemoryService.
-	 *
-	 * @param service
-	 *        The MemoryService.
-	 */
-	public void setMemoryService(MemoryService service)
-	{
-		m_memoryService = service;
-	}
-
-	/** Dependency: ServerConfigurationService. */
-	protected ServerConfigurationService m_serverConfigurationService = null;
-
-	/**
-	 * Dependency: ServerConfigurationService.
-	 * 
-	 * @param service
-	 *        The ServerConfigurationService.
-	 */
-	public void setServerConfigurationService(ServerConfigurationService service)
-	{
-		m_serverConfigurationService = service;
-	}
-
-	/** Dependency: SessionManager. */
-	protected SessionManager m_sessionManager = null;
-
-	/**
-	 * Dependency: SessionManager.
-	 * 
-	 * @param service
-	 *        The SessionManager.
-	 */
-	public void setSessionManager(SessionManager service)
-	{
-		m_sessionManager = service;
-	}
-
-	/** Dependency: AuthzGroupService. */
-	protected AuthzGroupService m_authzGroupService = null;
-
-	/**
-	 * Dependency: AuthzGroupService.
-	 * 
-	 * @param service
-	 *        The AuthzGroupService.
-	 */
-	public void setAuthzGroupService(AuthzGroupService service)
-	{
-		m_authzGroupService = service;
-	}
-
-	/** Dependency: SecurityService. */
-	protected SecurityService m_securityService = null;
-
-	/**
-	 * Dependency: SecurityService.
-	 * 
-	 * @param service
-	 *        The SecurityService.
-	 */
-	public void setSecurityService(SecurityService service)
-	{
-		m_securityService = service;
-	}
-
-	/** Dependency: TimeService. */
-	protected TimeService m_timeService = null;
-
-	/**
-	 * Dependency: TimeService.
-	 * 
-	 * @param service
-	 *        The TimeService.
-	 */
-	public void setTimeService(TimeService service)
-	{
-		m_timeService = service;
-	}
-
-	/** Dependency: EventTrackingService. */
-	protected EventTrackingService m_eventTrackingService = null;
-
-	/**
-	 * Dependency: EventTrackingService.
-	 * 
-	 * @param service
-	 *        The EventTrackingService.
-	 */
-	public void setEventTrackingService(EventTrackingService service)
-	{
-		m_eventTrackingService = service;
-	}
-
-	/** Dependency: IdManager. */
-	protected IdManager m_idManager = null;
-
-	/**
-	 * Dependency: IdManager.
-	 * 
-	 * @param service
-	 *        The IdManager.
-	 */
-	public void setIdManager(IdManager service)
-	{
-		m_idManager = service;
-	}
-
-	/** Dependency: SiteService. */
-	protected SiteService m_siteService = null;
-
-	/**
-	 * Dependency: SiteService.
-	 * 
-	 * @param service
-	 *        The SiteService.
-	 */
-	public void setSiteService(SiteService service)
-	{
-		m_siteService = service;
-	}
-
-	/** Dependency: UserDirectoryService. */
-	protected UserDirectoryService m_userDirectoryService = null;
-
-	/**
-	 * Dependency: UserDirectoryService.
-	 * 
-	 * @param service
-	 *        The UserDirectoryService.
-	 */
-	public void setUserDirectoryService(UserDirectoryService service)
-	{
-		m_userDirectoryService = service;
-	}
-
-	/** Dependency: ThreadLocalManager. */
-	protected ThreadLocalManager m_threadLocalManager = null;
-
-	/**
-	 * Dependency: ThreadLocalManager.
-	 * 
-	 * @param service
-	 *        The ThreadLocalManager.
-	 */
-	public void setThreadLocalManager(ThreadLocalManager service)
-	{
-		m_threadLocalManager = service;
 	}
 
 	/**
@@ -262,20 +190,6 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
      * @deprecated 7 April 2014 - this should be removed in sakai 11
 	 */
 	public void setCaching(String value) {} // intentionally blank - remove this later
-
-	/** Dependency: EntityManager. */
-	protected EntityManager m_entityManager = null;
-
-	/**
-	 * Dependency: EntityManager.
-	 * 
-	 * @param service
-	 *        The EntityManager.
-	 */
-	public void setEntityManager(EntityManager service)
-	{
-		m_entityManager = service;
-	}
 
 	/**********************************************************************************************************************************************************************************************************************************************************
 	 * Init and Destroy
@@ -291,7 +205,7 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 			// construct a storage helper and read
 			m_storage = newStorage();
 			m_storage.open();
-
+			messagesCache = m_memoryService.getCache("org.sakaiproject.announcement.tool.messages.cache");
 			log.info("init()");
 		}
 		catch (Throwable t)
@@ -664,6 +578,11 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 	{
 		if (ref == null) return null;
 
+		// Used to resolve Site objects; "!site" refers to "!admin" site
+		if ("!site".equals(ref)) {
+			ref = "!admin";
+		}
+
 		MessageChannel channel = (MessageChannel) m_threadLocalManager.get(ref);
 		if (channel == null)
 		{
@@ -915,8 +834,13 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 		{
 			log.warn("removeChannel: removing realm for : " + channel.getReference() + " : " + e);
 		}
-		catch (GroupNotDefinedException ignore)
+		catch (GroupNotDefinedException gnde)
 		{
+			log.debug(gnde.getMessage());
+		}
+		catch (AuthzRealmLockException arle)
+		{
+			log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
 		}
 
 	} // removeChannel
@@ -2302,8 +2226,8 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 		 */
 		public String getContext()
 		{
-			return m_context;
-
+			// Used to resolve Site objects; "!site" refers to "!admin" site
+			return "!site".equals(m_context) ? "!admin" : m_context;
 		} // getContext
 
 		/**
@@ -2714,12 +2638,12 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 				// if an immediate notification is needed or a scheduled one
 				// Put here since need to store uuid for notification just in case need to
 				// delete/modify
-				Time now = m_timeService.newTime();
-				
+				Instant now = Instant.now();
+				Instant date = edit.getHeader().getInstant();
 
-				if (now.before(edit.getHeader().getDate()) && priority != NotificationService.NOTI_NONE)
+				if (now.isBefore(date) && priority != NotificationService.NOTI_NONE)
 				{
-					final String uuid = scheduledInvocationManager.createDelayedInvocation(edit.getHeader().getDate(), 
+					final String uuid = scheduledInvocationManager.createDelayedInvocation(date, 
 							invokee, edit.getReference());
 
 					final ResourcePropertiesEdit editProps = edit.getPropertiesEdit();
@@ -3050,6 +2974,10 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 			{
 				log.warn("removeMessage: removing realm for : " + message.getReference() + " : " + e);
 			}
+			catch (AuthzRealmLockException arle)
+			{
+				log.warn("GROUP LOCK REGRESSION: {}", arle.getMessage(), arle);
+			}
 
 		} // removeMessage
 
@@ -3135,18 +3063,15 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 		 * 
 		 * @return a List of all messages in the channel.
 		 */
-		protected List findMessages()
-		{
-			// if we have done this already in this thread, use that
-			List msgs = (List) m_threadLocalManager.get(getReference() + ".msgs");
-			if (msgs == null)
-			{
+		protected List findMessages() {
+			List msgs;
+			final List<Message> cachedMessages = messagesCache.get(getReference());
+			if (cachedMessages != null) {
+				msgs = cachedMessages;
+			} else {
 				msgs = m_storage.getMessages(this);
-
-				// "cache" the mesasge in the current service in case they are needed again in this thread...
-				m_threadLocalManager.set(getReference() + ".msgs", msgs);
+				messagesCache.put(getReference(), msgs);
 			}
-
 			return msgs;
 		} // findMessages
 
@@ -3379,7 +3304,7 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 		{
 			this(channel, "");
 
-			m_body = FormattedText.decodeFormattedTextAttribute(el, "body");
+			m_body = m_formattedText.decodeFormattedTextAttribute(el, "body");
 
 			// the children (header, body)
 			NodeList children = el.getChildNodes();
@@ -3405,7 +3330,7 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 						{
 							// convert from plaintext messages to formatted text messages
 							m_body = element.getChildNodes().item(0).getNodeValue();
-							if (m_body != null) m_body = FormattedText.convertPlaintextToFormattedText(m_body);
+							if (m_body != null) m_body = m_formattedText.convertPlaintextToFormattedText(m_body);
 						}
 						if (m_body == null)
 						{
@@ -3568,7 +3493,7 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 
 			m_header.toXml(doc, stack);
 
-			FormattedText.encodeFormattedTextAttribute(message, "body", getBody());
+			m_formattedText.encodeFormattedTextAttribute(message, "body", getBody());
 
 			/*
 			 * // Note: the old way to set the body - CDATA is too sensitive to the characters within -ggolden Element body = doc.createElement("body"); message.appendChild(body); body.appendChild(doc.createCDATASection(getBody()));
@@ -3915,6 +3840,11 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 
 		} // getDate
 		
+
+		@Override
+		public Instant getInstant() {
+			return Instant.ofEpochMilli(m_date.getTime());
+		}
 		/**
 		 * Access the message order the message was sent to the channel.
 		 * 
@@ -4162,6 +4092,12 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 			}
 
 		} // setDate
+		
+
+		@Override
+		public void setInstant(Instant instant) {
+			setDate(m_timeService.newTime(instant.toEpochMilli()));
+		}
 		
 		/**
 		 * Set the message_order the message was sent to the channel.

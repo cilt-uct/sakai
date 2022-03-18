@@ -16,18 +16,25 @@
 	</div>
 
 	<form wicket:id="form" id="gradebookSettings">
-		<div class="panel-group" id="settingsAccordion" role="tablist" aria-multiselectable="true">
+		<div class="panel-group sakai-accordion" id="settingsAccordion" role="tablist" aria-multiselectable="true">
 			<wicket:container wicket:id="gradeEntryPanel" />
 			<wicket:container wicket:id="gradeReleasePanel" />
+			<wicket:container wicket:id="statisticsPanel" />
 			<wicket:container wicket:id="categoryPanel" />
 			<wicket:container wicket:id="gradingSchemaPanel" />
 		</div>
 
-		<div>
+		<div class="act">
 			<input type="button" wicket:id="submit" class="active" wicket:message="value:button.savechanges" />
 			<input type="submit" wicket:id="cancel" wicket:message="value:button.cancel" />
 		</div>
 	</form>
+	<script id="chartStudentsGradeMessage" type="text/template">
+		<wicket:message key="chart.students.grade.message"/>
+	</script>
+	<script id="chartYourGradeMessage" type="text/template">
+		<wicket:message key="chart.yourgrade.message"/>
+	</script>
 
 </wicket:extend>
 

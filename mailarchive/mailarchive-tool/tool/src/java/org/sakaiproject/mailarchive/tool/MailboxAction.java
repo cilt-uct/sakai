@@ -21,16 +21,12 @@
 
 package org.sakaiproject.mailarchive.tool;
 
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Vector;
-import java.util.Map.Entry;
 
-import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.alias.api.Alias;
 import org.sakaiproject.alias.api.AliasService;
-import org.sakaiproject.authz.api.PermissionsHelper;
 import org.sakaiproject.cheftool.Context;
 import org.sakaiproject.cheftool.JetspeedRunData;
 import org.sakaiproject.cheftool.PagedResourceActionII;
@@ -38,7 +34,6 @@ import org.sakaiproject.cheftool.PortletConfig;
 import org.sakaiproject.cheftool.RunData;
 import org.sakaiproject.cheftool.VelocityPortlet;
 import org.sakaiproject.cheftool.api.Menu;
-import org.sakaiproject.cheftool.menu.MenuDivider;
 import org.sakaiproject.cheftool.menu.MenuEntry;
 import org.sakaiproject.cheftool.menu.MenuImpl;
 import org.sakaiproject.component.cover.ComponentManager;
@@ -47,13 +42,12 @@ import org.sakaiproject.content.cover.ContentTypeImageService;
 import org.sakaiproject.entity.api.Reference;
 import org.sakaiproject.entity.cover.EntityManager;
 import org.sakaiproject.event.api.SessionState;
+import org.sakaiproject.exception.IdInvalidException;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.exception.InUseException;
 import org.sakaiproject.exception.PermissionException;
-import org.sakaiproject.exception.IdInvalidException;
 import org.sakaiproject.javax.Filter;
 import org.sakaiproject.javax.Order;
-import org.sakaiproject.javax.PagingPosition;
 import org.sakaiproject.javax.Search;
 import org.sakaiproject.javax.SearchFilter;
 import org.sakaiproject.mailarchive.api.MailArchiveChannel;
@@ -62,14 +56,16 @@ import org.sakaiproject.mailarchive.api.MailArchiveMessage;
 import org.sakaiproject.mailarchive.cover.MailArchiveService;
 import org.sakaiproject.message.api.Message;
 import org.sakaiproject.site.cover.SiteService;
+import org.sakaiproject.tool.api.Tool;
 import org.sakaiproject.tool.cover.ToolManager;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.cover.UserDirectoryService;
-import org.sakaiproject.util.FormattedText;
 import org.sakaiproject.util.ResourceLoader;
 import org.sakaiproject.util.StringUtil;
-import org.apache.commons.lang.StringUtils;
 import org.sakaiproject.util.Validator;
+import org.sakaiproject.util.api.FormattedText;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * <p>
@@ -103,7 +99,7 @@ public class MailboxAction extends PagedResourceActionII
 
 	private static final int FORM_ALIAS_MAX_LENGTH = 99;
 
-        private static final String FORM_ITEM_NUMBER  = "item_number";
+	private static final String FORM_ITEM_NUMBER = "item_number";
 
 	/** List request parameters. */
 	private static final String VIEW_ID = "view-id";
@@ -143,15 +139,15 @@ public class MailboxAction extends PagedResourceActionII
 	/** paging */
 	
 	private static final String STATE_MSG_VIEW_ID = "msg-id";
-    
-    	/** State to cache the count of messages */
-    
+
+	/** State to cache the count of messages */
+
 	private static final String STATE_COUNT = "state-cached-count";
     
 	private static final String STATE_COUNT_SEARCH = "state-cached-count-search";   
 
 	/** Default for search suppression threshold */
-        private final int MESSAGE_THRESHOLD_DEFAULT = 2500;
+	private final int MESSAGE_THRESHOLD_DEFAULT = 2500;
 
 	private AliasService aliasService;
 
@@ -184,27 +180,24 @@ public class MailboxAction extends PagedResourceActionII
 		}
 	
 		// We must talk to the Storage to count the messages
-        	try
-		{
+		try {
 			MailArchiveChannel channel = MailArchiveService.getMailArchiveChannel((String) state.getAttribute(STATE_CHANNEL_REF));
 
 			int cCount = 0;
 			if(search == null) {
-			    cCount = channel.getCount();
+				cCount = channel.getCount();
 			} else {
-                cCount = channel.getCount((Filter) getSearchFilter(search, 0, 0));
+				cCount = channel.getCount((Filter) getSearchFilter(search, 0, 0));
 			}
 
 			lastCount = new Integer(cCount);
 			state.setAttribute(STATE_COUNT, lastCount);
 			state.setAttribute(STATE_COUNT_SEARCH, search);
 			return cCount;
+		} catch (Exception e) {
+		 	log.warn("failed search={} exception={}", search, e.getMessage());
 		}
-		catch (Exception e)
-		{
-		 	log.warn("failed search={} exeption={}", search, e.getMessage());
-		}
-        	return 0;
+		return 0;
 	}
 
 	/*
@@ -219,8 +212,7 @@ public class MailboxAction extends PagedResourceActionII
 		boolean ascending = ((Boolean) state.getAttribute(STATE_ASCENDING)).booleanValue();
 		int sort = ((Integer) state.getAttribute(STATE_SORT)).intValue();		
 		String search = (String) state.getAttribute(STATE_SEARCH);
-		
-		
+
 		try
 		{
 			MailArchiveChannel channel = MailArchiveService.getMailArchiveChannel((String) state.getAttribute(STATE_CHANNEL_REF));
@@ -267,8 +259,7 @@ public class MailboxAction extends PagedResourceActionII
 			String channel = StringUtils.trimToNull(config.getInitParameter(PARAM_CHANNEL));
 			if (channel == null)
 			{
-				channel = MailArchiveService.channelReference(ToolManager.getCurrentPlacement().getContext(),
-						SiteService.MAIN_CONTAINER);
+				channel = MailArchiveService.channelReference(ToolManager.getCurrentPlacement().getContext(), SiteService.MAIN_CONTAINER);
 			}
 			state.setAttribute(STATE_CHANNEL_REF, channel);
 
@@ -316,7 +307,7 @@ public class MailboxAction extends PagedResourceActionII
 		}
 
 		// Put this back only for Confirm
-		String deleteConfirm  = (String) state.getAttribute(STATE_DELETE_CONFIRM_ID);
+		String deleteConfirm = (String) state.getAttribute(STATE_DELETE_CONFIRM_ID);
 		state.removeAttribute(STATE_DELETE_CONFIRM_ID);
 
 		if ("list".equals(mode))
@@ -341,6 +332,13 @@ public class MailboxAction extends PagedResourceActionII
 		else if (MODE_OPTIONS.equals(mode)) 
 		{
 			return buildOptionsPanelContext(portlet, context, rundata, state);
+		}
+		
+
+		else if (MODE_PERMISSIONS.equals(mode)) 
+		{
+			state.setAttribute(STATE_MODE, "list");
+			return build_permissions_context(portlet, context, rundata, state);
 		}
 
 		else
@@ -394,14 +392,14 @@ public class MailboxAction extends PagedResourceActionII
 		 	log.warn("Cannot find channel {}", channelRef);
 		}
 
-                // Read a single message
-                List messagePage = readResourcesPage(state, viewPos, viewPos);
+		// Read a single message
+		List messagePage = readResourcesPage(state, viewPos, viewPos);
 		if ( messagePage != null ) {
 			Message msg = (Message) messagePage.get(0);
 			context.put("email",msg);
 			allowDelete = channel.allowRemoveMessage(msg);
 			// Sadly this is the only way to send this to a menu pick :(
-                	state.setAttribute(STATE_DELETE_CONFIRM_ID, msg.getId());
+			state.setAttribute(STATE_DELETE_CONFIRM_ID, msg.getId());
 		} else {
 		 	log.warn("Could not retrieve message {}", channelRef);
 			context.put("message", rb.getString("thiemames1"));
@@ -412,25 +410,18 @@ public class MailboxAction extends PagedResourceActionII
 		context.put("contentTypeImageService", ContentTypeImageService.getInstance());
 
 		// build the menu
-		Menu bar = new MenuImpl(portlet, rundata, (String) state.getAttribute(STATE_ACTION));
+		buildMenu(context, "view");
 
-		// bar.add( new MenuEntry(rb.getString("listall"), "doList"));
-		// addViewPagingMenus(bar, state);
-
-		if (((Boolean) state.getAttribute(STATE_VIEW_HEADERS)).booleanValue())
-		{
-			bar.add(new MenuEntry(rb.getString("hidehead"), "doHide_headers"));
+		Menu submenu = new MenuImpl(portlet, rundata, (String) state.getAttribute(STATE_ACTION));
+		if (((Boolean) state.getAttribute(STATE_VIEW_HEADERS)).booleanValue()) {
+			submenu.add(new MenuEntry(rb.getString("hidehead"), "doHide_headers"));
+		} else {
+			submenu.add(new MenuEntry(rb.getString("viehea"), "doView_headers"));
 		}
-		else
-		{
-			bar.add(new MenuEntry(rb.getString("viehea"), "doView_headers"));
+		if (allowDelete) {
+			submenu.add(new MenuEntry(rb.getString("del"), "doRemove"));
 		}
-		if (allowDelete) bar.add(new MenuEntry(rb.getString("del"), "doRemove"));
-
-		// make sure there's not leading or trailing dividers
-		bar.adjustDividers();
-
-		context.put(Menu.CONTEXT_MENU, bar);
+		context.put("submenu", submenu);
 
 		return (String) getContext(rundata).get("template") + "-view";
 
@@ -444,7 +435,7 @@ public class MailboxAction extends PagedResourceActionII
 		// get the message
 		context.put("tlang", rb);
 
-                String id = (String) state.getAttribute(STATE_DELETE_CONFIRM_ID);
+		String id = (String) state.getAttribute(STATE_DELETE_CONFIRM_ID);
 
 		MailArchiveMessage message = null;
 		try
@@ -483,23 +474,15 @@ public class MailboxAction extends PagedResourceActionII
 		List messages = prepPage(state);
 		context.put("messages", messages);
 
-		// build the menu
-		Menu bar = new MenuImpl(portlet, rundata, (String) state.getAttribute(STATE_ACTION));
-
-		if (SiteService.allowUpdateSite(ToolManager.getCurrentPlacement().getContext()))
-		{
-			bar.add(new MenuDivider());
-
-			// add options if allowed
-			addOptionsMenu(bar, (JetspeedRunData) rundata);
-
-			bar.add(new MenuEntry(rb.getString("perm"), "doPermissions"));
+		String toolTitle = "";
+		Tool tool = ToolManager.getCurrentPlacement().getTool();
+		if (tool != null) {
+			toolTitle = tool.getTitle();
 		}
+		context.put("mailarchive_title", toolTitle);
 
-		// make sure there's not leading or trailing dividers
-		bar.adjustDividers();
-
-		context.put(Menu.CONTEXT_MENU, bar);
+		// build the menu
+		buildMenu(context, "list");
 
 		// Decide if we are going to allow searching...
 		int numMessages = sizeResources(state);
@@ -568,10 +551,6 @@ public class MailboxAction extends PagedResourceActionII
 		{
 		}
 
-		// inform the observing courier that we just updated the page...
-		// if there are pending requests to do so they can be cleared
-		justDelivered(state);
-
 		return (String) getContext(rundata).get("template") + "-List";
 
 	} // buildListModeContext
@@ -593,9 +572,6 @@ public class MailboxAction extends PagedResourceActionII
 
 		String position = runData.getParameters().getString(FORM_ITEM_NUMBER);
 		state.setAttribute(FORM_ITEM_NUMBER, Integer.valueOf(position));
-		
-		// disable auto-updates while in view mode
-		disableObservers(state);
 
 	} // doView
 
@@ -610,9 +586,6 @@ public class MailboxAction extends PagedResourceActionII
 
 		// switch to view mode
 		state.setAttribute(STATE_MODE, "list");
-
-		// make sure auto-updates are enabled
-		enableObserver(state);
 
 		state.removeAttribute(STATE_MSG_VIEW_ID);
 
@@ -739,9 +712,6 @@ public class MailboxAction extends PagedResourceActionII
 		// go to remove confirm mode
 		state.setAttribute(STATE_MODE, "confirm-remove");
 
-		// disable auto-updates while in confirm mode
-		disableObservers(state);
-
 	} // doRemove
 
 	/**
@@ -754,27 +724,23 @@ public class MailboxAction extends PagedResourceActionII
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(peid);
 
 		// Grab and remove immedaitely
-                String msgId = (String) state.getAttribute(STATE_DELETE_CONFIRM_ID);
-                state.removeAttribute(STATE_DELETE_CONFIRM_ID);
+		String msgId = (String) state.getAttribute(STATE_DELETE_CONFIRM_ID);
+		state.removeAttribute(STATE_DELETE_CONFIRM_ID);
 		state.removeAttribute(STATE_COUNT);
 		state.removeAttribute(STATE_COUNT_SEARCH);
 
 		// remove
-		try
-		{
+		try {
 			MailArchiveChannel channel = MailArchiveService.getMailArchiveChannel((String) state.getAttribute(STATE_CHANNEL_REF));
 			
-			if (msgId != null)
+			if (msgId != null) {
 				channel.removeMessage(msgId);
-			else
+			} else {
 				addAlert(state, rb.getString("thimeshas"));
-		}
-		catch (PermissionException e)
-		{
+			}
+		} catch (PermissionException e) {
 			addAlert(state, rb.getString("youdonot3"));
-		}
-		catch (IdUnusedException e)
-		{
+		} catch (IdUnusedException e) {
 			addAlert(state, rb.getString("thimeshas"));
 		}
 
@@ -797,9 +763,6 @@ public class MailboxAction extends PagedResourceActionII
 
 		// return to view mode
 		state.setAttribute(STATE_MODE, "view");
-
-		// disable auto-updates while in view mode
-		disableObservers(state);
 
 	} // doRemove_cancel
 
@@ -824,6 +787,9 @@ public class MailboxAction extends PagedResourceActionII
 	 */
 	public String buildOptionsPanelContext(VelocityPortlet portlet, Context context, RunData rundata, SessionState state)
 	{
+
+		// build the menu
+		buildMenu(context, "options");
 
 		context.put("tlang", rb);
 		// provide "pagesize" with the current page size setting
@@ -895,14 +861,11 @@ public class MailboxAction extends PagedResourceActionII
 		state.setAttribute(STATE_OPTION_ALIAS, alias);
 
 		MailArchiveChannel channel = null;
-		try
-		{
+		try  {
 			channel = MailArchiveService.getMailArchiveChannel((String) state.getAttribute(STATE_CHANNEL_REF));
-		}
-		catch (Exception e)
-		{
+		} catch (Exception e) {
 			addAlert(state, rb.getString("cannot1"));
-            channel = null;
+			channel = null;
 		}
 
 		if (channel == null)
@@ -967,19 +930,15 @@ public class MailboxAction extends PagedResourceActionII
 
 				if (ok)
 				{
-					try
-					{
+					try {
 						if ( alias == null ) {
 							aliasService.removeTargetAliases(channel.getReference());
 						} else {
 							aliasService.setAlias(alias, channel.getReference());
 						}
-					}
-          catch (IdInvalidException iie) {
-              addAlert(state, rb.getString("theemaali4"));
-          }
-					catch (Exception any)
-					{
+					} catch (IdInvalidException iie) {
+						addAlert(state, rb.getString("theemaali4"));
+					} catch (Exception any) {
 						addAlert(state, rb.getString("theemaali2"));
 					}
 				}
@@ -1033,9 +992,6 @@ public class MailboxAction extends PagedResourceActionII
 				state.removeAttribute(STATE_OPTION_REPLY);
 				state.removeAttribute(STATE_OPTION_SENDTO);
 				state.removeAttribute(STATE_OPTION_ALIAS);
-
-				// re-enable auto-updates when going back to list mode
-				enableObserver(state);
 			}
 		}
 
@@ -1070,9 +1026,6 @@ public class MailboxAction extends PagedResourceActionII
 		state.removeAttribute(STATE_OPTION_SENDTO);
 		state.removeAttribute(STATE_OPTION_ALIAS);
 
-		// re-enable auto-updates when going back to list mode
-		enableObserver(state);
-
 	} // doCancel
 
 	/**
@@ -1080,36 +1033,12 @@ public class MailboxAction extends PagedResourceActionII
 	 */
 	public void doPermissions(RunData data, Context context)
 	{
-		// get into helper mode with this helper tool
-		startHelper(data.getRequest(), "sakai.permissions.helper");
 
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
+		state.setAttribute(STATE_MODE, MODE_PERMISSIONS);
+		state.setAttribute(STATE_TOOL_KEY, "mail");
+		state.setAttribute(STATE_BUNDLE_KEY, "mailarchive");
 
-		String channelRefStr = (String) state.getAttribute(STATE_CHANNEL_REF);
-		Reference channelRef = EntityManager.newReference(channelRefStr);
-		String siteRef = SiteService.siteReference(channelRef.getContext());
-
-		// setup for editing the permissions of the site for this tool, using the roles of this site, too
-		state.setAttribute(PermissionsHelper.TARGET_REF, siteRef);
-
-		// ... with this description
-		state.setAttribute(PermissionsHelper.DESCRIPTION, rb.getString("setperm")
-				+ SiteService.getSiteDisplay(channelRef.getContext()));
-
-		// ... showing only locks that are prpefixed with this
-		state.setAttribute(PermissionsHelper.PREFIX, "mail.");
-
-		// ... pass the resource loader object
-		ResourceLoader pRb = new ResourceLoader("permissions");
-		HashMap<String, String> pRbValues = new HashMap<String, String>();
-		for (Iterator<Entry<String, String>> iKeys = pRb.entrySet().iterator();iKeys.hasNext();)
-		{
-			Entry<String, String> entry = iKeys.next(); 
-			String key = entry.getKey();
-			pRbValues.put(key, entry.getValue());
-		}
-		state.setAttribute("permissionDescriptions",  pRbValues);
-		
 	} // doPermissions
 
 	private Search getSearchFilter(String search, int first, int last)
@@ -1135,8 +1064,7 @@ public class MailboxAction extends PagedResourceActionII
 		/**
 		 * Does this object satisfy the criteria of the filter?
 		 * 
-		 * @param o
-		 *        The object to test.
+		 * @param o The object to test.
 		 * @return true if the object is accepted by the filter, false if not.
 		 */
 		public boolean accept(Object o)
@@ -1153,7 +1081,7 @@ public class MailboxAction extends PagedResourceActionII
 				MailArchiveMessage msg = (MailArchiveMessage) o;
 				if (StringUtils.containsIgnoreCase(msg.getMailArchiveHeader().getSubject(), searchStr)
 					|| StringUtils.containsIgnoreCase(msg.getMailArchiveHeader().getFromAddress(), searchStr)
-					|| StringUtils.containsIgnoreCase(FormattedText.convertFormattedTextToPlaintext(msg.getBody()), searchStr))
+					|| StringUtils.containsIgnoreCase(ComponentManager.get(FormattedText.class).convertFormattedTextToPlaintext(msg.getBody()), searchStr))
 
 				{
 					return false;
@@ -1164,15 +1092,35 @@ public class MailboxAction extends PagedResourceActionII
 		}
 	}
 
-        /**
-         * get the Message Threshold - above which searching is disabled
-         */
-        private int getMessageThreshold()
-        {
-                return ServerConfigurationService.getInt("sakai.mailbox.search-threshold",
-                                MESSAGE_THRESHOLD_DEFAULT);
-        }
+	/**
+	 * get the Message Threshold - above which searching is disabled
+	 */
+	private int getMessageThreshold() {
+		return ServerConfigurationService.getInt("sakai.mailbox.search-threshold", MESSAGE_THRESHOLD_DEFAULT);
+	}
 
-
+	private void buildMenu(Context context, String page) {
+		//build the menu
+		Menu bar = new MenuImpl();
+		MenuEntry list = new MenuEntry(rb.getString("listall"), "doList");
+		MenuEntry options = new MenuEntry(rb.getString("options"), "doOptions");
+		MenuEntry permissions = new MenuEntry(rb.getString("perm"), "doPermissions");
+		switch(page) {
+			case "list":
+				list.setIsCurrent(true);
+				break;
+			case MODE_OPTIONS:
+				options.setIsCurrent(true);
+				break;
+			default:
+		}
+		bar.add(list);
+		if(allowedToOptions()) {
+			bar.add(options);
+		}
+		bar.add(permissions);
+		
+		context.put(Menu.CONTEXT_MENU, bar);
+    }
 } // MailboxAction
 

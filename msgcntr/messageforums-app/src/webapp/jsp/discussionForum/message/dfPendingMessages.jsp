@@ -1,6 +1,6 @@
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://sakaiproject.org/jsf/messageforums" prefix="mf" %>
 <jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
    <jsp:setProperty name="msgs" property="baseName" value="org.sakaiproject.api.app.messagecenter.bundle.Messages"/>
@@ -10,9 +10,11 @@
 	<sakai:view toolCssHref="/messageforums-tool/css/msgcntr.css">
 		<h:form id="msgForum" styleClass="specialLink">
 			
-	       		<script type="text/javascript">includeLatestJQuery("msgcntr");</script>
-       		<sakai:script contextBase="/messageforums-tool" path="/js/sak-10625.js"/>
-		<sakai:script contextBase="/messageforums-tool" path="/js/forum.js"/>
+	       		<script>includeLatestJQuery("msgcntr");</script>
+       		<script src="/messageforums-tool/js/sak-10625.js"></script>
+		<script src="/messageforums-tool/js/forum.js"></script>
+
+		<%@ include file="/jsp/discussionForum/menu/forumsMenu.jsp" %>
 
 
 			<h3>
@@ -23,49 +25,49 @@
       	<h:outputText value=" " /><h:outputText value=" / " /><h:outputText value=" " />
 				<h:outputText value="#{msgs.cdfm_msg_pending_queue_title}" />
 			</h3>
-			<script type="text/javascript">
-				$(document).ready(function() {
-				$('.table table-hover table-striped table-bordered tr th a').fadeTo("fast",0.50)	
-			    //deactivate remove link if nothing checked
-			    $(':checkbox').click(function(){
-			        var makeActive = false
-			        $('tr').removeClass('selectedSelected');
-			        $('td :checkbox').each(function(){
-			            if (this.checked) {
-			                makeActive = true
-			                $(this).parents("tr").addClass('selectedSelected');
-			            }
-			        });
-			        if (makeActive) {
-						$('.table table-hover table-striped table-bordered tr th a').fadeTo("fast",1)
-			        }
-			        else {
-						$('.table table-hover table-striped table-bordered tr th a').fadeTo("fast",0.50)			        }
+			<script>
+				$(document).ready(function () {
 
-			    });
+					document.getElementById("forumsQueueMenuLink").classList.add("current");
 
+					$('.table table-hover table-striped table-bordered tr th a').fadeTo("fast",0.50);
+					//deactivate remove link if nothing checked
+					$("#msgForum\\:pendingMsgs\\:mainCheckbox").click(function () {
 
+						var makeActive = false;
+						$('tr').removeClass('selectedSelected');
+						$(".pending-message-checkbox").each(function () {
 
-
+							if (this.checked) {
+								makeActive = true;
+								$(this).parents("tr").addClass('selectedSelected');
+							}
+						});
+						if (makeActive) {
+							$('.table table-hover table-striped table-bordered tr th a').fadeTo("fast",1);
+						} else {
+							$('.table table-hover table-striped table-bordered tr th a').fadeTo("fast",0.50);
+						}
+					});
 				});
 			</script>
-			
+
 		<div class="instruction">
 				<p>	
 			<h:outputText value="#{msgs.cdfm_deny_with_comments_msg}" rendered="#{ForumTool.numPendingMessages > 0}" />
 	  	<h:outputText value="#{msgs.cdfm_no_pending_msgs}" rendered="#{ForumTool.numPendingMessages < 1}" />
 				</p>	
 	  </div>
-	  
+  
 	  <h:messages globalOnly="true" infoClass="success" errorClass="alertMessage" rendered="#{! empty facesContext.maximumSeverity}"/>
-	  <div class="table-responsive">
+	  <div>
 		<h:dataTable id="pendingMsgs" value="#{ForumTool.pendingMessages}" width="100%" var="message" 
 				columnClasses="bogus,nopadd" styleClass="table table-hover table-striped table-bordered specialLink" rendered="#{ForumTool.numPendingMessages >0 }" cellpadding="0" cellspacing="0">
 			<h:column>
 				<f:facet name="header">
 					<h:selectBooleanCheckbox title="#{msgs.cdfm_checkall}" id="mainCheckbox" onclick="javascript:selectDeselectCheckboxes(this.id, document.forms[0]);"/>
 				</f:facet>
-					<h:selectBooleanCheckbox value="#{message.selected}" id="childCheckbox" onclick="javascript:resetMainCheckbox('msgForum:pendingMsgs:mainCheckbox');"/>
+					<h:selectBooleanCheckbox value="#{message.selected}" id="childCheckbox" styleClass="pending-message-checkbox" onclick="javascript:resetMainCheckbox('msgForum:pendingMsgs:mainCheckbox');"/>
 			</h:column>
 			<h:column>
 				<f:facet name="header">

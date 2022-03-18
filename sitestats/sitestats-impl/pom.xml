@@ -4,17 +4,12 @@
     <name>Sakai SiteStats Implementation</name>
     <groupId>org.sakaiproject.sitestats</groupId>
     <artifactId>sitestats-impl</artifactId>
-    <organization>
-        <name>Universidade Fernando Pessoa</name>
-        <url>http://www.ufp.pt</url>
-    </organization>
-    <inceptionYear>2006</inceptionYear>
 
     <!-- Parent: Sakai SiteStats base -->
     <parent>
         <groupId>org.sakaiproject.sitestats</groupId>
         <artifactId>sitestats</artifactId>
-        <version>12.5</version><!-- sitestats.version -->
+        <version>21-SNAPSHOT</version><!-- sitestats.version -->
     </parent>
 
     <!-- Packaging -->
@@ -78,6 +73,51 @@
             <groupId>org.sakaiproject.edu-services.course-management</groupId>
             <artifactId>coursemanagement-api</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.sakaiproject.presence</groupId>
+            <artifactId>sakai-presence-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.sakaiproject.assignment</groupId>
+            <artifactId>sakai-assignment-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.sakaiproject.samigo</groupId>
+            <artifactId>samigo-api</artifactId>
+        </dependency>
+        <dependency>
+          <groupId>org.sakaiproject.samigo</groupId>
+          <artifactId>samigo-services</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.sakaiproject.msgcntr</groupId>
+            <artifactId>messageforums-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.sakaiproject.polls</groupId>
+            <artifactId>polls-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.sakaiproject.announcement</groupId>
+            <artifactId>sakai-announcement-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.sakaiproject.message</groupId>
+            <artifactId>sakai-message-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.sakaiproject.calendar</groupId>
+            <artifactId>sakai-calendar-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.sakaiproject</groupId>
+            <artifactId>sakai-podcasts-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.sakaiproject</groupId>
+            <artifactId>sakai-rwiki-api</artifactId>
+            <type>jar</type>
+        </dependency>
 
         <!-- Spring & Hibernate -->
         <dependency>
@@ -107,22 +147,18 @@
 
         <!-- needed by hibernate unit tests -->
         <dependency>
-            <groupId>org.hibernate</groupId>
-            <artifactId>hibernate-ehcache</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.javassist</groupId>
             <artifactId>javassist</artifactId>
         </dependency>
 
         <!-- Apache Commons -->
         <dependency>
-            <groupId>commons-pool</groupId>
-            <artifactId>commons-pool</artifactId>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
         </dependency>
         <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
         </dependency>
         <dependency>
             <groupId>commons-digester</groupId>
@@ -180,10 +216,8 @@
             <artifactId>mysql-connector-java</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- <dependency> <groupId>com.oracle</groupId> <artifactId>ojdbc14</artifactId>
-            <scope>test</scope> </dependency> -->
         <dependency>
-            <groupId>dom4j</groupId>
+            <groupId>org.dom4j</groupId>
             <artifactId>dom4j</artifactId>
             <scope>test</scope>
         </dependency>
@@ -203,18 +237,13 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.easymock</groupId>
-            <artifactId>easymock</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>javax.servlet</groupId>
-            <artifactId>servlet-api</artifactId>
+            <artifactId>javax.servlet-api</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -223,6 +252,9 @@
         <testResources>
             <testResource>
                 <directory>src/test</directory>
+            </testResource>
+            <testResource>
+                <directory>src/webapp</directory>
             </testResource>
         </testResources>
     </build>

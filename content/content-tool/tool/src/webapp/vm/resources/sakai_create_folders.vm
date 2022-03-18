@@ -1,11 +1,11 @@
 <!-- resources/sakai_create_folders.vm, use with org.sakaiproject.tool.content.ResourcesHelperAction.java -->
 <div class="portletBody specialLink">
+	#contentMenu("resources")
 	<h3>
 		$tlang.getString("create.folder")
 	</h3>
 	#if ($itemAlertMessage)
-		<div class="alertMessage">$tlang.getString("label.alert") $validator.escapeHtml($itemAlertMessage)</div>
-		<div style="display:block;clear:both" ></div>
+		<div class="sak-banner-error">$tlang.getString("label.alert") $formattedText.escapeHtml($itemAlertMessage)</div>
 	#end
 	<ol class="breadcrumb">
 		<li><span>
@@ -13,7 +13,7 @@
 		</span></li>
 		##<img src = "#imageLink($contentTypeImageService.getContentTypeImage("folder"))" border="0"  alt="$tlang.getString("gen.folder")" />
 		#foreach ($item in $model.collectionPath)
-			<li><span>$validator.escapeHtml($item.name)</span></li>
+			<li><span>$formattedText.escapeHtml($item.name)</span></li>
 		#end
 	</ol>
 		<p>
@@ -61,33 +61,13 @@
 			#end
 		</div>
 		<p class="act">
-			<a href="#" onclick="addFileInput();return false">$tlang.getString("label.addFolder")</a>
+			<a href="#" id="addFolderInput" onclick="addFileInput();return false">$tlang.getString("label.addFolder")</a>
 		</p>
-#*
-		#if ($model.resourceTypeDef.hasNotificationDialog())
-			<p class="shorttext">
-				<label for="notify">
-					$tlang.getString("gen.email1")
-				</label>	
-				<select name="notify" id="notify">
-					#if ($noti)
-						<option value="r" #if($noti=="r") selected="selected" #end>$tlang.getString("gen.email2")</option>
-						<option value="o" #if($noti=="o") selected="selected" #end>$tlang.getString("gen.email3")</option>
-						<option value="n" #if($noti=="n") selected="selected" #end>$tlang.getString("gen.email4")</option>
-					#else
-						<option value="r">$tlang.getString("gen.email2")</option>
-						<option value="o">$tlang.getString("gen.email3")</option>
-						<option value="n" selected="selected">$tlang.getString("gen.email4")</option>
-					#end							
-				</select>
-			</p>	
-		#end
-*#
 		<p class="act">
 			<input type="button" class="active" name="savechanges" id="saveChanges" onclick="showNotif('submitnotif03','saveChanges','addFolderForm');document.getElementById('addFolderForm').action='#toolLink("ResourcesHelperAction" "doCreateFolders")&flow=save';submitform('addFolderForm');" value="$tlang.getString("label.finfldr")" accesskey="s" />
 			<input type="button" name="cancel" onclick="document.getElementById('addFolderForm').action='#toolLink("ResourcesHelperAction" "doCancel")';submitform('addFolderForm');" value="$tlang.getString("label.cancel")" accesskey="x" />
-			<span class="messageProgress"  id="submitnotif03" style="visibility:hidden">$tlang.getString("processmessage.folders")</span>
 		</p>
+		<p class="sak-banner-info"  id="submitnotif03" style="visibility:hidden">$tlang.getString("processmessage.folders")</p>
 		<input type="hidden" name="sakai_csrf_token" value="$sakai_csrf_token" />
 	</form>
 </div>

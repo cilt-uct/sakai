@@ -60,8 +60,8 @@ import org.sakaiproject.thread_local.api.ThreadLocalManager;
 import org.sakaiproject.time.api.TimeService;
 import org.sakaiproject.tool.api.SessionManager;
 import org.sakaiproject.user.api.UserDirectoryService;
-import org.apache.commons.lang.StringUtils;
-import org.springframework.orm.hibernate4.HibernateOptimisticLockingFailureException;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.orm.hibernate5.HibernateOptimisticLockingFailureException;
 import org.hibernate.HibernateException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -200,7 +200,6 @@ public class RWikiObjectServiceImpl implements RWikiObjectService
 			// set functions
 			edit.setFunction(RWikiObjectService.EVENT_RESOURCE_ADD);
 			edit.addFunction(RWikiObjectService.EVENT_RESOURCE_WRITE);
-			edit.addFunction(RWikiObjectService.EVENT_RESOURCE_READ);
 
 			// set the filter to any site related resource
 			edit.setResourceFilter(RWikiObjectService.REFERENCE_ROOT);
@@ -1216,15 +1215,13 @@ public class RWikiObjectServiceImpl implements RWikiObjectService
 	 * {@inheritDoc} Only the current version of a page is imported, history is
 	 * left behind.
 	 */
-	public void transferCopyEntities(String fromContext, String toContext,
-			List ids)
+	public Map<String, String> transferCopyEntities(String fromContext, String toContext, List<String> ids, List<String> transferOptions)
 	{
 		log.debug("==================Doing WIki transfer"); //$NON-NLS-1$
 		if (fromContext.equals(toContext))
 		{
-			log
-					.debug("===================Source and Target Context are identical, transfer ignored"); //$NON-NLS-1$
-			return;
+			log.debug("===================Source and Target Context are identical, transfer ignored"); //$NON-NLS-1$
+			return null;
 		}
 		
 		// FIXME this needs to be moved out to a method!
@@ -1321,6 +1318,7 @@ public class RWikiObjectServiceImpl implements RWikiObjectService
 			}
 		}
 
+		return null;
 	}
 
 	/**
@@ -1793,7 +1791,7 @@ public class RWikiObjectServiceImpl implements RWikiObjectService
 		this.aliasService = aliasService;
 	}
 	
-	public void transferCopyEntities(String fromContext, String toContext, List ids, boolean cleanup)
+	public Map<String, String> transferCopyEntities(String fromContext, String toContext, List<String> ids, List<String> transferOptions, boolean cleanup)
 	{	
 		try
 		{
@@ -1806,6 +1804,6 @@ public class RWikiObjectServiceImpl implements RWikiObjectService
 		{
 			log.info("Rwiki transferCopyEntities Error" + e);
 		}
-		transferCopyEntities(fromContext, toContext, ids);
+		return transferCopyEntities(fromContext, toContext, ids, transferOptions);
 	}
 }

@@ -12,6 +12,11 @@ var fckEditor = false;
 var ckEditor = false;
 var commentsToLoad = 0;
 
+var LSNGRD = LSNGRD || {};
+
+LSNGRD.childClass = ".uuidBox";
+LSNGRD.type = "comment";
+
 $(function() {
 	
 	noEditor = ($(".using-editor").size() === 0);
@@ -95,32 +100,7 @@ function commentsLoaded() {
 	
 	$(".pointsBox").unbind("keyup");
 	
-	$(".pointsBox").each(function(index, value) {
-		$(value).parent().children("img").attr("id", "statusImg" + index);
-		$(value).val($(value).parent().children(".pointsSpan").text());
-	});
-	
-	$(".pointsBox").on('change', function(){
-		var img = $(this).parent().children("img");
-		img.attr("src", getStrippedImgSrc(img.attr("id")) + "no-status.png");
-		$(this).addClass("unsubmitted");
-	});
-	
-	$(".pointsBox").keyup(function(event){
-		if(event.keyCode === 13) {
-			var img = $(this).parent().children("img");
-			
-			$(this).removeClass("unsubmitted");
-			img.attr("src", getStrippedImgSrc(img.attr("id")) + "loading.gif");
-			
-			$(".idField").val($(this).parent().children(".uuidBox").text()).change();
-			$(".jsIdField").val(img.attr("id")).change();
-			$(".typeField").val("comment");
-			
-			// This one triggers the update
-			$(".pointsField").val($(this).val()).change();
-		}
-	});
+	LSNGRD.initPointBoxes();
 }
 
 function loadMore(link) {
@@ -160,14 +140,9 @@ function replyToComment(link, replytext) {
 	}else {
 	    CKEDITOR.instances[evolved.children("textarea").attr("name")].setData(replytext + '<div style="border-left: 2px solid black; padding-left:6px">' + $(link).parent().children(".commentBody").html() + '</div>\n<p></p>', function() {
 		    // this function is called after the insert happens. The goal is to move the cursor to the end
-		    var sel = this.getSelection(); // current selection will be at the start
-		    // get the whole body around it
-		    var parent = sel.getStartElement().getParent();
-		    // find the last element, which is the final <p></p>
-		    var last = parent.getLast();
-		    // select it
-		    sel.selectElement(last);
-		    this.focus();
+		    var range = this.createRange();
+		    range.moveToElementEditEnd( range.root );
+		    this.getSelection().selectRanges( [ range ] );
 		});
 	    evolved.focus();
 

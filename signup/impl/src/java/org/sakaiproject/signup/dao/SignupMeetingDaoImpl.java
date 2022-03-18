@@ -34,6 +34,8 @@
 
 package org.sakaiproject.signup.dao;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
@@ -263,10 +265,15 @@ public class SignupMeetingDaoImpl extends HibernateGeneralGenericDao  implements
 	 * {@inheritDoc}
 	 */
 	public void removeMeetings(List<SignupMeeting> meetings) {
-		getHibernateTemplate().deleteAll(meetings);
-
+		getHibernateTemplate().deleteAll(mergeAll(meetings));
 	}
-	
+
+	private Collection mergeAll(Collection entities) {
+		List merged = new ArrayList();
+		entities.forEach(ent->merged.add(getHibernateTemplate().merge(ent)));
+		return merged;
+	}
+
 	/**
 	 * {@inheritDoc}
 	 */
@@ -283,19 +290,12 @@ public class SignupMeetingDaoImpl extends HibernateGeneralGenericDao  implements
 	 * {@inheritDoc}
 	 */
 	public int getAutoReminderTotalEventCounts(Date startDate, Date endDate) {
-		DetachedCriteria criteria = DetachedCriteria.forClass(
-				SignupMeeting.class).setResultTransformer(
-				Criteria.DISTINCT_ROOT_ENTITY).add(Restrictions.eq("autoReminder", true))
+		Number size = (Number) getHibernateTemplate().execute(session -> session.createCriteria(SignupMeeting.class)
+				.add(Restrictions.eq("autoReminder", true))
 				.add(Restrictions.between("startTime", startDate, endDate))
-				.setProjection(Projections.rowCount());
-		
-		List ls = getHibernateTemplate().findByCriteria(criteria);
-		if (ls == null || ls.isEmpty())
-			return 0;
-		
-		Integer rowCount = (Integer) ls.get(0);
-		
-		return rowCount !=null? rowCount.intValue():0;
+				.setProjection(Projections.rowCount())
+				.uniqueResult());
+		return size.intValue();
 	}
 	
 	/**

@@ -21,8 +21,7 @@ import java.util.List;
 
 import javax.servlet.http.Cookie;
 
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.Component;
 import org.apache.wicket.RestartResponseException;
@@ -34,6 +33,7 @@ import org.apache.wicket.extensions.ajax.markup.html.tabs.AjaxTabbedPanel;
 import org.apache.wicket.extensions.markup.html.tabs.AbstractTab;
 import org.apache.wicket.extensions.markup.html.tabs.ITab;
 import org.apache.wicket.markup.head.IHeaderResponse;
+import org.apache.wicket.markup.head.JavaScriptHeaderItem;
 import org.apache.wicket.markup.head.OnLoadHeaderItem;
 import org.apache.wicket.markup.html.WebMarkupContainer;
 import org.apache.wicket.markup.html.basic.Label;
@@ -44,7 +44,6 @@ import org.apache.wicket.model.Model;
 import org.apache.wicket.model.ResourceModel;
 import org.apache.wicket.model.StringResourceModel;
 import org.apache.wicket.request.mapper.parameter.PageParameters;
-import org.apache.wicket.util.cookies.CookieDefaults;
 import org.apache.wicket.util.cookies.CookieUtils;
 
 import org.sakaiproject.api.common.edu.person.SakaiPerson;
@@ -65,9 +64,10 @@ import org.sakaiproject.profile2.tool.pages.panels.KudosPanel;
 import org.sakaiproject.profile2.tool.pages.panels.MyProfilePanel;
 import org.sakaiproject.profile2.tool.pages.panels.MyStatusPanel;
 import org.sakaiproject.profile2.tool.pages.panels.MyWallPanel;
-import org.sakaiproject.profile2.tool.pages.panels.ViewWallPanel;
 import org.sakaiproject.profile2.tool.pages.windows.AddFriend;
 import org.sakaiproject.profile2.util.ProfileConstants;
+
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class MyProfile extends BasePage {
@@ -215,6 +215,9 @@ public class MyProfile extends BasePage {
 		userProfile.setPhoneNumbers(profileLogic.getPhoneNumbers(userProfile));
 		userProfile.setSocialMedia(profileLogic.getSocialMedia(userProfile));
 
+		userProfile.setPhoneticPronunciation(sakaiPerson.getPhoneticPronunciation());
+		userProfile.setPronouns(sakaiPerson.getPronouns());
+
 		// social networking fields
 		SocialNetworkingInfo socialInfo = profileLogic.getSocialNetworkingInfo(userProfile.getUserUuid());
 		if(socialInfo == null){
@@ -347,22 +350,22 @@ public class MyProfile extends BasePage {
 			//setup link/label and windows
 			if(friend) {
 				addFriendLabel.setDefaultModel(new ResourceModel("text.friend.confirmed"));
-	    		addFriendLink.add(new AttributeModifier("class", true, new Model<String>("instruction icon connection-confirmed")));
+	    		addFriendLink.add(new AttributeModifier("class", true, new Model<String>("instruction connection-confirmed")));
 				addFriendLink.setEnabled(false);
 			} else if (friendRequestToThisPerson) {
 				addFriendLabel.setDefaultModel(new ResourceModel("text.friend.requested"));
-	    		addFriendLink.add(new AttributeModifier("class", true, new Model<String>("instruction icon connection-request")));
+	    		addFriendLink.add(new AttributeModifier("class", true, new Model<String>("instruction connection-request")));
 				addFriendLink.setEnabled(false);
 			} else if (friendRequestFromThisPerson) {
 				//TODO (confirm pending friend request link)
 				//could be done by setting the content off the addFriendWindow.
 				//will need to rename some links to make more generic and set the onClick and setContent in here for link and window
 				addFriendLabel.setDefaultModel(new ResourceModel("text.friend.pending"));
-	    		addFriendLink.add(new AttributeModifier("class", true, new Model<String>("instruction icon connection-request")));
+	    		addFriendLink.add(new AttributeModifier("class", true, new Model<String>("instruction connection-request")));
 				addFriendLink.setEnabled(false);
 			}  else {
 				addFriendLabel.setDefaultModel(new StringResourceModel("link.friend.add.name", null, new Object[]{ nickname } ));
-	    		addFriendLink.add(new AttributeModifier("class", true, new Model<String>("icon connection-add")));
+	    		addFriendLink.add(new AttributeModifier("class", true, new Model<String>("connection-add")));
 				addFriendWindow.setContent(new AddFriend(addFriendWindow.getContentId(), addFriendWindow, friendActionModel, currentUserUuid, userUuid)); 
 			}
 			
@@ -408,9 +411,9 @@ public class MyProfile extends BasePage {
 	    				lockProfileLabel.setDefaultModel(new ResourceModel("link.profile.locked." + isLocked()));
 	    				add(new AttributeModifier("title", true, new ResourceModel("text.profile.locked." + isLocked())));
 	    				if(isLocked()){
-	    					add(new AttributeModifier("class", true, new Model<String>("icon locked")));
+	    					add(new AttributeModifier("class", true, new Model<String>("locked")));
 	    				} else {
-	    					add(new AttributeModifier("class", true, new Model<String>("icon unlocked")));
+	    					add(new AttributeModifier("class", true, new Model<String>("unlocked")));
 	    				}
 	    				target.add(this);
 	    			}
@@ -419,9 +422,9 @@ public class MyProfile extends BasePage {
 			
 			//set init icon for locked
 			if(isLocked()){
-				lockProfileLink.add(new AttributeModifier("class", true, new Model<String>("icon locked")));
+				lockProfileLink.add(new AttributeModifier("class", true, new Model<String>("locked")));
 			} else {
-				lockProfileLink.add(new AttributeModifier("class", true, new Model<String>("icon unlocked")));
+				lockProfileLink.add(new AttributeModifier("class", true, new Model<String>("unlocked")));
 			}
 			
 			lockProfileLink.add(lockProfileLabel);
@@ -502,7 +505,6 @@ public class MyProfile extends BasePage {
 	
 				@Override
 				public Panel getPanel(String panelId) {
-	
 					setTabCookie(ProfileConstants.TAB_INDEX_PROFILE);
 					MyProfilePanelState panelState = new MyProfilePanelState();
 					panelState.showBusinessDisplay = sakaiProxy.isBusinessProfileEnabled();
@@ -510,6 +512,7 @@ public class MyProfile extends BasePage {
 					panelState.showInterestsDisplay = sakaiProxy.isInterestsProfileEnabled();
 					panelState.showStaffDisplay = sakaiProxy.isStaffProfileEnabled();
 					panelState.showStudentDisplay = sakaiProxy.isStudentProfileEnabled();
+					panelState.showNamePronunciationDisplay = sakaiProxy.isNamePronunciationProfileEnabled();
 					return new MyProfilePanel(panelId, userProfile,panelState);
 				}
 	
@@ -603,7 +606,14 @@ public class MyProfile extends BasePage {
 			
 		});
 	}
-	
+
+	@Override
+	public void renderHead(IHeaderResponse response) {
+		super.renderHead(response);
+		response.render(JavaScriptHeaderItem.forUrl("/library/webjars/recordrtc/5.5.8/RecordRTC.js"));
+		response.render(JavaScriptHeaderItem.forUrl("/library/webjars/webrtc-adapter/7.5.0/out/adapter.js"));
+	}
+
 	private boolean locked;
 	public boolean isLocked() {
 		return locked;

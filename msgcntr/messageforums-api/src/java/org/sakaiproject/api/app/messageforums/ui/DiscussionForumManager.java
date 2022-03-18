@@ -20,10 +20,10 @@
  **********************************************************************************/
 package org.sakaiproject.api.app.messageforums.ui;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import org.sakaiproject.api.app.messageforums.Area;
@@ -31,8 +31,14 @@ import org.sakaiproject.api.app.messageforums.Attachment;
 import org.sakaiproject.api.app.messageforums.DBMembershipItem;
 import org.sakaiproject.api.app.messageforums.DiscussionForum;
 import org.sakaiproject.api.app.messageforums.DiscussionTopic;
+import org.sakaiproject.api.app.messageforums.MembershipItem;
+import org.sakaiproject.api.app.messageforums.MessageForumsUser;
+import org.sakaiproject.api.app.messageforums.events.ForumsMessageEventParams;
 import org.sakaiproject.api.app.messageforums.Message;
 import org.sakaiproject.api.app.messageforums.Topic;
+import org.sakaiproject.api.app.messageforums.events.ForumsTopicEventParams;
+import org.sakaiproject.event.api.LearningResourceStoreService.LRS_Statement;
+import org.sakaiproject.event.api.LearningResourceStoreService.LRS_Verb.SAKAI_VERB;
 import org.sakaiproject.user.api.User;
 
 /**
@@ -103,19 +109,25 @@ public interface DiscussionForumManager
   Area getDiscussionForumArea(String contextSiteId);
 
   /**
-   * @param message
+   * @param message the message to save
    */
-  void saveMessage(Message message);
-  void saveMessage(Message message, boolean logEvent);
+  Message saveMessage(Message message);
+
+  /**
+   * Saves the message and fires an event using the given parameters
+   * @param message the message to save
+   * @param params event details to post when saving message
+   */
+  Message saveMessage(Message message, ForumsMessageEventParams params);
+
   /**
    * 
-   * @param message
-   * @param logEvent
+   * @param message the message to save
+   * @param params event details to post when saving message
    * @param ignoreLockedTopicForum set true if you want to allow the message
      * to be updated even if the topic or forum is locked
    */
-  public void saveMessage(Message message, boolean logEvent, boolean ignoreLockedTopicForum);
-
+  public Message saveMessage(Message message, ForumsMessageEventParams params, boolean ignoreLockedTopicForum);
   /**
    * @param message
    */
@@ -163,10 +175,10 @@ public interface DiscussionForumManager
   public void approveAllPendingMessages(Long topicId);
   
   /**
-   * Returns pending msgs in site according to user's memberships
+   * Returns pending msgs of available moderated topics according to user's memberships
    * @return
    */
-  List getPendingMsgsInSiteByMembership(List membershipList);
+  List<Message> getPendingMsgsInSiteByMembership(List<String> membershipList, List<Topic> moderatedTopics);
   
   /**
    * 
@@ -281,32 +293,51 @@ public interface DiscussionForumManager
    * Save a forum. If this is a new forum, assumes current context is available.
    * @param forum
    */
-  public void saveForum(DiscussionForum forum);
-  public void saveForum(DiscussionForum forum, boolean draft, String contextId, boolean logEvent, String currentUser);
+  public DiscussionForum saveForum(DiscussionForum forum);
+  public DiscussionForum saveForum(DiscussionForum forum, boolean draft, String contextId, boolean logEvent, String currentUser);
   
   /**
    * Saves the given forum object. If forum is new, will be saved in the given contextId
    * @param contextId
    * @param forum
    */
-  public void saveForum(String contextId, DiscussionForum forum);
+  public DiscussionForum saveForum(String contextId, DiscussionForum forum);
   
   /**
+   * @param object
    * @param forum
-   * @param object 
    */
-  public void saveForumAsDraft(DiscussionForum forum);
-
+  public DiscussionForum saveForumAsDraft(DiscussionForum forum);
 
   /**
-   * @param topic
+   * Saves the topic. Depending on whether the topic is new or existing, fires the appropriate Sakai event and LRS statement.
+   * @param topic the topic
    */
-  public void saveTopic(DiscussionTopic topic);
+  public DiscussionTopic saveTopic(DiscussionTopic topic);
+
   /**
-   * @param topic
+   * Saves the topic. Depending on whether the topic is new or existing, fires an appropriate Sakai event and LRS statement.
+   * @param topic the topic
+   * @param draft whether to save as a draft
    */
-  public void saveTopic(DiscussionTopic topic, boolean draft, boolean logEvent);
-  public void saveTopic(DiscussionTopic topic, boolean draft, boolean logEvent, String currentUser);
+  public DiscussionTopic saveTopic(DiscussionTopic topic, boolean draft);
+
+  /**
+   * Saves the topic. Fires the given Sakai event and LRS statement.
+   * @param topic the topic
+   * @param draft whether to save as draft
+   * @param params the event to fire and LRS statement to record. Can be null (no event will be fired).
+   */
+  public DiscussionTopic saveTopic(DiscussionTopic topic, boolean draft, ForumsTopicEventParams params);
+
+  /**
+   * Saves the topic. Fires the given Sakai event and LRS statement.
+   * @param topic the topic
+   * @param draft whether to save as draft
+   * @param params the event to fire and LRS statement to record. Can be null (no event will be fired).
+   * @param currentUser id of the user saving the topic
+   */
+  public DiscussionTopic saveTopic(DiscussionTopic topic, boolean draft, ForumsTopicEventParams params, String currentUser);
   /**
    * @param topic
    */
@@ -396,7 +427,8 @@ public interface DiscussionForumManager
       List messagePermissions);
 
   /**
-   * @param topic
+   * Saves the topic as a draft. Depending on whether the topic is new or existing, fires the appropriate Sakai event and LRS statement.
+   * @param topic the topic
    */
   public void saveTopicAsDraft(DiscussionTopic topic);
 
@@ -419,31 +451,31 @@ public interface DiscussionForumManager
    * @param accessorList
    * @return
    */
-  public List decodeContributorsList(ArrayList contributorList);
+  public List<MessageForumsUser> decodeContributorsList(List<String> contributorList);
 
   /**
    * @param accessorList
    * @return
    */
-  public List decodeAccessorsList(ArrayList accessorList);
+  public List<MessageForumsUser> decodeAccessorsList(List<String> accessorList);
 
   /**
    * @param forum
    * @return
    */
-  public List getContributorsList(DiscussionForum forum);
+  public List<String> getContributorsList(DiscussionForum forum);
   
   
   /**
    * @param forum
    * @return
    */
-  public List getAccessorsList(DiscussionForum forum);
+  public List<String> getAccessorsList(DiscussionForum forum);
 
   /**
    * @return
    */
-  public Map getAllCourseMembers();
+  public Map<String, MembershipItem> getAllCourseMembers();
 
   /**
    * @param topic
@@ -462,12 +494,10 @@ public interface DiscussionForumManager
   /**
    * 
    */
-  public void setCourseMemberMapToNull();
+  public DBMembershipItem getAreaDBMember(Set<DBMembershipItem> originalSet, String name, int type);
 
-  public DBMembershipItem getAreaDBMember(Set originalSet, String name, Integer type);
-
-  public DBMembershipItem getDBMember(Set originalSet, String name, Integer type);
-  public DBMembershipItem getDBMember(Set originalSet, String name, Integer type, String contextSiteId);
+  public DBMembershipItem getDBMember(Set<DBMembershipItem> originalSet, String name, int type);
+  public DBMembershipItem getDBMember(Set<DBMembershipItem> originalSet, String name, int type, String contextSiteId);
   
   /**
    * 
@@ -498,21 +528,23 @@ public interface DiscussionForumManager
    * Returns num moderated topics in the current site that the current user
    * has moderate permission for, given the user's memberships
    * by permissionLevel (custom permissions)
-   * @param membershipList
    * @param contextId
+   * @param membershipList
+   * @param moderatedTopics
    * @return
    */
-  public int getNumModTopicsWithModPermissionByPermissionLevel(List membershipList);
+  public int getNumModTopicsWithModPermissionByPermissionLevel(List<String> membershipList, List<Topic> moderatedTopics);
   
   /**
    * Returns num moderated topics in the current site that the current user
    * has moderate permission for, given the user's memberships
    * based on permissionLevel (non-custom permissions)
-   * @param membershipList
    * @param contextId
+   * @param membershipList
+   * @param moderatedTopics
    * @return
    */
-  public int getNumModTopicsWithModPermissionByPermissionLevelName(List membershipList);
+  public int getNumModTopicsWithModPermissionByPermissionLevelName(List<String> membershipList, List<Topic> moderatedTopics);
   
   /**
    * Returns forum with topics, topic attachments, and topic messages
@@ -606,4 +638,34 @@ public interface DiscussionForumManager
 
   /** returns true if getAnonymousTopicsInSite() is not empty */
   public boolean isSiteHasAnonymousTopics(final String contextId);
+
+  public List<String> getAllowedGroupForRestrictedForum(final Long forumId, final String permissionName);
+  public List<String> getAllowedGroupForRestrictedTopic(final Long topicId, final String permissionName);
+
+  /**
+   * Gets the LRS statement representing the current user creating a post/topic
+   * @param subject the subject of the post/topic
+   * @param sakaiVerb the verb best describing the action related to this post
+   * @return the LRS statement, or empty if LRS service not available
+   */
+  public Optional<LRS_Statement> getStatementForUserPosted(String subject, SAKAI_VERB sakaiVerb);
+
+  /**
+   * Gets the LRS statement representing the current user reading a post/topic
+   * @param subject the subject of the post/topic
+   * @param target the type of object read (ie. "thread" or "topic")
+   * @return the LRS statement, or empty if LRS service not available
+   */
+  public Optional<LRS_Statement> getStatementForUserReadViewed(String subject, String target);
+
+  /**
+   * Gets the LRS statement representing a student receiving a grade
+   * @param studentUid the uuid of the student receiving the grade
+   * @param forumTitle the title of the item the grade is for
+   * @param score the grade
+   * @return the LRS statement, or empty if student not found or LRS service not available
+   */
+  public Optional<LRS_Statement> getStatementForGrade(String studentUid, String forumTitle, double score);
+
+  void setUiPermissionsManager(UIPermissionsManager uiPermissionsManager);
 }

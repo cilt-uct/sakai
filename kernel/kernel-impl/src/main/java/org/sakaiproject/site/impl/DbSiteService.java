@@ -23,6 +23,7 @@ package org.sakaiproject.site.impl;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -35,8 +36,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import lombok.extern.slf4j.Slf4j;
-
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.db.api.SqlReader;
 import org.sakaiproject.db.api.SqlReaderFinishedException;
 import org.sakaiproject.db.api.SqlService;
@@ -46,10 +46,10 @@ import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SitePage;
 import org.sakaiproject.site.api.ToolConfiguration;
-import org.sakaiproject.time.api.Time;
 import org.sakaiproject.util.BaseDbFlatStorage;
 import org.sakaiproject.util.BaseResourcePropertiesEdit;
-import org.sakaiproject.util.StringUtil;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * <p>
@@ -78,6 +78,8 @@ public abstract class DbSiteService extends BaseSiteService
 
 	/** ID field as an array to avoid instantiating it repeatedly for no reason. */
 	protected String[] m_siteIdFieldArray = {m_siteIdFieldName};
+
+	private static final int ORACLE_MAX_ELEMENTS_IN_CLAUSE = 1000;
 
 	/*************************************************************************************************************************************************
 	 * Dependencies
@@ -406,6 +408,66 @@ public abstract class DbSiteService extends BaseSiteService
 		/**
 		 * @inheritDoc
 		 */
+		@Override
+		public void unpublish(final List<String> siteIds, final String modifiedBy, final Instant modifiedOn)
+		{
+			final List<String> casedSiteIds = new ArrayList<>(siteIds.size());
+			StringBuilder tag = new StringBuilder("unpublish:");
+			String delim = "";
+			for (String siteId : siteIds)
+			{
+				tag.append(delim).append(siteId);
+				delim = ",";
+				casedSiteIds.add(caseId(siteId));
+			}
+
+			m_sql.transact(new Runnable()
+			{
+				public void run()
+				{
+					unpublishTx(casedSiteIds, modifiedBy, modifiedOn);
+				}
+			}, tag.toString());
+		}
+
+		protected void unpublishTx(List<String> siteIds, String modifiedBy, Instant modifiedOn)
+		{
+			// If we're operating on thousands of siteIds, a statement will be used that has an 'in' clause with 1000 occurrences of ", ?".
+			// maxBatchSizeStatement will cache it so we don't have to generate it more than once
+			String maxBatchSizeStatement = null;
+
+			int size = siteIds.size();
+			for (int i = 0; i < size; i += ORACLE_MAX_ELEMENTS_IN_CLAUSE)
+			{
+				int batchSize = Math.min(size - i, ORACLE_MAX_ELEMENTS_IN_CLAUSE);
+
+				// statement changes based on batch size
+				String statement = null;
+				if (batchSize == ORACLE_MAX_ELEMENTS_IN_CLAUSE)
+				{
+					// cache the 1000 batch size statement so we don't have to append 1000 occurences of ", ?" every time
+					if (maxBatchSizeStatement == null)
+					{
+						maxBatchSizeStatement = siteServiceSql.getUpdateSitesUnpublishSql(m_siteTableName, batchSize);
+					}
+					statement = maxBatchSizeStatement;
+				}
+				else
+				{
+					statement = siteServiceSql.getUpdateSitesUnpublishSql(m_siteTableName, batchSize);
+				}
+
+				List<Object> fields = new ArrayList<>(batchSize + 2);
+				fields.add(modifiedBy);
+				fields.add(modifiedOn);
+				fields.addAll(siteIds.subList(i, i + batchSize));
+				m_sql.dbWrite(statement, fields.toArray());
+			}
+		}
+
+		/**
+		 * @inheritDoc
+		 */
 		public void saveToolConfig(final ToolConfiguration tool)
 		{
 			// in a transaction
@@ -449,6 +511,15 @@ public abstract class DbSiteService extends BaseSiteService
 
 			// write the tool's properties
 			writeProperties("SAKAI_SITE_TOOL_PROPERTY", "TOOL_ID", tool.getId(), "SITE_ID", caseId(tool.getSiteId()), tool.getPlacementConfig());
+		}
+
+		/**
+		 * Insert a uniform property on multiple resources. NB: this will not check for duplicates; calling method must prevent unique constraint violations
+		 */
+		@Override
+		public void writeProperty(String propertyName, String propertyValue, String... siteIds)
+		{
+			writePropertyOnResources(m_sitePropTableName, m_siteIdFieldName, siteIds, null, null, propertyName, propertyValue);
 		}
 
 		/**
@@ -509,10 +580,10 @@ public abstract class DbSiteService extends BaseSiteService
 		}
 		
 		private String getSitesWhere(SelectionType type, Object ofType, String criteria, Map propertyCriteria, SortType sort){
-			return getSitesWhere(type, ofType, criteria, propertyCriteria, sort, null);
+			return getSitesWhere(type, ofType, criteria, propertyCriteria, null, sort, null);
 		}
 
-		private String getSitesWhere(SelectionType type, Object ofType, String criteria, Map propertyCriteria, SortType sort, List excludedSites)
+		private String getSitesWhere(SelectionType type, Object ofType, String criteria, Map propertyCriteria, Map propertyRestrictions, SortType sort, List excludedSites)
 		{
 			// Note: super users are not treated any differently - they get only those sites they have permission for,
 			// not based on super user status
@@ -530,7 +601,7 @@ public abstract class DbSiteService extends BaseSiteService
 			// reject special sites
 			if (type.isIgnoreSpecial()) where.append(siteServiceSql.getSitesWhere3Sql());
 			// reject unpublished sites
-			if (type.isIgnoreUnpublished()) where.append(siteServiceSql.getSitesWhere4Sql());
+			if (SelectionType.PublishedFilter.ALL != type.getPublishedFilter()) where.append(siteServiceSql.getSitesWhere4Sql(type.getPublishedFilter()));
 
 			if (ofType != null)
 			{
@@ -603,6 +674,14 @@ public abstract class DbSiteService extends BaseSiteService
 				for (int i = 0; i < propertyCriteria.size(); i++)
 				{
 					where.append(siteServiceSql.getSitesWhere13Sql());
+				}
+			}
+
+			if ((propertyRestrictions != null) && (propertyRestrictions.size() > 0))
+			{
+				for (int i = 0; i < propertyRestrictions.size(); i++)
+				{
+					where.append(siteServiceSql.getSitesWhere13PrimeSql());
 				}
 			}
 
@@ -707,6 +786,11 @@ public abstract class DbSiteService extends BaseSiteService
 		
 		private Object[] getSitesFields(SelectionType type, Object ofType, String criteria, Map propertyCriteria, String userId, List excludedSites)
 		{
+			return getSitesFields(type, ofType, criteria, propertyCriteria, null, userId, excludedSites);
+		}
+
+		private Object[] getSitesFields(SelectionType type, Object ofType, String criteria, Map propertyCriteria, Map propertyRestrictions, String userId, List excludedSites)
+		{
 			int fieldCount = 0;
 			if (ofType != null)
 			{
@@ -732,6 +816,7 @@ public abstract class DbSiteService extends BaseSiteService
 			if (criteria != null) fieldCount += 1;
 			if ((type == SelectionType.JOINABLE) || (type == SelectionType.ACCESS) || (type == SelectionType.UPDATE) || (type == SelectionType.MEMBER) || (type == SelectionType.DELETED) || (type == SelectionType.INACTIVE_ONLY)) fieldCount++;
 			if (propertyCriteria != null) fieldCount += (2 * propertyCriteria.size());
+			if (propertyRestrictions != null) fieldCount += (2 * propertyRestrictions.size());
 			if(excludedSites != null && !excludedSites.isEmpty()) { fieldCount += excludedSites.size(); }
 			Object fields[] = null;
 			if (fieldCount > 0)
@@ -778,13 +863,27 @@ public abstract class DbSiteService extends BaseSiteService
 				{
 					fields[pos++] =  "%" + criteria + "%";
 				}
+
 				if (type == SelectionType.JOINABLE)
 				{
 					fields[pos++] = getCurrentUserIdIfNull(userId);
 				}
+
 				if ((propertyCriteria != null) && (propertyCriteria.size() > 0))
 				{
 					for (Iterator i = propertyCriteria.entrySet().iterator(); i.hasNext();)
+					{
+						Map.Entry entry = (Map.Entry) i.next();
+						String name = (String) entry.getKey();
+						String value = (String) entry.getValue();
+						fields[pos++] = name;
+						fields[pos++] = "%" + value + "%";
+					}
+				}
+
+				if (propertyRestrictions != null && propertyRestrictions.size() > 0)
+				{
+					for (Iterator i = propertyRestrictions.entrySet().iterator(); i.hasNext();)
 					{
 						Map.Entry entry = (Map.Entry) i.next();
 						String name = (String) entry.getKey();
@@ -974,6 +1073,7 @@ public abstract class DbSiteService extends BaseSiteService
 		/**
 		 * {@inheritDoc}
 		 */
+		@Override
 		public List getSites(SelectionType type, Object ofType, String criteria, Map propertyCriteria, SortType sort, PagingPosition page)
 		{
 			return getSites(type, ofType, criteria, propertyCriteria, sort, page, true);
@@ -984,12 +1084,21 @@ public abstract class DbSiteService extends BaseSiteService
 		 */
 		public List<String> getSiteIds(SelectionType type, Object ofType, String criteria, Map<String, String> propertyCriteria, List<String> excludedSites, SortType sort, PagingPosition page, String userId)
 		{
+			return getSiteIds(type, ofType, criteria, propertyCriteria, null, excludedSites, sort, page, userId);
+		}
+
+		/**
+		 * {@inheritDoc}
+		 */
+		@Override
+		public List<String> getSiteIds(SelectionType type, Object ofType, String criteria, Map<String, String> propertyCriteria, Map<String, String> propertyRestrictions, List<String> excludedSites, SortType sort, PagingPosition page, String userId)
+		{
 			userId = getCurrentUserIdIfNull(userId);
 
 			String join = getSitesJoin( type, sort );
 			String order = getSitesOrder( sort );
-			Object[] values = getSitesFields( type, ofType, criteria, propertyCriteria, userId, excludedSites );
-			String where = getSitesWhere(type, ofType, criteria, propertyCriteria, sort, excludedSites);
+			Object[] values = getSitesFields( type, ofType, criteria, propertyCriteria, propertyRestrictions, userId, excludedSites );
+			String where = getSitesWhere(type, ofType, criteria, propertyCriteria, propertyRestrictions, sort, excludedSites);
 
 			String sql;
 			if (page != null)
@@ -1004,6 +1113,8 @@ public abstract class DbSiteService extends BaseSiteService
 				sql = getResourceSql(fieldList(m_siteIdFieldArray, null), where, order, values, join);
 			}
 
+			log.debug("getSiteIds SQL: {}, values: {}", sql, java.util.Arrays.toString(values));
+
 			@SuppressWarnings("unchecked")
 			List<String> siteIds = (List<String>) sqlService().dbRead(sql, values, siteIdReader);
 			return siteIds;
@@ -1012,28 +1123,23 @@ public abstract class DbSiteService extends BaseSiteService
 		/**
 		 * {@inheritDoc}
 		 */
+		@Override
 		public List<String> getSiteIds(SelectionType type, Object ofType, String criteria, Map<String, String> propertyCriteria, SortType sort, PagingPosition page)
 		{
 			// getSiteIds with userId returns the current user's site Ids
 			return getSiteIds(type, ofType, criteria, propertyCriteria, sort, page, null);
 		}
 		
-		/**
-		 * {@inheritDoc}
-		 */
 		private List<String> getSiteIds(SelectionType type, Object ofType, String criteria, Map<String, String> propertyCriteria, SortType sort, PagingPosition page, String userId)
 		{
 			// no excluded sites
-			return getSiteIds(type, ofType, criteria, propertyCriteria, null, sort, page, userId);
+			return getSiteIds(type, ofType, criteria, propertyCriteria, null, null, sort, page, userId);
 		}
 		
-		/**
-		 * {@inheritDoc}
-		 */
 		private List<String> getSiteIds(SelectionType type, Object ofType, String criteria, Map<String, String> propertyCriteria, List<String> excludedSites, SortType sort, PagingPosition page)
 		{
 			// no excluded sites
-			return getSiteIds(type, ofType, criteria, propertyCriteria, excludedSites, sort, page, null);
+			return getSiteIds(type, ofType, criteria, propertyCriteria, null, excludedSites, sort, page, null);
 		}
 
 		/**
@@ -1095,7 +1201,14 @@ public abstract class DbSiteService extends BaseSiteService
 			LinkedHashMap<String, Site> siteMap = getOrderedSiteMap(siteIds, requireDescription);
 
 			SqlReader reader = requireDescription ? fullSiteReader : lightSiteReader;
-			String order = getSitesOrder(sort);
+			String order = null;
+			if ((sort != SortType.CREATED_BY_ASC)
+					&& (sort != SortType.CREATED_BY_DESC)
+					&& (sort != SortType.MODIFIED_BY_ASC)
+					&& (sort != SortType.MODIFIED_BY_DESC))
+			{
+				order = getSitesOrder(sort);
+			}
 
 			// Account for limitations in the number of IN parameters we can use by batching
 			// Load just the sites that weren't found in cache
@@ -2441,7 +2554,7 @@ public abstract class DbSiteService extends BaseSiteService
 				// if no current user, since we are working up a new user record, use the user id as creator...
 				if (current == null) current = "";
 
-				Time now = timeService().newTime();
+				Instant now = Instant.now();
 
 				rv[1] = "";
 				rv[2] = "";
@@ -2467,23 +2580,23 @@ public abstract class DbSiteService extends BaseSiteService
 
 			else
 			{
-				rv[1] = StringUtil.trimToZero(((BaseSite) edit).m_title);
-				rv[2] = StringUtil.trimToZero(((BaseSite) edit).m_type);
-				rv[3] = StringUtil.trimToZero(((BaseSite) edit).m_shortDescription);
-				rv[4] = StringUtil.trimToZero(((BaseSite) edit).m_description);
-				rv[5] = StringUtil.trimToZero(((BaseSite) edit).m_icon);
-				rv[6] = StringUtil.trimToZero(((BaseSite) edit).m_info);
-				rv[7] = StringUtil.trimToZero(((BaseSite) edit).m_skin);
+				rv[1] = StringUtils.trimToEmpty(((BaseSite) edit).m_title);
+				rv[2] = StringUtils.trimToEmpty(((BaseSite) edit).m_type);
+				rv[3] = StringUtils.trimToEmpty(((BaseSite) edit).m_shortDescription);
+				rv[4] = StringUtils.trimToEmpty(((BaseSite) edit).m_description);
+				rv[5] = StringUtils.trimToEmpty(((BaseSite) edit).m_icon);
+				rv[6] = StringUtils.trimToEmpty(((BaseSite) edit).m_info);
+				rv[7] = StringUtils.trimToEmpty(((BaseSite) edit).m_skin);
 				rv[8] = Integer.valueOf((((BaseSite) edit).m_published) ? 1 : 0);
 				rv[9] = ((((BaseSite) edit).m_joinable) ? "1" : "0");
 				rv[10] = ((((BaseSite) edit).m_pubView) ? "1" : "0");
-				rv[11] = StringUtil.trimToZero(((BaseSite) edit).m_joinerRole);
+				rv[11] = StringUtils.trimToEmpty(((BaseSite) edit).m_joinerRole);
 				rv[12] = isSpecialSite(id) ? "1" : "0";
 				rv[13] = isUserSite(id) ? "1" : "0";
-				rv[14] = StringUtil.trimToZero(((BaseSite) edit).m_createdUserId);
-				rv[15] = StringUtil.trimToZero(((BaseSite) edit).m_lastModifiedUserId);
-				rv[16] = edit.getCreatedTime();
-				rv[17] = edit.getModifiedTime();
+				rv[14] = StringUtils.trimToEmpty(((BaseSite) edit).m_createdUserId);
+				rv[15] = StringUtils.trimToEmpty(((BaseSite) edit).m_lastModifiedUserId);
+				rv[16] = edit.getCreatedDate();
+				rv[17] = edit.getModifiedDate();
 				rv[18] = edit.isCustomPageOrdered() ? "1" : "0";
 				rv[19] = edit.isSoftlyDeleted() ? "1" : "0";
 				rv[20] = edit.getSoftlyDeletedDate();
@@ -2578,16 +2691,16 @@ public abstract class DbSiteService extends BaseSiteService
 				String createdBy = result.getString(15);
 				String modifiedBy = result.getString(16);
 				java.sql.Timestamp ts = result.getTimestamp(17, sqlService().getCal());
-				Time createdOn = null;
+				Instant createdOn = null;
 				if (ts != null)
 				{
-					createdOn = timeService().newTime(ts.getTime());
+					createdOn = ts.toInstant();
 				}
 				ts = result.getTimestamp(18, sqlService().getCal());
-				Time modifiedOn = null;
+				Instant modifiedOn = null;
 				if (ts != null)
 				{
-					modifiedOn = timeService().newTime(ts.getTime());
+					modifiedOn = ts.toInstant();
 				}
 				boolean customPageOrdered = "1".equals(result.getString(19)) ? true : false;
 				boolean isSoftlyDeleted = "1".equals(result.getString(20)) ? true : false;

@@ -13,13 +13,28 @@
     <link href="/library/skin/tool_base.css" type="text/css" rel="stylesheet" media="all" />
     <link href="/library/skin/default/tool.css" type="text/css" rel="stylesheet" media="all" />
 
-    <script type="text/javascript" src="/library/js/headscripts.js"></script>
+    <script src="/library/js/headscripts.js"></script>
 
   <sakai:view toolCssHref="./css/podcaster.css">
-  <script type="text/javascript" src="./scripts/popupscripts.js"></script>
+  <script src="./scripts/popupscripts.js"></script>
+
+  <script>includeLatestJQuery('podOptions.jsp');</script>
+  <script>
+      $(document).ready(function(){
+          initializePopover("podMainForm\\:popover", "<h:outputText value="#{msgs.popup_text}" />");
+          var menuLink = $('#podcastOptionsMenuLink');
+          var menuLinkSpan = menuLink.closest('span');
+          menuLinkSpan.addClass('current');
+          menuLinkSpan.html(menuLink.text());
+  });
+  </script>
+
   <h:form enctype="multipart/form-data">
+    <%@ include file="/podcasts/podcastMenu.jsp" %>
     <div>  <!-- Page title and Instructions -->
-      <h3><h:outputText value="#{msgs.options_title}" /></h3>
+      <div class="page-header">
+        <h1><h:outputText value="#{msgs.options_title}" /></h1>
+      </div>
       <div class="indnt1">
           <p class="instruction"> 
             <h:outputText value="#{msgs.options_directions1}" />
@@ -62,7 +77,7 @@
       <sakai:button_bar_item action="#{podOptions.processOptionChange}" value="#{msgs.change_submit}"
             accesskey="s" title="Save Podcast Display Options" styleClass="active"/>
       <sakai:button_bar_item action="#{podOptions.processOptionCancel}" value="#{msgs.cancel}" 
-            accesskey="c" title="Cancel Podcast Display Options" />
+            accesskey="x" title="Cancel Podcast Display Options" />
     </sakai:button_bar>
   </h:form>
 

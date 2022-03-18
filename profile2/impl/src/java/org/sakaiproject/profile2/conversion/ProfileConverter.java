@@ -28,15 +28,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import au.com.bytecode.opencsv.CSVReader;
-import au.com.bytecode.opencsv.bean.CsvToBean;
-import au.com.bytecode.opencsv.bean.HeaderColumnNameTranslateMappingStrategy;
-import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
-
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.api.common.edu.person.SakaiPerson;
 import org.sakaiproject.authz.api.SecurityAdvisor;
 import org.sakaiproject.authz.api.SecurityService;
@@ -51,6 +43,14 @@ import org.sakaiproject.profile2.model.MimeTypeByteArray;
 import org.sakaiproject.profile2.model.UserProfile;
 import org.sakaiproject.profile2.util.ProfileConstants;
 import org.sakaiproject.profile2.util.ProfileUtils;
+
+import com.opencsv.bean.CsvToBean;
+import com.opencsv.bean.CsvToBeanBuilder;
+import com.opencsv.bean.HeaderColumnNameTranslateMappingStrategy;
+
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Handles the conversion and import of profiles and images. This is not part of the public API.
@@ -372,10 +372,11 @@ public class ProfileConverter {
         
         strat.setColumnMapping(map);
 
-        CsvToBean<ImportableUserProfile> csv = new CsvToBean<ImportableUserProfile>();
+       // CsvToBean<ImportableUserProfile> csv = new CsvToBean<ImportableUserProfile>();
         List<ImportableUserProfile> list = new ArrayList<ImportableUserProfile>();
         try {
-			list = csv.parse(strat, new CSVReader(new FileReader(path)));
+			//list = csv.parse(strat, new CSVReader(new FileReader(path)));
+			list = new CsvToBeanBuilder<ImportableUserProfile>(new FileReader(path)).withType(ImportableUserProfile.class).build().parse();
 		} catch (FileNotFoundException fnfe) {
 			log.error("Profile2 importer: Couldn't find file: " + fnfe.getClass() + " : " + fnfe.getMessage());
 		}

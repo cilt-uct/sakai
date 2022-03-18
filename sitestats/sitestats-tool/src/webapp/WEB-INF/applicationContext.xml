@@ -14,6 +14,7 @@
         <property name="reportManager" ref="org.sakaiproject.sitestats.api.report.ReportManager" />
         <property name="statsUpdateManager" ref="org.sakaiproject.sitestats.api.StatsUpdateManager" />
         <property name="serverWideReportManager" ref="org.sakaiproject.sitestats.api.ServerWideReportManager" />
+        <property name="detailedEventsManager" ref="org.sakaiproject.sitestats.api.event.detailed.DetailedEventsManager" />
 		<!-- Sakai services -->
 		<property name="sessionManager" ref="org.sakaiproject.tool.api.SessionManager" />
         <property name="toolManager" ref="org.sakaiproject.tool.api.ToolManager" />
@@ -21,7 +22,7 @@
 		<property name="authzGroupService" ref="org.sakaiproject.authz.api.AuthzGroupService" />
         <property name="userDirectoryService" ref="org.sakaiproject.user.api.UserDirectoryService" />
         <property name="contentHostingService" ref="org.sakaiproject.content.api.ContentHostingService" />
-        <property name="timeService" ref="org.sakaiproject.time.api.TimeService" />
+        <property name="userTimeService" ref="org.sakaiproject.time.api.UserTimeService" />
 	</bean>
 
 	<!-- The id of this bean needs to match the param 'applicationBean' under your web.xml -->

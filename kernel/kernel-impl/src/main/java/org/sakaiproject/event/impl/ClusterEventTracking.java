@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit;
 
 import lombok.extern.slf4j.Slf4j;
 
-import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import org.sakaiproject.component.api.ServerConfigurationService;
@@ -43,8 +43,6 @@ import org.sakaiproject.event.api.NotificationService;
 import org.sakaiproject.event.api.SimpleEvent;
 import org.sakaiproject.memory.api.Cache;
 import org.sakaiproject.memory.api.MemoryService;
-
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * <p>
@@ -103,8 +101,6 @@ public abstract class ClusterEventTracking extends BaseEventTrackingService impl
 	private Cache eventLastCache;
 	/** is caching enabled? - KNL-1184 */
 	private boolean cachingEnabled;
-
-	private AtomicBoolean tomcatStarted = new AtomicBoolean(false);
 
 	/**
 	 * @return the MemoryService collaborator.
@@ -327,7 +323,7 @@ public abstract class ClusterEventTracking extends BaseEventTrackingService impl
 	protected void postEvent(Event event)
 	{
 		// mark the event time
-		((BaseEvent) event).m_time = new Date();
+		((BaseEvent) event).time = new Date();
 
 		// notify locally generated events immediately -
 		// they will not be process again when read back from the database
@@ -340,19 +336,21 @@ public abstract class ClusterEventTracking extends BaseEventTrackingService impl
 			log.warn("postEvent, notifyObservers(), event: {}", event.toString(), t);
 		}
 
-		// batch the event if we are batching
-		if (m_batchWrite)
-		{
-			synchronized (m_eventQueue)
+		if (!event.isTransient()) {
+			// batch the event if we are batching
+			if (m_batchWrite)
 			{
-				m_eventQueue.add(event);
+				synchronized (m_eventQueue)
+				{
+					m_eventQueue.add(event);
+				}
 			}
-		}
 
-		// if not batching, write out the individual event
-		else
-		{
-			writeEvent(event, null);
+			// if not batching, write out the individual event
+			else
+			{
+				writeEvent(event, null);
+			}
 		}
 
 		log.debug("{}{}", m_logId, event);
@@ -512,7 +510,7 @@ public abstract class ClusterEventTracking extends BaseEventTrackingService impl
 			reportId = "~" + serverConfigurationService().getServerId() + "~" + event.getUserId();
 		}
 
-		fields[0] = ((BaseEvent) event).m_time;
+		fields[0] = ((BaseEvent) event).time;
 		fields[1] = event.getEvent() != null && event.getEvent().length() > 32 ?
 				event.getEvent().substring(0, 32) : event.getEvent();
 		fields[2] = event.getResource() != null && event.getResource().length() > 255 ? 

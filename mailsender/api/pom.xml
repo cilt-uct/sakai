@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.sakaiproject.mailsender</groupId>
         <artifactId>mailsender</artifactId>
-        <version>12.5</version><!-- ProjectVersion -->
+        <version>21-SNAPSHOT</version><!-- ProjectVersion -->
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -13,11 +13,6 @@
     <groupId>org.sakaiproject.mailsender</groupId>
     <artifactId>mailsender-api</artifactId>
     <description>Mail Sender Interfaces (API)</description>
-    <organization>
-        <name>Sakai Project</name>
-        <url>http://sakaiproject.org/</url>
-    </organization>
-    <inceptionYear>2007</inceptionYear>
     <packaging>jar</packaging>
 
     <properties>
@@ -25,10 +20,10 @@
     </properties>
 
     <dependencies>
-    	<dependency>
-    		<groupId>org.springframework</groupId>
-    		<artifactId>spring-webmvc</artifactId>
-    	</dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-webmvc</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.sakaiproject.kernel</groupId>
             <artifactId>sakai-kernel-api</artifactId>
@@ -51,4 +46,16 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+    
+    <build>
+        <resources>
+            <resource>
+                <directory>${basedir}/src/bundle</directory>
+                <includes>
+                    <include>**/*.properties</include>
+                </includes>
+                <filtering>false</filtering>
+            </resource>
+        </resources>
+    </build>
 </project>

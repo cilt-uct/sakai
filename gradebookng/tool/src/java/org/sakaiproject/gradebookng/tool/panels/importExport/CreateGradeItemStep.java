@@ -17,10 +17,9 @@ package org.sakaiproject.gradebookng.tool.panels.importExport;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
-import lombok.extern.slf4j.Slf4j;
-
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.wicket.Component;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.ajax.markup.html.form.AjaxButton;
@@ -30,15 +29,18 @@ import org.apache.wicket.markup.html.form.Form;
 import org.apache.wicket.model.IModel;
 import org.apache.wicket.model.Model;
 import org.apache.wicket.model.StringResourceModel;
-
+import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.gradebookng.business.model.ProcessedGradeItem;
 import org.sakaiproject.gradebookng.business.util.ImportGradesHelper;
 import org.sakaiproject.gradebookng.tool.model.ImportWizardModel;
+import org.sakaiproject.gradebookng.tool.model.UiMode;
 import org.sakaiproject.gradebookng.tool.pages.ImportExportPage;
 import org.sakaiproject.gradebookng.tool.panels.AddOrEditGradeItemPanelContent;
 import org.sakaiproject.gradebookng.tool.panels.BasePanel;
 import org.sakaiproject.service.gradebook.shared.Assignment;
-import org.sakaiproject.util.FormattedText;
+import org.sakaiproject.util.api.FormattedText;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Importer has detected that items need to be created so extract the data and wrap the 'AddOrEditGradeItemPanelContent' panel
@@ -71,14 +73,15 @@ public class CreateGradeItemStep extends BasePanel {
 		// original data
 		final ProcessedGradeItem processedGradeItem = importWizardModel.getItemsToCreate().get(step - 1);
 
-		// if using spreadsheet data, we'll create a blank assignment and fill the fields accordingly; otherwise, the assignment is already in the wizard (Ie. back button)
-		Assignment assignmentFromModel = importWizardModel.getAssignmentsToCreate().get(processedGradeItem);
+		// if using spreadsheet data, we'll create a blank assignment and fill the fields accordingly; otherwise, the assignment is already
+		// in the wizard (Ie. back button)
+		final Assignment assignmentFromModel = importWizardModel.getAssignmentsToCreate().get(processedGradeItem);
 		final Assignment assignment = assignmentFromModel == null ? new Assignment() : assignmentFromModel;
 		if (assignmentFromModel == null) {
 			assignment.setName(StringUtils.trim(processedGradeItem.getItemTitle()));
 			String itemPointValue = processedGradeItem.getItemPointValue();
-			if(StringUtils.isNotBlank(itemPointValue)) {
-				String decimalSeparator = FormattedText.getDecimalSeparator();
+			if (StringUtils.isNotBlank(itemPointValue)) {
+				final String decimalSeparator = ComponentManager.get(FormattedText.class).getDecimalSeparator();
 				if (",".equals(decimalSeparator)) {
 					itemPointValue = itemPointValue.replace(decimalSeparator, ".");
 				}
@@ -94,56 +97,12 @@ public class CreateGradeItemStep extends BasePanel {
 			private static final long serialVersionUID = 1L;
 
 			@Override
-			protected void onSubmit(AjaxRequestTarget target, Form<?> form) {
-
-				final Assignment newAssignment = (Assignment) form.getDefaultModel().getObject();
-				final ImportExportPage page = (ImportExportPage) getPage();
-				log.debug("GradebookAssignment: {}", newAssignment);
-
-				// validate name is unique, first among existing gradebook items, second against new items to be created
-				boolean validated = true;
-				final List<Assignment> existingAssignments = CreateGradeItemStep.this.businessService.getGradebookAssignments();
-				if (!assignmentNameIsUnique(existingAssignments, newAssignment.getName())
-						|| !assignmentNameIsUnique(newAssignment, importWizardModel.getAssignmentsToCreate().values())) {
-					validated = false;
-					error(getString("error.addgradeitem.title"));
-					page.updateFeedback(target);
-				}
-
-				if (validated) {
-
-					// sync up the assignment data so we can present it for confirmation
-					processedGradeItem.setItemTitle(newAssignment.getName());
-					processedGradeItem.setItemPointValue(String.valueOf(newAssignment.getPoints()));
-
-					// add to model
-					importWizardModel.getAssignmentsToCreate().put(processedGradeItem, newAssignment);
-
-					// Figure out if there are more steps
-					// If so, go to the next step (ie do it all over again)
-					Component newPanel;
-					if (step < importWizardModel.getTotalSteps()) {
-						importWizardModel.setStep(step + 1);
-						newPanel = new CreateGradeItemStep(CreateGradeItemStep.this.panelId, Model.of(importWizardModel));
-					} else {
-						// If not, continue on in the wizard
-						newPanel = new GradeImportConfirmationStep(CreateGradeItemStep.this.panelId, Model.of(importWizardModel));
-					}
-
-					// clear any previous errors
-					page.clearFeedback();
-					page.updateFeedback(target);
-
-					// AJAX the new panel into place
-					newPanel.setOutputMarkupId(true);
-					WebMarkupContainer container = page.container;
-					container.addOrReplace(newPanel);
-					target.add(newPanel);
-				}
+			protected void onSubmit(final AjaxRequestTarget target, final Form<?> form) {
+				saveItemAndProceed(true, target, form);
 			}
 
 			@Override
-			protected void onError(AjaxRequestTarget target, Form<?> form) {
+			protected void onError(final AjaxRequestTarget target, final Form<?> form) {
 				final ImportExportPage page = (ImportExportPage) getPage();
 				page.updateFeedback(target);
 			}
@@ -154,39 +113,23 @@ public class CreateGradeItemStep extends BasePanel {
 			private static final long serialVersionUID = 1L;
 
 			@Override
-			public void onSubmit(AjaxRequestTarget target, Form<?> form) {
+			public void onSubmit(final AjaxRequestTarget target, final Form<?> form) {
+				saveItemAndProceed(false, target, form); // OWL
+			}
 
-				// clear any previous errors
+			@Override
+			protected void onError(final AjaxRequestTarget target, final Form<?> form) {
 				final ImportExportPage page = (ImportExportPage) getPage();
-				page.clearFeedback();
 				page.updateFeedback(target);
-
-				// Create the previous panel
-				Component previousPanel;
-				if (step > 1) {
-					importWizardModel.setStep(step - 1);
-					previousPanel = new CreateGradeItemStep(CreateGradeItemStep.this.panelId, Model.of(importWizardModel));
-				} else {
-					// Reload everything. Rationale: final step can have partial success and partial failure. If content was imported from the spreadsheet, the item selection page should reflect this when we return to it
-					ImportGradesHelper.setupImportWizardModelForSelectionStep(page, CreateGradeItemStep.this, importWizardModel, businessService, target);
-					previousPanel = new GradeItemImportSelectionStep(CreateGradeItemStep.this.panelId, Model.of(importWizardModel));
-				}
-
-				// AJAX the previous panel into place
-				previousPanel.setOutputMarkupId(true);
-				WebMarkupContainer container = page.container;
-				container.addOrReplace(previousPanel);
-				target.add(container);
 			}
 		};
-		backButton.setDefaultFormProcessing(false);
 		form.add(backButton);
 
 		final AjaxButton cancelButton = new AjaxButton("cancelbutton") {
 			private static final long serialVersionUID = 1L;
 
 			@Override
-			public void onSubmit(AjaxRequestTarget target, Form<?> form) {
+			public void onSubmit(final AjaxRequestTarget target, final Form<?> form) {
 				// clear any previous errors
 				final ImportExportPage page = (ImportExportPage) getPage();
 				page.clearFeedback();
@@ -198,10 +141,80 @@ public class CreateGradeItemStep extends BasePanel {
 		form.add(cancelButton);
 
 		// wrap the form create panel
-		form.add(new Label("createItemHeader", new StringResourceModel("importExport.createItem.heading", this, null, step, importWizardModel.getTotalSteps())));
-		form.add(new AddOrEditGradeItemPanelContent("subComponents", assignmentModel));
-		previewGradesPanel = new PreviewImportedGradesPanel("previewGradesPanel", model);
-		form.add(previewGradesPanel);
+		form.add(new Label("createItemHeader",
+				new StringResourceModel("importExport.createItem.heading", this, null, step, importWizardModel.getTotalSteps())));
+		form.add(new AddOrEditGradeItemPanelContent("subComponents", assignmentModel, UiMode.ADD));
+		this.previewGradesPanel = new PreviewImportedGradesPanel("previewGradesPanel", this.model);
+		form.add(this.previewGradesPanel);
+	}
+
+	private void saveItemAndProceed(boolean forward, final AjaxRequestTarget target, final Form<?> form)
+	{
+		final ImportWizardModel importWizardModel = model.getObject();
+		final int step = importWizardModel.getStep();
+		// original data
+		final ProcessedGradeItem processedGradeItem = importWizardModel.getItemsToCreate().get(step - 1);
+
+		final Assignment newAssignment = (Assignment) form.getDefaultModel().getObject();
+		final ImportExportPage page = (ImportExportPage) getPage();
+		log.debug("GradebookAssignment: {}", newAssignment);
+
+		// validate name is unique, first among existing gradebook items, second against new items to be created
+		boolean validated = true;
+		final List<Assignment> existingAssignments = CreateGradeItemStep.this.businessService.getGradebookAssignments();
+		if (!assignmentNameIsUnique(existingAssignments, newAssignment.getName()) || !assignmentNameIsUnique(newAssignment)) {
+			validated = false;
+			error(getString("error.addgradeitem.title"));
+			page.updateFeedback(target);
+		}
+
+		if (validated) {
+
+			// sync up the assignment data so we can present it for confirmation
+			processedGradeItem.setAssignmentTitle(newAssignment.getName()); // need to retain the original title for matching later
+			processedGradeItem.setItemPointValue(String.valueOf(newAssignment.getPoints())); // doesn't seem like anything actually uses this, but will leave it
+			processedGradeItem.setRubricParameters(getRubricParameters(""));
+
+			// add to model
+			importWizardModel.getAssignmentsToCreate().put(processedGradeItem, newAssignment);
+
+			Component newPanel;
+			if (forward)
+			{
+				// Figure out if there are more steps
+				// If so, go to the next step (ie do it all over again)
+				if (step < importWizardModel.getTotalSteps()) {
+					importWizardModel.setStep(step + 1);
+					newPanel = new CreateGradeItemStep(CreateGradeItemStep.this.panelId, Model.of(importWizardModel));
+				} else {
+					// If not, continue on in the wizard
+					newPanel = new GradeImportConfirmationStep(CreateGradeItemStep.this.panelId, Model.of(importWizardModel));
+				}
+			}
+			else // back
+			{
+				if (step > 1) {
+					importWizardModel.setStep(step - 1);
+					newPanel = new CreateGradeItemStep(CreateGradeItemStep.this.panelId, Model.of(importWizardModel));
+				} else {
+					// Reload everything. Rationale: final step can have partial success and partial failure. If content was imported from
+					// the spreadsheet, the item selection page should reflect this when we return to it
+					ImportGradesHelper.setupImportWizardModelForSelectionStep(page, CreateGradeItemStep.this, importWizardModel,
+							CreateGradeItemStep.this.businessService, target);
+					newPanel = new GradeItemImportSelectionStep(CreateGradeItemStep.this.panelId, Model.of(importWizardModel));
+				}
+			}
+
+			// clear any previous errors
+			page.clearFeedback();
+			page.updateFeedback(target);
+
+			// AJAX the new panel into place
+			newPanel.setOutputMarkupId(true);
+			final WebMarkupContainer container = page.container;
+			container.addOrReplace(newPanel);
+			target.add(newPanel);
+		}
 	}
 
 	/**
@@ -221,22 +234,22 @@ public class CreateGradeItemStep extends BasePanel {
 
 	/**
 	 * Checks if a new assignment's name is unique amongst the list of assignments to be created.
+	 * 
 	 * @param newAssignment
 	 * @param assignmentsToCreate
 	 * @return
 	 */
-	private boolean assignmentNameIsUnique(final Assignment newAssignment, final Collection<Assignment> assignmentsToCreate) {
-		boolean retVal = true;
+	private boolean assignmentNameIsUnique(final Assignment newAssignment) {
 
-		for (Assignment assignmentToCreate : assignmentsToCreate) {
+		final List<ProcessedGradeItem> itemsToCreate = model.getObject().getItemsToCreate();
+		final Map<ProcessedGradeItem, Assignment> assignmentsToCreate = model.getObject().getAssignmentsToCreate();
 
-			// Skip comparison of itself; if newAssignment name equals assignmentToCreate name, name is not unique
-			if (!newAssignment.equals(assignmentToCreate) && StringUtils.equals(newAssignment.getName(), assignmentToCreate.getName())) {
-				retVal = false;
-				break;
-			}
-		}
+		// assignment equality is based on id, which will be null until the assignments are persisted, so we can't use it
+		// instead, we determine if the assignment object for the current item is already in the map, and set our expected
+		// number of name matches accordingly
+		final ProcessedGradeItem thisItem = itemsToCreate.get(model.getObject().getStep() - 1);
+		int expectedNameMatchesIfUnique = assignmentsToCreate.get(thisItem) == null ? 0 : 1;
 
-		return retVal;
+		return assignmentsToCreate.values().stream().filter(a -> StringUtils.equals(newAssignment.getName(), a.getName())).count() == expectedNameMatchesIfUnique;
 	}
 }

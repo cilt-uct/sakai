@@ -3,22 +3,26 @@
 <div class="portletBody">
 	#if($menu)#toolbar($menu)#end
 	<h3>
-		$tlang.getString("addrc.confirming") <span class="highlight">$validator.escapeHtml($title)</span>
+		$tlang.getString("addrc.confirming") <span class="highlight">$formattedText.escapeHtml($title)</span>
 	</h3>
 		#if ($alertMessage)
-			<div class="alertMessage">$tlang.getString("gen.alert") $alertMessage</div>
-			<div class="clear"></div>
+			<div class="sak-banner-error">$tlang.getString("gen.alert") $alertMessage</div>
 		#end
 ## (gsilver) should check what has happened - if tools have been removed output the following block, if not not. Same with added tools (and change the language to suit)	
 ##  (gsilver) the removed tools do not show up consistently in the removed tools list - also - if you remove an email archive tool it reads "Email Archive: @localhost"
 	<p class="instruction" id="removedInstruction" style="display:none">
 		$tlang.getString("addrc.youhave")
 	</p>
+
+	#set($homeToolTitle = $tlang.getString("java.home"))
 	<p class="indnt3">
 		#if (($oldSelectedHome) && (!$check_home))
-			$tlang.getString("java.home")
+			$homeToolTitle
 			#if ($!allowPageOrderHelper)
-				($validator.escapeHtml($!toolRegistrationTitleList.get($homeToolId)))
+				#set($customToolTitle = $formattedText.escapeHtml($!toolRegistrationTitleList.get($homeToolId)))
+				#if (!$!homeToolTitle.equals($customToolTitle))
+					($customToolTitle)
+				#end
 			#end
 			<br />
 			<script type="text/javascript">
@@ -33,7 +37,7 @@
 			#if(!$oldTool.startsWith($ltitool_id_prefix))
 				#foreach($t in $toolRegistrationList)
 					#if ($t.getId() == $oldTool)
-						#set($oldToolTitle=$validator.escapeHtml($t.getTitle()))
+						#set($oldToolTitle=$formattedText.escapeHtml($t.getTitle()))
 					#end
 				#end
 				#set($found=false)
@@ -54,21 +58,24 @@
 					#if ($oldTool == "sakai.mailbox")
 						$!oldToolTitle: $!emailId@$serverName
 					#elseif ($!multipleToolIdTitleMap.containsKey($oldTool))
-						$validator.escapeHtml($!multipleToolIdTitleMap.get($oldTool))
+						$formattedText.escapeHtml($!multipleToolIdTitleMap.get($oldTool))
 						## get tool configuration
 						#set($attributeHashtable=false)
 						#set($attributeHashtable=$!multipleToolConfiguration.get($oldTool))
 						#if (!$!attributeHashtable.isEmpty())
 							## show the attributes
 							(#foreach ($attribute in $!attributeHashtable.keySet())
-								$attribute = $validator.escapeHtml($!attributeHashtable.get($attribute))
+								$attribute = $formattedText.escapeHtml($!attributeHashtable.get($attribute))
 							#end) 
 						#end
 					#else
 						$!oldToolTitle
 					#end
 					#if ($!allowPageOrderHelper)
-						($validator.escapeHtml($!toolRegistrationTitleList.get($!oldTool)))
+						#set($customToolTitle = $formattedText.escapeHtml($!toolRegistrationTitleList.get($!oldTool)))
+						#if (!$!oldToolTitle.equals($customToolTitle))
+							($customToolTitle)
+						#end
 					#end
 					<br />
 				#end
@@ -95,9 +102,12 @@
 			#if (!$oldSelectedHome)
 				<span class="highlight">
 			#end
-			$tlang.getString("java.home")
+			$homeToolTitle
 			#if ($!allowPageOrderHelper)
-				($validator.escapeHtml($!toolRegistrationTitleList.get($homeToolId)))
+				#set($customToolTitle = $formattedText.escapeHtml($!toolRegistrationTitleList.get($homeToolId)))
+				#if(!$!homeToolTitle.equals($customToolTitle))
+					($customToolTitle)
+				#end
 			#end
 			#if (!$oldSelectedHome)
 				</span>
@@ -110,7 +120,7 @@
 				#set($newToolTitle = "")
 				#foreach($t in $toolRegistrationList)
 					#if ($t.getId() == $newTool)
-						#set($newToolTitle = $validator.escapeHtml($t.getTitle()))
+						#set($newToolTitle = $formattedText.escapeHtml($t.getTitle()))
 					#end
 				#end
 				#set($found=false)
@@ -128,14 +138,20 @@
 				#if ($newTool == "sakai.mailbox")
 					$!newToolTitle 
 					#if ($!allowPageOrderHelper)
-						($validator.escapeHtml($!toolRegistrationTitleList.get($!newTool)))
+						#set($customToolTitle = $formattedText.escapeHtml($!toolRegistrationTitleList.get($!newTool)))
+						#if (!$!newToolTitle.equals($customToolTitle))
+							($customToolTitle)
+						#end
 					#end
 					: $!emailId@$serverName
 				#elseif ($!multipleToolIdTitleMap.containsKey($newTool))
 					## show tool title
-					$validator.escapeHtml($!multipleToolIdTitleMap.get($newTool))
+					$!newToolTitle
 					#if ($!allowPageOrderHelper)
-						($validator.escapeHtml($!toolRegistrationTitleList.get($!newTool)))
+						#set($customToolTitle = $formattedText.escapeHtml($!toolRegistrationTitleList.get($!newTool)))
+						#if (!$!newToolTitle.equals($customToolTitle))
+							($customToolTitle)
+						#end
 					#end
 					## show tool configuration
 					#if ($!multipleToolIdTitleMap.containsKey($toolId))
@@ -144,7 +160,7 @@
 							##show configurations
 							(	
 								#foreach ($property in $!properties.keySet())
-									$property : $validator.escapeHtml($properties.get($property))
+									$property : $formattedText.escapeHtml($properties.get($property))
 								#end
 							)
 						#end
@@ -155,14 +171,17 @@
 						#if (!$!attributeHashtable.isEmpty())
 							## show attributes
 							(#foreach ($attribute in $!attributeHashtable.keySet())
-								$validator.escapeHtml($!attributeHashtable.get($attribute))
+								$formattedText.escapeHtml($!attributeHashtable.get($attribute))
 							#end)
 						#end
 				#else
 					$!newToolTitle
 					## exclude Home tool 
 					#if (!$!newTool.equals($homeToolId) && $!allowPageOrderHelper)
-						($validator.escapeHtml($!toolRegistrationTitleList.get($!newTool)))
+						#set($customToolTitle = $formattedText.escapeHtml($!toolRegistrationTitleList.get($!newTool)))
+						#if (!$!newToolTitle.equals($customToolTitle))
+							($customToolTitle)
+						#end
 					#end
 				#end
 				#if (!$found)
@@ -209,6 +228,12 @@
     #if($!isLessonsSubNavEnabledForSite)
     <p class="instruction">
         $tlang.getString("sinfo.lessonbuildersubnav.confirmEnabled")
+    </p>
+    #end
+
+    #if(!$!isPortalNeochatEnabledForSite && ($neoChat == 'true' || $neoChat == 'false'))
+    <p class="instruction">
+        $tlang.getString("sinfo.portalneochat.confirmDisabled")   
     </p>
     #end
 	

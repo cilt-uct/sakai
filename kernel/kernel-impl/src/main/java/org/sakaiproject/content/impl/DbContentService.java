@@ -47,6 +47,7 @@ import java.util.regex.Pattern;
 
 import lombok.extern.slf4j.Slf4j;
 
+import org.sakaiproject.util.StorageUtils;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
@@ -89,6 +90,8 @@ import org.sakaiproject.util.DbSingleStorage;
 import org.sakaiproject.util.EntityReaderAdapter;
 import org.sakaiproject.util.SingleStorageUser;
 import org.sakaiproject.util.Xml;
+
+import static org.sakaiproject.content.util.IdUtil.isolateContainingId;
 
 /**
  * <p>
@@ -706,11 +709,11 @@ public class DbContentService extends BaseContentService
 
         if (id.endsWith("/"))
         {
-            wildcard = id + "%";
+            wildcard = StorageUtils.escapeSqlLike(id) + "%";
         }
         else
         {
-            wildcard = id + "/%";
+            wildcard = StorageUtils.escapeSqlLike(id) + "/%";
         }
 
         int fileCount = countQuery(contentServiceSql.getNumContentResources1Sql(), wildcard);
@@ -1622,7 +1625,7 @@ public class DbContentService extends BaseContentService
                 }
                 else
                 {
-                    rv = m_resourceStore.getAllResourcesWhereLike("IN_COLLECTION", collectionId + "%");
+                    rv = m_resourceStore.getAllResourcesWhereLike("IN_COLLECTION", StorageUtils.escapeSqlLike(collectionId) + "%");
                 }
                 return rv;
             }
@@ -1973,9 +1976,7 @@ public class DbContentService extends BaseContentService
 			   }
 			   else
 			   {
-                               log.warn("*** Getting delete resources where LIKE: " + collection.getId() + "%");
-
-				   rv = m_resourceDeleteStore.getAllResourcesWhereLike("IN_COLLECTION", collection.getId() + "%");
+				   rv = m_resourceDeleteStore.getAllResourcesWhereLike("IN_COLLECTION", StorageUtils.escapeSqlLike(collection.getId()) + "%");
 			   }
 			   return rv;
 		   }
@@ -3346,14 +3347,14 @@ public class DbContentService extends BaseContentService
         long size = 0L;
 
 	String sql = contentServiceSql.getQuotaQuerySql();
-	Object [] fields = new Object[] {context.startsWith(COLLECTION_DROPBOX)?context+"%":context};
+	Object[] fields = new Object[] { context.startsWith(COLLECTION_DROPBOX) ? StorageUtils.escapeSqlLike(context) + "%" : context };
 	if (context.startsWith(COLLECTION_DROPBOX)) {
 	    if (context.split(Entity.SEPARATOR).length == 4) {
 		// User Folder
 		sql = contentServiceSql.getDropBoxQuotaQuerySql();
 	    } else {
 		// Root Folder - KNL-1084, SAK-22169
-		fields = new Object[] {context+"%",context,context};
+		fields = new Object[] { StorageUtils.escapeSqlLike(context) +"%", context, context };
 		sql = contentServiceSql.getDropBoxRootQuotaQuerySql(); 
 	    }
 	}

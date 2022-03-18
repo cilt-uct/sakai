@@ -16,45 +16,50 @@ var recalculate = function(){
     jQuery('.col2 .layoutReorderer-module').each(function(i){
         i > 0 ? removeList = removeList + ' ' + $(this).find('.reorderSeq').text() : removeList = $(this).find('.reorderSeq').text();
     });
-    
+
     keepList=keepList + ' --- ';
     keepList=keepList.replace('  ',' ');
     removeList=removeList.replace('  ',' ');
     jQuery('input[id=order]').val(keepList + removeList);
-    
+
     if (jQuery('.col2 .layoutReorderer-module').length===0){
-        jQuery('.col2 #deleteListHead').attr('class','deleteListMessageEmpty');
+        jQuery('#deleteListHead').attr('class','deleteListMessageEmpty panel-heading');
     }
     else {
-        jQuery('.col2 #deleteListHead').attr('class','deleteListMessage');
+        jQuery('#deleteListHead').attr('class','deleteListMessage panel-heading');
     }
     $('.layoutReorderer-module').find('.marker').closest('.layoutReorderer-module').remove();
 };
-
 
 $(document).ready(function(){
     $('.layoutReorderer-module').find('.marker').closest('.layoutReorderer-module').remove();
     recalculate();
 
-/*
-    jQuery('.col1 .layoutReorderer-module').each(function(i){
-        i > 0 ? ids = ids + ' ' + $(this).find('.reorderSeq').text() : ids = $(this).find('.reorderSeq').text();
-    });
-    
-    ids=ids + ' --- '
-    ids=ids.replace('  ',' ')
-    jQuery('input[id=order]').val(ids);
-
-*/    
     $('#save').click(function(e){
-	    recalculate();
-	    return true;
-	});
+        recalculate();
+        return true;
+    });
+
+    $('.deleteAnswerTrashLink').click(function(e){
+        e.preventDefault();
+        $(this).closest('.layoutReorderer-module').addClass('highlightEl').hide().appendTo('#reorderCol2').fadeIn(200, function(){
+            $(this).removeClass('highlightEl');
+        });
+
+        recalculate();
+    });
 
     $('.deleteAnswerLink').click(function(e){
         e.preventDefault();
-        $(this).closest('.layoutReorderer-module').addClass('highlightEl').appendTo('#reorderCol2 ul').removeClass('highlightEl', {duration:1000});
-        
+        $(this).closest('.layoutReorderer-module').addClass('highlightEl').hide().appendTo('#reorderCol2').fadeIn(200, function(){
+            $(this).removeClass('highlightEl');
+        });
+
         recalculate();
+    });
+
+    $('.deleteAllLink').on('click', function(e){
+        e.preventDefault();
+        $(this).parentsUntil('.section-container').parent().find('a.deleteAnswerTrashLink').click();
     });
 });

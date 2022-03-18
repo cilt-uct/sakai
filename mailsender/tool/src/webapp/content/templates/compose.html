@@ -20,7 +20,9 @@
 	<div rsf:id="message-for:*">Messages for the user show here</div>
 
 	<form rsf:id="mainForm" method="post" enctype="multipart/form-data">
-		<h3 rsf:id="msg=compose_toolbar" class="insColor insBak insBorder">Compose</h3>
+		<div class="page-header">
+			<h1 rsf:id="msg=compose_toolbar">Compose</h1>
+		</div>
 		<div class="section">
 			<div class="headerkeyholder">
 				<span rsf:id="msg=from" class="headerkey">From:</span>
@@ -112,7 +114,7 @@
 		</div>
 		<input rsf:id="csrf" type="hidden" name="csrf" id="csrf" />
 		<span rsf:id="csrfvalue" id="csrfvalue" style="display:none"/>
-		<div class="section headervalue">
+		<div class="section headervalue act">
 			<input rsf:id="send-button" value="Send Mail" class="active" type="submit" />
 			<input rsf:id="cancel-button" value="Cancel" type="submit" />
 		</div>

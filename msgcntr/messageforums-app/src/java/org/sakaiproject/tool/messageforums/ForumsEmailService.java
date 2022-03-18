@@ -30,8 +30,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import lombok.extern.slf4j.Slf4j;
-
 import org.sakaiproject.api.app.messageforums.AnonymousManager;
 import org.sakaiproject.api.app.messageforums.Attachment;
 import org.sakaiproject.api.app.messageforums.BaseForum;
@@ -56,8 +54,10 @@ import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.time.api.UserTimeService;
 import org.sakaiproject.tool.api.ToolManager;
 import org.sakaiproject.tool.messageforums.ui.DiscussionMessageBean;
-import org.sakaiproject.util.FormattedText;
 import org.sakaiproject.util.ResourceLoader;
+import org.sakaiproject.util.api.FormattedText;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * This sends out emails to a list of users.
@@ -138,7 +138,8 @@ public class ForumsEmailService {
 			attachmentList = reply.getAttachments();
 			StringBuilder content = new StringBuilder();
 			String newline = "<br/>";
-			String greaterThanHtml = FormattedText.escapeHtml(">", true);
+			FormattedText formattedText = ComponentManager.get(FormattedText.class);
+			String greaterThanHtml = formattedText.escapeHtml(">", true);
 			Site currentSite = null;
 			String sitetitle = "";
 			BaseForum baseforum = reply.getTopic().getBaseForum();
@@ -168,64 +169,76 @@ public class ForumsEmailService {
 					+ " <a href=\""
 					+ getRedirectURL(currentSite)
 					+ "\" target=\"_blank\" >" 
-					+ DiscussionForumTool.getResourceBundleString("cdfm_discussion_forums")
+					+ DiscussionForumTool.getResourceBundleString("cdfm_discussions")
 					+ "</a>"
 					+ " " + greaterThanHtml + " "
 					+ forumtitle
 					+ " " + greaterThanHtml + " "
-					+ topictitle
-					+ " " + greaterThanHtml + " " + threadtitle);
+					+ topictitle);
+			if (topic.getIncludeContentsInEmails()) {
+				content.append(" ").append(greaterThanHtml).append(" ").append(threadtitle);
+			}
 			content.append(newline);
 			content.append(newline);
 			content.append(DiscussionForumTool
 					.getResourceBundleString("email.body.author")
 					+ " " + anonAwareAuthor);
-			content.append(newline);
-			content.append(DiscussionForumTool
-					.getResourceBundleString("email.body.msgtitle")
-					+ " " + reply.getTitle());
+			if (topic.getIncludeContentsInEmails()) {
+				content.append(newline);
+				content.append(DiscussionForumTool.getResourceBundleString("email.body.msgtitle"))
+						.append(" ").append(reply.getTitle());
+			}
 			content.append(newline);
 			content.append(DiscussionForumTool
 					.getResourceBundleString("email.body.msgposted")
 					+ " " + formatter.format(reply.getCreated()));
 			content.append(newline);
 			content.append(newline);
-			content.append(reply.getBody());
+			if (topic.getIncludeContentsInEmails()) {
+				content.append(reply.getBody());
+			} else {
+				content.append(DiscussionForumTool.getResourceBundleString("email.body.noContents", new Object[] { fromName }));
+			}
 			content.append(newline);
 			content.append(newline);
 			if (log.isDebugEnabled()) {
 				log.debug("Email content: " + content.toString());
 			}
-			ArrayList<File> fileList = new ArrayList<File>();
-			ArrayList<String> fileNameList = new ArrayList<String>();
-			if (attachmentList != null) {
-				if (prefixedPath == null || "".equals(prefixedPath)) {
-					log.error("forum.email.prefixedPath is not set");
-					return;
-				}
-				Iterator<Attachment> iter = attachmentList.iterator();
-				while (iter.hasNext()) {
-					try {
-					a = (Attachment) iter.next();
-					log.debug("send(): file");
-					File attachedFile = getAttachedFile(a.getAttachmentId());
-					fileList.add(attachedFile);
-					fileNameList.add(a.getAttachmentName());
-					} catch (Exception e) {
-						log.warn("Failed to load attachment: "+ a.getAttachmentId(), e);
-					}
-				}
-			}
 
-			msg.setBody(FormattedText.escapeHtmlFormattedText(content.toString()));
+			msg.setBody(formattedText.escapeHtmlFormattedText(content.toString()));
 			msg.setContentType("text/html");
 			msg.setCharacterSet("utf-8");
 			msg.addHeader("Content-Transfer-Encoding", "quoted-printable");
-			org.sakaiproject.email.api.Attachment attachment;
-			for (int count = 0; count < fileList.size(); count++) {
-				attachment = new org.sakaiproject.email.api.Attachment(fileList
-						.get(count), fileNameList.get(count));
-				msg.addAttachment(attachment);
+			if (topic.getIncludeContentsInEmails()) {
+				// Create temporary files to send as attachments
+				ArrayList<File> fileList = new ArrayList<>();
+				ArrayList<String> fileNameList = new ArrayList<>();
+				if (attachmentList != null) {
+					if (prefixedPath == null || "".equals(prefixedPath)) {
+						log.error("forum.email.prefixedPath is not set");
+						return;
+					}
+					Iterator<Attachment> iter = attachmentList.iterator();
+					while (iter.hasNext()) {
+						try {
+						a = (Attachment) iter.next();
+						log.debug("send(): file");
+						File attachedFile = getAttachedFile(a.getAttachmentId());
+						fileList.add(attachedFile);
+						fileNameList.add(a.getAttachmentName());
+						} catch (Exception e) {
+							log.warn("Failed to load attachment: {}", a.getAttachmentId(), e);
+						}
+					}
+				}
+
+				// Attach temporary files to the emails
+				org.sakaiproject.email.api.Attachment attachment;
+				for (int count = 0; count < fileList.size(); count++) {
+					attachment = new org.sakaiproject.email.api.Attachment(fileList
+							.get(count), fileNameList.get(count));
+					msg.addAttachment(attachment);
+				}
 			}
 			
 			EmailService instance = ComponentManager.get(EmailService.class);
@@ -235,7 +248,8 @@ public class ForumsEmailService {
 		} catch (NoRecipientsException e) {
 			log.warn("No valid recipients found: "+ toEmailAddress.toString());
 		} finally {
-			if (attachmentList != null) {
+			if (attachmentList != null && reply.getTopic().getIncludeContentsInEmails()) {
+				// Clean up temporary files that were created for email attachments
 				if (prefixedPath != null && !"".equals(prefixedPath)) {
 					StringBuilder sbPrefixedPath;
 					Iterator<Attachment> iter = attachmentList.iterator();

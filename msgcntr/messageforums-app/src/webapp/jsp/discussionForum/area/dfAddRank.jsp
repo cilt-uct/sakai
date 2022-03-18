@@ -2,7 +2,7 @@
                  javax.faces.el.*, org.sakaiproject.tool.messageforums.*"%>
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://sakaiproject.org/jsf/messageforums" prefix="mf" %>
 <jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
    <jsp:setProperty name="msgs" property="baseName" value="org.sakaiproject.api.app.messagecenter.bundle.Messages"/>
@@ -15,15 +15,15 @@
         <link rel="stylesheet" href="/library/webjars/jquery-ui/1.12.1/jquery-ui.min.css" type="text/css" />
         <link rel="stylesheet" href="/messageforums-tool/css/forum_rank.css" type="text/css" />
         
-        <script type="text/javascript">includeLatestJQuery("msgcntr");</script>
-        <script type="text/javascript" src="/messageforums-tool/js/fluidframework-min.js"></script>
-        <script type="text/javascript" src="/messageforums-tool/js/json2.js"></script>
-        <script type="text/javascript" src="/messageforums-tool/js/Scroller.js"></script>
-        <script type="text/javascript" src="/messageforums-tool/js/forum.js"></script>
-        <script type="text/javascript" src="/messageforums-tool/js/forum_rank.js"></script>
+        <script>includeLatestJQuery("msgcntr");</script>
+        <script src="/messageforums-tool/js/fluidframework-min.js"></script>
+        <script src="/messageforums-tool/js/json2.js"></script>
+        <script src="/messageforums-tool/js/Scroller.js"></script>
+        <script src="/messageforums-tool/js/forum.js"></script>
+        <script src="/messageforums-tool/js/forum_rank.js"></script>
         
         
-        <script type="text/JavaScript">
+        <script>
         // resetMinPost
             function resetMinPost(){
                     var minpost= document.getElementById("addRank:minpost");  // input field for min. post threshold.
@@ -146,7 +146,7 @@
                                  onclick="return resetMinPost();" value="#{msgs.cdfm_cancel}" accesskey="x" />
             </div>
 
-            <script language="javascript" type="text/JavaScript">
+            <script>
             <!-- 
                 // clear any previous selected radio buttons. 
                 var type1= document.getElementById("addRank:radiobtnType1");
@@ -181,13 +181,13 @@
                     thisId = "Main" + org.sakaiproject.tool.cover.ToolManager.getCurrentPlacement().getId();
                 }
             %>
-            <script type="text/javascript">
+            <script>
                 function resize(){
                     mySetMainFrameHeight('<%=org.sakaiproject.util.Web.escapeJavascript(thisId)%>');
                 }
             </script>
 
-            <script type="text/javascript">
+            <script>
                 resize();
                 //find the anchor
                 document.location.href=document.location.href + "#boldMsg";

@@ -30,6 +30,21 @@ sakai.editor.editors.ckeditor = sakai.editor.editors.ckeditor || {} ;
 var basePath = "/library/editor/ckextraplugins/";
 var webJars = "/library/webjars/"
 
+// Update properties in one object from another: https://stackoverflow.com/a/12534361/3708872
+// I believe this is available as lodash.merge but don't see that available here yet and this looked like the simplest version of that
+function objectMerge(obj/*, ...*/) {
+    for (var i=1; i<arguments.length; i++) {
+        for (var prop in arguments[i]) {
+            var val = arguments[i][prop];
+            if (typeof val == "object") // this also applies to arrays or null!
+                objectMerge(obj[prop], val);
+            else
+                obj[prop] = val;
+        }
+    }
+    return obj;
+}
+
 // Please note that no more parameters should be added to this signature.
 // The config object allows for name-based config options to be passed.
 // The w and h parameters should be removed as soon as their uses can be migrated.
@@ -59,6 +74,40 @@ sakai.editor.editors.ckeditor.launch = function(targetId, config, w, h) {
       if (document.body) {
         return document.body.clientWidth;
       }
+    }
+
+    function addClassOnLoad(){
+        try {
+            if (typeof this.instances !== 'undefined'){
+                //Run on all ckeditor instances on the page
+                for (const instance in this.instances) {
+                    //check for the instance to be an object not a function
+                    if (Object.hasOwnProperty.call(this.instances, instance)) {
+                        const instanceDoc = this.instances[instance];
+                        //Add sakai-dark-theme class to ckeditor iframe
+                        instanceDoc.document.$.documentElement.classList.add('sakaiUserTheme-dark');
+                    }
+                }
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    function addClassOnModeChange(){
+        try {
+            //Only run when switching out of source mode into mysiwyg mode
+            if (this.mode === 'wysiwyg') {
+                //Check for the editor to be an object not a function
+                if (Object.prototype.hasOwnProperty.call(this, 'document')) {
+                    const instanceDoc = this.document.$;
+                    //Add sakai-dark-theme class to ckeditor iframe
+                    instanceDoc.documentElement.classList.add('sakaiUserTheme-dark');
+                }
+            }
+        } catch (error) {
+            console.error(error);
+        }
     }
 
     var folder = "";
@@ -143,8 +192,8 @@ sakai.editor.editors.ckeditor.launch = function(targetId, config, w, h) {
             "attemptsRemaining": Number.MAX_VALUE
         },
         skin: 'moono-lisa',
+        uiColor: 'themeswitcher',
         defaultLanguage: 'en',
-        
         // SAK-31829, SAK-33279 Disable functionality in table plugin
         //https://docs.ckeditor.com/#!/guide/dev_disallowed_content-section-how-to-allow-everything-except...
         allowedContent: {
@@ -156,7 +205,9 @@ sakai.editor.editors.ckeditor.launch = function(targetId, config, w, h) {
                 classes: true
             }
         },
-        disallowedContent: 'table[cellspacing,cellpadding]',
+        disallowedContent: 'table[cellspacing,cellpadding,border,summary]',
+
+        contentsCss: [(webJars+'bootstrap/3.3.7/css/bootstrap.min.css')],
 
         language: language + (country ? '-' + country.toLowerCase() : ''),
         // This is used for uploading by the autorecorder plugin.
@@ -192,19 +243,24 @@ sakai.editor.editors.ckeditor.launch = function(targetId, config, w, h) {
             // Uncomment the next line and comment the following to enable the default spell checker.
             // Note that it uses spellchecker.net, displays ads and sends content to remote servers without additional setup.
             //['Cut','Copy','Paste','PasteText','-','Print', 'SpellChecker', 'Scayt'],
-
-
-            ['Cut','Copy','Paste','PasteText','PasteFromWord','-','RemoveFormat'],
-            [imageType,'AudioRecorder','magicembed',kalturaPluginToUse,'Youtube'].concat(mathRelatedPlugins, ['-','NYUPreview']),
-            extraToolbarButtons,
-            ['Maximize'],
-
+            ['Cut','Copy','Paste','PasteText','-','Print', 'SakaiPreview'],
+            ['Undo','Redo','-','Find','Replace','-','SelectAll','RemoveFormat'],
+            ['NumberedList','BulletedList','-','Outdent','Indent','Blockquote','CreateDiv'],
             '/',
             ['Bold','Italic','Underline','Strike','Subscript','Superscript'],
             ['JustifyLeft','JustifyCenter','JustifyRight','JustifyBlock'],
             ['BidiLtr', 'BidiRtl' ],
-            ['Link','Unlink'],
-            ['NumberedList','BulletedList','-','Outdent','Indent','Blockquote','-','Table','HorizontalRule','SpecialChar'],
+            ['Link','Unlink','Anchor'],
+            (sakai.editor.enableResourceSearch
+                ? ( sakai.editor.contentItemUrl
+                    ? ['ContentItem', 'AudioRecorder','ResourceSearch', 'Image','Html5video','Table','HorizontalRule','Smiley','SpecialChar']
+                    : ['AudioRecorder','ResourceSearch', 'Image','Html5video','Table','HorizontalRule','Smiley','SpecialChar']
+                  )
+		: ( sakai.editor.contentItemUrl
+                    ? ['ContentItem', 'AudioRecorder', 'Image','Html5video','Table','HorizontalRule','Smiley','SpecialChar']
+                    : ['AudioRecorder', 'Image','Html5video','Table','HorizontalRule','Smiley','SpecialChar']
+                  )
+            ),
             '/',
             ['Format'],
             ['Font'],
@@ -243,21 +299,14 @@ sakai.editor.editors.ckeditor.launch = function(targetId, config, w, h) {
         //SAK-29598 - Add more templates to CK Editor
         templates_files: [basePath+"templates/default.js"],
         templates: 'customtemplates',
-        templates_replaceContent: false
+        templates_replaceContent: false,
     };
 
-    ckconfig.autosave = {
-        saveDetectionSelectors : "form input[type='button'],form input[type='submit']",
-        //Delay for autosave
-        delay: 60,
-        //autosave_messageType can be "no" or "notification"
-        messageType : "statusbar",
-        // Use the default key (with the location)
-        SaveKey: null,
-    };
+    // Merge config values into ckconfig
+    ckconfig = objectMerge(ckconfig, config);
 
-    if (config != null && config.baseFloatZIndex) {
-	ckconfig.baseFloatZIndex = config.baseFloatZIndex;
+    if (config && config.toolbarSet && ckconfig['toolbar_' + config.toolbarSet]) {
+        ckconfig.toolbar = config.toolbarSet;
     }
 
     //To add extra plugins outside the plugins directory, add them here! (And in the variable)
@@ -286,31 +335,20 @@ sakai.editor.editors.ckeditor.launch = function(targetId, config, w, h) {
         CKEDITOR.plugins.addExternal('lineutils',basePath+'lineutils/', 'plugin.js');
         CKEDITOR.plugins.addExternal('widget',basePath+'widget/', 'plugin.js');
         CKEDITOR.plugins.addExternal('iframedialog',basePath+'iframedialog/', 'plugin.js');
-        CKEDITOR.plugins.addExternal('movieplayer',basePath+'movieplayer/', 'plugin.js');
+        CKEDITOR.plugins.addExternal('html5video',webJars+'github-com-bahriddin-ckeditor-html5-video/${ckeditor.html5video.version}/html5video/', 'plugin.js');
         CKEDITOR.plugins.addExternal('audiorecorder',basePath+'audiorecorder/', 'plugin.js');
         CKEDITOR.plugins.addExternal('contentitem',basePath+'contentitem/', 'plugin.js');
         CKEDITOR.plugins.addExternal('sakaipreview',basePath+'sakaipreview/', 'plugin.js');
-        
-        CKEDITOR.plugins.addExternal('image2',webJars+'image2/${ckeditor.image2.version}/', 'plugin.js');
+        CKEDITOR.plugins.addExternal('bt_table',basePath+'bt_table/', 'plugin.js');
+        CKEDITOR.plugins.addExternal('image2',webJars+'ckeditor-image2/${ckeditor.image2.version}/', 'plugin.js');
 
         //Autosave has a dependency on notification
-        CKEDITOR.plugins.addExternal('autosave',webJars+'autosave/${ckeditor.autosave.version}/', 'plugin.js');
+        CKEDITOR.plugins.addExternal('autosave',webJars+'ckeditor-autosave/${ckeditor.autosave.version}/', 'plugin.js');
         CKEDITOR.plugins.addExternal('wordcount',webJars+'wordcount/${ckeditor.wordcount.version}/', 'plugin.js');
         CKEDITOR.plugins.addExternal('notification',basePath+'notification/', 'plugin.js');
         // Accessibility checker has a dependency on balloonpanel
         CKEDITOR.plugins.addExternal('balloonpanel',webJars+'balloonpanel/${ckeditor.balloonpanel.version}/', 'plugin.js');
         CKEDITOR.plugins.addExternal('a11ychecker',webJars+'a11ychecker/${ckeditor.a11ychecker.version}/', 'plugin.js');
-
-        CKEDITOR.plugins.addExternal('kaltura', basePath + 'kaltura/', 'plugin.js');
-        CKEDITOR.plugins.addExternal('kalturaflash',basePath+'kalturaflash/', 'plugin.js');
-        CKEDITOR.plugins.addExternal('magicembed',basePath+'magicembed/', 'plugin.js');
-        CKEDITOR.plugins.addExternal('youtube',basePath+'youtube/', 'plugin.js');
-        CKEDITOR.plugins.addExternal('ckeditor_wiris',basePath+'ckeditor_wiris/', 'ckeditor_wiris_plugin.js');
-        CKEDITOR.plugins.addExternal('nyupreview', basePath + 'nyupreview/', 'plugin.js');
-        CKEDITOR.plugins.addExternal('autosave',basePath+'autosave/', 'plugin.js');
-        CKEDITOR.plugins.addExternal('encodedimage', basePath + 'encodedimage/', 'plugin.js');
-        CKEDITOR.plugins.addExternal('nyuhelp', basePath + 'nyuhelp/', 'plugin.js');
-
         /*
            To enable after the deadline uncomment these two lines and add atd-ckeditor to toolbar
            and to extraPlugins. This also needs extra stylesheets.
@@ -330,78 +368,265 @@ sakai.editor.editors.ckeditor.launch = function(targetId, config, w, h) {
         ckconfig.extraPlugins+="${ckeditor-extra-plugins}${ckeditor-a11y-extra-plugins}";
 
         // Load FontAwesome CSS in case a user wants to manually add FA markup
-        ckconfig.contentsCss = [webJars+'fontawesome/4.7.0/css/font-awesome.min.css'];
+        ckconfig.contentsCss.push(webJars+'fontawesome/4.7.0/css/font-awesome.min.css');
         //If the siteskin is defined, add the print.css
         if (sakai.editor.sitePrintSkin) {
             ckconfig.contentsCss.push(sakai.editor.sitePrintSkin);
-        } 
-
-        // Ensure contents.css is loaded too
-        ckconfig.contentsCss.push(CKEDITOR.basePath + 'contents.css');
-
+        }
         CKEDITOR.dtd.$removeEmpty.span = false;
         CKEDITOR.dtd.$removeEmpty['i'] = false;
-
-        ckconfig.extraPlugins+=",kalturaflash,magicembed,youtube";
-        ckconfig.extraPlugins+=",ckeditor_wiris";
-        ckconfig.extraPlugins+=",autolink";
-        ckconfig.extraPlugins+=",nyupreview";
-        ckconfig.extraPlugins+=",encodedimage";
-        ckconfig.extraPlugins+=",nyuhelp";
-        ckconfig.extraPlugins+=",kaltura";
-
-        if (sakai.editor.enableMathJax) {
-          ckconfig.mathJaxLib = sakai.editor.mathJaxPath;
-          ckconfig.extraPlugins+=",mathjax";
-        }
-
-        // CLASSES-1937
-        if (sakai.editor.siteId && sakai.editor.templates) {
-            // Note: the packaged 'default' CKEditor templates have
-            // been replaced with Sakai 11's 'customtemplates'
-            var custom_templates = sakai.editor.templates.split(",");
-            ckconfig.templates = custom_templates.map(function(template) {
-                if (template === "default") {
-                    return "customtemplates";
-                }
-
-                return template;
-            }).join(",");
-            ckconfig.templates_files = custom_templates.map(function(template) {
-                if (template == "default") {
-                    return basePath + 'templates/default.js';
-                }
-
-                return basePath + 'sitetemplates/' + template + '.js';
-            });
-        }
-
         //Add greek special characters to set
         ckconfig.specialChars = CKEDITOR.config.specialChars.concat([ ["&alpha;","alpha"],["&beta;","beta"],["&gamma;","gamma"],["&delta;","delta"],["&epsilon;","epsilon"],["&zeta;","zeta"],["&eta;","eta"],["&theta;","theta"], ["&iota;","iota"],["&kappa;","kappa"],["&lambda;","lambda"],["&mu;","mu"],["&nu;","nu"],["&xi;","xi"],["&omicron;","omnicron"],["&pi;","pi"],["&rho;","rho"],["&sigma;","sigma"],["&tau;","tau"],["&upsilon;","upsilon"], ["&phi;","phi"],["&chi;","chi"],["&psi;","psi"],["&omega;","omega"],["&Alpha;","Alpha"],["&Beta;","Beta"],["&Gamma;","Gamma"],["&Delta;","Delta"],["&Epsilon;","Epsilon"],["&Zeta;","Zeta"],["&Eta;","Eta"],["&Theta;","Theta"], ["&Iota;","Iota"],["&Kappa;","Kappa"],["&Lambda;","Lambda"],["&Mu;","Mu"],["&Nu;","Nu"],["&Xi;","Xi"],["&Omicron;","Omnicron"],["&Pi;","Pi"],["&Rho;","Rho"],["&Sigma;","Sigma"],["&Tau;","Tau"],["&Upsilon;","Upsilon"], ["&Phi;","Phi"],["&Chi;","Chi"],["&Psi;","Psi"],["&Omega;","Omega"] ]);
 
-        if (PLUGINS_FROM_SITE_PROPERTIES.length > 0) {
-            var toolbarGroup = [];
-
-            PLUGINS_FROM_SITE_PROPERTIES.map(function(plugin) {
-                // we include kaltura/kalturaflash already, so only add other plugins
-                if (plugin != kalturaPluginToUse) {
-                    ckconfig.extraPlugins += "," + plugin;
-                    CKEDITOR.plugins.addExternal(plugin, basePath + plugin + '/', 'plugin.js');
-
-                    toolbarGroup.push(plugin);
-                }
-            });
-
-            if (toolbarGroup.length > 0) {
-                ckconfig.toolbar_Full = ckconfig.toolbar_Full.concat([toolbarGroup]);
-            }
+        //SAK-44562 Dark Mode
+        //Add styles to the content in CKeditor
+        if (sakai.editor.sitePropertiesSkin) {
+            ckconfig.contentsCss.push(sakai.editor.sitePropertiesSkin);
+            ckconfig.contentsCss.push('/library/editor/ckeditor.css');
         }
 
-        // CLASSES-1943
-        CKEDITOR.config.templates_replaceContent = false;
+        //CKEditor doesn't have a method to add classes to the HTML element
+        //so we manually add the class on load
+        //should be refactored when ckeditor5 is implemented
+        if (document.firstElementChild.classList.contains('sakaiUserTheme-dark')){
+  
+            CKEDITOR.once('instanceReady', addClassOnLoad);
+            // //and we watch for switching out or source mode
+            CKEDITOR.once('instanceReady', function(editor){
+                editor.editor.on('mode', addClassOnModeChange);
+            });
+        }
+
+        //Enable ckeditor to reflect themeswitcher changes. Overrides:
+        //https://github.com/ckeditor/ckeditor4/blob/a786d6f43c17ef90c13b1cf001dbd00204a622b1/skins/moono-lisa/skin.js
+        CKEDITOR.skin.chameleon = ( function() {
+
+        templates = {
+            editor: new CKEDITOR.template(
+                `.cke_reset_all, .cke_reset_all *, .cke_reset_all a, .cke_reset_all textarea [
+                    color:{defaultTextColor};
+                ]
+                {id}.cke_chrome [
+                    color:{defaultTextColor};
+                    border-color:{defaultBorder};
+                ]
+                {id} .cke_top [ 
+                    background-color:{defaultBackground};
+                    border-bottom-color:{defaultBorder};
+                ] 
+                {id} .cke_bottom [
+                    background-color:{defaultBackground};
+                    border-top-color:{defaultBorder};
+                ] 
+                {id} .cke_resizer [
+                    border-right-color:{ckeResizer}
+                ] 
+                {id} .cke_wysiwyg_frame,
+                {id} .cke_wysiwyg_div [
+                    background:{defaultBackground}
+                ] 
+                {id} textarea.cke_source [
+                    background-color: {lightBackground};
+                    color: {defaultTextColor};
+                ]` +
+                // Dialogs.
+                `{id} .cke_dialog_title [
+                    color:{defaultTextColor};
+                    background-color:{defaultBackground};
+                    border-bottom-color:{defaultBorder};
+                ] 
+                {id} .cke_dialog_footer [
+                    color:{defaultTextColor};
+                    background-color:{defaultBackground};
+                    outline-color:{defaultBorder};
+                ] 
+                {id} .cke_dialog_tab [
+                    color:{defaultTextColor};
+                    background-color:{dialogTab};
+                    border-color:{defaultBorder};
+                ] 
+                {id} .cke_dialog_tab:hover, {id} .cke_dialog_tab_selected:hover [
+                    color:{menubuttonTextHover};
+                    background-color:{lightBackground};
+                ] 
+                {id} .cke_dialog_contents [
+                    color:{defaultTextColor};
+                    background-color:{lightBackground};
+                    border-top-color:{defaultBorder};
+                ] 
+                {id} .cke_dialog_tab_selected [
+                    color:{defaultTextColor};
+                    background:{dialogTabSelected};
+                    border-bottom-color:{dialogTabSelectedBorder};
+                ] 
+                {id} .cke_dialog_body [
+                    color:{defaultTextColor};
+                    background:{dialogBody};
+                    border-color:{defaultBorder};
+                ] 
+                .cke_dialog a.cke_dialog_ui_button [
+                    background:{menubutton};
+                    color: {menubuttonIcon};
+                ] 
+                .cke_dialog a.cke_dialog_ui_button:hover [
+                    background:{menubuttonHover};
+                    color:{menubuttonTextHover};
+                ] 
+                .cke_dialog a.cke_dialog_ui_button.cke_dialog_ui_button_ok [
+                    background:{okBackground};
+                    border-color:{okBorderColor};
+                    color: {okColor};
+                ] 
+                {id} input.cke_dialog_ui_input_text, {id} input.cke_dialog_ui_input_password, {id} input.cke_dialog_ui_input_tel, {id} textarea.cke_dialog_ui_input_textarea, {id} select.cke_dialog_ui_input_select [
+                    background:{dialogBody};
+                    border-color:{defaultBorder};
+                    color:{defaultTextColor};
+                ]` +
+                // Toolbars, buttons.
+                `{id} a.cke_button .cke_button_icon [
+                    filter: {invertIfDarkMode}
+                ]
+                {id} a.cke_button_off:hover,
+                {id} a.cke_button_off:focus,
+                {id} a.cke_button_off:active [
+                    background-color:{darkBackground};
+                    border-color:{toolbarElementsBorder};
+                    color:{defaultTextColor};
+                ] 
+                {id} .cke_button_label,
+                {id} a.cke_button_off:hover .cke_button_label,
+                {id} a.cke_button_off:focus .cke_button_label,
+                {id} a.cke_button_off:active .cke_button_label [
+                    color:{defaultTextColor};
+                ] 
+                {id} .cke_button_on [
+                    background-color:{ckeButtonOn};
+                    border-color:{toolbarElementsBorder};
+                ] 
+                {id} .cke_toolbar_separator,
+                {id} .cke_toolgroup a.cke_button:last-child:after,
+                {id} .cke_toolgroup a.cke_button.cke_button_disabled:hover:last-child:after [
+                    background-color: {toolbarElementsBorder};
+                    border-color: {toolbarElementsBorder};
+                ] 
+                {id} .cke_button_arrow [
+                    border--top-color: {toolbarElementsBorder};
+                ]` +
+                // Combo buttons.
+                `{id} a.cke_combo_button:hover,
+                {id} a.cke_combo_button:focus,
+                {id} .cke_combo_on a.cke_combo_button [
+                    border-color:{toolbarElementsBorder};
+                    color:{menubuttonTextHover};
+                    background-color:{darkBackground};
+                ] 
+                {id} .cke_combo_arrow,
+                {id} .cke_combo:after [
+                    border-top-color:{defaultTextColor};
+                ] 
+                {id} .cke_combo_text [
+                    color:{defaultTextColor};
+                ]`+
+                // Elementspath.
+                `{id} .cke_path_item [
+                    color:{elementsPathColor};
+                ] 
+                {id} a.cke_path_item:hover,
+                {id} a.cke_path_item:focus,
+                {id} a.cke_path_item:active [
+                    color:{menubuttonTextHover};
+                    background-color:{darkBackground};
+                ] 
+                {id}.cke_panel [
+                    border-color:{defaultBorder};
+                ]`
+            ),
+            panel: new CKEDITOR.template(
+                // Context menus.
+                `.cke_menubutton_icon [
+                    background-color:{menubuttonIcon};
+                ] 
+                .cke_menubutton:hover,
+                .cke_menubutton:focus,
+                .cke_menubutton:active [
+                    color:{menubuttonTextHover};
+                    background-color:{menubuttonHover};
+                ] 
+                .cke_menubutton:hover .cke_menubutton_icon, 
+                .cke_menubutton:focus .cke_menubutton_icon, 
+                .cke_menubutton:active .cke_menubutton_icon [
+                    color:{menubuttonTextHover};
+                    background-color:{menubuttonIconHover};
+                ] 
+                .cke_menubutton_disabled:hover .cke_menubutton_icon,
+                .cke_menubutton_disabled:focus .cke_menubutton_icon,
+                .cke_menubutton_disabled:active .cke_menubutton_icon [
+                    background-color:{menubuttonIcon};
+                ] 
+                .cke_menuseparator [
+                    background-color:{menubuttonIcon};
+                ] ` +
+                // Color boxes.
+                `a:hover.cke_colorbox, 
+                a:active.cke_colorbox [
+                    border-color:{defaultBorder};
+                ] 
+                a:hover.cke_colorauto, 
+                a:hover.cke_colormore, 
+                a:active.cke_colorauto, 
+                a:active.cke_colormore [
+                    background-color:{ckeColorauto};
+                    border-color:{defaultBorder};
+                ] `
+            )
+        };
+            return function( editor, part ) {
+                // CKEditor instances have a unique ID, which is used as class name into
+                // the outer container of the editor UI (e.g. ".cke_1").
+                //
+                // The Chameleon feature is available for each CKEditor instance,
+                // independently. Because of this, we need to prefix all CSS selectors with
+                // the unique class name of the instance.
+                uiColor = getComputedStyle(document.firstElementChild);
+                templateStyles = {
+                id: '.' + editor.id,
+                invertIfDarkMode: (document.firstElementChild.classList.contains('sakaiUserTheme-dark')) ? uiColor.getPropertyValue("--sakai-image-invert") : '',
+                // These styles are used by various UI elements.
+                defaultBorder: uiColor.getPropertyValue("--sakai-border-color"),
+                toolbarElementsBorder: uiColor.getPropertyValue("--sakai-border-color"),
+                defaultBackground: uiColor.getPropertyValue("--sakai-background-color-2"),
+                lightBackground: uiColor.getPropertyValue("--sakai-background-color-1"),
+                darkBackground: uiColor.getPropertyValue("--sakai-background-color-3"),
+                defaultTextColor: uiColor.getPropertyValue("--sakai-text-color-1"),
+
+                // These are for specific UI elements.
+                ckeButtonColor: uiColor.getPropertyValue("--sakai-text-color-1"),
+                ckeButtonOn: uiColor.getPropertyValue("--sakai-active-color-1"),
+                ckeResizer: uiColor.getPropertyValue("--sakai-text-color-1"),
+                ckeColorauto: uiColor.getPropertyValue("--sakai-background-color-3"),
+                dialogBody: uiColor.getPropertyValue("--sakai-background-color-2"),
+                dialogTab: uiColor.getPropertyValue("--sakai-background-color-2"),
+                dialogTabSelected: uiColor.getPropertyValue("--sakai-active-color-1"),
+                dialogTabSelectedBorder: uiColor.getPropertyValue("--sakai-border-color"),
+                elementsPathColor: uiColor.getPropertyValue("--sakai-text-color-1"),
+                menubutton: uiColor.getPropertyValue("--button-background"),
+                menubuttonHover: uiColor.getPropertyValue("--button-hover-background"),
+                menubuttonTextHover: uiColor.getPropertyValue("--button-hover-text-color"),
+                menubuttonIcon: uiColor.getPropertyValue("--button-text-color"),
+                menubuttonIconHover: uiColor.getPropertyValue("--button-hover-background"),
+                okBackground: uiColor.getPropertyValue("--sakai-color-green--darker-3"),
+                okBorderColor: uiColor.getPropertyValue("--sakai-color-green--darker-4"),
+                okColor: uiColor.getPropertyValue("--sakai-color-green--lighter-7"),
+                }
+                return templates[ part ]
+                    .output(templateStyles)
+                    .replace( /\[/g, '{' )// Replace brackets with braces.
+                    .replace( /\]/g, '}' );
+            };
+        } )();
     })();
 
-	  CKEDITOR.replace(targetId, ckconfig);
+      let instance = CKEDITOR.replace(targetId, ckconfig);
       //SAK-22505
       CKEDITOR.on('dialogDefinition', function(e) {
           // Take the dialog name and its definition from the event
@@ -434,30 +659,7 @@ sakai.editor.editors.ckeditor.launch = function(targetId, config, w, h) {
 
       });
 
-
-      // CLASSES-3179 Dialog info message
-      CKEDITOR.on('dialogDefinition', function(e) {
-          function findAncestor (el, cls) {
-              while ((el = el.parentElement) && !el.classList.contains(cls));
-              return el;
-          }
-
-          // kaltura plugin dialog only
-          if (e.data.name == 'kaltura') {
-              e.data.definition.contents[0].elements[0]['onLoad'] = function(event, e2, e3) {
-                  var iframeDef = event.sender.getContentElement("iframe");
-                  var iframe = document.getElementById(iframeDef.domId);
-                  var dialogBody = findAncestor(iframe, 'cke_dialog_body');
-                  var dialogContents = findAncestor(iframe, 'cke_dialog_contents');
-                  var message = document.createElement('div');
-                  message.classList.add('ckeditor-dialog-info-message');
-                  message.innerHTML = '<span style="font-size: 11px;">Beginning 10/26, video annotation capabilities will be available for NYU Stream videos in NYU Classes. For more information see the <a href="http://www.nyu.edu/servicelink/KB0017871" target="_blank" style="color:#2775A1;text-decoration:underline;cursor:pointer;font-size: 11px;">Annoto kbase article</a>.</span>';
-
-                  dialogBody.insertBefore(message, dialogContents);
-              };
-          }
-      });
+      return instance;
 }
 
 sakai.editor.launch = sakai.editor.editors.ckeditor.launch;
-

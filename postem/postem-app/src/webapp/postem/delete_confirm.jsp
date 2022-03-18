@@ -15,9 +15,19 @@
 </jsp:useBean>
 <f:view>
 	<sakai:view title="#{msgs.title_list}">
-		<script src="/library/js/spinner.js" type="text/javascript"></script>
+		<script src="/library/js/spinner.js"></script>
+		<script>includeLatestJQuery("postemDeleteConfirm");</script>
+		<script>
+			$(document).ready(function() {
+				var menuLink = $('#postemMainMenuLink');
+				var menuLinkSpan = menuLink.closest('span');
+				menuLinkSpan.addClass('current');
+				menuLinkSpan.html(menuLink.text());
+			});
+		</script>
 		<h:form>
-			<h:outputText styleClass="alertMessage" value="#{msgs.delete_confirm}" />
+			<%@ include file="/postem/postemMenu.jsp" %>
+			<h:outputText styleClass="sak-banner-warn" value="#{msgs.delete_confirm}" />
 			<br />
 			<table styleClass="itemSummary">
 				<tr>
@@ -29,7 +39,8 @@
 			<sakai:button_bar>
 				<sakai:button_bar_item action="#{PostemTool.processDelete}"
 									   onclick="SPNR.disableControlsAndSpin(this, null);"
-									   value="#{msgs.bar_delete}" />
+									   value="#{msgs.bar_delete}"
+									   styleClass="active" />
 				<sakai:button_bar_item action="#{PostemTool.processCancelView}"
 									   onclick="SPNR.disableControlsAndSpin(this, null);"
 									   value="#{msgs.cancel}" />

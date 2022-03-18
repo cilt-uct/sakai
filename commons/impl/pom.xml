@@ -6,13 +6,17 @@
     <name>COMMONS IMPL</name>
     <artifactId>commons-impl</artifactId>
     <groupId>org.sakaiproject.commons</groupId>
-    <packaging>jar</packaging>
+    <packaging>sakai-component</packaging>
 
     <parent>
         <artifactId>commons</artifactId>
         <groupId>org.sakaiproject.commons</groupId>
-        <version>12.5</version>
+        <version>21-SNAPSHOT</version>
     </parent>
+
+   <properties>
+      <deploy.target>components</deploy.target>
+  </properties>
 
     <dependencies>
         <dependency>
@@ -21,7 +25,7 @@
         </dependency>
         <dependency>
             <groupId>javax.servlet</groupId>
-            <artifactId>servlet-api</artifactId>
+            <artifactId>javax.servlet-api</artifactId>
         </dependency>
         <dependency>
             <groupId>org.sakaiproject.kernel</groupId>
@@ -52,6 +56,22 @@
             <artifactId>delegatedaccess-api</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.sakaiproject.search</groupId>
+            <artifactId>search-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>javax.inject</groupId>
+            <artifactId>javax.inject</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-tx</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
         </dependency>
@@ -60,8 +80,12 @@
             <artifactId>commons-fileupload</artifactId>
         </dependency>
         <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
@@ -83,12 +107,6 @@
                 <directory>${basedir}/src/sql</directory>
                 <includes>
                     <include>**/*.sql</include>
-                </includes>
-            </resource>
-            <resource>
-                <directory>${basedir}/src/i18n</directory>
-                <includes>
-                    <include>**/*.properties</include>
                 </includes>
             </resource>
         </resources>

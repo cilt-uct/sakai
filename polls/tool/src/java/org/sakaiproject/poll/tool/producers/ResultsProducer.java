@@ -21,6 +21,8 @@
 
 package org.sakaiproject.poll.tool.producers;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -37,6 +39,7 @@ import org.sakaiproject.poll.logic.PollVoteManager;
 import org.sakaiproject.poll.model.Option;
 import org.sakaiproject.poll.model.Poll;
 import org.sakaiproject.poll.model.Vote;
+import org.sakaiproject.poll.tool.constants.NavigationConstants;
 import org.sakaiproject.poll.tool.params.PollViewParameters;
 
 import uk.org.ponder.localeutil.LocaleGetter;
@@ -131,26 +134,36 @@ public class ResultsProducer implements ViewComponentProducer,NavigationCaseRepo
         langMap.put("xml:lang", locale);
 
 		UIOutput.make(tofill, "polls-html", null).decorate(new UIFreeAttributeDecorator(langMap));
-		
-		
-		
+
+		// Menu links
+		UIBranchContainer actions = UIBranchContainer.make(tofill,"actions:",Integer.toString(0));
+		UIInternalLink.make(actions, NavigationConstants.NAVIGATE_MAIN, UIMessage.make(NavigationConstants.NAVIGATE_MAIN_MESSAGE), new SimpleViewParameters(PollToolProducer.VIEW_ID));
+		if (this.isAllowedPollAdd()) {
+			UIInternalLink.make(actions, NavigationConstants.NAVIGATE_ADD, UIMessage.make(NavigationConstants.NAVIGATE_ADD_MESSAGE), new PollViewParameters(AddPollProducer.VIEW_ID, "New 0"));
+		}
+		if (this.isSiteOwner()) {
+			UIInternalLink.make(actions, NavigationConstants.NAVIGATE_PERMISSIONS, UIMessage.make(NavigationConstants.NAVIGATE_PERMISSIONS_MESSAGE), new SimpleViewParameters(PermissionsProducer.VIEW_ID));
+		}
+
 		//get the number of votes
 		int voters = pollVoteManager.getDisctinctVotersForPoll(poll);
-		//Object[] args = new Object[] { Integer.valueOf(voters).toString()};
-		if (poll.getMaxOptions()>1)
-			UIOutput.make(tofill,"poll-size",messageLocator.getMessage("results_poll_size",Integer.valueOf(voters).toString()));
+		int totalVoters = externalLogic.getNumberUsersCanVote();
+		BigDecimal percentVoters = new BigDecimal(voters).divide(new BigDecimal(totalVoters),4, RoundingMode.HALF_UP).multiply(new BigDecimal(100));
+		String statsVoters = String.format("%d / %d (%.02f %%)",voters,totalVoters,percentVoters);
+
+		UIOutput.make(tofill,"poll-size",messageLocator.getMessage("results_poll_size",statsVoters));
 
 		log.debug(voters + " have voted on this poll");
 
 		UIOutput.make(tofill,"question",poll.getText());
 		log.debug("got poll " + poll.getText());
-		List<Option> pollOptions = poll.getPollOptions();
+		List<Option> pollOptions = poll.getOptions();
 
 		log.debug("got a list of " + pollOptions.size() + " options");
 		//Append an option for no votes
 		if (poll.getMinOptions()==0) {
 			Option noVote = new Option(Long.valueOf(0));
-			noVote.setOptionText(messageLocator.getMessage("result_novote"));
+			noVote.setText(messageLocator.getMessage("result_novote"));
 			noVote.setPollId(poll.getPollId());
 			pollOptions.add(noVote);
 		}
@@ -165,7 +178,7 @@ public class ResultsProducer implements ViewComponentProducer,NavigationCaseRepo
 			Option option = (Option) pollOptions.get(i);
 			log.debug("collating option " + option.getOptionId());
 			collatedVote.setoptionId(option.getOptionId());
-			collatedVote.setOptionText(option.getOptionText());
+			collatedVote.setOptionText(option.getText());
 			collatedVote.setDeleted(option.getDeleted());
 			for (int q=0; q <votes.size(); q++ ) {
 				Vote vote = (Vote)votes.get(q);
@@ -297,7 +310,13 @@ public class ResultsProducer implements ViewComponentProducer,NavigationCaseRepo
 
 	}
 
+    private boolean isAllowedPollAdd() {
+        return externalLogic.isUserAdmin() || externalLogic.isAllowedInLocation(PollListManager.PERMISSION_ADD, externalLogic.getCurrentLocationReference());
+    }
 
+    private boolean isSiteOwner() {
+        return externalLogic.isUserAdmin() || externalLogic.isAllowedInLocation("site.upd", externalLogic.getCurrentLocationReference());
+    }
 
 	private static class CollatedVote {
 		private Long optionId ;

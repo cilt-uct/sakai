@@ -16,17 +16,40 @@
 	}
 
 	#samigo-create-new-box, #samigo-create-import-box {
-		@extend .bs-callout-primary;
-		border-left-width: 1px;
-		margin-top: 0;
+		margin-bottom: $standard-spacing;
+		padding: $standard-spacing;
+		border: 1px solid var(--sakai-border-color);
+		background: var(--sakai-background-color-2);
+
+		h2 {
+			margin: 0 0 15px 0; 	// to match the .form-group's spacing
+		}
+
+		label, input[type="radio"] {
+			margin-right: $standard-space;
+		}
+
+		& > .form-group:last-of-type {
+			margin-bottom: 0;
+		}
+	}
+
+	#samigo-create-or-box {
+		margin: $standard-spacing 0;	// give it space on the bottom for column layout
+		font-size: 20px;		// to match h2 default size
+		line-height: 1.05;
+		text-align: center;
 	}
 
 	.samigo-question-callout {
-			border-left: 5px solid $tool-border-color;
+			border-left: 5px solid var(--tool-border-color);
 			margin: 2em 0;
 			padding: 1.5em 2.5em 1.5em 1.5em;
 			input[type="checkbox"], input[type="radio"] {
 				margin-right: 0.25em;
+			}
+			label {
+				font-weight: normal;
 			}
 	}
 
@@ -50,20 +73,15 @@
 	}
 
 	.samigo-inline-radio {
-		label {
-			margin-right: 1em;
+		label,
+		&.fa {
+			margin-right: $standard-spacing;
 		}
 	}
 	
 	.samigo-checkbox {
 		label {
-			margin: 0 0 0 0.5em;
-		}
-	}
-
-	.samigo-radio {
-		label {
-			margin: 0 0 0 0.5em;
+			margin: 0 0 0 $standard-space;
 		}
 	}
 	
@@ -81,11 +99,11 @@
 	}
 	
 	.feedBackCheck{
-		color: $ok-color;
+		color: var(--successBanner-color);
 	}
 	
 	.feedBackCross{
-		color: $error-color;
+		color: var(--errorBanner-color);
 	}
 	
 	.feedBackMultipleChoice{
@@ -93,7 +111,7 @@
 	}
 	
 	.disabledField{
-		color: $error-color;
+		color: var(--errorBanner-color);
 		text-decoration: line-through;
 	}
 
@@ -165,6 +183,8 @@
 	
 	#assessmentSettingsAction input[type="radio"],
 	#assessmentSettingsAction input[type="checkbox"]{
+		margin-right: $standard-space; 
+		
 		@media #{$tablet}{
 			float:left;
 			& + label {
@@ -176,6 +196,10 @@
 
 	#assessmentSettingsAction input#assessmentSettingsAction\:selTimeAssess {
 		float: none;
+	}
+
+	#assessmentSettingsAction input[name="assessmentSettingsAction\:userOrGroup"] {
+		margin-right: $standard-space;
 	}
 	
 	#assessmentSettingsAction input[type="checkbox"]{
@@ -189,7 +213,7 @@
 	table{
 	   	td{
 	   		input[type="checkbox"],input[type="radio"]{
-	   			margin-right: 5px;
+	   			margin-right: $standard-space;
 	   		}
 	   	}
 	   	&.listHier td:empty{
@@ -208,13 +232,13 @@
 	}
 	
 	.toolTipLink{
-		color: $link-color;
-		background-color: $link-background-color;
+		color: var(--link-color);
+		background-color: var(--link-background-color);
 		text-decoration: underline;
 		cursor: pointer;
 		&:hover{
-			color: $link-hover-color;
-			background-color: $link-hover-background-color;
+			color: var(--link-hover-color);
+			background-color: var(--link-hover-background-color);
 			text-decoration:underline;
 		}
 	}
@@ -227,11 +251,11 @@
 		}
 
 		thead tr th {
-			border-bottom: 1px solid black;
+			border-bottom: 1px solid var(--sakai-border-color);
 		}
 
 		tr {
-			border-bottom: 1px solid lightgrey;
+			border-bottom: 1px solid var(--sakai-border-color);
 		}
 
 		.extendedTime-user, .extendedTime-group {
@@ -247,4 +271,180 @@
 		margin: 0px !important;
 	}
 
+	.ui-autocomplete-input {
+		@extend .form-control;
+
+		width: initial;
+		max-width: initial;
+		display: inline-block;
+	}
+
+	.ui-corner-right {
+		height: 34px;
+		margin-top: -3px;
+		margin-left: -3px;
+	}
+
+	.dataTables_wrapper {
+		.dataTables_length {
+			float: left;
+
+			@media #{$phone}{
+				float: initial;
+			}
+		}
+
+		.dataTables_filter {
+			float: right;
+			text-align: right;
+
+			@media #{$phone}{
+				float: initial;
+				text-align: initial;
+			}
+
+			input {
+				@extend .form-control;
+
+				width: initial;
+				max-width: initial;
+				display: inline-block;
+				margin-left: 6px;
+			}
+		}
+
+		.dataTables_info {
+			clear: both;
+			float: left;
+		}
+
+		.dataTables_paginate {
+			float: right;
+			text-align: right;
+
+			> a.paginate_button {
+				@extend input, [type="submit"];
+
+				&.disabled {
+					@extend input, [type="submit"], [disabled="disabled"];
+				}
+			}
+
+			span {
+				.paginate_button {
+					color: var(--sakai-text-color-1) !important;
+
+					@extend button;
+
+					&:hover {
+						color: var(--sakai-text-color-1) !important;
+					}
+
+					&.current {
+						@extend .btn-default, :active, :hover;
+					}
+				}
+
+				a.paginate_button {
+					@extend .btn-default;
+				}
+			}
+
+			.ellipsis {
+				margin-right: 10px;
+			}
+		}
+	}
+
+	.dataTable {
+		thead {
+			.sorting_asc, .sorting_desc {
+				a {
+					position: relative;
+					margin-right: 11px;
+
+					&::after {
+						content: " ";
+						width: 11px;
+						height: 11px;
+						position: absolute;
+						bottom: 2px;
+						right: -14px;
+					}
+				}
+			}
+
+			.sorting_asc {
+				a::after {
+					background: url(/library/image/sakai/sortascending.gif?panel=Main);
+				}
+			}
+
+			.sorting_desc {
+				a::after {
+					background: url(/library/image/sakai/sortdescending.gif?panel=Main);
+				}
+			}
+		}
+	}
+
+	#{'#authorIndexForm\\:remove-selected'} {
+		@extend button;
+
+		&.disabled {
+			@extend input, [type="submit"], [disabled="disabled"];
+			background: var(--button-disabled-background);
+			border-color: var(--button-disabled-border-color);
+			color: var(--button-disabled-text-color) !important;
+
+			&:hover {
+				background: var(--button-disabled-background);
+				border-color: var(--button-disabled-border-color);
+				color: var(--button-disabled-text-color) !important;
+			}
+		}
+	}
+
+	.parts-table {
+		label.notbold {
+			font-weight: normal;
+		}
+	}
+
+	.timerTableColumn {
+		text-align: center
+	}
+
+	.timerTableColumnLeft {
+		text-align: left
+	}
+
+	.matrixTable {
+		border-style: dotted;
+		border-width: 1px;
+		border-color: var(--sakai-border-color);
+	}
+
+	#delivAssessmentWrapper {
+		width: 96%;
+		float: left;
+	}
+
+	.downloanQuestionCheckbox label {
+		display: none;
+	}
+
+	.exitPreviewButton {
+		margin-left: $standard-space;
+	}
+
+	.jqplot-target {
+		color: var(--sakai-text-color-1);
+		font-family: var(--sakai-font-family);
+	}
+
+	.disabled.awesomplete {
+		background-color: transparent;
+		color: var(--sakai-text-color-disabled);
+	}
 }

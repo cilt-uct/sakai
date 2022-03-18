@@ -15,30 +15,47 @@
  */
 package org.sakaiproject.site.tool.helper.order.impl;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+import java.util.stream.Collectors;
 
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
-import uk.org.ponder.util.UniversalRuntimeException;
-
-import org.sakaiproject.authz.api.*;
+import org.sakaiproject.authz.api.AuthzGroup;
+import org.sakaiproject.authz.api.AuthzGroupService;
+import org.sakaiproject.authz.api.AuthzPermissionException;
+import org.sakaiproject.authz.api.GroupNotDefinedException;
+import org.sakaiproject.authz.api.Role;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.content.api.ContentHostingService;
 import org.sakaiproject.entity.api.ResourceProperties;
 import org.sakaiproject.event.cover.EventTrackingService;
-import org.sakaiproject.exception.*;
+import org.sakaiproject.exception.IdUnusedException;
+import org.sakaiproject.exception.InUseException;
+import org.sakaiproject.exception.PermissionException;
+import org.sakaiproject.exception.SakaiException;
+import org.sakaiproject.exception.ServerOverloadException;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SitePage;
-import org.sakaiproject.site.api.ToolConfiguration;
 import org.sakaiproject.site.api.SiteService;
+import org.sakaiproject.site.api.ToolConfiguration;
 import org.sakaiproject.site.util.SiteConstants;
-import org.sakaiproject.tool.api.FindToolsContext;
+import org.sakaiproject.tool.api.SessionManager;
 import org.sakaiproject.tool.api.Tool;
 import org.sakaiproject.tool.api.ToolManager;
 import org.sakaiproject.tool.api.ToolSession;
-import org.sakaiproject.tool.api.SessionManager;
 import org.sakaiproject.util.SortedIterator;
 import org.sakaiproject.util.Web;
+import org.sakaiproject.util.comparator.ToolTitleComparator;
+
+import lombok.extern.slf4j.Slf4j;
+import uk.org.ponder.util.UniversalRuntimeException;
 
 /**
  * 
@@ -47,6 +64,7 @@ import org.sakaiproject.util.Web;
  */
 @Slf4j
 public class SitePageEditHandler {
+
     public Site site;
     public SiteService siteService;
     public ToolManager toolManager;
@@ -64,11 +82,7 @@ public class SitePageEditHandler {
     //This nil is needed for RSF Producers do not remove!
     public String nil = null;
     
-    private final String TOOL_CFG_FUNCTIONS = "functions.require";
-    private final String PORTAL_VISIBLE = "sakai-portal:visible";
     private final String TOOL_CFG_MULTI = "allowMultiple";
-    private final String SITE_UPD = "site.upd";
-    private final String SITE_VISIT = "site.visit";
     private final String HELPER_ID = "sakai.tool.helper.id";
     private final String UNHIDEABLES_CFG = "poh.unhideables";
     /**
@@ -103,7 +117,8 @@ public class SitePageEditHandler {
     // Tool session attribute name used to schedule a whole page refresh.
     public static final String ATTR_TOP_REFRESH = "sakai.vppa.top.refresh"; 
 
-    private String[] defaultMultiTools = {"sakai.news", "sakai.iframe"};
+    private Set<String> defaultMultiTools
+        = new HashSet(Arrays.asList(new String [] {"sakai.news", "sakai.iframe"}));
 
     /**
      * Gets the current tool
@@ -131,14 +146,8 @@ public class SitePageEditHandler {
         }
         if (update) {
             pages = new LinkedHashMap<>();
-            if (site != null)
-            {    
-                List<SitePage> pageList = site.getOrderedPages();
-                for (int i = 0; i < pageList.size(); i++) {
-                    
-                    SitePage page = pageList.get(i);
-                    pages.put(page.getId(), page);
-                }
+            if (site != null) {
+                site.getOrderedPages().forEach(p -> pages.put(p.getId(), p));
             }
         }
         return pages;
@@ -173,20 +182,9 @@ public class SitePageEditHandler {
                 log.error(e.getMessage(), e);
             }
         }
-        
-        String conf = serverConfigurationService.getString(UNHIDEABLES_CFG);
-        if (conf != null) {
-            unhideables = new HashSet<>();
-            String[] toolIds = conf.split(",");
-            for (int i = 0; i < toolIds.length; i++) {
-                unhideables.add(toolIds[i].trim());
-            }
-        }
-        String uneditablesConfig = serverConfigurationService.getString(UNEDITABLES_CFG, "");
-        uneditables = new HashSet<>();
-        for (String tool: uneditablesConfig.split(",")) {
-            uneditables.add(tool);
-        }
+
+        unhideables = serverConfigurationService.getCommaSeparatedListAsSet(UNHIDEABLES_CFG);
+        uneditables = serverConfigurationService.getCommaSeparatedListAsSet(UNEDITABLES_CFG);
     }
     
     /**
@@ -227,20 +225,12 @@ public class SitePageEditHandler {
         
         Set<Tool> toolRegistrations = toolManager.findTools(categories, null, new FindToolsContext().site(site));
         
-        List<String> multiPlacementToolIds = new ArrayList<String>();
-
-        String items[];
-        if (serverConfigurationService.getString(MULTI_TOOLS) != null && 
-                !"".equals(serverConfigurationService.getString(MULTI_TOOLS)))
-            items = serverConfigurationService.getString(MULTI_TOOLS).split(",");
-        else
-            items = defaultMultiTools;
-
-        for (int i = 0; i < items.length; i++) {
-            multiPlacementToolIds.add(items[i]);
+        Set<String> multiPlacementToolIds = serverConfigurationService.getCommaSeparatedListAsSet(MULTI_TOOLS);
+        if (multiPlacementToolIds.isEmpty()) {
+            multiPlacementToolIds = defaultMultiTools;
         }
      
-        SortedIterator i = new SortedIterator(toolRegistrations.iterator(), new ToolComparator());
+        SortedIterator i = new SortedIterator(toolRegistrations.iterator(), new ToolTitleComparator());
         for (; i.hasNext();)
         {
         	Tool tr = (Tool) i.next();
@@ -318,9 +308,19 @@ public class SitePageEditHandler {
         ToolSession session = sessionManager.getCurrentToolSession();
         session.setAttribute(ATTR_TOP_REFRESH, Boolean.TRUE);
 
+        // Go to Site Info landing page on 'Save'
+        setNextPage(session, SiteConstants.SITE_INFO_TEMPLATE_INDEX);
+
         return "done";
     }
-    
+
+    /*
+     * Utility method; sets the template index (in the tool session) of the desired page to transfer the user to.
+     */
+    private void setNextPage(ToolSession session, String nextPageTemplateIndex) {
+        session.setAttribute(SiteConstants.STATE_TEMPLATE_INDEX, nextPageTemplateIndex);
+    }
+
     /**
      * Allows the Cancel button to return control to the tool calling this helper
      *
@@ -328,6 +328,9 @@ public class SitePageEditHandler {
     public String cancel() {
         ToolSession session = sessionManager.getCurrentToolSession();
         session.setAttribute(ATTR_TOP_REFRESH, Boolean.TRUE);
+
+        // Go to Site Info landing page on 'Cancel'
+        setNextPage(session, SiteConstants.SITE_INFO_TEMPLATE_INDEX);
 
         return "done";
     }
@@ -376,26 +379,22 @@ public class SitePageEditHandler {
     }   
 
     /**
-     * Checks if users can see a page or not
+     * Checks if users can see a page or not. If any tool in the page is visible
+     * that counts as the page being visible.
      * 
      * @param page The SitePage whose visibility is in question
      * @return true if users can see the page
      */
     public boolean isVisible(SitePage page) {
-        List<ToolConfiguration> tools = page.getTools();
-        Iterator<ToolConfiguration> iPt = tools.iterator();
 
-        boolean visible = false;
-        while( !visible && iPt.hasNext() ) 
-        {
-            ToolConfiguration placement = iPt.next();
+        for (ToolConfiguration placement : page.getTools()) {
             Properties roleConfig = placement.getConfig();
-            String visibility = roleConfig.getProperty(PORTAL_VISIBLE);
+            String visibility = roleConfig.getProperty(ToolManager.PORTAL_VISIBLE);
 
-            if ( ! "false".equals(visibility) ) visible = true;
+            if ( ! "false".equals(visibility) ) return true;
         }
         
-        return visible;
+        return false;
     }
 
     /**
@@ -405,18 +404,7 @@ public class SitePageEditHandler {
      * @return true if users with out site.upd can see the page
      */
     public boolean isEnabled(SitePage page) {
-        Set<Role> roles = getRolesWithout(page.getContainingSite(), SITE_UPD);
-        // Should only have non site.upd roles now.
-        // Now check to see if these roles have the permission listed in the functions require for the tool.
-        List<String> permissions = getRequiredPermissions(page);
-        for (String permission : permissions) {
-            for (Role role : roles) {
-                if (role.isAllowed(permission)) {
-                    return true; // If any one of the permissions is allows for any role.
-                }
-            }
-        }
-        return false;
+        return toolManager.isFirstToolVisibleToAnyNonMaintainerRole(page);
     }
     
     /**
@@ -450,22 +438,16 @@ public class SitePageEditHandler {
      * @return true if this tool is allowed to be hidden
      */
     public boolean allowsHide(SitePage page) {
-        if (!(serverConfigurationService.getBoolean(HIDDEN_ENABLED_CFG, true)))
+
+        if (!(serverConfigurationService.getBoolean(HIDDEN_ENABLED_CFG, true))) {
             return false;
-
-        List<ToolConfiguration> tools = page.getTools();
-        Iterator<ToolConfiguration> iPt = tools.iterator();
-
-        boolean hideable = true;
-        while( hideable && iPt.hasNext() )
-        {
-            ToolConfiguration placement = iPt.next();
-
-            if (!allowsHide(placement.getToolId())) {
-                hideable = false;
-            }
         }
-        return hideable;
+
+        for (ToolConfiguration placement : page.getTools()) {
+            if (!allowsHide(placement.getToolId())) return false;
+        }
+
+        return true;
     }
 
     /**
@@ -482,22 +464,25 @@ public class SitePageEditHandler {
         if (!(serverConfigurationService.getBoolean(DISABLE_ENABLED_CFG, true))) {
             return false;
         }
-        List<String> permissions = getRequiredPermissions(page);
-        return !(permissions.isEmpty() || permissions.contains(SITE_UPD) || permissions.contains(SITE_VISIT));
+        List<String> permissions = getSingleToolPagePermissions(page).stream().flatMap(Collection::stream).collect(Collectors.toList());
+        return !(permissions.isEmpty() || permissions.contains(SiteService.SECURE_UPDATE_SITE) || permissions.contains(SiteService.SITE_VISIT));
     }
 
-    private List<String> getRequiredPermissions(SitePage page) {
+    /**
+     * If this page only has a single tool, get the required permissions for that tool, otherwise
+     * return an empty list.
+     *
+     * @param page The SitePage we want to get the required permissions for
+     * @return The set(s) of required permissions for this page's tool.
+     */
+    private List<Set<String>> getSingleToolPagePermissions(SitePage page) {
+
         List<ToolConfiguration> tools = page.getTools();
         if (tools.size() == 1) {
-            // Only if there is one
-            ToolConfiguration toolConfiguration = tools.get(0);
-            String functions = toolConfiguration.getConfig().getProperty(TOOL_CFG_FUNCTIONS);
-            if (functions != null && functions.length() > 0) {
-                return new ArrayList<>(Arrays.asList(StringUtils.split(functions, ',')));
-            }
+            return toolManager.getRequiredPermissions(tools.get(0));
+        } else {
+            return Collections.EMPTY_LIST;
         }
-        // Don't use Collections.EMPTY_LIST as it needs to be mutable.
-        return new ArrayList<>();
     }
  
     /**
@@ -508,10 +493,11 @@ public class SitePageEditHandler {
      * @throws IdUnusedException, PermissionException
      */
     public boolean disablePage(String pageId) throws SakaiException {
+
         EventTrackingService.post(
             EventTrackingService.newEvent(PAGE_DISABLE, "/site/" + site.getId() +
                                          "/page/" + pageId, false));
-        return  pageVisibilityHelper(pageId, false, false);
+        return setEnabled(pageId, false) && setVisibility(pageId, false);
     }
     
     /**
@@ -526,12 +512,11 @@ public class SitePageEditHandler {
             EventTrackingService.newEvent(PAGE_ENABLE, "/site/" + site.getId() +
                                          "/page/" + pageId, false));
       
-        return pageVisibilityHelper(pageId, true, true);
+        return setEnabled(pageId, true) && setVisibility(pageId, true);
     }
 
     /**
      * Hides a page from any user who doesn't have site.upd
-     * Implies enabled
      * 
      * @param pageId The Id of the Page
      * @return true for sucess, false for failuer
@@ -541,7 +526,7 @@ public class SitePageEditHandler {
         EventTrackingService.post(
             EventTrackingService.newEvent(PAGE_HIDE, "/site/" + site.getId() +
                                          "/page/" + pageId, false));
-        return  pageVisibilityHelper(pageId, false, true);
+        return setVisibility(pageId, false);
     }
     
     /**
@@ -557,34 +542,30 @@ public class SitePageEditHandler {
             EventTrackingService.newEvent(PAGE_SHOW, "/site/" + site.getId() +
                                          "/page/" + pageId, false));
       
-        return pageVisibilityHelper(pageId, true, true);
+        return setVisibility(pageId, true) && setEnabled(pageId, true);
     }
     
     /**
      * Handles the visiibility of a page with a combination of visible/enabled
+     *
      * @param pageId The Id of the Page
      * @param visible - Affects the sakai:portal-visible value for tools
-     * @param enabled - Affects site.upd in functions.require for tools
      * @return true for sucess, false for failuer
      * @throws IdUnusedException, PermissionException
      */
-    private boolean pageVisibilityHelper(String pageId, boolean visible, boolean enabled)
-            throws SakaiException {
+    private boolean setVisibility(String pageId, boolean visible) throws SakaiException {
 
         if (site == null) {
             init();
         }
         SitePage page = site.getPage(pageId);
-        List<ToolConfiguration> tools = page.getTools();
-        Iterator<ToolConfiguration> iterator = tools.iterator();
 
         //If all the tools on a page require site.upd then only users with site.upd will see
         //the page in the site nav of Charon... not sure about the other Sakai portals floating about
-        while( iterator.hasNext() ) {
-            ToolConfiguration placement = iterator.next();
+        for (ToolConfiguration placement : page.getTools()) {
             final String toolId = placement.getToolId();
             Properties roleConfig = placement.getPlacementConfig();
-            String visibility = roleConfig.getProperty(PORTAL_VISIBLE);
+            String visibility = roleConfig.getProperty(ToolManager.PORTAL_VISIBLE);
             boolean saveChanges = false;
             
             if ( "false".equals(visibility) && visible) {
@@ -612,21 +593,35 @@ public class SitePageEditHandler {
                     }
 
                 }
-                roleConfig.setProperty(PORTAL_VISIBLE, visibility);
+                roleConfig.setProperty(ToolManager.PORTAL_VISIBLE, visibility);
 
                 placement.save();
             }
             
         }
+        return true;
+    }
+
+    private boolean setEnabled(String pageId, boolean enabled) throws SakaiException {
+
+        SitePage page = site.getPage(pageId);
+
         try {
             AuthzGroup authzGroup =  authzGroupService.getAuthzGroup(site.getReference());
-            List<String> permissions = getRequiredPermissions(page);
+            List<String> permissions = getSingleToolPagePermissions(page)
+                .stream().flatMap(Collection::stream).collect(Collectors.toList());
             if (!(permissions.isEmpty())) {
                 // We never change SITE_UPD at all.
-                permissions.remove(SITE_UPD);
-                permissions.remove(SITE_VISIT);
-                Set<Role> roles = getRolesWithout(authzGroup, SITE_UPD);
+                permissions.remove(SiteService.SECURE_UPDATE_SITE);
+                permissions.remove(SiteService.SITE_VISIT);
 
+                // When re-enabling permissions and there are multiple permissions,
+                // e.g., dropbox.own and dropbox.maintain, grab the first in list only.
+                if (enabled && permissions.size() > 1) {
+                    permissions = Collections.singletonList(permissions.get(0));
+                }
+
+                Set<Role> roles = getRolesWithout(authzGroup, SiteService.SECURE_UPDATE_SITE);
                 for (Role role : roles) {
                     if (enabled) {
                         role.allowFunctions(permissions);
@@ -645,7 +640,7 @@ public class SitePageEditHandler {
     }
 
     private Set<Role> getRolesWithout(AuthzGroup authzGroup, String function) {
-        // Gets the roles
+
         Set<Role> roles = authzGroup.getRoles();
         roles.removeIf(role -> role.isAllowed(function));
         return roles;
@@ -729,7 +724,6 @@ public class SitePageEditHandler {
                                         "/old_title/" + oldTitle +
                                         "/new_title/" + page.getTitle(), false));
         
-        
         return oldTitle;
     }
 
@@ -788,55 +782,24 @@ public class SitePageEditHandler {
 
         saveSite(site);
     }
-    
-    
-    /**
-     * ** Copied from SiteAction.java.. should be in a common place such as util?
-     * 
-     * @author joshuaryan
-     *
-     */
-    private class ToolComparator implements Comparator<Tool>
-    {    
-        /**
-        * implementing the Comparator compare function
-        * @param o1 The first object
-        * @param o2 The second object
-        * @return The compare result. 1 is o1 < o2; 0 is o1.equals(o2); -1 otherwise
-        */
-        public int compare (Tool o1, Tool o2)
-        {
-            try {
-                return o1.getTitle().compareTo(o2.getTitle());
-            }
-            catch (Exception e)
-            {
-            }
-            return -1;
-            
-        }    // compare
-        
-    } //ToolComparator    
-
 
     /**
      * Is the current user allowed to edit the title of the page.
+     *
      * @param page The page in question.
      * @return <code>true</code> if the page title can be edited.
      */
     public boolean allowEdit(SitePage page) {
-        //default value is to allow the Title to be edited.  If the sakai properties
-        //specifically requests this to be set to false, then do not allow this function
-        boolean allow = serverConfigurationService.getBoolean(ALLOW_TITLE_EDIT, true);
-        if (!(uneditables.isEmpty())) {
-            for(Iterator<ToolConfiguration> toolIt = page.getTools().iterator(); toolIt.hasNext() && allow;) {
-                ToolConfiguration toolConfig = toolIt.next();
-                if (uneditables.contains(toolConfig.getToolId())) {
-                    allow = false;
-                }
-            }
+
+        if (!serverConfigurationService.getBoolean(ALLOW_TITLE_EDIT, true)) return false;
+
+        if (uneditables.isEmpty()) return true;
+
+        for (ToolConfiguration placement : page.getTools()) {
+            if (uneditables.contains(placement.getToolId())) return false;
         }
-        return allow;
+
+        return true;
     }
 
     private boolean getSitePropertySpecialHidden() {

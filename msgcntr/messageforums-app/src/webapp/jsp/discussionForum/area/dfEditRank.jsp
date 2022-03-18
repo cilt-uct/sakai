@@ -2,7 +2,7 @@
                  javax.faces.el.*, org.sakaiproject.tool.messageforums.*"%>
 <%@ taglib uri="http://java.sun.com/jsf/html" prefix="h" %>
 <%@ taglib uri="http://java.sun.com/jsf/core" prefix="f" %>
-<%@ taglib uri="http://sakaiproject.org/jsf/sakai" prefix="sakai" %>
+<%@ taglib uri="http://sakaiproject.org/jsf2/sakai" prefix="sakai" %>
 <%@ taglib uri="http://sakaiproject.org/jsf/messageforums" prefix="mf" %>
 <jsp:useBean id="msgs" class="org.sakaiproject.util.ResourceLoader" scope="session">
    <jsp:setProperty name="msgs" property="baseName" value="org.sakaiproject.api.app.messagecenter.bundle.Messages"/>
@@ -16,13 +16,13 @@
 <link rel="stylesheet" href="/library/webjars/jquery-ui/1.12.1/jquery-ui.min.css" type="text/css" />
 <link rel="stylesheet" href="/messageforums-tool/css/forum_rank.css" type="text/css" />
 
-<script type="text/javascript">includeLatestJQuery("msgcntr");</script>
-<script type="text/javascript" src="/messageforums-tool/js/fluidframework-min.js"></script>
-<script type="text/javascript" src="/messageforums-tool/js/json2.js"></script>
-<script type="text/javascript" src="/messageforums-tool/js/Scroller.js"></script>
-<script type="text/javascript" src="/messageforums-tool/js/forum.js"></script>
-<script type="text/javascript" src="/messageforums-tool/js/forum_rank.js"></script>
-<script type="text/JavaScript">
+<script>includeLatestJQuery("msgcntr");</script>
+<script src="/messageforums-tool/js/fluidframework-min.js"></script>
+<script src="/messageforums-tool/js/json2.js"></script>
+<script src="/messageforums-tool/js/Scroller.js"></script>
+<script src="/messageforums-tool/js/forum.js"></script>
+<script src="/messageforums-tool/js/forum_rank.js"></script>
+<script>
     var thresholdHint='<%=msgs.getString("rank_threshold_hint")%>';
     function showThresholdHint(obj){
         if (obj.value == '') {
@@ -162,7 +162,7 @@
                     value="#{msgs.cdfm_cancel}" />
             </div>
 
-            <script language="javascript" type="text/JavaScript">
+            <script>
 <!--
     var inputhidden = document.getElementById("addRank:selectedRankType");
     var ranktype = inputhidden.getAttribute("value");
@@ -196,13 +196,13 @@
                     thisId = "Main" + org.sakaiproject.tool.cover.ToolManager.getCurrentPlacement().getId();
                 }
             %>
-            <script type="text/javascript">
+            <script>
             function resize(){
                 mySetMainFrameHeight('<%=org.sakaiproject.util.Web.escapeJavascript(thisId)%>');
             }
             </script>
 
-            <script type="text/javascript">
+            <script>
                 resize();
                 //find the anchor
                 document.location.href=document.location.href + "#boldMsg";

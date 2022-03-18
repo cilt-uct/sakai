@@ -37,12 +37,15 @@
  <div class="portletBody">
  <!-- content... -->
  <h:form id="importAssessmentForm" enctype="multipart/form-data">
+    <!-- HEADINGS -->
+    <%@ include file="/jsf/author/editAssessmentHeadings.jsp" %>
+
     <h3><h:outputText  value="#{authorImportExport.import_a}" /></h3>
 
     <div class="tier1">
      <div class="tier2">
       <div class="form_label">
-       <h:messages styleClass="messageSamigo" rendered="#{! empty facesContext.maximumSeverity}" layout="table"/>
+       <h:messages styleClass="sak-banner-error" rendered="#{! empty facesContext.maximumSeverity}" layout="table"/>
        <h:outputText value="#{authorImportExport.import_instructions}" escape="false"/>
       </div>
       <br />
@@ -62,6 +65,8 @@
          </h:selectOneRadio>
        </h:panelGroup>
    </div>
+    <br/>
+    <h:outputText escape="false" value="#{authorImportExport.importExport_warning2}"/>
     <br/>
     <br/>
      <%-- activates the valueChangeListener --%>

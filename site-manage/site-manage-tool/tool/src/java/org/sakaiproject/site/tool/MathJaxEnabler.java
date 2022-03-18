@@ -17,19 +17,11 @@
 
 package org.sakaiproject.site.tool;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import org.apache.commons.lang.StringUtils;
-import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.cheftool.Context;
-import org.sakaiproject.site.api.Site;
-import org.sakaiproject.event.api.SessionState;
+import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.entity.api.ResourcePropertiesEdit;
+import org.sakaiproject.event.api.SessionState;
+import org.sakaiproject.site.api.Site;
 import org.sakaiproject.util.ParameterParser;
 
 public class MathJaxEnabler
@@ -37,10 +29,10 @@ public class MathJaxEnabler
     private static final String ENABLED_SAKAI_PROP = "portal.mathjax.enabled";
     private static final String ENABLED_SAKAI_PROP_NEW_SITE = "portal.mathjax.newSites.enabled";
     private static final String SRC_PATH_SAKAI_PROP = "portal.mathjax.src.path";
+    public static final String HELP_URL_SAKAI_PROP = "portal.mathjax.help.url";
     private static final String VERSION_SERVICE_SAKAI_PROP = "version.service";
     private static final String VERSION_SERVICE_DEFAULT = "Sakai";
     private static final boolean ENABLED_SAKAI_PROP_DEFAULT = true;
-    private static final boolean ENABLED_SAKAI_NEW_SITE_DEFAULT = false;
     
     private static final String STATE_KEY_IS_MATHJAX_ENABLED_FOR_SITE = "isMathJaxEnabledForSite";
     private static final String CONTEXT_IS_MATHJAX_INSTALLED_KEY = "isMathJaxInstalled";
@@ -48,12 +40,13 @@ public class MathJaxEnabler
     private static final String CONTEXT_DO_ENABLE_MATHJAX_KEY = "doEnableMathJax";
     private static final String CONTEXT_MATHJAX_ENABLED_TOOL_ID_SUFFIX_KEY = "mathJaxToolIdSuffix";
     private static final String CONTEXT_MATHJAX_ENABLED_TOOL_ID_SUFFIX_VALUE = "-jax";
+    public static final String CONTEXT_MATHJAX_HELP_URL = "mathJaxHelpURL";
     private static final String PARAM_MATHJAX_ENABLED_KEY = "isMathJaxEnabledForSite";
         
     private static final String SRC_PATH = ServerConfigurationService.getString(SRC_PATH_SAKAI_PROP);
     private static final boolean ENABLED_AT_SYSTEM_LEVEL = ServerConfigurationService.getBoolean(ENABLED_SAKAI_PROP, ENABLED_SAKAI_PROP_DEFAULT) && !SRC_PATH.trim().isEmpty();
-    private static final boolean ENABLED_AT_NEW_SITE_CREATION_LEVEL = ServerConfigurationService.getBoolean(ENABLED_SAKAI_PROP_NEW_SITE, ENABLED_SAKAI_NEW_SITE_DEFAULT) && ENABLED_AT_SYSTEM_LEVEL;
     private static final String SAKAI_SERVICE = ServerConfigurationService.getString(VERSION_SERVICE_SAKAI_PROP, VERSION_SERVICE_DEFAULT);
+    public static final String HELP_URL = ServerConfigurationService.getString(HELP_URL_SAKAI_PROP, ServerConfigurationService.getPortalUrl() + "/help/TOCDisplay/content.hlp?docId=howdoiaddlatexlanguagetomycoursesite");
     
     /**
      * Add MathJax settings to the context for the edit tools page
@@ -72,7 +65,7 @@ public class MathJaxEnabler
         context.put(CONTEXT_IS_MATHJAX_INSTALLED_KEY, Boolean.TRUE);
         context.put(CONTEXT_SAKAI_SERVICE_KEY, SAKAI_SERVICE);
         context.put(CONTEXT_MATHJAX_ENABLED_TOOL_ID_SUFFIX_KEY, CONTEXT_MATHJAX_ENABLED_TOOL_ID_SUFFIX_VALUE);
-        
+
         return true;
     }
     
@@ -144,26 +137,6 @@ public class MathJaxEnabler
         }
 
         return true;
-    }
-    
-    /**
-     * Apply MathJax default settings to new sites
-     * @param site The site
-     * @param state the session state
-     * @return true if the site properties were modified
-     */
-    public static boolean prepareMathJaxForNewSite(Site site, SessionState state) {	
-
-    	if (ENABLED_AT_SYSTEM_LEVEL && site != null && state != null) {
-    		
-    		String enabled = String.valueOf(ENABLED_AT_NEW_SITE_CREATION_LEVEL);
-        	site.getProperties().addProperty(Site.PROP_SITE_MATHJAX_ALLOWED, enabled);
-        	state.setAttribute(STATE_KEY_IS_MATHJAX_ENABLED_FOR_SITE, Boolean.valueOf(enabled));
-    		
-    		return true;
-    	}
-
-    	return false;
     }
 
     /**

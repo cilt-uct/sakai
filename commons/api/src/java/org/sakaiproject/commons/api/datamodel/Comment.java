@@ -17,12 +17,17 @@
 
 package org.sakaiproject.commons.api.datamodel;
 
-import java.util.*;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.util.Calendar;
+import java.util.Stack;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.TimeZone;
 
-import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import org.sakaiproject.commons.api.CommonsManager;
+import org.sakaiproject.commons.api.CommonsReferenceReckoner;
 import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.entity.api.ResourceProperties;
 import org.sakaiproject.util.BaseResourceProperties;
@@ -56,6 +61,9 @@ public class Comment implements Entity {
     private String postId;
 
     @Getter @Setter
+    private Post post;
+
+    @Getter @Setter
     private String url;
 
     public Comment() {
@@ -68,12 +76,14 @@ public class Comment implements Entity {
         this.setPostId(rs.getString("POST_ID"));
         this.setContent(rs.getString("CONTENT"));
         this.setCreatorId(rs.getString("CREATOR_ID"));
-        this.setCreatedDate(rs.getTimestamp("CREATED_DATE", Calendar.getInstance(TimeZone.getTimeZone("UTC"))).getTime());
-        this.setModifiedDate(rs.getTimestamp("MODIFIED_DATE", Calendar.getInstance(TimeZone.getTimeZone("UTC"))).getTime());
+
+        // retrieve time's in UTC since that's how it's stored
+        this.setCreatedDate(rs.getTimestamp("CREATED_DATE", Calendar.getInstance(TimeZone.getTimeZone(ZoneId.of("UTC")))).getTime());
+        this.setModifiedDate(rs.getTimestamp("MODIFIED_DATE", Calendar.getInstance(TimeZone.getTimeZone(ZoneId.of("UTC")))).getTime());
     }
 
     public Comment(String text) {
-        this(text, new Date().getTime());
+        this(text, Instant.now().toEpochMilli());
     }
 
     public Comment(String text, long createdDate) {
@@ -95,10 +105,10 @@ public class Comment implements Entity {
 
     public void setContent(String text, boolean modified) {
         if (!this.content.equals(text) && modified) {
-            modifiedDate = new Date().getTime();
+            modifiedDate = Instant.now().toEpochMilli();
         }
 
-        this.content = StringEscapeUtils.unescapeHtml(text.trim());
+        this.content = StringEscapeUtils.unescapeHtml4(text.trim());
     }
 
     public void setCreatedDate(long createdDate) {
@@ -114,10 +124,10 @@ public class Comment implements Entity {
     }
 
     public String getReference() {
-        return CommonsManager.REFERENCE_ROOT + Entity.SEPARATOR + "comments" + Entity.SEPARATOR + id;
+        return CommonsReferenceReckoner.reckoner().comment(this).reckon().getReference();
     }
 
-    public String getReference(String arg0) {
+    public String getReference(String base) {
         return getReference();
     }
 
@@ -126,7 +136,6 @@ public class Comment implements Entity {
     }
 
     public Element toXml(Document arg0, Stack arg1) {
-        // TODO Auto-generated method stub
         return null;
     }
 }

@@ -21,87 +21,30 @@
 
 package org.sakaiproject.poll.model;
 
+import lombok.Data;
+
+@Data
 public class Option {
 
-    private Long id;
+    private Long optionId;
     private Long pollId;
     private String text;
     private String status;
     private String uuid;
-	private Boolean deleted;
-	
-	
-    
-
+    private Boolean deleted = Boolean.FALSE;
+    private Integer optionOrder;
 
     public Option() {}
 
     public Option(Long oId) {
-        this.id = oId;
-    }
-
-    public void setOptionId(Long value) {
-        id = value;
-    }
-
-    public Long getOptionId() {
-        return id;
-    }
-
-    public void setOptionText(String option) {
-        text = option;
-    }
-
-    public String getOptionText() {
-        return text;
-    }
-
-    public Long getPollId() {
-        return pollId;
-    }
-
-    public void setPollId(Long pollid) {
-        this.pollId = pollid;
-    }
-
-    public void setStatus(String s) {
-        this.status = s;
-    }
-
-    public String getStatus() {
-        return this.status;
+        this.optionId = oId;
     }
 
     public String getId() {
-        return id+"";
+        return optionId+"";
     }
 
-    public String getText() {
-        return text;
+    public void setId(Long id) {	
+        this.optionId = id;	
     }
-    
-    public void setText(String text) {
-        this.text = text;
-    }
-    
-    public String getUUId() {
-        return uuid;
-    }
-    
-    public void setUUId(String id) {
-        uuid = id;
-    }
-    
-    public void setId(Long id) {
-        this.id = id;
-    }
-    
-    public Boolean getDeleted() {
-		return (deleted == null) ? Boolean.FALSE : deleted;
-	}
-
-	public void setDeleted(Boolean deleted) {
-		this.deleted = deleted;
-	}
-
 }

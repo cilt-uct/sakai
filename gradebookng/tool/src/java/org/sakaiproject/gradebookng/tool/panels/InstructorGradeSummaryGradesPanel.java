@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.markup.html.basic.Label;
 import org.apache.wicket.model.IModel;
@@ -38,6 +38,7 @@ import org.sakaiproject.service.gradebook.shared.Assignment;
 import org.sakaiproject.service.gradebook.shared.CategoryDefinition;
 import org.sakaiproject.service.gradebook.shared.CourseGrade;
 import org.sakaiproject.service.gradebook.shared.GradingType;
+import org.sakaiproject.service.gradebook.shared.SortType;
 import org.sakaiproject.tool.gradebook.Gradebook;
 
 public class InstructorGradeSummaryGradesPanel extends BasePanel {
@@ -81,7 +82,8 @@ public class InstructorGradeSummaryGradesPanel extends BasePanel {
 
 		// build the grade matrix for the user
 		final Gradebook gradebook = getGradebook();
-		final List<Assignment> assignments = this.businessService.getGradebookAssignmentsForStudent(userId);
+		final SortType sortedBy = this.isGroupedByCategory ? SortType.SORT_BY_CATEGORY : SortType.SORT_BY_SORTING;
+		final List<Assignment> assignments = this.businessService.getGradebookAssignmentsForStudent(userId, sortedBy);
 
 		final boolean isCourseGradeVisible = this.businessService.isCourseGradeVisible(this.businessService.getCurrentUser().getId());
 		final GbRole userRole = gradebookPage.getCurrentRole();
@@ -122,7 +124,6 @@ public class InstructorGradeSummaryGradesPanel extends BasePanel {
 		}
 		Map<String, CategoryDefinition> categoriesMap = businessService.getGradebookCategories().stream()
 				.collect(Collectors.toMap(cat -> cat.getName(), cat -> cat));
-		Collections.sort(categoryNames);
 
 		// build the model for table
 		final Map<String, Object> tableModel = new HashMap<>();
@@ -136,6 +137,7 @@ public class InstructorGradeSummaryGradesPanel extends BasePanel {
 		tableModel.put("showingStudentView", false);
 		tableModel.put("gradingType", GradingType.valueOf(gradebook.getGrade_type()));
 		tableModel.put("categoriesMap", categoriesMap);
+		tableModel.put("studentUuid", userId);
 
 		addOrReplace(new GradeSummaryTablePanel("gradeSummaryTable", new LoadableDetachableModel<Map<String, Object>>() {
 			@Override
@@ -152,20 +154,31 @@ public class InstructorGradeSummaryGradesPanel extends BasePanel {
 		addOrReplace(new Label("courseGradeNotReleasedFlag", getString("label.studentsummary.coursegradenotreleasedflag")) {
 			@Override
 			public boolean isVisible() {
-				return !gradebook.isCourseGradeDisplayed()
-						&& (GbRole.INSTRUCTOR.equals(userRole) || GbRole.TA.equals(userRole) && isCourseGradeVisible);
+				return showDisplayCourseGradeToStudent(gradebook, userRole, isCourseGradeVisible);
 			}
 		});
 
 		addOrReplace(new Label("courseGradeNotReleasedMessage", getString("label.studentsummary.coursegradenotreleasedmessage")) {
 			@Override
 			public boolean isVisible() {
-				return !gradebook.isCourseGradeDisplayed()
-						&& (GbRole.INSTRUCTOR.equals(userRole) || GbRole.TA.equals(userRole) && isCourseGradeVisible);
+				return showDisplayCourseGradeToStudent(gradebook, userRole, isCourseGradeVisible);
 			}
 		});
 
 		add(new AttributeModifier("data-studentid", userId));
+	}
+
+	/**
+	 * Determine if the 'Display Course Grade to Student' setting should be visible for the user.
+	 * @param gradebook
+	 * @param userRole
+	 * @param isCourseGradeVisible
+	 * @return
+	 */
+	private boolean showDisplayCourseGradeToStudent(Gradebook gradebook,GbRole userRole, boolean isCourseGradeVisible) {
+		return !gradebook.isCourseGradeDisplayed()
+						&& (GbRole.INSTRUCTOR.equals(userRole) || GbRole.TA.equals(userRole) && isCourseGradeVisible)
+						&& serverConfigService.getBoolean(SAK_PROP_SHOW_COURSE_GRADE_STUDENT, SAK_PROP_SHOW_COURSE_GRADE_STUDENT_DEFAULT);
 	}
 
 	/**

@@ -232,8 +232,6 @@ public class BasicLTIConstants {
 	 * parameter is required.
 	 */
 	public static final String LTI_MESSAGE_TYPE = "lti_message_type";
-	public static final String LTI_MESSAGE_TYPE_TOOLPROXYREGISTRATIONREQUEST = "ToolProxyRegistrationRequest";
-	public static final String LTI_MESSAGE_TYPE_TOOLPROXY_RE_REGISTRATIONREQUEST = "ToolProxyReregistrationRequest";
 	public static final String LTI_MESSAGE_TYPE_BASICLTILAUNCHREQUEST = "basic-lti-launch-request";
 	public static final String LTI_MESSAGE_TYPE_CONTENTITEMSELECTIONREQUEST = "ContentItemSelectionRequest";
 	public static final String LTI_MESSAGE_TYPE_CONTENTITEMSELECTION = "ContentItemSelection";
@@ -245,7 +243,6 @@ public class BasicLTIConstants {
 	 */
 	public static final String LTI_VERSION = "lti_version";
 	public static final String LTI_VERSION_1 = "LTI-1p0";
-	public static final String LTI_VERSION_2 = "LTI-2p0";
 
    /**
     * tool_consumer_info_product_family_code=desire2learn
@@ -544,11 +541,49 @@ public class BasicLTIConstants {
 	 */
 	public static final String NEW_SITE_TYPE = "lti";
 
+	// Pulled in from thre LTI 2 Removal
+    public static final String GRAPH = "@graph";
+
+    public static final String TYPE = "@type";
+
+	public static final String BASIC_LTI_LAUNCH_REQUEST = "basic-lti-launch-request";
+
+    public static final String CONTENT_ITEM_SELECTION_REQUEST = "ContentItemSelectionRequest";
+
 	/**
-	 * lis_person_contact_email_netid=netid@nyu.edu
-	 * <p>
-	 * CLASSES-2728 This is a custom NYU LTI property for sending the netid based email to vendors
-	 */
-	public static final String LIS_PERSON_CONTACT_EMAIL_NETID = "lis_person_contact_email_netid";
+     * MEMBERSHIP_ROLE
+     *
+     *  A comma separated list of roles that the Person has within the
+     *  organizational unit.  In the LIS Database, this value corresponds to
+     *  <code>membershipRecord/membership/member/role/roleType  </code>
+     */
+    public static final String MEMBERSHIP_ROLE = "Membership.role";
+    public static final String MEMBERSHIP_ROLE_LEARNER = "Learner";
+    public static final String MEMBERSHIP_ROLE_INSTRUCTOR = "Instructor";
+    public static final String MEMBERSHIP_ROLE_CONTEXT_ADMIN = "Administrator";
+    public static final String MEMBERSHIP_ROLE_SYSTEM_ADMIN = "urn:lti:sysrole:ims/lis/Administrator";
+    public static final String MEMBERSHIP_ROLE_INSTITUTION_ADMIN = "urn:lti:instrole:ims/lis/Administrator";
+
+   /**
+     * MESSAGE_LOCALE
+     *
+     *  The locale of this launch
+     */
+    public static final String MESSAGE_LOCALE = "Message.locale";
+
+
+    /**
+     * TOOLCONSUMERINFO_PRODUCTFAMILYCODE
+     *
+     *  The code for the product (i.e. like "sakai" or "learn")
+     */
+    public static final String TOOLCONSUMERINFO_PRODUCTFAMILYCODE = "ToolConsumerInfo.productFamilyCode";
+
+    /**
+     * TOOLCONSUMERINFO_VERSION
+     *
+     *  The code for the product (i.e. like "sakai" or "learn")
+     */
+    public static final String TOOLCONSUMERINFO_VERSION = "ToolConsumerInfo.version";
 
 }

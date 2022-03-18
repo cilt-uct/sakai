@@ -29,6 +29,9 @@ ConnectionPoll.prototype.ping = function() {
   $.ajax({
     type: "GET",
     url: this.PING_URL,
+    data: {
+      auto: true // indicate that the request is automatic, not from a user action
+    },
     timeout: this.PING_TIMEOUT,
     cache: false,
     success: $.proxy(this.handleSuccess, this),
@@ -62,12 +65,6 @@ ConnectionPoll.prototype.handleSuccess = function() {
   this._timeout = false;
 };
 
-ConnectionPoll.prototype.onTimeout = function(callback) {
-  this._timeoutCallbacks.push(callback);
-  return this;
-};
-
-ConnectionPoll.prototype.onRecover = function(callback) {
-  this._recoverCallbacks.push(callback);
-  return this;
-};
+$(document).ready(function() {
+  new ConnectionPoll($("#gbConnectionTimeoutFeedback"));
+});

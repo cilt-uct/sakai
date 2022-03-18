@@ -25,20 +25,23 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.TimeZone;
 
-import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.quartz.SchedulerException;
 import org.quartz.StatefulJob;
-
-import org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper;
+import org.sakaiproject.component.app.scheduler.jobs.SpringStatefulJobBeanWrapper;
 import org.sakaiproject.db.api.SqlService;
 import org.sakaiproject.event.api.Event;
 import org.sakaiproject.sitestats.api.JobRun;
 import org.sakaiproject.sitestats.api.StatsUpdateManager;
+
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class StatsAggregateJobImpl implements StatefulJob {
@@ -47,6 +50,7 @@ public class StatsAggregateJobImpl implements StatefulJob {
 	private int					sqlBlockSize		= 1000;
 	private long				startEventId		= -1;
 	private long 				lastEventIdInTable	= -1;
+	private String				sakaiEventTimeZone	= "";
 
 	private String				driverClassName		= null;
 	private String				url					= null;
@@ -131,11 +135,11 @@ public class StatsAggregateJobImpl implements StatefulJob {
 		String jobName = context.getJobDetail().getKey().getName();
 		
 		// ABORT if job is currently running in this cluster node.
-		//  -> Required as StatefullJob is only correctly supported in trunk!
-		// WARNING: I cannot currently check if this is running in OTHER cluster nodes!!!
+		// This should never happen, as the job is stateful so quartz should not execute
+		// more than one instance concurrently.
 		try{
 			while(isJobCurrentlyRunning(context)) {
-				String beanId = context.getJobDetail().getJobDataMap().getString(SpringJobBeanWrapper.SPRING_BEAN_NAME);
+				String beanId = context.getJobDetail().getJobDataMap().getString(SpringStatefulJobBeanWrapper.SPRING_BEAN_NAME);
 				log.warn("Another instance of "+beanId+" is currently running - Execution aborted.");
 				return;
 			}
@@ -193,12 +197,12 @@ public class StatsAggregateJobImpl implements StatefulJob {
 	}
 
 	private boolean isJobCurrentlyRunning(JobExecutionContext context) throws SchedulerException {
-		String beanId = context.getJobDetail().getJobDataMap().getString(SpringJobBeanWrapper.SPRING_BEAN_NAME);
+		String beanId = context.getJobDetail().getJobDataMap().getString(SpringStatefulJobBeanWrapper.SPRING_BEAN_NAME);
 		List<JobExecutionContext> jobsRunning = context.getScheduler().getCurrentlyExecutingJobs();
 		
 		int jobsCount = 0;
 		for(JobExecutionContext j : jobsRunning)
-			if(beanId.equals(j.getJobDetail().getJobDataMap().getString(SpringJobBeanWrapper.SPRING_BEAN_NAME))) {
+			if(beanId.equals(j.getJobDetail().getJobDataMap().getString(SpringStatefulJobBeanWrapper.SPRING_BEAN_NAME))) {
 				jobsCount++;
 			}
 		if(jobsCount > 1)
@@ -281,7 +285,16 @@ public class StatsAggregateJobImpl implements StatefulJob {
 					String sessionId = null;
 					try{
 						//If an exception is launched, iteration is not aborted but no event is added to event queue
-						date = new Date(rs.getTimestamp("EVENT_DATE").getTime());
+
+						// Daily events can only be counted relative to a single time zone (server time). The sakai_event table 
+						// may be storing dates in a time zone different than this. Adjust for the sakai_event time zone if provided.
+						if (StringUtils.isNotBlank(sakaiEventTimeZone)) {
+							Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone(sakaiEventTimeZone));
+							date = new Date(rs.getTimestamp("EVENT_DATE", calendar).getTime());
+						} else {
+							date = new Date(rs.getTimestamp("EVENT_DATE").getTime());
+						}
+
 						event = rs.getString("EVENT");
 						ref = rs.getString("REF");
 						sessionUser = rs.getString("SESSION_USER");
@@ -631,6 +644,14 @@ public class StatsAggregateJobImpl implements StatefulJob {
 
 	public void setStartEventId(long startEventId) {
 		this.startEventId = startEventId;
+	}
+
+	public String getSakaiEventTimeZone() {
+		return sakaiEventTimeZone;
+	}
+
+	public void setSakaiEventTimeZone(String timeZone) {
+		sakaiEventTimeZone = timeZone;
 	}
 
 	public String getDriverClassName() {

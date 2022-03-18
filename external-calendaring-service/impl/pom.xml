@@ -5,7 +5,7 @@
     <parent>
         <artifactId>external-calendaring-service</artifactId>
         <groupId>org.sakaiproject.calendaring</groupId>
-        <version>12.5</version>
+        <version>21-SNAPSHOT</version>
     </parent>
     
 	<name>External Calendaring Service :: Implementation</name>
@@ -55,16 +55,16 @@
 			<artifactId>commons-codec</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>commons-lang</groupId>
-			<artifactId>commons-lang</artifactId>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>commons-io</groupId>
 			<artifactId>commons-io</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>commons-collections</groupId>
-			<artifactId>commons-collections</artifactId>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-collections4</artifactId>
 		</dependency>
 		<dependency>
       		<groupId>org.mnode.ical4j</groupId>

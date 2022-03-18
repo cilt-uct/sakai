@@ -1,7 +1,6 @@
-<samigo:script path="/../library/webjars/select2/4.0.3/dist/js/select2.full.min.js"/>
-<samigo:stylesheet path="/../library/webjars/select2/4.0.3/dist/css/select2.css"/>
+<script>includeWebjarLibrary('select2');</script>
 
-<script type="text/javascript">
+<script>
 
     $(document).ready(function () {
         $(".tag_selector_<h:outputText value="#{question.itemId}"/>").select2({

@@ -18,9 +18,10 @@ package org.sakaiproject.commons.impl;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import lombok.Getter;
@@ -45,14 +46,14 @@ import org.sakaiproject.commons.api.SakaiProxy;
 public class PersistenceManagerImpl implements PersistenceManager {
 
     private static final String POST_SELECT
-        = "SELECT cp.*,cw.ID COMMONS_ID,cw.SITE_ID,cw.EMBEDDER FROM COMMONS_POST cp, COMMONS_COMMONS cw, COMMONS_COMMONS_POST cwp "
+        = "SELECT cp.*,cw.ID as COMMONS_ID,cw.SITE_ID,cw.EMBEDDER FROM COMMONS_POST cp, COMMONS_COMMONS cw, COMMONS_COMMONS_POST cwp "
             + "WHERE cp.ID = ? AND cp.ID = cwp.POST_ID and cwp.COMMONS_ID = cw.ID";
     private static final String COMMONS_SELECT = "SELECT * FROM COMMONS_COMMONS WHERE ID = ?";
     private static final String COMMONS_POSTS_SELECT
-        = "SELECT cw.ID COMMONS_ID,cw.SITE_ID,cw.EMBEDDER,cp.* FROM COMMONS_COMMONS cw,COMMONS_COMMONS_POST cwp,COMMONS_POST cp "
+        = "SELECT cw.ID as COMMONS_ID,cw.SITE_ID,cw.EMBEDDER,cp.* FROM COMMONS_COMMONS cw,COMMONS_COMMONS_POST cwp,COMMONS_POST cp "
             + "WHERE cw.ID = ? AND cwp.COMMONS_ID = cw.ID AND cp.ID = cwp.POST_ID ORDER BY CREATED_DATE DESC";
     private static final String SOCIAL_COMMONS_POSTS_SELECT
-        = "SELECT cw.ID COMMONS_ID,cw.SITE_ID,cw.EMBEDDER,cp.* FROM COMMONS_COMMONS cw,COMMONS_COMMONS_POST cwp,COMMONS_POST cp "
+        = "SELECT cw.ID as COMMONS_ID,cw.SITE_ID,cw.EMBEDDER,cp.* FROM COMMONS_COMMONS cw,COMMONS_COMMONS_POST cwp,COMMONS_POST cp "
             + "WHERE cw.ID = ? AND cwp.COMMONS_ID = cw.ID AND cp.ID = cwp.POST_ID AND CREATOR_ID IN (";
     private static final String COMMONS_POST_INSERT = "INSERT INTO COMMONS_COMMONS_POST VALUES(?,?)";
     private static final String COMMONS_INSERT = "INSERT INTO COMMONS_COMMONS VALUES(?,?,?)";
@@ -101,8 +102,8 @@ public class PersistenceManagerImpl implements PersistenceManager {
 
         log.debug("getAllPost({})", query);
 
-        if (query.embedder.equals(CommonsConstants.SOCIAL)) {
-            int numFromIds = query.fromIds.size();
+        if (query.getEmbedder().equals(CommonsConstants.SOCIAL)) {
+            int numFromIds = query.getFromIds().size();
             if (numFromIds > 0) {
                 String sql = SOCIAL_COMMONS_POSTS_SELECT;
                 for (int i = 0;i < numFromIds;i++) sql += "?,";
@@ -110,8 +111,8 @@ public class PersistenceManagerImpl implements PersistenceManager {
                 sql = sql.substring(0,sql.length() - 1);
                 sql += ") ORDER BY CREATED_DATE DESC"; 
                 List<String> params = new ArrayList<String>();
-                params.add(query.commonsId);
-                params.addAll(query.fromIds);
+                params.add(query.getCommonsId());
+                params.addAll(query.getFromIds());
                 return sqlService.dbRead(sql
                         , params.toArray()
                         , new SqlReader<Post>() {
@@ -125,7 +126,7 @@ public class PersistenceManagerImpl implements PersistenceManager {
             }
         } else {
             return sqlService.dbRead(COMMONS_POSTS_SELECT
-                    , new Object[] {query.commonsId}
+                    , new Object[] {query.getCommonsId()}
                     , new SqlReader<Post>() {
                         public Post readSqlResultRecord(ResultSet result) {
                             return loadPostFromResult(result, populate);
@@ -134,7 +135,7 @@ public class PersistenceManagerImpl implements PersistenceManager {
         }
     }
 
-    public Comment getComment(String commentId) {
+    public Optional<Comment> getComment(String commentId) {
 
         List<Comment> comments = sqlService.dbRead(COMMENT_SELECT, new Object[] { commentId }, new SqlReader<Comment>() {
                 public Comment readSqlResultRecord(ResultSet result) {
@@ -147,9 +148,15 @@ public class PersistenceManagerImpl implements PersistenceManager {
                 }
             });
 
-        Comment comment = comments.get(0);
-        comment.setCreatorDisplayName(sakaiProxy.getDisplayNameForTheUser(comment.getCreatorId()));
-        return comment;
+        if (comments.size() > 0) {
+            Comment comment = comments.get(0);
+            comment.setPost(comment.getPost());
+            comment.setCreatorDisplayName(sakaiProxy.getDisplayNameForTheUser(comment.getCreatorId()));
+            return Optional.of(comment);
+        } else {
+            log.warn("No comment for id {}", commentId);
+            return Optional.empty();
+        }
     }
 
     public Comment saveComment(Comment comment) {
@@ -170,7 +177,7 @@ public class PersistenceManagerImpl implements PersistenceManager {
                                     , comment.getId() });
         }
 
-        return getComment(comment.getId());
+        return getComment(comment.getId()).get();
     }
 
     public boolean deleteComment(String commentId) {
@@ -186,7 +193,7 @@ public class PersistenceManagerImpl implements PersistenceManager {
         if (postExists(post.getId())) {
             sqlService.dbWrite(POST_UPDATE
                 , new Object[] { post.getContent()
-                                    , new Timestamp(new Date().getTime())
+                                    , Timestamp.from(Instant.now())
                                     , new Timestamp(post.getReleaseDate())
                                     , post.getId() });
 
@@ -304,6 +311,7 @@ public class PersistenceManagerImpl implements PersistenceManager {
                                 }
                             }
                         });
+                comments.forEach(c -> c.setPost(post));
                 post.setComments(comments);
             }
             return post;

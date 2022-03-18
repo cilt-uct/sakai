@@ -1,9 +1,4 @@
 .#{$namespace}sakai-resources {
-
-	ul, ol {
-		padding-top: 0;
-	}
-
 	input, textarea{
 		max-width: 100%;
 	}
@@ -56,6 +51,23 @@
 					}
 				}
 			}
+			&.inactive {
+				* {
+					color: var(--sakai-text-color-disabled) !important;
+				}
+				.resource-name, .resource-access, .resource-creator, .resource-modified, .resource-size {
+					font-style: italic;
+				}
+				.not-available {
+					font-size: initial;
+				}
+				button {
+					border:1px solid var(--sakai-border-color) !important;
+				}
+				.dropdown-menu a {
+					color:var(--sakai-text-color-1) !important;
+				}
+			} 
 		}
 
 		td.attach{
@@ -94,7 +106,7 @@
 
 	.navigatePanelControls{
 		padding:0 10px 5px 5px;
-		border-bottom:1px solid #ccc;
+		border-bottom:1px solid var(--sakai-border-color);
 	}
 	#navigatePanelSearch {
 	   font-size: 12px;
@@ -103,17 +115,27 @@
 		width: 201px;
 	}
 	.jstree-search {
-		border:1px solid #ffe4bb;
-		background:#ffe;
 		-webkit-border-radius: 5px;
 		-moz-border-radius: 5px;
 		border-radius: 5px;
 	}
+	.jstree-anchor.jstree-search {
+		@extend .sakai-colorize--sakai-color-gold--lighter-6;
+	}
 	.jstree-anchor:hover {
 		text-decoration:none !important;
+		@extend .sakai-colorize--sakai-color-gold--lighter-5;
+	}
+	.jstree-default .jstree-anchor, .jstree-default .jstree-wholerow {
+		transition: none;
+	}
+	@media (max-width: 768px) {
+		.jstree-default-responsive .jstree-anchor {
+			text-shadow: none;
+		}
 	}
 	#spinner {
-		color: $primary-color;
+		color: var(--sakai-primary-color-1);
 		width:100%;
 		height:128px;
 		position: absolute;
@@ -130,13 +152,13 @@
 				&:before{
 					position: relative;
 					top: 5px;
-					color: $text-color;
+					color: var(--sakai-text-color-1);
 					padding: 0 0 0 26px;
 				}
 			}
 		}
 		* {
-			color:#999 !important;
+			color: var(--sakai-text-color-2) !important;
 		}
 	}
 	/* move this one to tool-base.css as it goes along*/
@@ -145,13 +167,13 @@
 		font-size:1em;
 	}
 	td.actions2 .dropdown-toggle {
-		padding: 2px 6px !important;
+		padding: 2px 6px;
 	}
 	td.actions2 .dropdown-header {
 		padding: 0 21px;
 	}
 	.table tr{
-		border-bottom: 1px solid #ddd;
+		border-bottom: 1px solid var(--sakai-border-color);
 	}
 
 	.breadCrumb .btn-group button.breadProp {
@@ -181,12 +203,10 @@
 			list-style: none;
 			font-size: 1em;
 			text-align: left;
-			background-color: #fff;
-			border: 1px solid #ccc;
-			border: 1px solid rgba(0,0,0,0.15);
-			border-radius: 4px;
-			-webkit-box-shadow: 0 0 5px 0 rgba(0,0,0,0.5);
-			box-shadow: 0 0 5px 0 rgba(0,0,0,0.5);
+			background-color: var(--sakai-background-color-1);
+			border: 1px solid var(--sakai-border-color);
+			border-radius: $button-radius;
+			box-shadow: var(--elevation-2dp);
 			background-clip: padding-box;
 
 			.close-button{
@@ -214,16 +234,6 @@
 	.breadCrumb #navigatePanel + button {
 		padding-left:10px;
 	}
-	.inactive button {
-		color: #fff !important;
-		border:1px solid #ccc !important;
-	}
-	.inactive button span {
-		color: #fff !important;
-	}
-	.inactive .dropdown-menu a {
-		color:#000 !important;
-	}
 
 	fieldset legend h4 {
 		margin: 0;
@@ -244,7 +254,7 @@
 	/* SAK-32371 : Resources doesnt use font awesome icons */
 	.fa {
 		display : inline;
-		color : $primary-color;
+		color : var(--button-text-color);
 		text-decoration: none;
 	}
 	
@@ -252,7 +262,7 @@
 	a.nil.fa-folder {
 		position: static;
 		&::after {
-			color: #fff;
+			color: var(--sakai-text-color-inverted);
 			content: "+";
 			display: inline-block;
 			position: absolute;
@@ -269,7 +279,7 @@
 	a.nil.fa-folder-open {
 		position: static;
 		&::after {
-			color: #FFF;
+			color: var(--sakai-text-color-inverted);
 			content: "-";
 			display: inline-block;
 			position: absolute;
@@ -282,4 +292,92 @@
 			}
 		}
 	}
+
+	a.highlightlink {
+		text-decoration: none;
+
+		span.iconText {
+			margin-right: 0.1em;
+		}
+	}
+
+	.show {
+		display: block;
+	}
+
+	.hide {
+		display: none;
+	}
+
+	label.copyrightAlert {
+		width: 15.5em;
+	}
+
+	div.alertMessage {
+		display: none;
+		clear: both;
+	}
+
+	label[for="notify"] {
+		padding-left: $standard-spacing;
+		padding-right: 5px;
+	}
+}
+
+/* this belongs to resources but it is accessed out of its namespace */
+.googlethumbnail {
+	float: right;
+	width: 5%;
+	border: 1.0px dashed;
+	border-color: var(--sakai-border-color);
+	border-radius: 5px;
+}
+
+.googlethumbnailbig {
+	width: 15%;
+}
+
+.googlethumbnailsmall {
+	width: 5%;
+}
+
+.jstree-container-ul.jstree-children{
+	li{
+		.fa-link{
+			margin: 0 10px 0 10px;
+		}
+		.fa-files-o{
+			margin-left: 10px;
+		}
+	}
+}
+
+.jstree-node {
+	&:not(.jstree-leaf) > .fa {
+		display: none;
+	}
+}
+
+.jstree-closed{
+	.fa-files-o, .fa-link{
+		display: none !important;
+	}
+}
+
+.no-attach 	> .fa-files-o{
+	display: none !important;
+}
+
+.is-folder {
+	> .fa-files-o, > .fa-link{
+		display: none;
+	}
+}
+
+.no-attach,.fa-files-o{
+	cursor:pointer;
+}
+
+.jstree-node a[href]:focus{
+	outline: 1px solid var(--focus-outline-color);
 }

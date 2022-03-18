@@ -51,8 +51,17 @@ should be included in file importing DeliveryMessages
    </h:column>
   </h:dataTable>
 
+  <h:panelGroup>
+	<h:commandLink id="cmdclean" value="#{deliveryMessages.reset_selection}" action="#{delivery.cleanRadioButton}" onclick="saveTime(); serializeImagePoints();"
+		rendered="#{(delivery.actionString=='previewAssessment' || delivery.actionString=='previewAssessmentPublished'
+                || delivery.actionString=='takeAssessment' 
+                || delivery.actionString=='takeAssessmentViaUrl')}">
+		<f:param name="radioId" value="#{question.itemData.itemId}" />
+	</h:commandLink> 
+  </h:panelGroup>
+
   <h:panelGroup rendered="#{question.itemData.hasRationale}">
-    <f:verbatim><br /></f:verbatim>
+    <f:verbatim><br /><br /></f:verbatim>
     <h:outputLabel for="rationale" value="#{deliveryMessages.rationale}" />
     <f:verbatim><br /></f:verbatim>
     <h:inputTextarea id="rationale" value="#{question.rationale}" rows="5" cols="40" 
@@ -63,15 +72,6 @@ should be included in file importing DeliveryMessages
                  || delivery.actionString=='gradeAssessment'}" escape="false"/>
   </h:panelGroup>
 
-<h:panelGroup>
-	<h:commandLink id="cmdclean" value="#{deliveryMessages.reset_selection}" action="#{delivery.cleanRadioButton}" onclick="saveTime(); serializeImagePoints();"
-		rendered="#{(delivery.actionString=='previewAssessment' || delivery.actionString=='previewAssessmentPublished'
-                || delivery.actionString=='takeAssessment' 
-                || delivery.actionString=='takeAssessmentViaUrl')}">
-		<f:param name="radioId" value="#{question.itemData.itemId}" />
-	</h:commandLink> 
-</h:panelGroup>
-
 <f:verbatim><br /></f:verbatim>
 <f:verbatim><br /></f:verbatim>
 
@@ -81,7 +81,7 @@ should be included in file importing DeliveryMessages
              && delivery.navigation ne '1' && delivery.displayMardForReview }">
 <h:selectBooleanCheckbox value="#{question.review}" id="mark_for_review" />
 	<h:outputLabel for="mark_for_review" value="#{deliveryMessages.mark}" />
-	<h:outputLink title="#{assessmentSettingsMessages.whats_this_link}" value="#" onclick="javascript:window.open('../author/markForReviewPopUp.faces','MarkForReview','width=300,height=220,scrollbars=yes, resizable=yes');" >
+	<h:outputLink title="#{assessmentSettingsMessages.whats_this_link}" value="#" onclick="javascript:window.open('/samigo-app/jsf/author/markForReviewPopUp.faces','MarkForReview','width=350,height=280,scrollbars=yes, resizable=yes');event.preventDefault();" >
 		<h:outputText  value=" #{assessmentSettingsMessages.whats_this_link}"/>
 	</h:outputLink>
 </h:panelGroup>

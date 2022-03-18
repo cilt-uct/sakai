@@ -28,11 +28,10 @@ import org.sakaiproject.tool.assessment.ui.listener.util.ContextUtil;
 @Slf4j
 public class StudentScoreAttachmentListener implements ActionListener {
 
-	public void processAction(ActionEvent event) throws AbortProcessingException {
-		StudentScoresBean studentScoresBean = (StudentScoresBean) ContextUtil.lookupBean("studentScores");
-
-		String itemGradingId = ContextUtil.lookupParam("itemGradingId");
-		log.debug("itemGradingId = " + itemGradingId);
-		studentScoresBean.setItemGradingIdForFilePicker(Long.valueOf(itemGradingId));
-	}
+    public void processAction(ActionEvent event) throws AbortProcessingException {
+        StudentScoresBean studentScoresBean = (StudentScoresBean) ContextUtil.lookupBean("studentScores");
+        String itemGradingId = ContextUtil.lookupParam("itemGradingId");
+        log.debug("itemGradingId = {}", itemGradingId);
+        studentScoresBean.setItemGradingIdForFilePicker(Long.valueOf(itemGradingId));
+    }
 }

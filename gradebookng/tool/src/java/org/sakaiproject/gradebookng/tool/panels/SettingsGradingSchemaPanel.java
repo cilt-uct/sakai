@@ -24,8 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.math.NumberUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.ajax.AjaxEventBehavior;
@@ -47,10 +46,11 @@ import org.apache.wicket.model.ResourceModel;
 import org.sakaiproject.gradebookng.business.FirstNameComparatorGbUser;
 import org.sakaiproject.gradebookng.business.model.GbUser;
 import org.sakaiproject.gradebookng.business.util.SettingsHelper;
+import org.sakaiproject.gradebookng.tool.chart.CourseGradeChart;
 import org.sakaiproject.gradebookng.tool.component.GbAjaxButton;
-import org.sakaiproject.gradebookng.tool.component.GbCourseGradeChart;
 import org.sakaiproject.gradebookng.tool.model.GbGradingSchemaEntry;
 import org.sakaiproject.gradebookng.tool.model.GbSettings;
+import org.sakaiproject.gradebookng.tool.stats.CourseGradeStatistics;
 import org.sakaiproject.service.gradebook.shared.CourseGrade;
 import org.sakaiproject.service.gradebook.shared.GradeMappingDefinition;
 
@@ -65,6 +65,7 @@ public class SettingsGradingSchemaPanel extends BasePanel implements IFormModelU
 
 	WebMarkupContainer schemaWrap;
 	WebMarkupContainer statsWrap;
+	CourseGradeStatistics stats;
 	ListView<GbGradingSchemaEntry> schemaView;
 	private List<GradeMappingDefinition> gradeMappings;
 	boolean expanded;
@@ -73,9 +74,8 @@ public class SettingsGradingSchemaPanel extends BasePanel implements IFormModelU
 	Label modifiedSchema;
 	Label unsavedSchema;
 	Label duplicateEntries;
-	Label duplicatePercentages;
 
-	GbCourseGradeChart chart;
+	CourseGradeChart chart;
 
 	/**
 	 * This is the currently PERSISTED grade mapping id that is persisted for this gradebook
@@ -170,26 +170,8 @@ public class SettingsGradingSchemaPanel extends BasePanel implements IFormModelU
 		add(settingsGradingSchemaPanel);
 
 		// grading scale type chooser
-		final List<String> gradingSchemaList = new ArrayList<String>(gradeMappingMap.keySet());
-
-		// CLASSES-3157: Place school-specific grading schemes lower down in the list
-		Collections.sort(gradingSchemaList, new Comparator<String>() {
-			public int compare(String s1, String s2) {
-				String label1 = gradeMappingMap.get(s1);
-				String label2 = gradeMappingMap.get(s2);
-
-				// School-specific labels contain a colon
-				if (label1.indexOf(":") >= 0 && label2.indexOf(":") < 0) {
-					return 1;
-				} else if (label1.indexOf(":") < 0 && label2.indexOf(":") >= 0) {
-					return -1;
-				}
-
-				return label1.toLowerCase().compareTo(label2.toLowerCase());
-			}
-		});
-
-		final DropDownChoice<String> typeChooser = new DropDownChoice<String>("type",
+		final List<String> gradingSchemaList = new ArrayList<>(gradeMappingMap.keySet());
+		final DropDownChoice<String> typeChooser = new DropDownChoice<>("type",
 				new PropertyModel<String>(this.model, "gradebookInformation.selectedGradeMappingId"), gradingSchemaList,
 				new ChoiceRenderer<String>() {
 					private static final long serialVersionUID = 1L;
@@ -208,7 +190,7 @@ public class SettingsGradingSchemaPanel extends BasePanel implements IFormModelU
 		typeChooser.setModelObject(this.currentGradeMappingId);
 		settingsGradingSchemaPanel.add(typeChooser);
 
-		//add warning if the schema has been modified
+		// add warning if the schema has been modified
 		this.modifiedSchema = new Label("modifiedSchema", new ResourceModel("settingspage.gradingschema.modified.note"));
 		this.modifiedSchema.setVisible(SettingsGradingSchemaPanel.this.schemaModifiedFromDefault);
 		this.modifiedSchema.setOutputMarkupPlaceholderTag(true);
@@ -225,11 +207,6 @@ public class SettingsGradingSchemaPanel extends BasePanel implements IFormModelU
 		this.duplicateEntries.setVisible(false);
 		this.duplicateEntries.setOutputMarkupPlaceholderTag(true);
 		settingsGradingSchemaPanel.add(this.duplicateEntries);
-
-		this.duplicatePercentages = new Label("duplicatePercentages", new ResourceModel("settingspage.gradingschema.duplicatepercentages.warning"));
-		this.duplicatePercentages.setVisible(false);
-		this.duplicatePercentages.setOutputMarkupPlaceholderTag(true);
-		settingsGradingSchemaPanel.add(this.duplicatePercentages);
 
 		// render the grading schema table
 		this.schemaWrap = new WebMarkupContainer("schemaWrap");
@@ -306,6 +283,9 @@ public class SettingsGradingSchemaPanel extends BasePanel implements IFormModelU
 
 				// refresh chart
 				refreshCourseGradeChart(target);
+
+				// refresh stats
+				refreshStats(target);
 			}
 		});
 
@@ -324,8 +304,8 @@ public class SettingsGradingSchemaPanel extends BasePanel implements IFormModelU
 				// repaint table
 				target.add(SettingsGradingSchemaPanel.this.schemaWrap);
 
-				// Note that we don't need to worry about showing warnings about modifications here as the change notifications will handle
-				// that once a value has been added to the schema
+				// focus the new grading schema input
+				target.appendJavaScript("sakai.gradebookng.settings.gradingschemas.focusLastRow();");
 			}
 		};
 		addMapping.setDefaultFormProcessing(false);
@@ -342,28 +322,13 @@ public class SettingsGradingSchemaPanel extends BasePanel implements IFormModelU
 					}
 				});
 
-		// other stats
-		// TODO this could be in a panel/fragment of its own
+		// stats
 		this.statsWrap = new WebMarkupContainer("statsWrap");
 		this.statsWrap.setOutputMarkupId(true);
 		settingsGradingSchemaPanel.add(this.statsWrap);
 
-		this.statistics = calculateStatistics();
-
-		this.statsWrap.add(new Label("averagegpa", getAverageGPA()) {
-			private static final long serialVersionUID = 1L;
-
-			@Override
-			public boolean isVisible() {
-				return StringUtils.equals(SettingsGradingSchemaPanel.this.gradingSchemaName, "Grade Points");
-			}
-		});
-		this.statsWrap.add(new Label("average", getMean(this.statistics)));
-		this.statsWrap.add(new Label("median", getMedian(this.statistics)));
-		this.statsWrap.add(new Label("lowest", getMin(this.statistics)));
-		this.statsWrap.add(new Label("highest", getMax(this.statistics)));
-		this.statsWrap.add(new Label("deviation", getStandardDeviation(this.statistics)));
-		this.statsWrap.add(new Label("graded", String.valueOf(this.total)));
+		this.stats = new CourseGradeStatistics("stats", getStatsData());
+		this.statsWrap.add(this.stats);
 
 		// if there are course grade overrides, add the list of students
 		final List<GbUser> usersWithOverrides = getStudentsWithCourseGradeOverrides();
@@ -382,7 +347,7 @@ public class SettingsGradingSchemaPanel extends BasePanel implements IFormModelU
 		});
 
 		// chart
-		this.chart = new GbCourseGradeChart("gradingSchemaChart", getCurrentSiteId());
+		this.chart = new CourseGradeChart("gradingSchemaChart", getCurrentSiteId(), null);
 		settingsGradingSchemaPanel.add(this.chart);
 	}
 
@@ -410,6 +375,15 @@ public class SettingsGradingSchemaPanel extends BasePanel implements IFormModelU
 	 * @return the list of {@link GbGradingSchemaEntry} for the currently selected grading schema id
 	 */
 	private List<GbGradingSchemaEntry> getGradingSchemaEntries() {
+		return SettingsHelper.asList(getBottomPercents());
+	}
+
+	/**
+	 * Helper to determine and return the applicable grading schema bottom percents, depending on current state
+	 *
+	 * @return the mappings
+	 */
+	private Map<String, Double> getBottomPercents() {
 
 		// get configured values or defaults
 		// need to retain insertion order
@@ -427,7 +401,7 @@ public class SettingsGradingSchemaPanel extends BasePanel implements IFormModelU
 					getGradingSchema(this.currentGradeMappingId).getDefaultBottomPercents());
 		}
 
-		return SettingsHelper.asList(bottomPercents);
+		return bottomPercents;
 	}
 
 	public boolean isExpanded() {
@@ -465,127 +439,6 @@ public class SettingsGradingSchemaPanel extends BasePanel implements IFormModelU
 	}
 
 	/**
-	 * Calculates stats based on the calculated course grade values, excluding any empty grades
-	 *
-	 * @return {@link DescriptiveStatistics}
-	 */
-	private DescriptiveStatistics calculateStatistics() {
-
-		final List<Double> grades = this.courseGradeMap.values().stream().filter(c -> StringUtils.isNotBlank(c.getMappedGrade()))
-				.map(c -> NumberUtils.toDouble(c.getCalculatedGrade()))
-				.collect(Collectors.toList());
-
-		final DescriptiveStatistics stats = new DescriptiveStatistics();
-
-		grades.forEach(g -> {
-			stats.addValue(g);
-		});
-
-		return stats;
-	}
-
-	/**
-	 * Calculates the average GPA for the course
-	 *
-	 * @return String average GPA
-	 */
-	private String getAverageGPA() {
-
-		if (this.total < 1 && StringUtils.equals(this.gradingSchemaName, "Grade Points")) {
-			return "-";
-		} else if (StringUtils.equals(this.gradingSchemaName, "Grade Points")) {
-			final Map<String, Double> gpaScoresMap = getGPAScoresMap();
-
-			// get all of the non null mapped grades
-			// mapped grades will be null if the student doesn't have a course grade yet.
-			final List<String> mappedGrades = this.courseGradeMap.values().stream().filter(c -> c.getMappedGrade() != null)
-					.map(c -> (c.getMappedGrade())).collect(Collectors.toList());
-			Double averageGPA = 0.0;
-			for (final String mappedGrade : mappedGrades) {
-				// Note to developers. If you changed GradePointsMapping without changing gpaScoresMap, the average will be incorrect.
-				// As per GradePointsMapping, both must be kept in sync
-				final Double grade = gpaScoresMap.get(mappedGrade);
-				if (grade != null) {
-					averageGPA += grade;
-				} else {
-					log.debug(
-							"Grade skipped when calculating course average GPA: " + mappedGrade + ". Calculated value will be incorrect.");
-				}
-			}
-			averageGPA /= mappedGrades.size();
-
-			return String.format("%.2f", averageGPA);
-		} else {
-			return null;
-		}
-	}
-
-	/**
-	 * Calculates the mean grade for the course
-	 *
-	 * @return String mean grade
-	 */
-	private String getMean(final DescriptiveStatistics stats) {
-		return this.total > 0 ? String.format("%.2f", stats.getMean()) : "-";
-	}
-
-	/**
-	 * Calculates the median grade for the course
-	 *
-	 * @return String median grade
-	 */
-	private String getMedian(final DescriptiveStatistics stats) {
-		return this.total > 0 ? String.format("%.2f", stats.getPercentile(50)) : "-";
-	}
-
-	/**
-	 * Calculates the min grade for the course
-	 *
-	 * @return String min grade
-	 */
-	private String getMin(final DescriptiveStatistics stats) {
-		return this.total > 0 ? String.format("%.2f", stats.getMin()) : "-";
-	}
-
-	/**
-	 * Calculates the max grade for the course
-	 *
-	 * @return String max grade
-	 */
-	private String getMax(final DescriptiveStatistics stats) {
-		return this.total > 0 ? String.format("%.2f", stats.getMax()) : "-";
-	}
-
-	/**
-	 * Calculates the standard deviation for the course
-	 *
-	 * @return String standard deviation
-	 */
-	private String getStandardDeviation(final DescriptiveStatistics stats) {
-		return this.total > 0 ? String.format("%.2f", stats.getStandardDeviation()) : "-";
-	}
-
-	/**
-	 *
-	 */
-	private Map<String, Double> getGPAScoresMap() {
-		final Map<String, Double> gpaScoresMap = new HashMap<>();
-		gpaScoresMap.put("A (4.0)", Double.valueOf("4.0"));
-		gpaScoresMap.put("A- (3.67)", Double.valueOf("3.67"));
-		gpaScoresMap.put("B+ (3.33)", Double.valueOf("3.33"));
-		gpaScoresMap.put("B (3.0)", Double.valueOf("3.0"));
-		gpaScoresMap.put("B- (2.67)", Double.valueOf("2.67"));
-		gpaScoresMap.put("C+ (2.33)", Double.valueOf("2.33"));
-		gpaScoresMap.put("C (2.0)", Double.valueOf("2.0"));
-		gpaScoresMap.put("C- (1.67)", Double.valueOf("1.67"));
-		gpaScoresMap.put("D (1.0)", Double.valueOf("1.0"));
-		gpaScoresMap.put("F (0)", Double.valueOf("0"));
-
-		return gpaScoresMap;
-	}
-
-
-	/**
 	 * Get the total number of course grades, excluding empty grades
 	 *
 	 * @param map
@@ -621,29 +474,6 @@ public class SettingsGradingSchemaPanel extends BasePanel implements IFormModelU
 	}
 
 	/**
-	 * Has the page model's grade mapping been changed from the stored one?
-	 *
-	 * @return
-	 */
-	private boolean isDirty() {
-
-		// Note that the maps must be HashMaps for the comparison to work properly due to TreeMap.equals() != HashMap.equals().
-
-		//get current values
-		final List<GbGradingSchemaEntry> currentValues = SettingsGradingSchemaPanel.this.model.getObject().getGradingSchemaEntries();
-		final Map<String, Double> currentGradeMapping = new HashMap<>(SettingsHelper.asMap(currentValues));
-
-		// get stored values
-		final GradeMappingDefinition storedValues = getGradingSchema(this.currentGradeMappingId);
-		final Map<String, Double> storedGradeMapping = new HashMap<>(storedValues.getGradeMap());
-
-		return !currentGradeMapping.equals(storedGradeMapping);
-	}
-
-
-
-
-	/**
 	 * Class to encapsulate the refresh of components when a change is made to the grading schema
 	 */
 	class GradingSchemaChangeBehaviour extends AjaxFormComponentUpdatingBehavior {
@@ -661,9 +491,12 @@ public class SettingsGradingSchemaPanel extends BasePanel implements IFormModelU
 		@Override
 		protected void onUpdate(final AjaxRequestTarget t) {
 			this.target = t;
+			this.target.prependJavaScript("sakai.gradebookng.settings.gradingschemas.getFocusedCell();");
 			refreshGradingSchemaTable();
 			refreshCourseGradeChart(this.target);
 			refreshMessages();
+			this.target.appendJavaScript("sakai.gradebookng.settings.gradingschemas.focusPreviousCell();");
+			this.target.appendJavaScript("sakai.gradebookng.settings.gradingschemas.addCategoryFunction();");
 		}
 
 		/**
@@ -677,7 +510,6 @@ public class SettingsGradingSchemaPanel extends BasePanel implements IFormModelU
 			this.target.add(SettingsGradingSchemaPanel.this.schemaWrap);
 		}
 
-
 		/**
 		 * Refresh messages
 		 */
@@ -686,6 +518,26 @@ public class SettingsGradingSchemaPanel extends BasePanel implements IFormModelU
 			// check if schema has changed from the persistent values and show the warning
 			SettingsGradingSchemaPanel.this.unsavedSchema.setVisible(isDirty());
 			this.target.add(SettingsGradingSchemaPanel.this.unsavedSchema);
+		}
+
+		/**
+		 * Has the page model's grade mapping been changed from the stored one?
+		 *
+		 * @return
+		 */
+		private boolean isDirty() {
+
+			// Note that the maps must be HashMaps for the comparison to work properly due to TreeMap.equals() != HashMap.equals().
+
+			// get current values
+			final List<GbGradingSchemaEntry> currentValues = SettingsGradingSchemaPanel.this.model.getObject().getGradingSchemaEntries();
+			final Map<String, Double> currentGradeMapping = new HashMap<>(SettingsHelper.asMap(currentValues));
+
+			// get stored values
+			final GradeMappingDefinition storedValues = getGradingSchema(SettingsGradingSchemaPanel.this.currentGradeMappingId);
+			final Map<String, Double> storedGradeMapping = new HashMap<>(storedValues.getGradeMap());
+
+			return !currentGradeMapping.equals(storedGradeMapping);
 		}
 
 	}
@@ -707,8 +559,7 @@ public class SettingsGradingSchemaPanel extends BasePanel implements IFormModelU
 	 * @return {@link GbGradingSchemaEntry}
 	 */
 	private GbGradingSchemaEntry stubGradingSchemaMapping() {
-		final GbGradingSchemaEntry entry = new GbGradingSchemaEntry(null, null);
-		return entry;
+		return new GbGradingSchemaEntry(null, null);
 	}
 
 	/**
@@ -723,13 +574,36 @@ public class SettingsGradingSchemaPanel extends BasePanel implements IFormModelU
 		// add warning for duplicates
 		this.duplicateEntries.setVisible(SettingsHelper.hasDuplicates(schemaList));
 		target.add(this.duplicateEntries);
-		this.duplicatePercentages.setVisible(SettingsHelper.hasDuplicatePercentages(schemaList));
-		target.add(this.duplicatePercentages);
 
 		// refresh the chart
 		Map<String, Double> schemaMap = SettingsHelper.asMap(schemaList);
 		schemaMap = GradeMappingDefinition.sortGradeMapping(schemaMap);
 		this.chart.refresh(target, schemaMap);
+	}
+
+	/**
+	 * Get the stats data we need for {@link CourseGradeStatistics}
+	 *
+	 * @return Model of data
+	 */
+	private IModel<Map<String, Object>> getStatsData() {
+		final Map<String, Object> data = new HashMap<>();
+		data.put("courseGradeMap", this.courseGradeMap);
+		data.put("gradingSchemaName", this.gradingSchemaName);
+		data.put("bottomPercents", getBottomPercents());
+		return Model.ofMap(data);
+	}
+
+	/**
+	 * Refresh the stats (replace the panels)
+	 *
+	 * @param target
+	 */
+	private void refreshStats(final AjaxRequestTarget target) {
+		final CourseGradeStatistics newStats = new CourseGradeStatistics("stats", getStatsData());
+		this.stats.replaceWith(newStats);
+		target.add(newStats);
+		this.stats = newStats;
 	}
 
 }

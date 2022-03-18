@@ -31,14 +31,10 @@ import java.util.Collections;
 import java.util.List;
 
 import javax.imageio.ImageIO;
-import java.nio.file.Paths;
-import java.security.MessageDigest;
 
-import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import org.sakaiproject.memory.api.Cache;
 import org.sakaiproject.profile2.cache.CacheManager;
@@ -58,8 +54,8 @@ import org.sakaiproject.profile2.util.ProfileConstants;
 import org.sakaiproject.profile2.util.ProfileUtils;
 import org.sakaiproject.user.api.User;
 
-import java.io.UnsupportedEncodingException;
-import java.security.NoSuchAlgorithmException;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Implementation of ProfileImageLogic API
@@ -1145,7 +1141,7 @@ public class ProfileImageLogicImpl implements ProfileImageLogic {
 			BufferedImage bufferedImage = new BufferedImage(ProfileConstants.PROFILE_AVATAR_WIDTH, ProfileConstants.PROFILE_AVATAR_HEIGHT, BufferedImage.TYPE_INT_ARGB);
 
 			String displayName = sakaiProxy.getUserDisplayName(userUuid);
-			String[] names = displayName.split(" ");
+			String[] names = displayName.trim().split("\\s+");
 			String initials = "";
 			int fontSize;
 			int profileInitialsSize = Integer.parseInt(sakaiProxy.getServerConfigurationParameter("profile2.avatar.initials.size", "2"));

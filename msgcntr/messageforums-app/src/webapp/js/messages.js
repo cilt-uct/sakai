@@ -72,7 +72,7 @@ $(document).ready(function(){
 		                width: '50px' 
 		            } 
 		        }); 
-		        setTimeout($.unblockUI, 10000); 			  
+		        setTimeout($.unblockUI, 10000);
 			  });
 		    });
 	  }
@@ -92,3 +92,26 @@ function addTagSelector(obj) {
   	}
 }
 
+$(document).ready(function(){
+
+    $("#prefs_pvt_form\\:pvtmsgs\\:checkAll, #prefs_pvt_form\\:threaded_pvtmsgs\\:checkAll").click(function () {
+        $('input:checkbox').not(this).prop('checked', this.checked);
+        if(this.checked){
+            toggleBulkOperations(true, 'prefs_pvt_form');
+        }else{
+            toggleBulkOperations(false, 'prefs_pvt_form');
+        }
+    });
+
+    $('#prefs_pvt_form\\:search_by_date').change( function(){
+      $('#prefs_pvt_form\\:pvt_beg_date, #prefs_pvt_form\\:pvt_end_date').toggleClass('showed');
+    });
+
+    $('#prefs_pvt_form\\:advanced_search_button').mousedown( function(){
+      var searchByDateCheckbox = $('#prefs_pvt_form\\:search_by_date');
+      if(searchByDateCheckbox.is(":checked") && !$('#prefs_pvt_form\\:pvt_beg_date').hasClass('showed')){
+          $('#prefs_pvt_form\\:pvt_beg_date, #prefs_pvt_form\\:pvt_end_date').toggleClass('showed');
+      }
+    });
+
+});

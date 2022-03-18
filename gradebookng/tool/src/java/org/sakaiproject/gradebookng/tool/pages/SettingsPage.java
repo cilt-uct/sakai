@@ -16,6 +16,7 @@
 package org.sakaiproject.gradebookng.tool.pages;
 
 import java.math.BigDecimal;
+import java.util.HashSet;
 import java.util.List;
 
 import org.apache.wicket.Page;
@@ -27,7 +28,6 @@ import org.apache.wicket.markup.head.JavaScriptHeaderItem;
 import org.apache.wicket.markup.html.form.Button;
 import org.apache.wicket.markup.html.form.Form;
 import org.apache.wicket.model.CompoundPropertyModel;
-import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.gradebookng.business.GbCategoryType;
 import org.sakaiproject.gradebookng.business.util.SettingsHelper;
 import org.sakaiproject.gradebookng.tool.component.GbAjaxLink;
@@ -36,6 +36,8 @@ import org.sakaiproject.gradebookng.tool.panels.SettingsCategoryPanel;
 import org.sakaiproject.gradebookng.tool.panels.SettingsGradeEntryPanel;
 import org.sakaiproject.gradebookng.tool.panels.SettingsGradeReleasePanel;
 import org.sakaiproject.gradebookng.tool.panels.SettingsGradingSchemaPanel;
+import org.sakaiproject.gradebookng.tool.panels.SettingsStatisticsPanel;
+import org.sakaiproject.portal.util.PortalUtils;
 import org.sakaiproject.service.gradebook.shared.CategoryDefinition;
 import org.sakaiproject.service.gradebook.shared.ConflictingCategoryNameException;
 import org.sakaiproject.service.gradebook.shared.GradebookInformation;
@@ -53,6 +55,7 @@ public class SettingsPage extends BasePage {
 
 	private boolean gradeEntryExpanded = false;
 	private boolean gradeReleaseExpanded = false;
+	private boolean statisticsExpanded = false;
 	private boolean categoryExpanded = false;
 	private boolean gradingSchemaExpanded = false;
 
@@ -60,10 +63,11 @@ public class SettingsPage extends BasePage {
 	private static final String SAK_PROP_SHOW_GRADE_ENTRY_TO_NON_ADMINS = "gradebook.settings.gradeEntry.showToNonAdmins";
 	private static final boolean SAK_PROP_SHOW_GRADE_ENTRY_TO_NON_ADMINS_DEFAULT = true;
 
-	SettingsGradeEntryPanel gradeEntryPanel;
-	SettingsGradeReleasePanel gradeReleasePanel;
-	SettingsCategoryPanel categoryPanel;
-	SettingsGradingSchemaPanel gradingSchemaPanel;
+	private SettingsGradeEntryPanel gradeEntryPanel;
+	private SettingsGradeReleasePanel gradeReleasePanel;
+	private SettingsStatisticsPanel statisticsPanel;
+	private SettingsCategoryPanel categoryPanel;
+	private SettingsGradingSchemaPanel gradingSchemaPanel;
 
 	public SettingsPage() {
 
@@ -73,19 +77,20 @@ public class SettingsPage extends BasePage {
 		setShowGradeEntryToNonAdmins();
 	}
 
-	public SettingsPage(final boolean gradeEntryExpanded, final boolean gradeReleaseExpanded,
+	public SettingsPage(final boolean gradeEntryExpanded, final boolean gradeReleaseExpanded, final boolean statisticsExpanded,
 			final boolean categoryExpanded, final boolean gradingSchemaExpanded) {
 
 		this();
 
 		this.gradeEntryExpanded = gradeEntryExpanded;
 		this.gradeReleaseExpanded = gradeReleaseExpanded;
+		this.statisticsExpanded = statisticsExpanded;
 		this.categoryExpanded = categoryExpanded;
 		this.gradingSchemaExpanded = gradingSchemaExpanded;
 	}
 
 	private void setShowGradeEntryToNonAdmins() {
-		this.showGradeEntryToNonAdmins = ServerConfigurationService.getBoolean(SAK_PROP_SHOW_GRADE_ENTRY_TO_NON_ADMINS, SAK_PROP_SHOW_GRADE_ENTRY_TO_NON_ADMINS_DEFAULT);
+		this.showGradeEntryToNonAdmins = this.serverConfigService.getBoolean(SAK_PROP_SHOW_GRADE_ENTRY_TO_NON_ADMINS, SAK_PROP_SHOW_GRADE_ENTRY_TO_NON_ADMINS_DEFAULT);
 	}
 
 	@Override
@@ -101,6 +106,7 @@ public class SettingsPage extends BasePage {
 
 		this.gradeEntryPanel = new SettingsGradeEntryPanel("gradeEntryPanel", formModel, this.gradeEntryExpanded);
 		this.gradeReleasePanel = new SettingsGradeReleasePanel("gradeReleasePanel", formModel, this.gradeReleaseExpanded);
+		this.statisticsPanel = new SettingsStatisticsPanel("statisticsPanel", formModel, this.statisticsExpanded);
 		this.categoryPanel = new SettingsCategoryPanel("categoryPanel", formModel, this.categoryExpanded);
 		this.gradingSchemaPanel = new SettingsGradingSchemaPanel("gradingSchemaPanel", formModel, this.gradingSchemaExpanded);
 
@@ -125,13 +131,25 @@ public class SettingsPage extends BasePage {
 				if (model.getGradebookInformation().getCategoryType() == GbCategoryType.WEIGHTED_CATEGORY.getValue()) {
 
 					BigDecimal totalWeight = BigDecimal.ZERO;
+					HashSet<String> catNames = new HashSet<String>();
 					for (final CategoryDefinition cat : categories) {
 
-						if (cat.getWeight() == null) {
+						BigDecimal catWeight = (cat.getWeight() == null) ? null : new BigDecimal(cat.getWeight());
+						catNames.add(cat.getName());
+						if (catWeight == null) {
 							error(getString("settingspage.update.failure.categorymissingweight"));
-						} else {
+						}
+						else if (catWeight.signum() == -1) {
+							totalWeight = totalWeight.add(BigDecimal.valueOf(cat.getWeight()));
+							error(getString("settingspage.update.failure.categoryweightnegative"));
+						}
+						else if (catWeight.doubleValue() > 1) {
+							totalWeight = totalWeight.add(BigDecimal.valueOf(cat.getWeight()));
+							error(getString("settingspage.update.failure.categoryweightonehundred"));
+						}
+						else {
 							// extra credit items do not participate in the weightings, so exclude from the tally
-							if (!cat.isExtraCredit()) {
+							if (!cat.getExtraCredit()) {
 								totalWeight = totalWeight.add(BigDecimal.valueOf(cat.getWeight()));
 							}
 						}
@@ -146,6 +164,10 @@ public class SettingsPage extends BasePage {
 
 					if (totalWeight.compareTo(BigDecimal.ONE) != 0) {
 						error(getString("settingspage.update.failure.categoryweighttotals"));
+					}
+
+					if (catNames.size() < categories.size()) {
+						error(getString("settingspage.update.failure.categorysamename"));
 					}
 				}
 
@@ -182,9 +204,6 @@ public class SettingsPage extends BasePage {
 				if (SettingsHelper.hasDuplicates(model.getGradingSchemaEntries())) {
 					error(getString("settingspage.gradingschema.duplicates.warning"));
 				}
-				if (SettingsHelper.hasDuplicatePercentages(model.getGradingSchemaEntries())) {
-					error(getString("settingspage.gradingschema.duplicatepercentages.warning"));
-				}
 
 			}
 
@@ -202,7 +221,8 @@ public class SettingsPage extends BasePage {
 				final GbSettings model = (GbSettings) f.getModelObject();
 
 				Page responsePage = new SettingsPage(SettingsPage.this.gradeEntryPanel.isExpanded(),
-						SettingsPage.this.gradeReleasePanel.isExpanded(), SettingsPage.this.categoryPanel.isExpanded(),
+						SettingsPage.this.gradeReleasePanel.isExpanded(), SettingsPage.this.statisticsPanel.isExpanded(),
+						SettingsPage.this.categoryPanel.isExpanded(),
 						SettingsPage.this.gradingSchemaPanel.isExpanded());
 
 				// update settings
@@ -227,6 +247,7 @@ public class SettingsPage extends BasePage {
 			@Override
 			public void onError(final AjaxRequestTarget target, final Form<?> form) {
 				target.add(SettingsPage.this.feedbackPanel);
+				target.appendJavaScript("scroll(0,0);");// Scroll to the top to see the message error
 			}
 		};
 		form.add(submit);
@@ -247,6 +268,7 @@ public class SettingsPage extends BasePage {
 		// panels
 		form.add(this.gradeEntryPanel);
 		form.add(this.gradeReleasePanel);
+		form.add(this.statisticsPanel);
 		form.add(this.categoryPanel);
 		form.add(this.gradingSchemaPanel);
 
@@ -278,14 +300,14 @@ public class SettingsPage extends BasePage {
 	public void renderHead(final IHeaderResponse response) {
 		super.renderHead(response);
 
-		final String version = ServerConfigurationService.getString("portal.cdn.version", "");
+		final String version = PortalUtils.getCDNQuery();
 
 		// Drag and Drop (requires jQueryUI)
 		response.render(
-				JavaScriptHeaderItem.forUrl(String.format("/library/webjars/jquery-ui/1.12.1/jquery-ui.min.js?version=%s", version)));
+				JavaScriptHeaderItem.forUrl(String.format("/library/webjars/jquery-ui/1.12.1/jquery-ui.min.js%s", version)));
 
-		response.render(CssHeaderItem.forUrl(String.format("/gradebookng-tool/styles/gradebook-settings.css?version=%s", version)));
-		response.render(JavaScriptHeaderItem.forUrl(String.format("/gradebookng-tool/scripts/gradebook-settings.js?version=%s", version)));
+		response.render(CssHeaderItem.forUrl(String.format("/gradebookng-tool/styles/gradebook-settings.css%s", version)));
+		response.render(JavaScriptHeaderItem.forUrl(String.format("/gradebookng-tool/scripts/gradebook-settings.js%s", version)));
 
 	}
 

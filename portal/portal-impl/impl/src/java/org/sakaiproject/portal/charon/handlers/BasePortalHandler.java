@@ -21,7 +21,10 @@
 
 package org.sakaiproject.portal.charon.handlers;
 
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Locale;
+import java.util.TimeZone;
 
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
@@ -33,6 +36,7 @@ import org.sakaiproject.portal.api.PortalHandler;
 import org.sakaiproject.portal.api.PortalHandlerException;
 import org.sakaiproject.portal.api.PortalRenderContext;
 import org.sakaiproject.portal.api.PortalService;
+import org.sakaiproject.portal.util.PortalUtils;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.time.api.TimeService;
@@ -198,15 +202,24 @@ public abstract class BasePortalHandler implements PortalHandler
 
 		Locale locale = setSiteLanguage(site);
 		log.debug("Locale for site {} = {}", site.getId(), locale);
-		String localeString = locale.getLanguage();
-		String country = locale.getCountry();
-		if(country.length() > 0) localeString += "-" + country;
-		rcontext.put("locale", localeString);
+
+		rcontext.put("locale", PortalUtils.getLocaleString(locale));
 		rcontext.put("dir", rl.getOrientation(locale));
 
 		if (prevLocale != null && !prevLocale.equals(locale)) {
 			// if the locale was changed, clear the date/time format which was cached in the previous locale
 			timeService.clearLocalTimeZone(userId);
 		}
+	}
+
+	protected void addTimeInfo(PortalRenderContext rcontext) {
+
+		long now = Instant.now().toEpochMilli();
+		rcontext.put("serverTimeMillis", now);
+		TimeZone userTz = timeService.getLocalTimeZone();
+		rcontext.put("userTimezone", userTz.getID());
+		rcontext.put("userTimezoneOffsetMillis", userTz.getOffset(now));
+		String iso8601 = Instant.now().atZone(ZoneId.of(userTz.getID())).toLocalDateTime().toString();
+		rcontext.put("userISO8601Timestamp", iso8601);
 	}
 }

@@ -68,7 +68,8 @@ public class FormattedTextTest {
         // instantiate the services we need for our test
         final IdManager idManager = new UuidV4IdComponent();
         final ThreadLocalManager threadLocalManager = new ThreadLocalComponent();
-        serverConfigurationService = new BasicConfigurationService(); // cannot use home or server methods
+        BasicConfigurationService basicConfigurationService = new BasicConfigurationService(); // cannot use home or server methods
+        basicConfigurationService.setThreadLocalManager(threadLocalManager);
         sessionManager = new SessionComponent() {
             @Override
             protected ToolManager toolManager() {
@@ -94,8 +95,9 @@ public class FormattedTextTest {
         };
 
         // add in the config so we can test it
-        serverConfigurationService.registerConfigItem(BasicConfigItem.makeDefaultedConfigItem("content.cleaner.errors.handling", "return", "FormattedTextTest"));
-        serverConfigurationService.registerConfigItem(BasicConfigItem.makeDefaultedConfigItem("content.cleaner.referrer-policy", "noopener", "FormattedTextTest"));
+        basicConfigurationService.registerConfigItem(BasicConfigItem.makeDefaultedConfigItem("content.cleaner.errors.handling", "return", "FormattedTextTest"));
+        basicConfigurationService.registerConfigItem(BasicConfigItem.makeDefaultedConfigItem("content.cleaner.referrer-policy", "noopener", "FormattedTextTest"));
+        serverConfigurationService = basicConfigurationService;
 
         ComponentManager.testingMode = true;
         // instantiate what we are testing
@@ -116,8 +118,8 @@ public class FormattedTextTest {
     @Test
     public void testProcessAnchor() {
         // Check we add the target attribute
-    	Assert.assertEquals("<a  href=\"http://sakaiproject.org/\" target=\"_blank\" rel=\"noopener\">", formattedText
-                .processAnchor("<a href=\"http://sakaiproject.org/\">"));
+    	Assert.assertEquals("<a  href=\"https://www.sakailms.org/\" target=\"_blank\" rel=\"noopener\">", formattedText
+                .processAnchor("<a href=\"https://www.sakailms.org/\">"));
     }
 
     @Test
@@ -141,14 +143,18 @@ public class FormattedTextTest {
 
     @Test
     public void testRegexTargetMatch() {
-        Pattern patternAnchorTagWithOutTarget = formattedText.M_patternAnchorTagWithOutTarget;
-        /*  Pattern.compile("([<]a\\s)(?![^>]*target=)([^>]*?)[>]",
+        Pattern patternAnchorTagWithOutTarget = formattedText.M_patternAnchorTagWithOutTargetAndWithHrefAndHrefNotStartingWithHash;
+        /*  Pattern.compile("([<]a\s)(?=[^>]*href=)(?![^>]*href="#)(?![^>]*target=)([^>]*?)[>]",
             Pattern.CASE_INSENSITIVE | Pattern.DOTALL); */
         Assert.assertTrue(patternAnchorTagWithOutTarget.matcher("<a href=\"other.html\">link</a>").find());
         Assert.assertFalse(patternAnchorTagWithOutTarget.matcher("<a target=\"AZ\" href=\"other.html\">link</a>").find());
         Assert.assertTrue(patternAnchorTagWithOutTarget.matcher("<a href=\"other.html\" class=\"AZ\">link</a>").find());
         Assert.assertFalse(patternAnchorTagWithOutTarget.matcher("<a target=\"AZ\" href=\"other.html\">link</a>").find());
         Assert.assertFalse(patternAnchorTagWithOutTarget.matcher("<a href=\"other.html\" target=\"AZ\">link</a>").find());
+
+        Assert.assertFalse(patternAnchorTagWithOutTarget.matcher("<a name=\"anchor\">link</a>").find());
+        Assert.assertFalse(patternAnchorTagWithOutTarget.matcher("<a href=\"#other\" target=\"AZ\">link</a>").find());
+        Assert.assertFalse(patternAnchorTagWithOutTarget.matcher("<a href=\"#other\">link</a>").find());
     }
 
     @Test
@@ -860,8 +866,8 @@ public class FormattedTextTest {
     public void testEscapeHrefUrl() {
         // https://jira.sakaiproject.org/browse/KNL-1105
         String output = null;
-        output = formattedText.sanitizeHrefURL("http://www.sakaiproject.org/?x=Hello World&y=12");
-        Assert.assertTrue(output,"http://www.sakaiproject.org/?x=Hello%20World&y=12".equals(output));
+        output = formattedText.sanitizeHrefURL("https://www.sakailms.org/?x=Hello World&y=12");
+        Assert.assertTrue(output,"https://www.sakailms.org/?x=Hello%20World&y=12".equals(output));
         output = formattedText.sanitizeHrefURL("http://www.abc.es#\"><script>");
         Assert.assertTrue(output,"http://www.abc.es#%22%3E%3Cscript%3E".equals(output));
         output = formattedText.sanitizeHrefURL("http://www.abc.es/page#anchor");
@@ -907,22 +913,22 @@ public class FormattedTextTest {
 
     @Test
     public void testCanDoSsl() {
-        Assert.assertEquals("<a href=\"https://sakaiproject.org\">https://sakaiproject.org</a>", formattedText.encodeUrlsAsHtml("https://sakaiproject.org"));
+        Assert.assertEquals("<a href=\"https://www.sakailms.org\">https://www.sakailms.org</a>", formattedText.encodeUrlsAsHtml("https://www.sakailms.org"));
     }
 
     @Test
     public void testCanIgnoreTrailingExclamation() {
-        Assert.assertEquals("Hey, it's <a href=\"http://sakaiproject.org\">http://sakaiproject.org</a>!", formattedText.encodeUrlsAsHtml("Hey, it's http://sakaiproject.org!"));
+        Assert.assertEquals("Hey, it's <a href=\"https://www.sakailms.org/\">https://www.sakailms.org/</a>!", formattedText.encodeUrlsAsHtml("Hey, it's https://www.sakailms.org/!"));
     }
 
     @Test
     public void testCanIgnoreTrailingQuestion() {
-        Assert.assertEquals("Have you ever seen <a href=\"http://sakaiproject.org\">http://sakaiproject.org</a>? Just wondering.", formattedText.encodeUrlsAsHtml("Have you ever seen http://sakaiproject.org? Just wondering."));
+        Assert.assertEquals("Have you ever seen <a href=\"https://www.sakailms.org/\">https://www.sakailms.org/</a>? Just wondering.", formattedText.encodeUrlsAsHtml("Have you ever seen https://www.sakailms.org/? Just wondering."));
     }
 
     @Test
     public void testCanEncodeQueryString() {
-        Assert.assertEquals("See <a href=\"http://sakaiproject.org/index.php?task=blogcategory&id=181\">http://sakaiproject.org/index.php?task=blogcategory&amp;id=181</a> for more info.", formattedText.encodeUrlsAsHtml(formattedText.escapeHtml("See http://sakaiproject.org/index.php?task=blogcategory&id=181 for more info.")));
+        Assert.assertEquals("See <a href=\"https://www.sakailms.org/index.php?task=blogcategory&id=181\">https://www.sakailms.org/index.php?task=blogcategory&amp;id=181</a> for more info.", formattedText.encodeUrlsAsHtml(formattedText.escapeHtml("See https://www.sakailms.org/index.php?task=blogcategory&id=181 for more info.")));
     }
 
     @Test
@@ -937,7 +943,7 @@ public class FormattedTextTest {
 
     @Test
     public void testCanIgnoreExistingHref() {
-        Assert.assertEquals("<a href=\"http://sakaiproject.org\">Sakai Project</a>", formattedText.encodeUrlsAsHtml("<a href=\"http://sakaiproject.org\">Sakai Project</a>"));
+        Assert.assertEquals("<a href=\"https://www.sakailms.org/\">Sakai Project</a>", formattedText.encodeUrlsAsHtml("<a href=\"https://www.sakailms.org/\">Sakai Project</a>"));
     }
 
     @Test
@@ -1141,8 +1147,8 @@ public class FormattedTextTest {
         String result = null;
         StringBuilder errorMessages = new StringBuilder();
 
-        String anchor = "<a href=\"http://sakaiproject.org/\">sakaiproject</a>";
-        String expectedAnchor = "<a href=\"http://sakaiproject.org/\" target=\"_blank\" rel=\"noopener\">sakaiproject</a>";
+        String anchor = "<a href=\"https://www.sakailms.org/\">sakaiproject</a>";
+        String expectedAnchor = "<a href=\"https://www.sakailms.org/\" target=\"_blank\" rel=\"noopener\">sakaiproject</a>";
 
         //Process the anchor, there shouldn't be any error messages or changes, but it does insert target and noopener which should pass
         result = formattedText.processFormattedText(anchor,errorMessages);
@@ -1153,6 +1159,56 @@ public class FormattedTextTest {
         result = formattedText.processFormattedText(result,errorMessages);
         Assert.assertTrue( errorMessages.length() == 0 );
         Assert.assertEquals(result, expectedAnchor);
+    }
+    
+    @Test
+    public void testSVGWithEmbeddedJavascript() {
+    	StringBuilder errorMessages = new StringBuilder();
+    	String svg = "<?xml version=\"1.0\" standalone=\"no\"?>\n" + 
+    			"<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n" + 
+    			"\n" + 
+    			"<svg version=\"1.1\" baseProfile=\"full\" xmlns=\"http://www.w3.org/2000/svg\">\n" + 
+    			"   <polygon id=\"triangle\" points=\"0,0 0,50 50,0\" fill=\"#009900\" stroke=\"#004400\"/>\n" + 
+    			"   <script type=\"text/javascript\">\n" + 
+    			"      alert(document.cookie);\n" + 
+    			"   </script>\n" + 
+    			"</svg>";
+    	
+    	String result = formattedText.processFormattedText(svg, errorMessages, Level.HIGH);
+    	Assert.assertFalse( result.contains("<script") );
+    }
+    
+    @Test
+    public void testH5PEmbed() {
+    	// SAK-43740: h5p.com will always have a sub-domain. h5p.org will never have a sub-domain.
+    	StringBuilder errorMessages = new StringBuilder();
+    	String h5pEmbed = "<iframe src=\"https://falcon.h5p.com/content/1290422385430463737/embed\" width=\"1088\" height=\"673\" frameborder=\"0\" allowfullscreen=\"allowfullscreen\" " + 
+    			"allow=\"geolocation *; microphone *; camera *; midi *; encrypted-media *\"></iframe><script src=\"https://falcon.h5p.com/js/h5p-resizer.js\" charset=\"UTF-8\"></script>";
+    	
+    	String result = formattedText.processFormattedText(h5pEmbed, errorMessages, Level.HIGH);
+    	Assert.assertFalse( result.contains("<script") );
+    	Assert.assertTrue( result.contains("falcon.h5p.com") );
+    	
+    	h5pEmbed = "<iframe src=\"https://h5p.com/content/1290422385430463737/embed\" width=\"1088\" height=\"673\" frameborder=\"0\" allowfullscreen=\"allowfullscreen\" " + 
+    			"allow=\"geolocation *; microphone *; camera *; midi *; encrypted-media *\"></iframe><script src=\"https://falcon.h5p.com/js/h5p-resizer.js\" charset=\"UTF-8\"></script>";
+    	
+    	result = formattedText.processFormattedText(h5pEmbed, errorMessages, Level.HIGH);
+    	Assert.assertFalse( result.contains("<script") );
+    	Assert.assertFalse( result.contains("h5p.com") );
+    	
+    	h5pEmbed = "<iframe src=\"https://h5p.org/content/1290422385430463737/embed\" width=\"1088\" height=\"673\" frameborder=\"0\" allowfullscreen=\"allowfullscreen\" " + 
+    			"allow=\"geolocation *; microphone *; camera *; midi *; encrypted-media *\"></iframe><script src=\"https://falcon.h5p.com/js/h5p-resizer.js\" charset=\"UTF-8\"></script>";
+    	
+    	result = formattedText.processFormattedText(h5pEmbed, errorMessages, Level.HIGH);
+    	Assert.assertFalse( result.contains("<script") );
+    	Assert.assertTrue( result.contains("h5p.org") );
+    	
+    	h5pEmbed = "<iframe src=\"https://EVILSITE-h5p.org/content/1290422385430463737/embed\" width=\"1088\" height=\"673\" frameborder=\"0\" allowfullscreen=\"allowfullscreen\" " + 
+    			"allow=\"geolocation *; microphone *; camera *; midi *; encrypted-media *\"></iframe><script src=\"https://falcon.h5p.com/js/h5p-resizer.js\" charset=\"UTF-8\"></script>";
+    	
+    	result = formattedText.processFormattedText(h5pEmbed, errorMessages, Level.HIGH);
+    	Assert.assertFalse( result.contains("<script") );
+    	Assert.assertFalse( result.contains("h5p.org") );
     }
     
     @Test
@@ -1170,5 +1226,36 @@ public class FormattedTextTest {
         Assert.assertEquals("", result);
     }
 
+    @Test
+    public void testLocalIframeSrc() {
+        String url = serverConfigurationService.getServerUrl() + "/access/basiclti/site/0f68e843-1f0c-473d-b469-852a49ea0f05/content:62";
+        String contentItemIframe = "<iframe allowfullscreen=\"true\" class=\"lti-iframe\" height=\"402\" mozallowfullscreen=\"true\" src=\""
+                + url + "\" title=\"Test LTI Content Item Iframe\" webkitallowfullscreen=\"true\" width=\"608\"></iframe>";
+        StringBuilder errorMessages = new StringBuilder();
+        String result = formattedText.processFormattedText(contentItemIframe, errorMessages, Level.HIGH);
+        Assert.assertTrue(errorMessages.indexOf("src") == -1);
+        Assert.assertTrue(result.contains("src=\"" + url + "\""));
+    }
+
+    @Test
+    public void testEscapedHtmlBeingStripped() {
+    	String html = "<pre>\n" + 
+    			"1:  &lt;html&gt;\n" + 
+    			"2:    &lt;head&gt;\n" + 
+    			"3:      &lt;title&gt;Example&lt;/title&gt;\n" + 
+    			"4:    &lt;/head&gt;\n" + 
+    			"5:    &lt;body&gt;\n" + 
+    			"6:      &lt;ul id=&#39;myList&#39;&gt;\n" + 
+    			"7:        &lt;li&gt;Item 1&lt;/li&gt;\n" + 
+    			"8:      &lt;/ul&gt;\n" + 
+    			"9:    &lt;/body&gt;\n" + 
+    			"10: &lt;/html&gt;\n" + 
+    			"</pre>";
+    	
+    	String result = formattedText.stripHtmlFromText( html, false, true ).trim();
+    	Assert.assertTrue(result.contains("<html>"));
+    	result = formattedText.stripHtmlFromText( html, false, false ).trim();
+    	Assert.assertFalse(result.contains("<html>"));
+    }
 
 }

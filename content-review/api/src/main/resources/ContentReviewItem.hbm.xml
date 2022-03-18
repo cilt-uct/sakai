@@ -10,7 +10,7 @@
         </id>
         <version      name="version"            column="VERSION"            type="integer" />
         <properties   name="CONTENT_PROVIDER_CONSTRAINT" unique="true" insert="true">
-            <property name="providerId"         column="PROVIDERID"          type="integer"              not-null="true" index="contentreview_provider_id_idx"/>
+            <property name="providerId"         column="PROVIDERID"          type="integer"             not-null="true"/>
             <property name="contentId"          column="CONTENTID"          type="string" length="255"  not-null="true"/>
         </properties>
         <property     name="userId"             column="USERID"             type="string" length="255"  not-null="false" />
@@ -22,7 +22,7 @@
         <property     name="dateReportReceived" column="DATEREPORTRECEIVED" type="java.util.Date"       not-null="false" />
         <property     name="status"             column="STATUS"             type="long" length="255"    not-null="false" />
         <property     name="reviewScore"        column="REVIEWSCORE"        type="java.lang.Integer"    not-null="false" />
-        <property     name="lastError"          column="LASTERROR"          type="materialized_clob"                 not-null="false" />
+        <property     name="lastError"          column="LASTERROR"          type="text"                 not-null="false" />
         <property     name="retryCount"         column="RETRYCOUNT"         type="long"                 not-null="false" />
         <property     name="nextRetryTime"      column="NEXTRETRYTIME"      type="java.util.Date"       not-null="true" />
         <property     name="errorCode"          column="ERRORCODE"          type="integer"              not-null="false" />

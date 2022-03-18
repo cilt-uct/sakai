@@ -125,7 +125,6 @@ public final class AssignmentConstants {
     /**
      * Calendar event field for assignment due dates
      */
-    public static final String NEW_ASSIGNMENT_DUEDATE_CALENDAR_ASSIGNMENT_ID = "new_assignment_duedate_calendar_assignment_id";
     public static final String NEW_ASSIGNMENT_DUE_DATE_SCHEDULED = "new_assignment_due_date_scheduled";
     public static final String NEW_ASSIGNMENT_OPEN_DATE_ANNOUNCED = "new_assignment_open_date_announced";
     /**
@@ -146,6 +145,7 @@ public final class AssignmentConstants {
     public static final String ASSN_SUBMISSION_TYPE_INLINE_AND_ATTACHMENTS_PROP = "inlinatt";
     public static final String ASSN_SUBMISSION_TYPE_NON_ELECTRONIC_PROP = "nonelec";
     public static final String ASSN_SUBMISSION_TYPE_SINGLE_ATTACHMENT_PROP = "singleatt";
+    public static final String ASSN_SUBMISSION_TYPE_EXTERNAL_TOOL = "externaltool";
     public static final String ASSN_SUBMISSION_TYPE_UNKNOWN_PROP = "submission.type.unknown";
     /**
      * Ungraded grade type string
@@ -175,9 +175,6 @@ public final class AssignmentConstants {
      */
     // public static final int ASSIGNMENT_SUBMISSION_TYPE_NOT_SET = -1; change to 0
 
-    public static final int HONOR_PLEDGE_NOT_SET = -1;
-    public static final int HONOR_PLEDGE_NONE = 1;
-    public static final int HONOR_PLEDGE_ENGINEERING = 2;
     // the option of email notification setting per assignment about student submissions
     public static final String ASSIGNMENT_INSTRUCTOR_NOTIFICATIONS_VALUE = "assignment_instructor_notifications_value";
     // no email to instructor
@@ -223,6 +220,38 @@ public final class AssignmentConstants {
     public static final String REVIEW_STATUS = "review_status";
     public static final String REVIEW_ICON = "review_icon";
     public static final String REVIEW_ERROR = "review_error";
+    /**
+     * Is the review service available?
+     */
+    public static final String NEW_ASSIGNMENT_USE_REVIEW_SERVICE = "new_assignment_use_review_service";
+    public static final String NEW_ASSIGNMENT_ALLOW_STUDENT_VIEW = "new_assignment_allow_student_view";
+    public static final String NEW_ASSIGNMENT_REVIEW_SERVICE_SUBMIT_RADIO = "submit_papers_to";
+    public static final String NEW_ASSIGNMENT_REVIEW_SERVICE_SUBMIT_NONE = "0";
+    public static final String NEW_ASSIGNMENT_REVIEW_SERVICE_SUBMIT_STANDARD = "1";
+    public static final String NEW_ASSIGNMENT_REVIEW_SERVICE_SUBMIT_INSITUTION = "2";
+    // When to generate reports
+    // although the service allows for a value of "1" --> Generate report immediately but overwrite until due date,
+    // this doesn't make sense for assignment2. We limit the UI to 0 - Immediately
+    // or 2 - On Due Date
+    public static final String NEW_ASSIGNMENT_REVIEW_SERVICE_REPORT_RADIO = "report_gen_speed";
+    public static final String NEW_ASSIGNMENT_REVIEW_SERVICE_REPORT_IMMEDIATELY = "0";
+    public static final String NEW_ASSIGNMENT_REVIEW_SERVICE_REPORT_IMMEDIATELY_AND_DUE = "1";
+    public static final String NEW_ASSIGNMENT_REVIEW_SERVICE_REPORT_DUE = "2";
+    public static final String NEW_ASSIGNMENT_REVIEW_SERVICE_CHECK_TURNITIN = "s_paper_check";
+    public static final String NEW_ASSIGNMENT_REVIEW_SERVICE_CHECK_INTERNET = "internet_check";
+    public static final String NEW_ASSIGNMENT_REVIEW_SERVICE_CHECK_PUB = "journal_check";
+    public static final String NEW_ASSIGNMENT_REVIEW_SERVICE_CHECK_INSTITUTION = "institution_check";
+    public static final String NEW_ASSIGNMENT_REVIEW_SERVICE_EXCLUDE_BIBLIOGRAPHIC = "exclude_biblio";
+    public static final String NEW_ASSIGNMENT_REVIEW_SERVICE_EXCLUDE_QUOTED = "exclude_quoted";
+    public static final String NEW_ASSIGNMENT_REVIEW_SERVICE_EXCLUDE_SELF_PLAG = "exclude_self_plag";
+    public static final String NEW_ASSIGNMENT_REVIEW_SERVICE_STORE_INST_INDEX = "store_inst_index";
+    public static final String NEW_ASSIGNMENT_REVIEW_SERVICE_STUDENT_PREVIEW = "student_preview";
+    public static final String NEW_ASSIGNMENT_REVIEW_SERVICE_EXCLUDE_SMALL_MATCHES = "exclude_smallmatches";
+    public static final String NEW_ASSIGNMENT_REVIEW_SERVICE_EXCLUDE_TYPE = "exclude_type";
+    public static final String NEW_ASSIGNMENT_REVIEW_SERVICE_EXCLUDE_VALUE = "exclude_value";
+    public static final String SUBMISSION_REVIEW_SERVICE_EULA_AGREEMENT = "review_service_eula_agreement";
+    public static final String SUBMISSION_REVIEW_CHECK_SERVICE_EULA_AGREEMENT = "review_check_service_eula_agreement";
+    private static final String SUBMISSION_REVIEW_EULA_AGREEMENT_LINK = "review_service_eula_agreement_link";
 
     private AssignmentConstants() {
         throw new RuntimeException(this.getClass().getCanonicalName() + " is not to be instantiated");
@@ -235,10 +264,82 @@ public final class AssignmentConstants {
         CLOSED,
         DUE
     }
-    
+
+    public enum SubmissionStatus {
+        NOT_STARTED,
+        HONOR_ACCEPTED,
+        IN_PROGRESS,
+        SUBMITTED,
+        RESUBMITTED,
+        LATE,
+        NO_SUBMISSION,
+        UNGRADED,
+        RETURNED,
+        COMMENTED,
+        GRADED
+    }
+
+	// IMS Score Publishing Service - states
+	// https://www.imsglobal.org/spec/lti-ags/v2p0/#score-publish-service
+	// 2.4.6. activityProgress
+	// activityProgress MUST be used to indicate to the tool platform the status of the user towards the activity's completion.
+
+	// Please leave the capitalization as is on this as we use Enum.name() to match incoming JSON values
+	public enum IMSActivityProgress {
+		Initialized,     // the user has not started the activity, or the activity has been reset for that student.
+		Started,         // the activity associated with the line item has been started by the user to which the result relates.
+		InProgress,      // the activity is being drafted and is available for comment.
+		Submitted,       // the activity has been submitted at least once by the user but the user is still able make further submissions.
+		Completed        // the user has completed the activity associated with the line item.
+	}
+
+	// 2.4.7 gradingProgress
+	// gradingProgress MUST be used to indicate to the platform the status of the grading process, including allowing
+	// to inform when human intervention is needed.
+
+	// Please leave the capitalization as is on this as we use Enum.name() to match incoming JSON values
+	public enum IMSGradingProgress {
+		FullyGraded,    // The grading process is completed; the score value, if any, represents the current Final Grade;
+		Pending,        // Final Grade is pending, but does not require manual intervention; if a Score value is present,
+						// it indicates the current value is partial and may be updated.
+		PendingManual,  // Final Grade is pending, and it does require human intervention; if a Score value is present,
+						// it indicates the current value is partial and may be updated during the manual grading.
+		Failed,         // The grading could not complete.
+		NotReady        // There is no grading process occurring; for example, the student has not yet made any submission.
+	}
+
     public static final String SUBMISSION_OPTION_RELEASE = "release";
     public static final String SUBMISSION_OPTION_RETURN = "return";
     public static final String SUBMISSION_OPTION_SAVE = "save";
     public static final String SUBMISSION_OPTION_RETRACT = "retract";
 
+    public static final String STATE_CONTEXT_STRING = "Assignment.context_string";
+
+    public static final String WITH_GRADES = "with_grades";
+
+    public static final String GRADE_SUBMISSION_SUBMISSION_ID = "grade_submission_submission_id";
+    public static final String GRADE_SUBMISSION_ASSIGNMENT_ID = "grade_submission_assignment_id";
+    public static final String GRADE_SUBMISSION_GRADE = "grade_submission_grade";
+
+    public static final String GRADE_SUBMISSION_FEEDBACK_COMMENT = "grade_submission_feedback_comment";
+    public static final String GRADE_SUBMISSION_FEEDBACK_TEXT = "grade_submission_feedback_text";
+    public static final String GRADE_SUBMISSION_PRIVATE_NOTES = "grade_submission_private_notes";
+    public static final String GRADE_SUBMISSION_FEEDBACK_ATTACHMENT = "grade_submission_feedback_attachment";
+
+    // submission level of resubmit due time
+    public static final String ALLOW_RESUBMIT_CLOSEYEAR = "allow_resubmit_closeYear";
+    public static final String ALLOW_RESUBMIT_CLOSEMONTH = "allow_resubmit_closeMonth";
+    public static final String ALLOW_RESUBMIT_CLOSEDAY = "allow_resubmit_closeDay";
+    public static final String ALLOW_RESUBMIT_CLOSEHOUR = "allow_resubmit_closeHour";
+    public static final String ALLOW_RESUBMIT_CLOSEMIN = "allow_resubmit_closeMin";
+    public static final String ALLOW_RESUBMIT_CLOSE_EPOCH_MILLIS = "allow_resubmit_close_epoch_millis";
+
+    public static final String GRADE_SUBMISSION_DONT_CLEAR_CURRENT_ATTACHMENTS = "grade_submission_dont_clear_current_attachments";
+
+    public static final String GRADEBOOK_INTEGRATION_NO = "no";
+    public static final String GRADEBOOK_INTEGRATION_ADD = "add";
+    public static final String GRADEBOOK_INTEGRATION_ASSOCIATE = "associate";
+    public static final String PROP_ASSIGNMENT_ASSOCIATE_GRADEBOOK_ASSIGNMENT = "prop_new_assignment_add_to_gradebook";
+
+    public static final String NEW_ASSIGNMENT_ADD_TO_GRADEBOOK = "new_assignment_add_to_gradebook";
 }

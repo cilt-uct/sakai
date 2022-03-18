@@ -16,6 +16,7 @@
 package org.sakaiproject.assignment.impl.persistence;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -23,13 +24,21 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import javax.persistence.Tuple;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.ParameterExpression;
+import javax.persistence.criteria.Root;
+
+import org.apache.commons.lang3.StringUtils;
 import org.hibernate.Criteria;
 import org.hibernate.LockMode;
 import org.hibernate.LockOptions;
-import org.hibernate.NonUniqueResultException;
 import org.hibernate.Session;
 import org.hibernate.criterion.Projections;
 import org.hibernate.criterion.Restrictions;
+import org.hibernate.persister.collection.CollectionPropertyNames;
+import org.sakaiproject.assignment.api.AssignmentConstants;
 import org.sakaiproject.assignment.api.model.Assignment;
 import org.sakaiproject.assignment.api.model.AssignmentSubmission;
 import org.sakaiproject.assignment.api.model.AssignmentSubmissionSubmitter;
@@ -108,15 +117,12 @@ public class AssignmentRepositoryImpl extends BasicSerializableRepository<Assign
     @Transactional
     public void deleteSubmission(String submissionId) {
         Session session = sessionFactory.getCurrentSession();
-        AssignmentSubmission submission = (AssignmentSubmission) session.get(AssignmentSubmission.class, submissionId);
+        AssignmentSubmission submission = session.get(AssignmentSubmission.class, submissionId);
         if (submission != null) {
             log.info("Deleting submission {}", submission);
             Assignment assignment = submission.getAssignment();
-            // must call refresh here to ensure the collections are initialized before changing, this is due to lazy loaded entities
-            session.refresh(assignment);
             assignment.getSubmissions().remove(submission);
-            session.update(assignment);
-            session.flush();
+            session.delete(submission);
         }
     }
 
@@ -195,27 +201,44 @@ public class AssignmentRepositoryImpl extends BasicSerializableRepository<Assign
             default:
                 log.info("Duplicate submissions detected for assignment {} and user {} attempting to clean", assignmentId, userId);
                 // when more than 1 was found it is considered a duplicate submission
-                // filter out user submissions and those that were submitted
-                List<AssignmentSubmission> canRemove = submissions.stream()
-                        .filter(s -> !s.getGraded() && !s.getReturned() && !s.getUserSubmission() && s.getDateSubmitted() == null)
+
+                // find non user submissions with no text or submitted date
+                List<AssignmentSubmission> removable = submissions.stream()
+                        .filter(s -> !s.getUserSubmission() && StringUtils.isBlank(s.getSubmittedText()) && s.getDateSubmitted() == null)
                         .collect(Collectors.toList());
-                int sizeDiff = submissions.size() - canRemove.size();
-                switch (sizeDiff) {
-                    case 0:
-                        // we can remove any so lets keep the first one created and remove the rest
-                        canRemove.sort(Comparator.comparing(AssignmentSubmission::getDateCreated));
-                        submissions.subList(1, submissions.size()).forEach(s -> deleteSubmission(s.getId()));
-                        return submissions.get(0);
-                    case 1:
-                        submissions.removeAll(canRemove);
-                        canRemove.forEach(s -> deleteSubmission(s.getId()));
-                        return submissions.get(0);
-                    default:
-                        log.warn("For assignment {} {} submissions found for user: {}, can only remove {} which is not enough to create a unique submission.", assignmentId, submissions.size(), userId, canRemove.size());
-                        canRemove.forEach(s -> deleteSubmission(s.getId()));
-                        throw new NonUniqueResultException(sizeDiff);
+                if  (submissions.size() - removable.size() > 1) {
+                    log.debug("{} to many submissions, trying more agressively", submissions.size() - removable.size());
+                    // still to many lets be a little more aggressive finding those that are not returned and no grade
+                    submissions.removeAll(removable);
+                    submissions.stream().filter(s -> !s.getReturned() && s.getGrade() == null).forEach(removable::add);
                 }
+                if ((submissions.size() - removable.size()) > 1) {
+                    log.debug("{} to many submissions, take the first submission and remove the rest", submissions.size() - removable.size());
+                    // if we get here it's likely there is no easy decision, so lets just take the first created submission
+                    submissions.removeAll(removable);
+                    submissions.sort(Comparator.comparing(AssignmentSubmission::getDateCreated));
+                    removable.addAll(submissions.subList(1, submissions.size()));
+                }
+                if (submissions.size() > 1 && (submissions.size() - removable.size()) == 0) {
+                    // if we have to many submissions for removal select the first
+                    submissions.sort(Comparator.comparing(AssignmentSubmission::getDateCreated));
+                    removable.remove(submissions.get(0));
+                }
+                submissions.removeAll(removable);
+                removable.forEach(s -> deleteSubmission(s.getId()));
+                return submissions.get(0);
         }
+    }
+
+    @Override
+    @Transactional
+    public List<AssignmentSubmission> findSubmissionForUsers(String assignmentId, List<String> userIds) {
+        List<AssignmentSubmission> submissions = sessionFactory.getCurrentSession().createCriteria(AssignmentSubmission.class)
+                .add(Restrictions.eq("assignment.id", assignmentId))
+                .createAlias("submitters", "s")
+                .add(HibernateCriterionUtils.CriterionInRestrictionSplitter("s.submitter", userIds))
+                .list();
+        return submissions;
     }
 
     @Override
@@ -224,11 +247,6 @@ public class AssignmentRepositoryImpl extends BasicSerializableRepository<Assign
                 .add(Restrictions.eq("assignment.id", assignmentId))
                 .add(Restrictions.eq("groupId", groupId))
                 .uniqueResult();
-    }
-
-    @Override
-    public void initializeAssignment(Assignment assignment) {
-        sessionFactory.getCurrentSession().refresh(assignment);
     }
 
     @Override
@@ -263,5 +281,31 @@ public class AssignmentRepositoryImpl extends BasicSerializableRepository<Assign
         if (assignment != null && assignment.getId() != null) {
             sessionFactory.getCache().evictEntity(Assignment.class, assignment.getId());
         }
+    }
+
+    @Override
+    public String findAssignmentIdForGradebookLink(String context, String linkId) {
+        return String.valueOf(startCriteriaQuery()
+                .createAlias("properties", "p")
+                .add(Restrictions.eq("context", context))
+                .add(Restrictions.eq("p." + CollectionPropertyNames.COLLECTION_INDICES, AssignmentConstants.PROP_ASSIGNMENT_ASSOCIATE_GRADEBOOK_ASSIGNMENT))
+                .add(Restrictions.eq("p." + CollectionPropertyNames.COLLECTION_ELEMENTS, linkId))
+                .setProjection(Projections.property("id"))
+                .uniqueResult());
+    }
+
+    @Override
+    public Collection<String> findGroupsForAssignmentById(String assignmentId) {
+        CriteriaBuilder builder = sessionFactory.getCriteriaBuilder();
+        CriteriaQuery<Tuple> query = builder.createTupleQuery();
+        Root<Assignment> root = query.from(Assignment.class);
+        ParameterExpression<String> paramAssignmentId = builder.parameter(String.class);
+        query.where(builder.equal(root.get("id"), paramAssignmentId));
+        query.select(builder.tuple(root.join("groups")));
+        List<Tuple> result = sessionFactory.getCurrentSession()
+                .createQuery(query)
+                .setParameter(paramAssignmentId, assignmentId)
+                .getResultList();
+        return result.stream().map(tuple -> (String) tuple.get(0)).collect(Collectors.toList());
     }
 }

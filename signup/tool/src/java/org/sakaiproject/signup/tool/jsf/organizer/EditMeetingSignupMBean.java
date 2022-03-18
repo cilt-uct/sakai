@@ -21,18 +21,14 @@ package org.sakaiproject.signup.tool.jsf.organizer;
 
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.StringTokenizer;
 
 import javax.faces.context.FacesContext;
 import javax.faces.event.ActionEvent;
 import javax.faces.model.SelectItem;
 
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
-
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.signup.logic.SignupEventTypes;
 import org.sakaiproject.signup.logic.SignupUser;
@@ -46,11 +42,12 @@ import org.sakaiproject.signup.model.SignupTimeslot;
 import org.sakaiproject.signup.tool.jsf.SignupMeetingWrapper;
 import org.sakaiproject.signup.tool.jsf.SignupUIBaseBean;
 import org.sakaiproject.signup.tool.jsf.TimeslotWrapper;
-import org.sakaiproject.signup.tool.jsf.organizer.action.CreateSitesGroups;
 import org.sakaiproject.signup.tool.jsf.organizer.action.EditMeeting;
 import org.sakaiproject.signup.tool.util.Utilities;
 import org.sakaiproject.tool.cover.ToolManager;
 import org.sakaiproject.util.DateFormatterUtil;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * <p>
@@ -599,13 +596,13 @@ public class EditMeetingSignupMBean extends SignupUIBaseBean {
 		String isoStartTime = params.get(HIDDEN_ISO_STARTTIME);
 
 		if(DateFormatterUtil.isValidISODate(isoStartTime)){
-			this.signupMeeting.setStartTime(DateFormatterUtil.parseISODate(isoStartTime));
+			this.signupMeeting.setStartTime(sakaiFacade.getTimeService().parseISODateInUserTimezone(isoStartTime));
 		}
 
 		String isoEndTime = params.get(HIDDEN_ISO_ENDTIME);
 
 		if(DateFormatterUtil.isValidISODate(isoEndTime)){
-			this.signupMeeting.setEndTime(DateFormatterUtil.parseISODate(isoEndTime));
+			this.signupMeeting.setEndTime(sakaiFacade.getTimeService().parseISODateInUserTimezone(isoEndTime));
 		}
 
 		Date eventEndTime = this.signupMeeting.getEndTime();
@@ -623,12 +620,13 @@ public class EditMeetingSignupMBean extends SignupUIBaseBean {
 
 		/*user defined own TS case*/
 		if(isUserDefinedTS()){
-			eventEndTime= getUserDefineTimeslotBean().getEventEndTime();
-			eventStartTime = getUserDefineTimeslotBean().getEventStartTime();
 			if(getUserDefineTimeslotBean().getDestTSwrpList()==null || getUserDefineTimeslotBean().getDestTSwrpList().isEmpty()){
 				validationError = true;
 				Utilities.addErrorMessage(Utilities.rb.getString("event.create_custom_defined_TS_blocks"));
 				return;
+			} else {
+				eventEndTime= getUserDefineTimeslotBean().getEventEndTime();
+				eventStartTime = getUserDefineTimeslotBean().getEventStartTime();
 			}
 				
 		}

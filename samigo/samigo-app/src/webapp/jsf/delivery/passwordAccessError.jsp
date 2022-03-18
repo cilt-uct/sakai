@@ -41,22 +41,24 @@
   <h3><h:outputText value="#{deliveryMessages.access_denied}"/></h3>
  <h:form id="removeTemplateForm">
    <h:panelGroup>
-       <f:verbatim><div class="messageSamigo"></f:verbatim>
+       <f:verbatim><div class="sak-banner-error"></f:verbatim>
        <h:outputText value="#{deliveryMessages.password_denied}" escape="false" />
        <f:verbatim></div></f:verbatim>
    </h:panelGroup>
 
    <f:verbatim><p class="act"></f:verbatim>
        <h:commandButton value="#{deliveryMessages.button_return}" type="submit"
-          style="act" action="select" 
-          rendered="#{delivery.actionString=='takeAssessment'}">
-         <f:actionListener
-            type="org.sakaiproject.tool.assessment.ui.listener.select.SelectActionListener" />
+           style="act" action="beginAssessment"
+           rendered="#{delivery.actionString=='takeAssessment'}">
+           <f:param name="publishedId" value="#{delivery.assessmentId}" />
+           <f:param name="actionString" value="takeAssessment"/>
+           <f:actionListener
+            type="org.sakaiproject.tool.assessment.ui.listener.delivery.BeginDeliveryActionListener" />
        </h:commandButton>
    <f:verbatim></p></f:verbatim>
-  <h:commandButton value="#{deliveryMessages.button_return}" type="button" 
-     rendered="#{delivery.actionString=='takeAssessmentViaUrl'}"
-     style="act" onclick="javascript:window.open('login.faces','_top')" onkeypress="javascript:window.open('login.faces','_top')" />
+   <h:outputLink rendered="#{delivery.actionString == 'takeAssessmentViaUrl'}" value="#{delivery.getPublishedURL()}">
+       <h:outputText value="#{deliveryMessages.button_return}" />
+   </h:outputLink>
 
  </h:form>
   <!-- end content -->

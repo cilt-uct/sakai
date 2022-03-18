@@ -24,7 +24,12 @@ package org.sakaiproject.tool.assessment.ui.listener.util;
 import java.io.Serializable;
 import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -202,8 +207,6 @@ public static ArrayList paramArrayValueLike(String paramPart)
 
 }
 
-
-
   /**
    * Helper method to look up backing bean.
    * Don't forget to cast!
@@ -283,14 +286,12 @@ public static ArrayList paramArrayValueLike(String paramPart)
   * @param key The key to look up the localized string
   */
   public static String getLocalizedString(String bundleName, String key) {
-	  //Locale locale = FacesContext.getCurrentInstance().getViewRoot().getLocale();
 	  ResourceLoader rb = new ResourceLoader(bundleName);
     return rb.getString(key);
   }
 
   public static String getLocalizedString(HttpServletRequest request,
                                           String bundleName, String key) {
-	  //Locale locale = request.getLocale();
 	  ResourceLoader rb = new ResourceLoader(bundleName);
     return rb.getString(key);
   }
@@ -332,11 +333,13 @@ public static ArrayList paramArrayValueLike(String paramPart)
   }
 
   public static String getRoundedValue(String orig, int maxdigit) {
-    Double origdouble = new Double(orig); 
+    Double origdouble = new Double(orig);
     return getRoundedValue(origdouble, maxdigit);
   }
   public static String getRoundedValue(Double orig, int maxdigit) {
-      NumberFormat nf = NumberFormat.getInstance();
+      Locale loc = new ResourceLoader().getLocale();
+      NumberFormat nf = NumberFormat.getInstance(loc);
+      nf.setGroupingUsed(false);
       nf.setMaximumFractionDigits(maxdigit);
       String newscore = nf.format(orig);
       return newscore;
@@ -367,7 +370,7 @@ public static ArrayList paramArrayValueLike(String paramPart)
     return location;
   }
 
-  private static  String replaceSpace(String tempString){
+  private static String replaceSpace(String tempString){
     String newString = "";
     char[] oneChar = new char[1];
     for(int i=0; i<tempString.length(); i++){
@@ -381,5 +384,20 @@ public static ArrayList paramArrayValueLike(String paramPart)
       }
     }
     return newString;
+  }
+
+  public static Map<String, String> sortByValue(Map<String, String> map) {
+    List<Map.Entry> list = new LinkedList(map.entrySet());
+    Collections.sort(list, new Comparator() {
+      public int compare(Object o1, Object o2) {
+        return ((Comparable) ((String)((Map.Entry) (o1)).getValue()).toLowerCase()).compareTo(((String)((Map.Entry) (o2)).getValue()).toLowerCase());
+      }
+    });
+
+    Map<String, String> result = new LinkedHashMap<>();
+    for (Map.Entry<String,String> entry : list) {
+      result.put(entry.getKey(), entry.getValue());
+    }
+    return result;
   }
 }
