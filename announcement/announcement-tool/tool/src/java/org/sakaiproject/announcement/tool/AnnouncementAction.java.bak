@@ -1179,7 +1179,7 @@ public class AnnouncementAction extends PagedResourceActionII
 					initMergeList = tc.getPlacementConfig().getProperty(PORTLET_CONFIG_PARM_MERGED_CHANNELS);	
 				}
 
-				if (isOnWorkspaceTab() && !m_securityService.isSuperUser())
+				if (isOnWorkspaceTab())
 				{
 					log.debug("Getting for My Workspace");
 
@@ -3422,6 +3422,7 @@ public class AnnouncementAction extends PagedResourceActionII
 		//state.setCurrentSortAsc(Boolean.TRUE.booleanValue());
 		sstate.setAttribute(STATE_CURRENT_SORTED_BY, getCurrentOrder());
 		//sstate.setAttribute(STATE_CURRENT_SORT_ASC, Boolean.FALSE);
+
 
 		sstate.setAttribute(STATE_CURRENT_SORT_ASC, state.getCurrentSortAsc());
 		

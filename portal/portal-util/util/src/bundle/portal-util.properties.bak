@@ -76,4 +76,7 @@ bugreport.session.maxinactive=:    MaxInactive:
 bugreport.session.attributes=:    Attributes:
 bugreport.session.attribute=:        Attribute:
 bugreport.placement.none=No Placement
-		
+
+bugreport.nyuerrortitle = Oops!! An unexpected error has occurred.
+bugreport.nyuinstruction1 = If refreshing or restarting your browser does not resolve the issue, <strong>please contact the <a target="_blank" href="http://www.nyu.edu/its/askits/helpdesk/">IT Service Desk</a> for assistance</strong>.
+bugreport.nyuinstruction2 = To help us improve the system, please let us know what action you were attempting when the error occurred:

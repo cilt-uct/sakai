@@ -8,18 +8,19 @@
 			class="org.sakaiproject.importer.impl.SakaiArchiveFileParser">
 	</bean>
 	
+<!--
 	<bean id="org.sakaiproject.importer.api.ImportFileParser-CommonCartridge"
 			class="org.sakaiproject.importer.impl.LBCommonCartridgeFileParser">
-	</bean>
+-->
 	
+	<bean id="org.sakaiproject.importer.api.ImportFileParser-Bb9NYU"
+	      class="org.sakaiproject.importer.impl.Blackboard9NYUFileParser">
+	</bean>
+
+
 	<bean id="org.sakaiproject.importer.api.ImportFileParser-Bb6"
-	      class="org.sakaiproject.importer.impl.Blackboard6FileParser"> 
-	</bean> 
-
-	<bean id="org.sakaiproject.importer.api.ImportFileParser-Bb55"
-	      class="org.sakaiproject.importer.impl.Blackboard55FileParser"> 
-	</bean> 
-
+	      class="org.sakaiproject.importer.impl.Blackboard6FileParser">
+	</bean>
 	<!-- Handlers -->
 
 	<bean id="org.sakaiproject.importer.impl.handlers.ResourcesHandler"
@@ -54,9 +55,9 @@
 		<property name="parsers">
 			<list>
 				<ref bean="org.sakaiproject.importer.api.ImportFileParser-Sakai"/>
-				<ref bean="org.sakaiproject.importer.api.ImportFileParser-CommonCartridge"/>
+			<!--	<ref bean="org.sakaiproject.importer.api.ImportFileParser-CommonCartridge"/> -->
+				<ref bean="org.sakaiproject.importer.api.ImportFileParser-Bb9NYU"/>
 				<ref bean="org.sakaiproject.importer.api.ImportFileParser-Bb6"/>
-				<ref bean="org.sakaiproject.importer.api.ImportFileParser-Bb55"/>
 			</list>
 		</property>
 		<property name="resourceHandlers">

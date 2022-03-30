@@ -47,13 +47,19 @@
                 <module>announcement</module>
                 <module>archive</module>
                 <module>assignment</module>
+                <module>attendance</module>
                 <module>basiclti</module>
+                <module>bbb-tool</module>
+                <module>blogwow</module>
                 <module>calendar</module>
                 <module>chat</module>
                 <module>citations</module>
                 <module>common</module>
                 <module>commons</module>
+                <module>common/import-parsers/blackboard_6</module>
+                <module>common/import-parsers/blackboard_9_nyu</module>
                 <module>config</module>
+                <module>conversations</module>
                 <module>cloud-content</module>
                 <module>cloud-storage</module>
                 <module>content</module>
@@ -63,12 +69,14 @@
                 <module>delegatedaccess</module>
                 <module>deploy</module>
                 <module>edu-services</module>
+                <module>external-help</module>
                 <module>emailtemplateservice</module>
                 <module>endorsed</module>
                 <module>entitybroker</module>
                 <module>external-calendaring-service</module>
                 <module>feedback</module>
                 <module>gradebookng</module>
+                <module>groupersync</module>
                 <module>help</module>
                 <module>hierarchy</module>
                 <module>jobscheduler</module>
@@ -84,7 +92,7 @@
                 <module>mycalendar</module>
                 <module>myconnections</module>
                 <module>oauth</module>
-                <!--module>pasystem</module>
+                <module>pasystem</module>
                 <module>nyugrades</module>
                 <module>nyuhome-feed</module>
                 <module>nyuroster-feed</module>
@@ -92,7 +100,8 @@
                 <module>nyuclasses-monitoring</module>
                 <module>nyuclasses-job-test</module>
                 <module>nyuclasses-misc-jobs</module>
-                <module>nyu-profile-photos</module -->
+                <module>nyu-profile-photos</module>
+                <module>pages</module>
                 <module>podcasts</module>
                 <module>polls</module>
                 <module>portal</module>

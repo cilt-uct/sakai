@@ -24,6 +24,7 @@ package org.sakaiproject.announcement.impl;
 import java.time.Instant;
 import java.util.Iterator;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
 import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.announcement.api.AnnouncementMessage;

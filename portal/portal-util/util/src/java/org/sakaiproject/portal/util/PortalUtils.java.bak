@@ -37,6 +37,8 @@ import org.sakaiproject.coursemanagement.api.CourseManagementService;
 public class PortalUtils
 {
 
+	private static CourseManagementService courseManagementService = (CourseManagementService) ComponentManager.get(CourseManagementService.class);
+
 	/**
 	 * External libraries versions
 	 */

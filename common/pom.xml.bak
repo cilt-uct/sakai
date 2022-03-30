@@ -107,6 +107,11 @@
         <version>${project.version}</version>
       </dependency>
       <dependency>
+        <groupId>org.sakaiproject</groupId>
+	<artifactId>sakai-import-bb9-nyu</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
 	<groupId>org.sakaiproject.samigo</groupId>
 	<artifactId>samigo-import</artifactId>
         <version>${project.version}</version>

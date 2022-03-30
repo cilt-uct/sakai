@@ -35,6 +35,10 @@
       <artifactId>sakai-import-bb6</artifactId>
     </dependency>
     <dependency>
+      <groupId>org.sakaiproject</groupId>
+      <artifactId>sakai-import-bb9-nyu</artifactId>
+    </dependency>
+    <dependency>
       <groupId>org.sakaiproject.samigo</groupId>
       <artifactId>samigo-import</artifactId>
     </dependency>
@@ -45,6 +49,11 @@
     <dependency>
       <groupId>org.sakaiproject.common</groupId>
       <artifactId>sakai-archive-import</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.jsoup</groupId>
+      <artifactId>jsoup</artifactId>
+      <version>1.6.3</version>
     </dependency>
   </dependencies>
   <build>

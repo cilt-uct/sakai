@@ -17,7 +17,7 @@ package org.sakaiproject.profile2.model;
 
 import java.io.Serializable;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import lombok.Data;
 

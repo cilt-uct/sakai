@@ -32,7 +32,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.Vector;
 
+import lombok.extern.slf4j.Slf4j;
+
 import org.apache.commons.lang3.StringUtils;
+
 import org.sakaiproject.alias.api.Alias;
 import org.sakaiproject.alias.api.AliasService;
 import org.sakaiproject.authz.api.AuthzGroup;
@@ -92,7 +95,7 @@ import lombok.extern.slf4j.Slf4j;
 public class AdminSitesAction extends PagedResourceActionII
 {
 	/**
-	 *
+	 * 
 	 */
 	private static final long serialVersionUID = 1L;
 	/** State holding the site id for site id search. */
@@ -104,15 +107,15 @@ public class AdminSitesAction extends PagedResourceActionII
 	protected static final String FORM_SEARCH_SITEID = "search_site";
 
 	protected static final String FORM_SEARCH_USERID = "search_user";
-
+	
 	private final static String FORM_URL_BASE = "form_url_base";
-
+	
 	private final static String FORM_URL_ALIAS = "form_url_alias";
 
 	private final static String FORM_URL_ALIAS_FULL = "form_url_alias_full";
 
 	private static ResourceLoader rb = new ResourceLoader("sites");
-
+	
 	/** Name of state attribute for Site instance id */
 	private static final String STATE_SITE_INSTANCE_ID = "site.instance.id";
 
@@ -139,8 +142,8 @@ public class AdminSitesAction extends PagedResourceActionII
 		securityService = ComponentManager.get(SecurityService.class);
 		userTimeService = ComponentManager.get(UserTimeService.class);
 		formattedText = ComponentManager.get(FormattedText.class);
-
-
+		
+		
 	}
 
 	/**
@@ -250,7 +253,7 @@ public class AdminSitesAction extends PagedResourceActionII
      * inputs. Be aware that searching for users by EID can result in
      * the lazy creation of Sakai user records, or at least user ID
      * mapping records.
-     *
+     * 
      * @see #findUserByPk(String)
      * @see #findUserByEid(String)
      * @see #findUserSite(User)
@@ -260,31 +263,31 @@ public class AdminSitesAction extends PagedResourceActionII
      *   such user or no such site
      */
     protected Site findUserSiteByUserIdCriteria(String formSubmittedUserId) {
-
+        
         User user = findUserByPk(formSubmittedUserId);
         if ( user == null ) {
             user = findUserByEid(formSubmittedUserId); // be warned, this might lazily create a user record
         }
-
+        
         if ( user == null ) {
             return null;
         }
-
+        
         Site userSite = findUserSite(user);
         return userSite;
-
+        
     }
-
+	
     /**
      * Search for a {@link User} object by primary key (i.e. <code>User.id</code>).
-     *
+     * 
      * @see UserDirectoryService#getUser(String)
      * @param userPk a String to be treated as a user's Sakai-internal primary key;
      *   must not be <code>null</code>
      * @return a resolved {@link User} or <code>null</code>, signifying no results
      */
     protected User findUserByPk(String userPk) {
-
+        
         try {
             User user = userDirectoryService.getUser(userPk);
             return user;
@@ -292,20 +295,20 @@ public class AdminSitesAction extends PagedResourceActionII
 			log.debug("Failed to find a user record by PK [pk = {}]", userPk, e);
             return null;
         }
-
+        
     }
 
     /**
-     * Search for a {@link User} object by user "enterprise identifier",
+     * Search for a {@link User} object by user "enterprise identifier", 
      * (i.e. <code>User.eid</code>).
-     *
+     * 
      * @see UserDirectoryService#getUserByEid(String)
      * @param eid a String to be treated as a user's "enterprise identifier";
      *   must not be <code>null</code>
      * @return a resolved {@link User} or <code>null</code>, signifying no results
      */
     protected User findUserByEid(String eid) {
-
+        
         try {
             User user = userDirectoryService.getUserByEid(eid);
             return user;
@@ -313,11 +316,11 @@ public class AdminSitesAction extends PagedResourceActionII
 			log.debug("Failed to find a user record by EID [eid = {}]", eid, e);
             return null;
         }
-
-    }
+        
+    }    
     /**
      * Search for the given {@link User}'s workspace {@link Site}.
-     *
+     * 
      * @param knownUser user having a Sakai primary key (doesn't necessarily
      *   mean the user has actually signed in yet). Must not be <code>null</code>
      * @return the user's workspace site or <code>null<code> if no such thing, e.g.
@@ -334,8 +337,8 @@ public class AdminSitesAction extends PagedResourceActionII
 			log.debug("Failed to locate a workspace for user [user id = {}][user eid = {}][site id = {}]", userDbId, userEid, userMyWorkspaceSiteDbId, e);
             return null;
         }
-    }
-
+    }    
+    
 	/**
 	 * Populate the state object, if needed.
 	 */
@@ -350,7 +353,7 @@ public class AdminSitesAction extends PagedResourceActionII
 	public String buildMainPanelContext(VelocityPortlet portlet, Context context, RunData rundata, SessionState state)
 	{
 		context.put("tlang", rb);
-
+		
 		// if not logged in as the super user, we won't do anything
 		if (!securityService.isSuperUser())
 		{
@@ -400,12 +403,12 @@ public class AdminSitesAction extends PagedResourceActionII
 		{
 			template = buildPropertiesContext(state, context);
 		}
-
+		
 		else if (mode.equals("pageProperties"))
 		{
 			template = buildPagePropertiesContext(state, context);
 		}
-
+		
 		else if (mode.equals("toolProperties"))
 		{
 			template = buildToolPropertiesContext(state, context);
@@ -555,13 +558,13 @@ public class AdminSitesAction extends PagedResourceActionII
 		// name the html form for user edit fields
 		context.put("form-name", "site-form");
 
-
+		
 		// get alias base path
 		String aliasBaseUrl = ServerConfigurationService.getPortalUrl() + Entity.SEPARATOR + "site" + Entity.SEPARATOR;
-
+		
 		boolean displaySiteAlias = displaySiteAlias();
 		String alias;
-
+		
 		context.put("displaySiteAlias", Boolean.valueOf(displaySiteAlias));
 		if (displaySiteAlias)
 		{
@@ -573,7 +576,7 @@ public class AdminSitesAction extends PagedResourceActionII
 			context.put(FORM_URL_BASE, aliasBaseUrl);
 			context.put(FORM_URL_ALIAS, alias);
 		}
-
+		
 		// build the menu
 		// we need the form fields for the remove...
 		Menu bar = new MenuImpl();
@@ -708,7 +711,7 @@ public class AdminSitesAction extends PagedResourceActionII
 
 		return "_properties";
 	}
-
+	
 	/**
 	 * Build the context for the properties edit in edit mode.
 	 */
@@ -721,23 +724,23 @@ public class AdminSitesAction extends PagedResourceActionII
 			// read the form - if rejected, leave things as they are
 			context.put("page", page);
 		}
-
+		
 		return "_page_properties";
 	}
-
+	
 	/**
 	 * Build the context for the properties edit in edit mode.
 	 */
 	private String buildToolPropertiesContext(SessionState state, Context context)
 	{
 		context.put("tlang", rb);
-
+		
 				ToolConfiguration tool = (ToolConfiguration) state.getAttribute("tool");
 		if(tool != null) {
 			// read the form - if rejected, leave things as they are
 			context.put("tool", tool);
 		}
-
+		
 		return "_tool_properties";
 	}
 
@@ -860,7 +863,7 @@ public class AdminSitesAction extends PagedResourceActionII
 
 	/**
 	 * Get the list of all tools that are not helper tools.
-	 *
+	 * 
 	 * @return The list of all tools that are not helper to.
 	 */
 	private List findNonHelperTools()
@@ -970,11 +973,11 @@ public class AdminSitesAction extends PagedResourceActionII
 	public void doSave(RunData data, Context context)
 	{
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
-
+		
 		if (!"POST".equals(data.getRequest().getMethod())) {
 			return;
 		}
-
+		
 		// get the current site published status
 		boolean currentSitePublished = false;
 		Site site = (Site) state.getAttribute("site");
@@ -989,7 +992,7 @@ public class AdminSitesAction extends PagedResourceActionII
 		if (!readSiteForm(data, state)) return;
 
 		doSave_edit(data, context);
-
+		
 		// throw events
 		if (currentSitePublished && !afterSitePublished)
 		{
@@ -1014,58 +1017,58 @@ public class AdminSitesAction extends PagedResourceActionII
 	public void doSave_props_edit(RunData data, Context context)
 	{
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
-
+		
 		if (!"POST".equals(data.getRequest().getMethod())) {
 			return;
 		}
-
+		
 		// read the properties form
 		readPropertiesForm(data, state);
 
 		doSave_edit(data, context);
 	}
-
+	
 	/**
 	 * Handle a request to save the edit from either page or tools list mode - no form to read in.
 	 */
 	public void doSave_page_props_edit(RunData data, Context context)
 	{
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
-
+		
 		if (!"POST".equals(data.getRequest().getMethod())) {
 			return;
 		}
-
+		
 		// read the properties form
 		readPagePropertiesForm(data, state);
 
 		doSave_edit(data, context);
 	}
-
+	
 	/**
 	 * Handle a request to save the edit from either page or tools list mode - no form to read in.
 	 */
 	public void doSave_tool_props_edit(RunData data, Context context)
 	{
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
-
+		
 		if (!"POST".equals(data.getRequest().getMethod())) {
 			return;
 		}
-
+		
 		// read the properties form
 		readToolPropertiesForm(data, state);
 
 		doSave_edit(data, context);
 	}
-
+	
 	/**
 	 * Handle a request to save the edit from either page or tools list mode - no form to read in.
 	 */
 	public void doSave_edit(RunData data, Context context)
 	{
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
-
+		
 		if (!"POST".equals(data.getRequest().getMethod())) {
 			return;
 		}
@@ -1100,7 +1103,7 @@ public class AdminSitesAction extends PagedResourceActionII
 						tool.getPlacementConfig().remove("new");
 					}
 				}
-
+				
 				siteService.save(site);
 			}
 			catch (PermissionException | IdUnusedException e)
@@ -1145,7 +1148,7 @@ public class AdminSitesAction extends PagedResourceActionII
 	public void doSaveas(RunData data, Context context)
 	{
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
-
+		
 		if (!"POST".equals(data.getRequest().getMethod())) {
 			return;
 		}
@@ -1205,7 +1208,7 @@ public class AdminSitesAction extends PagedResourceActionII
 	public void doCancel(RunData data, Context context)
 	{
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
-
+		
 		if (!"POST".equals(data.getRequest().getMethod())) {
 			return;
 		}
@@ -1272,7 +1275,7 @@ public class AdminSitesAction extends PagedResourceActionII
 	public void doRemove_confirmed(RunData data, Context context)
 	{
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
-
+		
 		if (!"POST".equals(data.getRequest().getMethod())) {
 			return;
 		}
@@ -1325,7 +1328,7 @@ public class AdminSitesAction extends PagedResourceActionII
 
 	/**
 	 * Read the site form and update the site in state.
-	 *
+	 * 
 	 * @return true if the form is accepted, false if there's a validation error (an alertMessage will be set)
 	 */
 	private boolean readSiteForm(RunData data, SessionState state)
@@ -1494,39 +1497,39 @@ public class AdminSitesAction extends PagedResourceActionII
 			// read the form - if rejected, leave things as they are
 		if (!readSiteForm(data, state)) return;
 		state.setAttribute("mode", "properties");
-
+	
 	}
-
+	
 	/**
 	 * Switch to property edit mode within a tool edit.
 	 */
 	public void doToolProperties(RunData data, Context context)
 	{
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
-
+		
 		if (!"POST".equals(data.getRequest().getMethod())) {
 			return;
 		}
-
+		
 		ToolConfiguration tool = (ToolConfiguration) state.getAttribute("tool");
 		// read the form - if rejected, leave things as they are
 		if (!readToolForm(data, state)) return;
 		state.setAttribute("mode", "toolProperties");
 
-
+	
 	}
-
+	
 	/**
 	 * Switch to property edit mode within a page edit.
 	 */
 	public void doPageProperties(RunData data, Context context)
 	{
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
-
+		
 		if (!"POST".equals(data.getRequest().getMethod())) {
 			return;
 		}
-
+		
 		SitePage page = (SitePage) state.getAttribute("page");
 		// read the form - if rejected, leave things as they are
 		if (!readPageForm(data, state)) return;
@@ -1556,7 +1559,7 @@ public class AdminSitesAction extends PagedResourceActionII
 	public void doNew_property(RunData data, Context context)
 	{
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
-
+		
 		if (!"POST".equals(data.getRequest().getMethod())) {
 			return;
 		}
@@ -1647,7 +1650,7 @@ public class AdminSitesAction extends PagedResourceActionII
 
 		// read the form - if rejected, leave things as they are
 		if (!readPageForm(data, state)) return;
-
+		
 		SitePage page = (SitePage) state.getAttribute("page");
 		//Clean up new page property
 		page.getPropertiesEdit().removeProperty("new");
@@ -1895,7 +1898,7 @@ public class AdminSitesAction extends PagedResourceActionII
 			state.setAttribute("mode", "edit");
 		}
 	}
-
+	
 	/**
 	 * Switch back to edit main info mode properties edit mode
 	 */
@@ -1910,7 +1913,7 @@ public class AdminSitesAction extends PagedResourceActionII
 			state.setAttribute("mode", "editPage");
 		}
 	}
-
+	
 	/**
 	 * Switch back to edit main info mode properties edit mode
 	 */
@@ -1929,7 +1932,7 @@ public class AdminSitesAction extends PagedResourceActionII
 
 	/**
 	 * Read the page form and update the site in state.
-	 *
+	 * 
 	 * @return true if the form is accepted, false if there's a validation error (an alertMessage will be set)
 	 */
 	private boolean readPageForm(RunData data, SessionState state)
@@ -1972,23 +1975,23 @@ public class AdminSitesAction extends PagedResourceActionII
 
 	/**
 	 * Read the properties form and update the site in state.
-	 *
+	 * 
 	 * @return true if the form is accepted, false if there's a validation error (an alertMessage will be set)
 	 */
 	private boolean readPropertiesForm(RunData data, SessionState state)
 	{
 		if(state.getAttribute("tool")!= null) {
-
+			
 			return readToolPropertiesForm(data, state);
 		}
-
+		
 		if(state.getAttribute("page")!= null) {
-
+			
 			return readPagePropertiesForm(data, state);
 		}
-
+		
 		if(state.getAttribute("site")!= null) {
-
+		
 			return readSitePropertiesForm(data, state);
 		}
 		return true;
@@ -1996,7 +1999,7 @@ public class AdminSitesAction extends PagedResourceActionII
 
 	/**
 	 * Read the properties form and update the site in state.
-	 *
+	 * 
 	 * @return true if the form is accepted, false if there's a validation error (an alertMessage will be set)
 	 */
 	private boolean readSitePropertiesForm(RunData data, SessionState state) {
@@ -2004,13 +2007,13 @@ public class AdminSitesAction extends PagedResourceActionII
 		Site site = (Site) state.getAttribute("site");
 
 		ResourcePropertiesEdit props = site.getPropertiesEdit();
-
+		
 		// check each property for possible update
 		for (Iterator i = props.getPropertyNames(); i.hasNext();)
 		{
 			String name = (String) i.next();
 			String formValue = StringUtils.trimToNull(data.getParameters().getString("param_" + name));
-
+			
 			// update the properties or remove
 			if (formValue != null)
 			{
@@ -2021,7 +2024,7 @@ public class AdminSitesAction extends PagedResourceActionII
 				props.removeProperty(name);
 			}
 		}
-
+		
 		// see if there's a new one
 		String formName = StringUtils.trimToNull(data.getParameters().getString("new_name"));
 		if (formName != null)
@@ -2038,7 +2041,7 @@ public class AdminSitesAction extends PagedResourceActionII
 
 	/**
 	 * Read the properties form and update the page in state.
-	 *
+	 * 
 	 * @return true if the form is accepted, false if there's a validation error (an alertMessage will be set)
 	 */
 	private boolean readPagePropertiesForm(RunData data, SessionState state) {
@@ -2046,13 +2049,13 @@ public class AdminSitesAction extends PagedResourceActionII
 		SitePage page = (SitePage) state.getAttribute("page");
 
 		ResourcePropertiesEdit props = page.getPropertiesEdit();
-
+		
 		// check each property for possible update
 		for (Iterator i = props.getPropertyNames(); i.hasNext();)
 		{
 			String name = (String) i.next();
 			String formValue = StringUtils.trimToNull(data.getParameters().getString("param_" + name));
-
+			
 			// update the properties or remove
 			if (formValue != null)
 			{
@@ -2063,7 +2066,7 @@ public class AdminSitesAction extends PagedResourceActionII
 				props.removeProperty(name);
 			}
 		}
-
+		
 		// see if there's a new one
 		String formName = StringUtils.trimToNull(data.getParameters().getString("new_name"));
 		if (formName != null)
@@ -2077,10 +2080,10 @@ public class AdminSitesAction extends PagedResourceActionII
 
 		return true;
 	}
-
+	
 	/**
 	 * Read the properties form and update the page in state.
-	 *
+	 * 
 	 * @return true if the form is accepted, false if there's a validation error (an alertMessage will be set)
 	 */
 	private boolean readToolPropertiesForm(RunData data, SessionState state) {
@@ -2096,7 +2099,7 @@ public class AdminSitesAction extends PagedResourceActionII
 			{
 				String paramName = (String) iParams.nextElement();
 				String formValue = StringUtils.trimToNull(data.getParameters().getString("param_" + paramName));
-
+				
 				// update the properties or remove
 				if (formValue != null)
 				{
@@ -2125,7 +2128,7 @@ public class AdminSitesAction extends PagedResourceActionII
 
 	/**
 	 * Read the group form and update the site in state.
-	 *
+	 * 
 	 * @return true if the form is accepted, false if there's a validation error (an alertMessage will be set)
 	 */
 	private boolean readGroupForm(RunData data, SessionState state)
@@ -2244,7 +2247,7 @@ public class AdminSitesAction extends PagedResourceActionII
 	public void doSave_tool(RunData data, Context context)
 	{
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
-
+		
 		if (!"POST".equals(data.getRequest().getMethod())) {
 			return;
 		}
@@ -2266,7 +2269,7 @@ public class AdminSitesAction extends PagedResourceActionII
 	public void doDone_tool(RunData data, Context context)
 	{
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
-
+		
 		if (!"POST".equals(data.getRequest().getMethod())) {
 			return;
 		}
@@ -2313,7 +2316,7 @@ public class AdminSitesAction extends PagedResourceActionII
 		ToolConfiguration tool = (ToolConfiguration) state.getAttribute("tool");
 
 		String property = tool.getPlacementConfig().getProperty("new");
-
+		
 		// if the tool was new, remove it
 		if ("true".equals(property))
 		{
@@ -2468,7 +2471,7 @@ public class AdminSitesAction extends PagedResourceActionII
 
 	/**
 	 * Read the tool form and update the site in state.
-	 *
+	 * 
 	 * @return true if the form is accepted, false if there's a validation error (an alertMessage will be set)
 	 */
 	private boolean readToolForm(RunData data, SessionState state)
@@ -2538,7 +2541,7 @@ public class AdminSitesAction extends PagedResourceActionII
 
 	/**
 	 * Read the tool feature form and update the site in state.
-	 *
+	 * 
 	 * @return true if the form is accepted, false if there's a validation error (an alertMessage will be set)
 	 */
 	private boolean readToolFeatureForm(RunData data, SessionState state)
@@ -2579,7 +2582,7 @@ public class AdminSitesAction extends PagedResourceActionII
 		state.removeAttribute(STATE_SEARCH_USER_ID);
 
 	} // cleanState
-
+	
 	public boolean displaySiteAlias() {
 		if (ServerConfigurationService.getBoolean("wsetup.disable.siteAlias", false)) {
 			return false;
@@ -2589,7 +2592,7 @@ public class AdminSitesAction extends PagedResourceActionII
 
 	/**
 	 * Create a list of the valid layout names.
-	 *
+	 * 
 	 * @return A List (String) of the value layout names.
 	 */
 	private List layoutsList()
@@ -2603,7 +2606,7 @@ public class AdminSitesAction extends PagedResourceActionII
 		return rv;
 
 	} // layoutsList
-
+	
 	/**
 	 * get one alias for site, if it exists
 	 * @param channelReference
@@ -2622,15 +2625,15 @@ public class AdminSitesAction extends PagedResourceActionII
 		}
 		return alias;
 	}
-
+	
 	private void setSiteAlias(String alias, String siteReference, SessionState state)
 	{
-
+		
 		/*
 		 * The point of these site aliases is to have easy-to-recall,
 		 * easy-to-guess URLs. So we take a very conservative approach
-		 * here and disallow any aliases which would require special
-		 * encoding or would simply be ignored when building a valid
+		 * here and disallow any aliases which would require special 
+		 * encoding or would simply be ignored when building a valid 
 		 * resource reference or outputting that reference as a URL.
 		 */
 		boolean isSimpleResourceName = alias.equals(Validator.escapeResourceName(alias));
@@ -2638,8 +2641,8 @@ public class AdminSitesAction extends PagedResourceActionII
 		if ( !(isSimpleResourceName) || !(isSimpleUrl) ) {
 			addAlert(state, rb.getFormattedMessage("sitedipag.alias.isinval", new Object[]{alias}));
 			log.warn("{}.updateSiteInfo: {}", this, rb.getFormattedMessage("sitedipag.alias.isinval", new Object[]{alias}));
-		}
-		else if (StringUtils.trimToNull(alias) != null && StringUtils.trimToNull(siteReference) != null)
+		} 
+		else if (StringUtils.trimToNull(alias) != null && StringUtils.trimToNull(siteReference) != null) 
 		{
 			String currentAlias = StringUtils.trimToNull(getSiteAlias(siteReference));
 
