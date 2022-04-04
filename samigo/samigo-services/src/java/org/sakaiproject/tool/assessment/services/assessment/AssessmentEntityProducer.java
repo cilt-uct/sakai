@@ -570,7 +570,7 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
 
             loadResourceIds(db,
                             "select resourceid from SAM_ATTACHMENT_T where itemtextid in " +
-                            " (select itemtextid from sam_itemtext_t where itemid in " +
+                            " (select itemtextid from SAM_ITEMTEXT_T where itemid in " +
                             "  (select itemid from SAM_ITEM_T where sectionid in" +
                             "   (select sectionid from SAM_SECTION_T where assessmentid = ?)))",
                             assessmentId,
