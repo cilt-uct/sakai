@@ -5217,7 +5217,14 @@ public class SakaiScript extends AbstractWebService {
 
         Session session = establishSession(sessionid);
 
+        // Require user to be an admin
+        if (!securityService.isSuperUser(session.getUserId())) {
+            log.warn("WS architeSite(): Permission denied. Must be super user to create a site archive");
+            throw new RuntimeException("WS architeSite(): Permission denied. Must be super user to create a site archive");
+        }
+
 	log.info("Archiving site {}", siteid);
+
         try {
             String msg = archiveService.archiveAndZip(siteid);
             log.info("Successfully archived site {} - {}", siteid, msg);
@@ -5227,4 +5234,5 @@ public class SakaiScript extends AbstractWebService {
         }
         return "success";
     }
+
 }
