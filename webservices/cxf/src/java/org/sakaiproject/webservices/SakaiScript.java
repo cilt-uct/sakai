@@ -5223,6 +5223,13 @@ public class SakaiScript extends AbstractWebService {
             throw new RuntimeException("WS archiveSite(): Permission denied. Must be super user to create a site archive");
         }
 
+        try {
+            Site archiveTarget = siteService.getSite(siteid);
+        } catch (IdUnusedException e) {
+            log.warn("Unable to archive site {}: invalid site id", siteid);
+	    return "failed: siteid " + siteid + " not found";
+        }
+
 	log.info("Archiving site {}", siteid);
 
         try {
@@ -5232,6 +5239,7 @@ public class SakaiScript extends AbstractWebService {
             log.error("archiveSite(): Failed to archive site: " + siteid + " - " + e.getMessage(), e);
             return e.getClass().getName() + " : " + e.getMessage();
         }
+
         return "success";
     }
 
