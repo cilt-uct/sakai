@@ -338,7 +338,7 @@ public class AuthoringHelper
               factory.getAssessmentHelperInstance(this.qtiVersion);
       Assessment assessmentXml = assessmentHelper.readXMLDocument(is);
       assessmentXml.setIdent(String.format("pub%s", publishedAssessmentId));
-      assessmentXml.setTitle(String.format("Published: %s", FormattedText.convertFormattedTextToPlaintext(publishedAssessment.getTitle())));
+      assessmentXml.setTitle(String.format("Published: %s", ComponentManager.get(FormattedText.class).convertFormattedTextToPlaintext(publishedAssessment.getTitle())));
       assessmentHelper.setDescriptiveText(publishedAssessment.getDescription(),
               assessmentXml);
 

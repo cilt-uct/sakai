@@ -19,7 +19,7 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
-import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.sakaiproject.util.Xml;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -65,7 +65,7 @@ public class SyllabusRejigger {
 
                 if (content.length() > 0) {
                     content.append("\n<hr>\n");
-                    content.append(String.format("<h2>%s</h2>\n\n", StringEscapeUtils.escapeHtml(title)));
+                    content.append(String.format("<h2>%s</h2>\n\n", StringEscapeUtils.escapeHtml4(title)));
                 }
 
                 NodeList children = mergeMe.getChildNodes();
@@ -98,7 +98,7 @@ public class SyllabusRejigger {
                     content.append("\n\n<h3>Attachments</h3>\n");
                     content.append("\n<ul>\n");
                     for (String attachment : attachmentPaths) {
-                        attachment = StringEscapeUtils.escapeHtml(attachment);
+                        attachment = StringEscapeUtils.escapeHtml4(attachment);
 
                         content.append(String.format("<li><a href=\"%s\">%s</a></li>\n",
                                                      attachment,

@@ -126,9 +126,6 @@ public final class AssignmentServiceConstants {
     public static final String LINE_SEPARATOR = System.getProperty("line.separator");
     public static final String SAK_PROP_ASSIGNMENT_IMPORT_SUBMISSIONS = "assignment.merge.import.submissions";
 
-    public static final String LINE_SEPARATOR = System.getProperty("line.separator");
-    public static final String SAK_PROP_ASSIGNMENT_IMPORT_SUBMISSIONS = "assignment.merge.import.submissions";
-
     private AssignmentServiceConstants() {
         throw new RuntimeException(this.getClass().getCanonicalName() + " is not to be instantiated");
     }

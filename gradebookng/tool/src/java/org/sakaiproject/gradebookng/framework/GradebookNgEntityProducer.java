@@ -25,8 +25,7 @@ import java.util.Set;
 import java.util.Stack;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang.StringUtils;
-import org.sakaiproject.component.cover.HotReloadConfigurationService;
+import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.entity.api.EntityManager;
@@ -224,7 +223,8 @@ public class GradebookNgEntityProducer implements EntityProducer, EntityTransfer
 				Element categoryEl = doc.createElement("category");
 				categoryEl.setAttribute("id", String.valueOf(category.getId()));
 				categoryEl.setAttribute("name", category.getName());
-				categoryEl.setAttribute("extraCredit", String.valueOf(category.isExtraCredit()));
+				// FIXME - SM
+				// categoryEl.setAttribute("extraCredit", String.valueOf(category.isExtraCredit()));
 				if (settings.getCategoryType() == 3) {
 					categoryEl.setAttribute("weight", String.valueOf(category.getWeight()));
 				} else {
@@ -245,7 +245,7 @@ public class GradebookNgEntityProducer implements EntityProducer, EntityTransfer
 		List<Assignment> gradebookItems = this.gradebookNgBusinessService.getGradebookAssignments(siteId);
 
 		// apply external app denylist
-		List<String> blockedExternalAppNames = Arrays.asList(HotReloadConfigurationService.getString("gradebookng.archive.external_app_name.deny", "").split(","));
+		List<String> blockedExternalAppNames = Arrays.asList(ServerConfigurationService.getString("gradebookng.archive.external_app_name.deny", "").split(","));
 		gradebookItems = gradebookItems.stream().filter(item -> {
 			return !item.isExternallyMaintained() || !blockedExternalAppNames.contains(item.getExternalAppName());
 		}).collect(Collectors.toList());
@@ -278,7 +278,8 @@ public class GradebookNgEntityProducer implements EntityProducer, EntityTransfer
 			} else {
 				gradebookItemEl.setAttribute("categoryId", String.valueOf(gradebookItem.getCategoryId()));
 			}
-			gradebookItemEl.setAttribute("extraCredit", String.valueOf(gradebookItem.getExtraCredit()));
+			// FIXME - SM
+			// gradebookItemEl.setAttribute("extraCredit", String.valueOf(gradebookItem.getExtraCredit()));
 			gradebookItemEl.setAttribute("order", String.valueOf(gradebookItem.getSortOrder()));
 			gradebookItemEl.setAttribute("categorizedOrder", String.valueOf(gradebookItem.getCategorizedSortOrder()));
 			gradebookItemsEl.appendChild(gradebookItemEl);

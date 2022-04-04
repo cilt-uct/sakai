@@ -1041,6 +1041,16 @@ public class AssessmentService {
 		}
 	}
 
+	public List<PublishedAssessmentData> getAllPublishedAssessmentsForSite(String siteId) {
+		List<PublishedAssessmentData> result = new ArrayList<>();
+		List<PublishedAssessmentFacade> publist = PersistenceService.getInstance().getPublishedAssessmentFacadeQueries().getBasicInfoOfAllPublishedAssessments2(PublishedAssessmentFacadeQueries.DUE, true, siteId);
+		for (PublishedAssessmentFacade facade: publist) {
+			PublishedAssessmentData data = PersistenceService.getInstance().getPublishedAssessmentFacadeQueries().loadPublishedAssessment(facade.getPublishedAssessmentId());
+			result.add(data);
+		}
+		return result;
+	}
+
 	public List getAllActiveAssessmentsbyAgent(String fromContext) {
 		try {
 			return PersistenceService.getInstance().getAssessmentFacadeQueries()
