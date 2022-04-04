@@ -172,7 +172,7 @@ public class SiteArchiver {
 		// create the directory for the archive
 		File dir = new File(m_storagePath + siteId + "-archive/");
 
-		// NYU clear the directory (if site already archived) so resources are not duplicated
+		// clear the directory (if site already archived) so resources are not duplicated
 		try {
 			FileUtils.deleteDirectory(dir);
 		} catch (IOException e) {

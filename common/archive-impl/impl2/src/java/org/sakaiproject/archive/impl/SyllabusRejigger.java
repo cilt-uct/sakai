@@ -88,6 +88,7 @@ public class SyllabusRejigger {
                     } else if ("attachment".equals(child.getTagName())) {
                         // Load attachment
                         if (child.getAttribute("relative-url") != null) {
+                            // FIXME - SM
                             attachmentPaths.add(String.format("https://newclasses.nyu.edu/access%s",
                                                               child.getAttribute("relative-url")));
                         }

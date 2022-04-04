@@ -182,7 +182,7 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
             }
         }
 
-		// NYU published assessments
+		// Published assessments
 		PublishedAssessmentService publishedAssessmentService = new PublishedAssessmentService();
 		List<PublishedAssessmentData> publishedAssessmentList = publishedAssessmentService.getAllPublishedAssessmentsForSite(siteId);
 		for (PublishedAssessmentData data : publishedAssessmentList) {

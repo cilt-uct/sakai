@@ -134,7 +134,7 @@ public class SiteZipper {
             bOut = new BufferedOutputStream(fOut);
             zOut = new ZipArchiveOutputStream(bOut);
 
-            // NYU: Store without compression.  Most of the content we care about is already compressed anyway.
+            // Store without compression. Most larger files are likely already compressed.
             zOut.setLevel(ZipArchiveOutputStream.STORED);
 
             addFileToZip(zOut, archivePath, ""); //add the directory which will then add all files recursively
@@ -153,7 +153,7 @@ public class SiteZipper {
             zip.close();
         }
 
-		// NYU touch a state file indicating ready for import
+		// Touch a state file indicating ready for import
 		FileUtils.writeStringToFile(new File(m_storagePath + siteId + "-" + timestamp + ".ready"), "");
 		
 		return true;
