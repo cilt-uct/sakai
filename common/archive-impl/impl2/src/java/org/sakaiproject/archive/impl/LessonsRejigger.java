@@ -314,7 +314,7 @@ public class LessonsRejigger {
             TransformerFactory.newInstance().newTransformer().transform(src, res);
 
             // Keep the original copy for reference
-            new File(path).renameTo(new File(path + ".pre_nyu_rewrite"));
+            new File(path).renameTo(new File(path + ".pre_rewrite"));
 
             // Overwrite the original path
             new File(path + ".rewritten").renameTo(new File(path));
