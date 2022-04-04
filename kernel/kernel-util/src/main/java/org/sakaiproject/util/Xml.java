@@ -320,7 +320,7 @@ public class Xml
 			// 9 = tab, 10 = LF, 13 = CR
 			if (ch < 32) {
 				if (ch != 9 && ch != 10 && ch != 13) {
-					System.err.println(String.format("Replacing 0x%02x with 0x%02x", ch, (int)REPLACEMENT_CHAR));
+					log.debug(String.format("Replacing 0x%02x with 0x%02x", ch, (int)REPLACEMENT_CHAR));
 					ch = (int)REPLACEMENT_CHAR;
 				}
 			}

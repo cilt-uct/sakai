@@ -206,8 +206,7 @@ public class SiteArchiver {
 			}
 			catch (Throwable t)
 			{
-				System.err.println("\n*** @DEBUG " + System.currentTimeMillis() + "[SiteArchiver.java:210] Uncaught exception\n    archiver: " + service.getClass().getName() + "\n    error: "  + t.toString() + "\n    stacktrace:\n");
-				t.printStackTrace();
+				log.error("Uncaught exception", t);
 				results.append(t.toString() + "\n");
 			}
 
@@ -216,10 +215,9 @@ public class SiteArchiver {
 			String fileName = storagePath + service.getLabel() + ".xml";
 
 			// fileName
-			System.err.println("\n*** @DEBUG " + System.currentTimeMillis() + "[SiteArchiver.java:210 NoxiousEgret]: " + "\n    fileName => " + (fileName) + "\n");
+			log.debug("fileName => {}", fileName);
 
 			// dumpDOM(doc, 0);
-
 
 			Xml.writeDocument(doc, fileName);
 		}

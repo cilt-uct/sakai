@@ -19,8 +19,11 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
+
 import org.apache.commons.lang3.StringEscapeUtils;
+
 import org.sakaiproject.util.Xml;
+
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -33,7 +36,9 @@ import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
 
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class SyllabusRejigger {
 
     public boolean rewriteSyllabus(String path) {
@@ -138,8 +143,7 @@ public class SyllabusRejigger {
             Xml.writeDocument(doc, path);
             return true;
         } catch (Exception e) {
-            System.err.println("Error rewriting syllabus: " + e);
-            e.printStackTrace();
+            log.error("Error rewriting syllabus", e);
         }
 
         return false;
