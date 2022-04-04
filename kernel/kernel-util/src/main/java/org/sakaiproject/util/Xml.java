@@ -407,8 +407,7 @@ public class Xml
 		}
 		catch (Exception any)
 		{
-			log.warn("writeDocumentToString: " + any.toString());
-			any.printStackTrace();
+			log.warn("Unable to write document to string", any);
 			return null;
 		}
 	}
