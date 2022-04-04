@@ -5219,8 +5219,8 @@ public class SakaiScript extends AbstractWebService {
 
         // Require user to be an admin
         if (!securityService.isSuperUser(session.getUserId())) {
-            log.warn("WS architeSite(): Permission denied. Must be super user to create a site archive");
-            throw new RuntimeException("WS architeSite(): Permission denied. Must be super user to create a site archive");
+            log.warn("WS archiveSite(): Permission denied. Must be super user to create a site archive");
+            throw new RuntimeException("WS archiveSite(): Permission denied. Must be super user to create a site archive");
         }
 
 	log.info("Archiving site {}", siteid);
