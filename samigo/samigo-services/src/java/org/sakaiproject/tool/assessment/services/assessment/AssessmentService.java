@@ -124,6 +124,18 @@ public class AssessmentService {
 		}
 	}
 	
+
+	public PublishedAssessmentFacade getPublishedAssessment(String publishedAssessmentId) {
+		try {
+			return PersistenceService.getInstance()
+					.getPublishedAssessmentFacadeQueries().getPublishedAssessment(
+							Long.valueOf(publishedAssessmentId));
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			throw new RuntimeException(e);
+		}
+	}
+	
 	public AssessmentIfc getAssessment(Long assessmentId) {
 		try {
 			return PersistenceService.getInstance()

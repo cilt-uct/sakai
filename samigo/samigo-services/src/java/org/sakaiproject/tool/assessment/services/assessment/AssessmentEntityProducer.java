@@ -135,7 +135,66 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
             }
             element.appendChild(assessmentXml);
 
+            for (String resourceId : fetchAllAttachmentResourceIds(data.getAssessmentId())) {
+                ContentResource resource = null;
+                try {
+                    resource = ContentHostingService.getResource(resourceId);
+                } catch (PermissionException e) {
+                    log.warn("Permission error fetching attachment: " + resourceId);
+                } catch (TypeException e) {
+                    log.warn("TypeException error fetching attachment: " + resourceId);
+                } catch (IdUnusedException e) {
+                    log.warn("IdUnusedException error fetching attachment: " + resourceId);
+                }
+                attachments.add(EntityManager.newReference(resource.getReference()));
+            }
         }
+
+		// NYU published assessments
+		PublishedAssessmentService publishedAssessmentService = new PublishedAssessmentService();
+		List<PublishedAssessmentData> publishedAssessmentList = publishedAssessmentService.getAllPublishedAssessmentsForSite(siteId);
+		for (PublishedAssessmentData data : publishedAssessmentList) {
+			Element assessmentXml = doc.createElement(ARCHIVED_ELEMENT);
+			String publishedAssessmentId = data.getPublishedAssessmentId().toString();
+			assessmentXml.setAttribute("id", String.format("pub%s", publishedAssessmentId));
+			assessmentXml.setAttribute("published", "true");
+			assessmentXml.setAttribute("baseId", data.getAssessmentBaseId().toString());
+			FileWriter writer = null;
+			try {
+				File assessmentFile = new File(qtiPath + File.separator + ARCHIVED_ELEMENT + String.format("pub%s", publishedAssessmentId) + ".xml");
+				writer = new FileWriter(assessmentFile);
+				writer.write(qtiService.getExportedPublishedAssessmentAsString(publishedAssessmentId, QTI_VERSION));
+			} catch (IOException e) {
+				results.append(e.getMessage() + "\n");
+				log.error(e.getMessage(), e);
+			} finally {
+				if (writer != null) {
+					try {
+						writer.close();
+					} catch (Throwable t) {
+						log.error(t.getMessage(), t);
+					}
+				}
+			}
+			element.appendChild(assessmentXml);
+
+			for (String resourceId : fetchAllAttachmentResourceIds(data.getPublishedAssessmentId())) {
+				ContentResource resource = null;
+				try {
+					resource = ContentHostingService.getResource(resourceId);
+				} catch (PermissionException e) {
+					log.warn("Permission error fetching attachment: " + resourceId);
+				} catch (TypeException e) {
+					log.warn("TypeException error fetching attachment: " + resourceId);
+				} catch (IdUnusedException e) {
+					log.warn("IdUnusedException error fetching attachment: " + resourceId);
+				}
+				attachments.add(EntityManager.newReference(resource.getReference()));
+			}
+		}
+
+        exportQuestionPools(siteId, archivePath, attachments);
+
         stack.pop();
 		return results.toString();
 	}
@@ -351,5 +410,170 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
 				}
 			}
 		}
+	}
+
+	private void exportQuestionPools(String siteId, String archivePath, List<Reference> attachments) {
+		String xmlPath = archivePath + File.separator + "samigo_question_pools.xml";
+		QuestionPoolServiceAPI questionPoolService = (QuestionPoolServiceAPI)ComponentManager.get("org.sakaiproject.tool.assessment.shared.api.questionpool.QuestionPoolServiceAPI");
+
+		try {
+			Site site = SiteService.getSite(siteId);
+			String maintainRole = site.getMaintainRole();
+			List<String> instructorIds = new ArrayList<>();
+			for (Member member : site.getMembers()) {
+				if (maintainRole.equals(member.getRole().getId())) {
+					if (!"admin".equals(member.getUserId())) {
+						instructorIds.add(member.getUserId());
+					}
+				}
+			}
+
+			DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+			DocumentBuilder builder = factory.newDocumentBuilder();
+			Document doc = builder.newDocument();
+			Element questionPools = doc.createElement("QuestionPools");
+
+			for (String instructorId : instructorIds) {
+				for (Object poolObj : questionPoolService.getAllPools(instructorId)) {
+					Element questionPool = doc.createElement("QuestionPool");
+					QuestionPoolDataIfc pool = (QuestionPoolDataIfc)poolObj;
+					questionPool.setAttribute("title", pool.getTitle());
+					questionPool.setAttribute("id", String.valueOf(pool.getQuestionPoolId()));
+					questionPool.setAttribute("ownerId", instructorId);
+					if (pool.getParentPoolId() != null && pool.getParentPoolId() != 0L) {
+						questionPool.setAttribute("parentId", String.valueOf(pool.getParentPoolId()));
+					}
+					questionPool.setAttribute("sourcebank_ref", String.format("%d::%s", pool.getQuestionPoolId(), pool.getTitle()));
+					for (Object itemObj : pool.getQuestionPoolItems()) {
+					    try {
+						QuestionPoolItemData item = (QuestionPoolItemData)itemObj;
+						NodeList nodes = qtiService.getExportedItem(String.valueOf(item.getItemId()), QTI_VERSION).getChildNodes();
+						for (int i=0; i<nodes.getLength(); ++i) {
+							Element node = (Element) nodes.item(i);
+							questionPool.appendChild(doc.adoptNode(node));
+						}
+						for (String resourceId : fetchItemAttachmentResourceIds(item.getItemId())) {
+							ContentResource resource = null;
+							try {
+								resource = ContentHostingService.getResource(resourceId);
+							} catch (PermissionException e) {
+								log.warn("Permission error fetching attachment: " + resourceId);
+							} catch (TypeException e) {
+								log.warn("TypeException error fetching attachment: " + resourceId);
+							} catch (IdUnusedException e) {
+								log.warn("IdUnusedException error fetching attachment: " + resourceId);
+							}
+							attachments.add(EntityManager.newReference(resource.getReference()));
+						}
+					    } catch (Exception e) {
+						log.error(String.format("Caught an exception while exporting question pool %s (id=%s; title=%s) for instructor %s: %s", pool, pool.getQuestionPoolId(), pool.getTitle(), instructorId, e.getMessage()));
+						e.printStackTrace();
+					    }
+					}
+					questionPools.appendChild(questionPool);
+				}
+			}
+
+			doc.appendChild(questionPools);
+
+			FileWriter writer = null;
+			try {
+				File file = new File(xmlPath);
+				writer = new FileWriter(file);
+
+				TransformerFactory tFactory = TransformerFactory.newInstance();
+				Transformer transformer = tFactory.newTransformer();
+
+				DOMSource source = new DOMSource(doc);
+				StreamResult result = new StreamResult(writer);
+				transformer.transform(source, result);
+			} catch (IOException | TransformerException e) {
+				e.printStackTrace();
+			} finally {
+				if (writer != null) {
+					try {
+						writer.close();
+					} catch (Throwable t) {
+					}
+				}
+			}
+		} catch (ParserConfigurationException | IdUnusedException e) {
+			e.printStackTrace();
+		}
+	}
+
+    private void loadResourceIds(Connection db, String query, Long assessmentId, List<String> result)
+        throws SQLException {
+        try (PreparedStatement ps = db.prepareStatement(query)) {
+            ps.setLong(1, assessmentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while(rs.next()) {
+                    result.add(rs.getString("resourceid"));
+                }
+            }
+        }
+    }
+
+    private List<String> fetchAllAttachmentResourceIds(Long assessmentId) {
+        List<String> result = new ArrayList<>();
+
+        Connection db = null;
+        try {
+            db = SqlService.borrowConnection();
+
+            loadResourceIds(db, "select resourceid from SAM_ATTACHMENT_T where assessmentid = ?", assessmentId, result);
+
+            loadResourceIds(db,
+                            "select resourceid from SAM_ATTACHMENT_T where sectionid in " +
+                            " (select sectionid from SAM_SECTION_T where assessmentid = ?)",
+                            assessmentId,
+                            result);
+
+            loadResourceIds(db,
+                            "select resourceid from SAM_ATTACHMENT_T where itemid in " +
+                            " (select itemid from SAM_ITEM_T where sectionid in " +
+                            "  (select sectionid from SAM_SECTION_T where assessmentid = ?))",
+                            assessmentId,
+                            result);
+
+            loadResourceIds(db,
+                            "select resourceid from SAM_ATTACHMENT_T where itemtextid in " +
+                            " (select itemtextid from sam_itemtext_t where itemid in " +
+                            "  (select itemid from SAM_ITEM_T where sectionid in" +
+                            "   (select sectionid from SAM_SECTION_T where assessmentid = ?)))",
+                            assessmentId,
+                            result);
+        } catch (SQLException e) {
+            log.error(e.getMessage());
+            e.printStackTrace();
+        } finally {
+            SqlService.returnConnection(db);
+        }
+
+        return result;
+    }
+
+	private List<String> fetchItemAttachmentResourceIds(Long itemId) {
+		List<String> result = new ArrayList<>();
+
+		Connection db = null;
+		try {
+			db = SqlService.borrowConnection();
+
+			loadResourceIds(db, "select resourceid from SAM_ATTACHMENT_T where itemid = ?", itemId, result);
+
+			loadResourceIds(db,
+					"select resourceid from SAM_ATTACHMENT_T where itemtextid in " +
+							" (select itemtextid from SAM_ITEMTEXT_T where itemid = ?)",
+					itemId,
+					result);
+		} catch (SQLException e) {
+			log.error(e.getMessage());
+			e.printStackTrace();
+		} finally {
+			SqlService.returnConnection(db);
+		}
+
+		return result;
 	}
 }
