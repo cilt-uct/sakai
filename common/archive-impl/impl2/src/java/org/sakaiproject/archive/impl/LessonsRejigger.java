@@ -117,9 +117,8 @@ public class LessonsRejigger {
                             updatedAttributes.setValue(updatedAttributes.getIndex("sakaiid"), "");
                             updatedAttributes.setValue(updatedAttributes.getIndex("type"), "5"); // text
                             updatedAttributes.setValue(updatedAttributes.getIndex("name"), altText);
-                            // FIXME - SM
                             updatedAttributes.setValue(updatedAttributes.getIndex("html"),
-                                                       String.format("<p><img style=\"max-width: 100%%\" alt=\"%s\" src=\"https://newclasses.nyu.edu/access/content%s\"></p>",
+                                                       String.format("<p><img style=\"max-width: 100%%\" alt=\"%s\" src=\"https://vula.uct.ac.za/access/content%s\"></p>",
                                                                      altText,
                                                                      contentPath));
 
