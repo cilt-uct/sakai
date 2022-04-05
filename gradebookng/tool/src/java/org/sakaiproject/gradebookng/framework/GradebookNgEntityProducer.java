@@ -223,8 +223,7 @@ public class GradebookNgEntityProducer implements EntityProducer, EntityTransfer
 				Element categoryEl = doc.createElement("category");
 				categoryEl.setAttribute("id", String.valueOf(category.getId()));
 				categoryEl.setAttribute("name", category.getName());
-				// FIXME - SM
-				// categoryEl.setAttribute("extraCredit", String.valueOf(category.isExtraCredit()));
+				categoryEl.setAttribute("extraCredit", String.valueOf(category.getExtraCredit()));
 				if (settings.getCategoryType() == 3) {
 					categoryEl.setAttribute("weight", String.valueOf(category.getWeight()));
 				} else {
@@ -278,8 +277,7 @@ public class GradebookNgEntityProducer implements EntityProducer, EntityTransfer
 			} else {
 				gradebookItemEl.setAttribute("categoryId", String.valueOf(gradebookItem.getCategoryId()));
 			}
-			// FIXME - SM
-			// gradebookItemEl.setAttribute("extraCredit", String.valueOf(gradebookItem.getExtraCredit()));
+			gradebookItemEl.setAttribute("extraCredit", String.valueOf(gradebookItem.isExtraCredit()));
 			gradebookItemEl.setAttribute("order", String.valueOf(gradebookItem.getSortOrder()));
 			gradebookItemEl.setAttribute("categorizedOrder", String.valueOf(gradebookItem.getCategorizedSortOrder()));
 			gradebookItemsEl.appendChild(gradebookItemEl);
