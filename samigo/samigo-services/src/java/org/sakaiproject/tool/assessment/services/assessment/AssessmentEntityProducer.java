@@ -215,11 +215,14 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
 				try {
 					resource = ContentHostingService.getResource(resourceId);
 				} catch (PermissionException e) {
-					log.warn("Permission error fetching attachment: " + resourceId);
+					log.warn("Permission error fetching attachment: {}", resourceId);
+					continue;
 				} catch (TypeException e) {
-					log.warn("TypeException error fetching attachment: " + resourceId);
+					log.warn("TypeException error fetching attachment: {}", resourceId);
+					continue;
 				} catch (IdUnusedException e) {
-					log.warn("IdUnusedException error fetching attachment: " + resourceId);
+					log.warn("IdUnusedException error fetching attachment: {}", resourceId);
+					continue;
 				}
 				attachments.add(EntityManager.newReference(resource.getReference()));
 			}
