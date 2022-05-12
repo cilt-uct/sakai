@@ -79,6 +79,7 @@
                 <module>library</module>
                 <module>login</module>
                 <module>mailarchive</module>
+                <module>meetings</module>
                 <module>message</module>
                 <module>msgcntr</module>
                 <module>mycalendar</module>
