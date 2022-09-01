@@ -51,7 +51,7 @@ export class Submission {
       this.ltiSubmissionLaunch = init.ltiSubmissionLaunch;
 
       if (init.submitters) {
-        this.firstSubmitterName = init.submitters[0].sortName;
+        this.firstSubmitterName = `${init.submitters[0].sortName}${init.submitters[0].displayId !== null ? ` (${init.submitters[0].displayId})` : ''}`;
         this.firstSubmitterId = init.submitters[0].id;
       }
       this.late = init.late;
@@ -69,7 +69,7 @@ export class Submission {
 
       this.resubmitsAllowed = parseInt(init.properties["allow_resubmit_number"] || 0);
       if (this.resubmitsAllowed === -1 || this.resubmitsAllowed > 0) {
-        this.resubmitDate = moment(parseInt(init.properties["allow_resubmit_closeTime"], 10)).valueOf();
+        this.resubmitDate = moment(parseInt(init.properties.allow_resubmit_closeTime, 10)).valueOf();
       }
 
 

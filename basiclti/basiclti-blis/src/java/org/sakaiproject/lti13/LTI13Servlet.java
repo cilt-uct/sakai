@@ -25,6 +25,7 @@ import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Map;
+import java.util.HashSet;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
@@ -817,6 +818,9 @@ public class LTI13Servlet extends HttpServlet {
 		Long issued = new Long(System.currentTimeMillis() / 1000L);
 		sat.expires = issued + 3600L;
 
+		// https://datatracker.ietf.org/doc/html/rfc6749#section-5.1
+		HashSet<String> returnScopeSet = new HashSet<String> ();
+
 		// Work through requested scopes
 		if (scope.contains(Endpoint.SCOPE_LINEITEM_READONLY)) {
 			if (allowLineItems != 1) {
@@ -824,6 +828,7 @@ public class LTI13Servlet extends HttpServlet {
 				log.error("Scope lineitem not allowed {}", tool_id);
 				return;
 			}
+			returnScopeSet.add(Endpoint.SCOPE_LINEITEM_READONLY);
 			sat.addScope(SakaiAccessToken.SCOPE_LINEITEMS_READONLY);
 		}
 
@@ -833,6 +838,8 @@ public class LTI13Servlet extends HttpServlet {
 				log.error("Scope lineitem not allowed {}", tool_id);
 				return;
 			}
+			returnScopeSet.add(Endpoint.SCOPE_LINEITEM);
+
 			sat.addScope(SakaiAccessToken.SCOPE_LINEITEMS);
 			sat.addScope(SakaiAccessToken.SCOPE_LINEITEMS_READONLY);
 		}
@@ -843,6 +850,8 @@ public class LTI13Servlet extends HttpServlet {
 				log.error("Scope lineitem not allowed {}", tool_id);
 				return;
 			}
+			returnScopeSet.add(Endpoint.SCOPE_SCORE);
+
 			sat.addScope(SakaiAccessToken.SCOPE_BASICOUTCOME);
 		}
 
@@ -852,6 +861,8 @@ public class LTI13Servlet extends HttpServlet {
 				log.error("Scope lineitem not allowed {}", tool_id);
 				return;
 			}
+			returnScopeSet.add(Endpoint.SCOPE_RESULT_READONLY);
+
 			sat.addScope(SakaiAccessToken.SCOPE_BASICOUTCOME);
 		}
 
@@ -861,6 +872,8 @@ public class LTI13Servlet extends HttpServlet {
 				log.error("Scope lineitem not allowed {}", tool_id);
 				return;
 			}
+			returnScopeSet.add(LaunchLIS.SCOPE_NAMES_AND_ROLES);
+
 			sat.addScope(SakaiAccessToken.SCOPE_ROSTER);
 		}
 
@@ -869,6 +882,7 @@ public class LTI13Servlet extends HttpServlet {
 
 		AccessToken at = new AccessToken();
 		at.access_token = jws;
+		at.scope = String.join(" ", new ArrayList<String>(returnScopeSet));
 
 		String atsp = JacksonUtil.prettyPrintLog(at);
 
@@ -1334,7 +1348,7 @@ public class LTI13Servlet extends HttpServlet {
 
 		if (authorization == null || !authorization.startsWith("Bearer")) {
 			log.error("Invalid authorization {}", authorization);
-			LTI13Util.return400(response, "invalid_authorization");
+			LTI13Util.return403(response, "invalid_authorization");
 			return null;
 		}
 
@@ -1342,7 +1356,7 @@ public class LTI13Servlet extends HttpServlet {
 		String[] parts = authorization.split("\\s+");
 		if (parts.length != 2 || parts[1].length() < 1) {
 			log.error("Bad authorization {}", authorization);
-			LTI13Util.return400(response, "invalid_authorization");
+			LTI13Util.return403(response, "invalid_authorization");
 			return null;
 		}
 
@@ -1353,7 +1367,7 @@ public class LTI13Servlet extends HttpServlet {
 		} catch (ExpiredJwtException | MalformedJwtException | UnsupportedJwtException
 				| io.jsonwebtoken.security.SignatureException | IllegalArgumentException e) {
 			log.error("Signature error {}\n{}", e.getMessage(), jws);
-			LTI13Util.return400(response, "signature_error");
+			LTI13Util.return403(response, "signature_error");
 			return null;
 		}
 
@@ -1367,7 +1381,7 @@ public class LTI13Servlet extends HttpServlet {
 			sat = new ObjectMapper().readValue(jsonResult, SakaiAccessToken.class);
 		} catch (IOException ex) {
 			log.error("PARSE ERROR {}\n{}", ex.getMessage(), claims.toString());
-			LTI13Util.return400(response, "token_parse_failure", ex.getMessage());
+			LTI13Util.return403(response, "token_parse_failure", ex.getMessage());
 			return null;
 		}
 
@@ -1376,7 +1390,7 @@ public class LTI13Servlet extends HttpServlet {
 			// All good
 		} else {
 			log.error("SakaiAccessToken missing required data {}", sat);
-			LTI13Util.return400(response, "Missing required data in access_token");
+			LTI13Util.return403(response, "Missing required data in access_token");
 			return null;
 		}
 
@@ -1868,6 +1882,7 @@ public class LTI13Servlet extends HttpServlet {
 
 		Map<String, Object> tool = loadToolForContent(content, site, sat.tool_id, response);
 		if (tool == null) {
+			LTI13Util.return400(response, "Could not load tool associated with content");
 			log.error("Could not load tool={} associated with content={}", sat.tool_id, content.get(LTIService.LTI_ID));
 			return;
 		}
@@ -1882,7 +1897,7 @@ public class LTI13Servlet extends HttpServlet {
 		}
 
 		if ( a == null ) {
-			LTI13Util.return400(response, "Could not load column");
+			LTI13Util.return404(response, "Could not load column");
 			log.error("Could not load column={}", lineitem_key);
 			return;
 		}

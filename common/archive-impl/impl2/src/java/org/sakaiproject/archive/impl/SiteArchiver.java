@@ -103,7 +103,6 @@ public class SiteArchiver {
 		m_contentHostingService = service;
 	}
 
-
     public static String pad(int level, String s) {
         StringBuilder result = new StringBuilder();
 

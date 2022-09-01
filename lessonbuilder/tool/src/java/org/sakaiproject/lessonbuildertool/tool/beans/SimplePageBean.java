@@ -4353,7 +4353,7 @@ public class SimplePageBean {
 			} else if (newPoints != null && currentPoints == null) {
 				try {
 					add = gradebookIfc.addExternalAssessment(site.getId(), "lesson-builder:" + page.getPageId(), null,
-						       	pageTitle, newPoints, null, "Lesson Builder");
+						       	pageTitle, newPoints, null, LESSONBUILDER_ID);
 				} catch(ConflictingAssignmentNameException cane) {
 					add = false;
 					setErrMessage(messageLocator.getMessage("simplepage.existing-gradebook"));
@@ -7163,7 +7163,7 @@ public class SimplePageBean {
 						} else {
 							try {
 								add = gradebookIfc.addExternalAssessment(getCurrentSiteId(), "lesson-builder:comment:" + comment.getId(), null,
-									pageTitle + " Comments (item:" + comment.getId() + ")", Integer.valueOf(maxPoints), null, "Lesson Builder");
+									pageTitle + " Comments (item:" + comment.getId() + ")", Integer.valueOf(maxPoints), null, LESSONBUILDER_ID);
 							} catch(ConflictingAssignmentNameException cane) {
 								add = false;
 								setErrMessage(messageLocator.getMessage("simplepage.existing-gradebook"));
@@ -7568,7 +7568,7 @@ public class SimplePageBean {
 			}	
 
 			try {
-				boolean add = gradebookIfc.addExternalAssessment(getCurrentSiteId(), gradebookId, null, title, pointsInt, null, "Lesson Builder");				
+				boolean add = gradebookIfc.addExternalAssessment(getCurrentSiteId(), gradebookId, null, title, pointsInt, null, LESSONBUILDER_ID);				
 				if(!add) {
 					setErrMessage(messageLocator.getMessage("simplepage.no-gradebook"));
 				}else {
@@ -7632,6 +7632,7 @@ public class SimplePageBean {
 		Double gradebookPoints = null;
 		if (question.getGradebookPoints() != null)
 		    gradebookPoints = (double)question.getGradebookPoints();
+		boolean questionGraded = "true".equals(question.getAttribute("questionGraded"));
 
 		boolean correct;
 		if(response.isOverridden()) {
@@ -7643,8 +7644,14 @@ public class SimplePageBean {
 			if(answer != null && answer.isCorrect()) {
 				correct = true;
 			}else if(answer != null && !answer.isCorrect()){
-				correct = false;
-				gradebookPoints = 0.0;
+				boolean noCorrectAnswers = !simplePageToolDao.hasCorrectAnswer(question);
+				if (noCorrectAnswers) {
+					correct = !questionGraded; // if not graded, it is a poll and any answer is "correct", otherwise requires manual grading so default to false
+					gradebookPoints = null;
+				} else { // autograded
+					correct = false;
+					gradebookPoints = 0.0;
+				}
 			}else {
 				// The answer no longer exists, so we'll just leave everything the way it was last time it was graded.
 				correct = response.isCorrect();
@@ -7656,23 +7663,30 @@ public class SimplePageBean {
 			String theirResponse = response.getShortanswer().trim().toLowerCase();
 			
 			int totalTokens = correctAnswerTokenizer.countTokens();
-			boolean foundAnswer = false;
-			for(int i = 0; i < totalTokens; i++) {
-				String token = correctAnswerTokenizer.nextToken().replaceAll("\n", "").trim().toLowerCase();
-				
-				if(theirResponse.equals(token)) {
-					foundAnswer = true;
-					break;
-				}
-			}
-			if(totalTokens == 0 && !theirResponse.isEmpty()) {
-				foundAnswer = true;
-			}
-			if(foundAnswer) {
-				correct = true;
-			}else {
+
+			if (totalTokens > 0) {  // correct answers exist
 				correct = false;
-				gradebookPoints = 0.0;
+				for(int i = 0; i < totalTokens; i++) {
+					String token = correctAnswerTokenizer.nextToken().replaceAll("\n", "").trim().toLowerCase();
+
+					if(theirResponse.equals(token)) {
+						correct = true;
+						break;
+					}
+				}
+				if (questionGraded) {
+					if (!correct) {
+						gradebookPoints = 0.0;
+					}
+				} else {
+					gradebookPoints = null;
+				}
+			} else if (questionGraded) {  // no correct answers, manually graded
+				correct = false;
+				gradebookPoints = null;
+			} else {  // no correct answers, ungraded
+				correct = !theirResponse.isEmpty(); // any non-empty answer is considered "correct" for this question type
+				gradebookPoints = null;
 			}
 		}else {
 			log.warn("Invalid question type for question {}", question.getId());
@@ -7680,12 +7694,13 @@ public class SimplePageBean {
 		}
 		
 		response.setCorrect(correct);
-		if ("true".equals(question.getAttribute("questionGraded")))
+		if (gradebookPoints != null && questionGraded) {
 		    response.setPoints(gradebookPoints);
 		
-		if(question.getGradebookId() != null && !question.getGradebookId().equals("")) {
-			gradebookIfc.updateExternalAssessmentScore(getCurrentSiteId(), question.getGradebookId(),
-			       response.getUserId(), String.valueOf(gradebookPoints));
+			if(question.getGradebookId() != null && !question.getGradebookId().equals("")) {
+				gradebookIfc.updateExternalAssessmentScore(getCurrentSiteId(), question.getGradebookId(),
+					   response.getUserId(), String.valueOf(gradebookPoints));
+			}
 		}
 
 		return correct;
@@ -7848,9 +7863,9 @@ public class SimplePageBean {
 					if (page.getGradebookId() != null && !page.getGradebookPoints().equals(points)) {
 					    add = gradebookIfc.updateExternalAssessment(getCurrentSiteId(), "lesson-builder:page:" + page.getId(), null, getPage(page.getPageId()).getTitle() + " Student Pages (item:" + page.getId() + ")", Integer.valueOf(maxPoints), null);
 					} else {
-					    try {
-							add = gradebookIfc.addExternalAssessment(getCurrentSiteId(), "lesson-builder:page:" + page.getId(), null, getPage(page.getPageId()).getTitle() + " Student Pages (item:" + page.getId() + ")", Integer.valueOf(maxPoints), null, "Lesson Builder");
-					    } catch(ConflictingAssignmentNameException cane) {
+						try {
+							add = gradebookIfc.addExternalAssessment(getCurrentSiteId(), "lesson-builder:page:" + page.getId(), null, gradebookTitle, Integer.valueOf(maxPoints), null, LESSONBUILDER_ID);
+						} catch(ConflictingAssignmentNameException cane) {
 							add = false;
 							setErrMessage(messageLocator.getMessage("simplepage.existing-gradebook"));
 					    }
@@ -7889,7 +7904,7 @@ public class SimplePageBean {
 					} else {
 					    try {
 							add = gradebookIfc.addExternalAssessment(getCurrentSiteId(), "lesson-builder:page-comment:" + page.getId(), null,
-								title, points, null, "Lesson Builder");
+								title, points, null, LESSONBUILDER_ID);
 					    } catch(ConflictingAssignmentNameException cane) {
 							add = false;
 							setErrMessage(messageLocator.getMessage("simplepage.existing-gradebook"));

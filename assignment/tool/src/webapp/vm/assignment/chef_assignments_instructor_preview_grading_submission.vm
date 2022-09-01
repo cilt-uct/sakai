@@ -4,9 +4,7 @@
     <h3>$tlang.getString("gen.pre")
         $tlang.getString("gen.instrcomment")
         $tlang.getString("gen.to")
-        $tlang.getString("gen.openquote")
-        $formattedText.escapeHtml($assignment.Title)
-        $tlang.getString("gen.closequote")
+        $tlang.getString("gen.openquote")$formattedText.escapeHtml($assignment.Title)$tlang.getString("gen.closequote")
     </h3>
     #if ($alertMessage)
         <div class="sak-banner-error"><strong>$tlang.getString("gen.alert")</strong> $alertMessage</div>
@@ -79,7 +77,7 @@
         ## Submission Attachments
         #set ($sAttachments = $!submission.Attachments)
         #if ($sAttachments)
-            #set ($size = $sAttachments.size())
+            #set ($size = $submissionAttachmentReferences.size())
             #if ($size > 0)
                 <h4>
                     #if ($!assignment.TypeOfSubmission.ordinal() == 5)
@@ -90,11 +88,12 @@
                 </h4>
                 <ul class="attachList indnt1">
                     #foreach ($attachmentReference in $sAttachments)
+                        #set ($reference = false)
                         #set ($reference = $submissionAttachmentReferences.get($attachmentReference))
                         #if ($reference)
                             #set ($props = false)
                             #set ($props = $reference.Properties)
-                            #if ($!props)
+                            #if ($!props && !$!props.isEmpty())
                                 <li>
                                     #if ($props.getBooleanProperty($props.NamePropIsCollection))
                                         <img src = "#imageLink($contentTypeImageService.getContentTypeImage("folder"))" border="0" alt="$tlang.getString("gen.folatt")" />
@@ -174,7 +173,7 @@
             </p>
             #if ($!allowResubmitCloseTime)
                 <p>
-                    $tlang.getString("gen.acesubunt"): $!allowResubmitCloseTime
+                    $tlang.getString("gen.acesubunt"): $!service.getUsersLocalDateTimeString($!allowResubmitCloseTime)
                 </p>
             #end
         #end

@@ -626,6 +626,8 @@ public class AssignmentAction extends PagedResourceActionII {
     private static final String NEW_ASSIGNMENT_CONTENT_LAUNCH_NEW_WINDOW = "new_assignment_content_launch_new_window";
     private static final String NEW_ASSIGNMENT_CATEGORY = "new_assignment_category";
     private static final String NEW_ASSIGNMENT_GRADE_TYPE = "new_assignment_grade_type";
+    private static final String NEW_ASSIGNMENT_GRADE_TYPE_SWITCHING = "new_assignment_grade_type_switching";
+    private static final String NEW_ASSIGNMENT_GRADE_TYPE_SWITCH_CONFIRM = "new_assignment_grade_type_switch_confirm";
     private static final String NEW_ASSIGNMENT_GRADE_POINTS = "new_assignment_grade_points";
     private static final String NEW_ASSIGNMENT_DESCRIPTION = "new_assignment_instructions";
     private static final String NEW_ASSIGNMENT_DUE_DATE_SCHEDULED = "new_assignment_due_date_scheduled";
@@ -1932,12 +1934,31 @@ public class AssignmentAction extends PagedResourceActionII {
             if (next instanceof Reference) {
                 Reference attachment = (Reference) next;
                 // inline submissions should not show up in the UI's lists of attachments
-                if (!"true".equals(attachment.getProperties().getProperty(AssignmentConstants.PROP_INLINE_SUBMISSION))) {
+                if (isVisibleAttachment(attachment)) {
                     stripped.add(attachment);
                 }
             }
         }
         return stripped;
+    }
+
+    /**
+     * Filters the submission's attachments to include only attachments that should be displayed in the UI,
+     * then returns as a map of attachment reference IDs to their associated references
+     */
+    private Map<String, Reference> getVisibleAttachmentIdsToReferences(AssignmentSubmission submission) {
+        Map<String, Reference> submissionAttachmentReferences = new HashMap<>();
+        submission.getAttachments().forEach(refId -> {
+            Reference reference = entityManager.newReference(refId);
+            if (isVisibleAttachment(reference)) {
+                submissionAttachmentReferences.put(refId, reference);
+            }
+        });
+        return submissionAttachmentReferences;
+    }
+
+    private boolean isVisibleAttachment(Reference r) {
+        return r.getProperties() != null && !"true".equals(r.getProperties().getProperty(AssignmentConstants.PROP_INLINE_SUBMISSION));
     }
 
     /**
@@ -2093,9 +2114,7 @@ public class AssignmentAction extends PagedResourceActionII {
             if (s != null) {
                 context.put("submission", s);
 
-                Map<String, Reference> attachmentReferences = new HashMap<>();
-                s.getAttachments().forEach(r -> attachmentReferences.put(r, entityManager.newReference(r)));
-                context.put("attachmentReferences", attachmentReferences);
+                context.put("submissionAttachmentReferences", getVisibleAttachmentIdsToReferences(s));
 
                 context.put("submit_text", StringUtils.trimToNull(s.getSubmittedText()));
                 context.put("email_confirmation", serverConfigurationService.getBoolean("assignment.submission.confirmation.email", true));
@@ -2103,7 +2122,7 @@ public class AssignmentAction extends PagedResourceActionII {
                 if (currentAssignment.getIsGroup()) {
 					final Map<String, User> users = assignmentToolUtils.getSubmitters(s)
 									.collect(Collectors.toMap(User::getId, Function.identity()));
-					context.put("submitterNames", getSubmitterFormattedNames(s, "build_student_view_submission_confirmation_context"));
+					context.put("submitterNames", getSubmitterFormattedNames(s, false));
                 }
                 putSubmissionLogMessagesInContext(context, s);
             }
@@ -2116,10 +2135,15 @@ public class AssignmentAction extends PagedResourceActionII {
     } // build_student_view_submission_confirmation_context
 
     //Get all submitter names from submission, comma separated and processed in formattedText
-	private String getSubmitterFormattedNames(AssignmentSubmission s, String method) {
+	private String getSubmitterFormattedNames(AssignmentSubmission s, boolean includeDisplayID) {
 		final Map<String, User> users = assignmentToolUtils.getSubmitters(s)
 						.collect(Collectors.toMap(User::getId, Function.identity()));
-		final String submitterNames = users.values().stream().map(u -> u.getDisplayName()).collect(Collectors.joining(", "));
+		final String submitterNames;
+		if (includeDisplayID) {
+			submitterNames = users.values().stream().map(u -> u.getDisplayName() + " (" + u.getDisplayId() + ")").collect(Collectors.joining(", "));
+		} else {
+			submitterNames = users.values().stream().map(u -> u.getDisplayName()).collect(Collectors.joining(", "));
+		}
 		return formattedText.escapeHtml(submitterNames);
 	}
 
@@ -2262,9 +2286,9 @@ public class AssignmentAction extends PagedResourceActionII {
             }
         }
 
-        context.put("text", state.getAttribute(PREVIEW_SUBMISSION_TEXT));
+        context.put("text", state.getAttribute(VIEW_SUBMISSION_TEXT));
         Map<String, Reference> submissionAttachmentReferences = new HashMap<>();
-        stripInvisibleAttachments(state.getAttribute(PREVIEW_SUBMISSION_ATTACHMENTS)).forEach(r -> submissionAttachmentReferences.put(r.getId(), r));
+        stripInvisibleAttachments(state.getAttribute(ATTACHMENTS)).forEach(r -> submissionAttachmentReferences.put(r.getId(), r));
         context.put("submissionAttachmentReferences", submissionAttachmentReferences);
         context.put("contentTypeImageService", contentTypeImageService);
 
@@ -2454,9 +2478,7 @@ public class AssignmentAction extends PagedResourceActionII {
             context.put("assignmentAttachmentReferences", assignmentAttachmentReferences);
 
             context.put("submission", submission);
-            Map<String, Reference> submissionAttachmentReferences = new HashMap<>();
-            submission.getAttachments().forEach(r -> submissionAttachmentReferences.put(r, entityManager.newReference(r)));
-            context.put("submissionAttachmentReferences", submissionAttachmentReferences);
+            context.put("submissionAttachmentReferences", getVisibleAttachmentIdsToReferences(submission));
 
             Map<String, Reference> submissionFeedbackAttachmentReferences = new HashMap<>();
             submission.getFeedbackAttachments().forEach(r -> submissionFeedbackAttachmentReferences.put(r, entityManager.newReference(r)));
@@ -2549,7 +2571,7 @@ public class AssignmentAction extends PagedResourceActionII {
             securityService.popAdvisor(asgnAdvisor);
         }
         
-        context.put("submitterNames", getSubmitterFormattedNames(submission, "build_instructor_grade_submission_context"));
+        context.put("submitterNames", getSubmitterFormattedNames(submission, false));
 
         String template = (String) getContext(data).get("template");
         return template + TEMPLATE_STUDENT_VIEW_GRADE;
@@ -3271,10 +3293,10 @@ public class AssignmentAction extends PagedResourceActionII {
         try {
             List gradebookAssignments = gradebookService.getAssignments(gradebookUid);
 
-            // filtering out those from Samigo
-            for (Iterator i = gradebookAssignments.iterator(); i.hasNext(); ) {
-                org.sakaiproject.service.gradebook.shared.Assignment gAssignment = (org.sakaiproject.service.gradebook.shared.Assignment) i.next();
-                if (!gAssignment.isExternallyMaintained() || gAssignment.isExternallyMaintained() && gAssignment.getExternalAppName().equals(assignmentService.getToolTitle())) {
+        // filtering out those from Samigo
+        for (Iterator i = gradebookAssignments.iterator(); i.hasNext(); ) {
+            org.sakaiproject.service.gradebook.shared.Assignment gAssignment = (org.sakaiproject.service.gradebook.shared.Assignment) i.next();
+            if (!gAssignment.isExternallyMaintained() || gAssignment.isExternallyMaintained() && gAssignment.getExternalAppName().equals(assignmentService.getToolId())) {
 
                     // gradebook item has been associated or not
                     String gaId = gAssignment.isExternallyMaintained() ? gAssignment.getExternalId() : gAssignment.getName();
@@ -3568,7 +3590,7 @@ public class AssignmentAction extends PagedResourceActionII {
 
             context.put("users", users);
 
-            context.put("submitterNames", getSubmitterFormattedNames(s, "build_instructor_grade_submission_context"));
+            context.put("submitterNames", getSubmitterFormattedNames(s, true));
             context.put("submissionStatus", assignmentService.getSubmissionStatus(s.getId()));
             s.getSubmitters().stream().findAny().ifPresent(u -> context.put("submitterId", u.getSubmitter()));
 
@@ -3639,9 +3661,7 @@ public class AssignmentAction extends PagedResourceActionII {
                 context.put("isAdditionalNotesEnabled", false);
             }
 
-            Map<String, Reference> attachmentReferences = new HashMap<>();
-            s.getAttachments().forEach(r -> attachmentReferences.put(r, entityManager.newReference(r)));
-            context.put("submissionAttachmentReferences", attachmentReferences);
+            context.put("submissionAttachmentReferences", getVisibleAttachmentIdsToReferences(s));
 
             putSubmissionLogMessagesInContext(context, s);
             rangeAndGroups.buildInstructorGradeSubmissionContextGroupCheck(assignment, s.getGroupId(), state);
@@ -4293,9 +4313,7 @@ public class AssignmentAction extends PagedResourceActionII {
         if (submission != null) {
             context.put("submission", submission);
 
-            Map<String, Reference> submissionAttachmentReferences = new HashMap<>();
-            submission.getAttachments().forEach(r -> submissionAttachmentReferences.put(r, entityManager.newReference(r)));
-            context.put("submissionAttachmentReferences", submissionAttachmentReferences);
+            context.put("submissionAttachmentReferences", getVisibleAttachmentIdsToReferences(submission));
 
             Assignment assignment = submission.getAssignment();
             context.put("assignment", assignment);
@@ -4304,7 +4322,7 @@ public class AssignmentAction extends PagedResourceActionII {
             assignment.getAttachments().forEach(r -> assignmentAttachmentReferences.put(r, entityManager.newReference(r)));
             context.put("assignmentAttachmentReferences", assignmentAttachmentReferences);
 
-            context.put("submitterNames", getSubmitterFormattedNames(submission, "build_instructor_preview_grade_submission_context"));
+            context.put("submitterNames", getSubmitterFormattedNames(submission, false));
 
             setScoringAgentProperties(context, assignment, submission, false);
 
@@ -4336,7 +4354,7 @@ public class AssignmentAction extends PagedResourceActionII {
             if (closeTimeString != null) {
                 // close time for resubmit
                 Instant time = Instant.ofEpochMilli(Long.parseLong(closeTimeString));
-                context.put("allowResubmitCloseTime", time.toString());
+                context.put("allowResubmitCloseTime", time);
             }
         }
 
@@ -4556,6 +4574,20 @@ public class AssignmentAction extends PagedResourceActionII {
             context.put("download_url_link", downloadUrl);
             context.put("download_url_link_label", rb.getString("download_url_link_label"));
             state.removeAttribute(STATE_DOWNLOAD_URL);
+        }
+
+        // show "feedback saved" success messages if appropriate
+        if (state.getAttribute(SAVED_FEEDBACK) != null) {
+            context.put("savedFeedback", Boolean.TRUE);
+            state.removeAttribute(SAVED_FEEDBACK);
+        }
+        if (state.getAttribute(OW_FEEDBACK) != null) {
+            context.put("overwriteFeedback", Boolean.TRUE);
+            state.removeAttribute(OW_FEEDBACK);
+        }
+        if (state.getAttribute(RETURNED_FEEDBACK) != null) {
+            context.put("returnedFeedback", Boolean.TRUE);
+            state.removeAttribute(RETURNED_FEEDBACK);
         }
 
         String template = (String) getContext(data).get("template");
@@ -4883,9 +4915,7 @@ public class AssignmentAction extends PagedResourceActionII {
             context.put("value_feedback_attachment", v);
             state.setAttribute(ATTACHMENTS, v);
 
-            Map<String, Reference> attachmentReferences = new HashMap<>();
-            s.getAttachments().forEach(r -> attachmentReferences.put(r, entityManager.newReference(r)));
-            context.put("submissionAttachmentReferences", attachmentReferences);
+            context.put("submissionAttachmentReferences", getVisibleAttachmentIdsToReferences(s));
         }
         if (peerAssessmentItems != null && submissionId != null) {
             //find the peerAssessmentItem for this submission:
@@ -5279,6 +5309,9 @@ public class AssignmentAction extends PagedResourceActionII {
         context.put("withoutFolders", state.getAttribute(UPLOAD_ALL_WITHOUT_FOLDERS));
         context.put("enableFlatDownload", serverConfigurationService.getBoolean("assignment.download.flat", false));
         context.put("contextString", state.getAttribute(STATE_CONTEXT_STRING));
+
+        String maxFileSizeMB = serverConfigurationService.getString("content.upload.max", "1");
+        context.put("uploadallInstruction5", rb.getFormattedMessage("uploadall.instruction5", maxFileSizeMB));
 
         String assignmentRef = (String) state.getAttribute(EXPORT_ASSIGNMENT_REF);
         Assignment a = getAssignment(assignmentRef, "build_instructor_download_upload_all", state);
@@ -6472,12 +6505,16 @@ public class AssignmentAction extends PagedResourceActionII {
                     properties.remove(AssignmentConstants.SUBMITTER_USER_ID);
                 }
 
+                // SAK-26322 - add inline as an attachment for the content review service
+                if (post && !isHtmlEmpty(text)) {
+                    /* prepares a file representing the inline content;
+                     * needed whether or not content review is used - it will be queued retroactively if we enable content review on the assignment in the future */
+                    prepareInlineForContentReview(text, submission, state, u);
+                }
+
                 // submission log
                 StringBuilder logEntry = new StringBuilder();
-                DateTimeFormatter dtf = DateTimeFormatter.RFC_1123_DATE_TIME
-                        .withZone(userTimeService.getLocalTimeZone(u.getId()).toZoneId())
-                        .withLocale(preferencesService.getLocale(u.getId()));
-                logEntry.append(dtf.format(Instant.now()));
+                logEntry.append(userTimeService.shortLocalizedTimestamp(Instant.now(), userTimeService.getLocalTimeZone(u.getId()), preferencesService.getLocale(u.getId())));
                 boolean anonymousGrading = Boolean.parseBoolean(a.getProperties().get(NEW_ASSIGNMENT_CHECK_ANONYMOUS_GRADING));
                 String subOrDraft = post ? rb.getString("listsub.submitted") : rb.getString("listsub.submitted.draft");
                 if (!anonymousGrading) {
@@ -6502,18 +6539,9 @@ public class AssignmentAction extends PagedResourceActionII {
                     return;
                 }
 
-                // SAK-26322 - add inline as an attachment for the content review service
-                if (post) {
-                    if (!isHtmlEmpty(text)) {
-                        /* prepares a file representing the inline content;
-                         * needed whether or not content review is used - it will be queued retroactively if we enable content review on the assignment in the future */
-                        prepareInlineForContentReview(text, submission, state, u);
-                    }
-
-                    // Check if we need to post the attachments
-                    if (a.getContentReview() && !submission.getAttachments().isEmpty()) {
-                        assignmentService.postReviewableSubmissionAttachments(submission);
-                    }
+                // Check if we need to post the attachments
+                if (post && a.getContentReview() && !submission.getAttachments().isEmpty()) {
+                    assignmentService.postReviewableSubmissionAttachments(submission);
                 }
             }
 
@@ -6597,7 +6625,6 @@ public class AssignmentAction extends PagedResourceActionII {
             try {
                 Reference ref = entityManager.newReference(contentHostingService.getReference(attachment.getId()));
                 attachments.add(ref.getReference());
-                assignmentService.updateSubmission(submission);
             } catch (Exception e) {
                 log.warn(this + "prepareInlineForContentReview() cannot find reference for " + attachment.getId() + e.getMessage());
             }
@@ -6927,8 +6954,27 @@ public class AssignmentAction extends PagedResourceActionII {
             state.setAttribute(NEW_ASSIGNMENT_GRADE_TYPE, gradeType.ordinal());
         }
 
+        // check if grade type is switching and prompt for confirmation if graded submissions exist
+        if (StringUtils.isNotBlank(assignmentRef)) {
+            Assignment asn = getAssignment(assignmentRef, "setNewAssignmentParameters", state);
+            if (asn != null && gradeType != GRADE_TYPE_NONE && asn.getTypeOfGrade() != gradeType) {
+                state.setAttribute(NEW_ASSIGNMENT_GRADE_TYPE_SWITCHING, Boolean.TRUE);
+                Set<AssignmentSubmission> submissions = assignmentService.getSubmissions(asn);
+                if (submissions.stream().anyMatch(s -> s.getGraded())) {
+                    if (state.getAttribute(NEW_ASSIGNMENT_GRADE_TYPE_SWITCH_CONFIRM) == null && validify) {
+                        state.setAttribute(NEW_ASSIGNMENT_GRADE_TYPE_SWITCH_CONFIRM, Boolean.TRUE);
+                        addAlert(state, rb.getString("grading.type.change.confirm"));
+                    }
+                    else {
+                        state.removeAttribute(NEW_ASSIGNMENT_GRADE_TYPE_SWITCH_CONFIRM); // user has confirmed or we aren't validating
+                    }
+                }
+            }
+        }
+
         boolean sendToGradebook = gradeType == SCORE_GRADE_TYPE && params.getBoolean(NEW_ASSIGNMENT_SEND_TO_GRADEBOOK);
         String grading = sendToGradebook ? params.getString(NEW_ASSIGNMENT_ADD_TO_GRADEBOOK) : GRADEBOOK_INTEGRATION_NO;
+
         state.setAttribute(NEW_ASSIGNMENT_ADD_TO_GRADEBOOK, grading);
 
         state.setAttribute(NEW_ASSIGNMENT_CHECK_ANONYMOUS_GRADING, Boolean.valueOf(params.getString(NEW_ASSIGNMENT_CHECK_ANONYMOUS_GRADING)));
@@ -7825,10 +7871,10 @@ public class AssignmentAction extends PagedResourceActionII {
 
         String assignmentId = params.getString("assignmentId");
 
-        // whether this is an editing which changes non-point graded assignment to point graded assignment?
-        boolean bool_change_from_non_point = false;
         // whether there is a change in the assignment resubmission choice
         boolean bool_change_resubmit_option = false;
+
+        boolean switchingGradeType = state.getAttribute(NEW_ASSIGNMENT_GRADE_TYPE_SWITCHING) != null;
 
         // if there is a message at this point usually means there was some type of error
         if (StringUtils.isNotBlank((String) state.getAttribute(STATE_MESSAGE))) {
@@ -7858,11 +7904,6 @@ public class AssignmentAction extends PagedResourceActionII {
             addAlert(state, rb.getFormattedMessage("theisno"));
         } else {
             Map<String, String> p = a.getProperties();
-
-            if ((a.getTypeOfGrade() != SCORE_GRADE_TYPE) && ((Integer) state.getAttribute(NEW_ASSIGNMENT_GRADE_TYPE) == SCORE_GRADE_TYPE.ordinal())) {
-                // changing from non-point grade type to point grade type?
-                bool_change_from_non_point = true;
-            }
 
             if (propertyValueChanged(state, p, AssignmentConstants.ALLOW_RESUBMIT_NUMBER) || propertyValueChanged(state, p, AssignmentConstants.ALLOW_RESUBMIT_CLOSETIME)) {
                 bool_change_resubmit_option = true;
@@ -8053,18 +8094,18 @@ public class AssignmentAction extends PagedResourceActionII {
 					   	excludeSelfPlag, storeInstIndex, studentPreview, excludeType, excludeValue, contentId, contentLaunchNewWindow);
 
                 //RUBRICS, Save the binding between the assignment and the rubric
-                rubricsService.saveRubricAssociation(RubricsConstants.RBCS_TOOL_ASSIGNMENT, a.getId(), getRubricConfigurationParameters(params));
+                rubricsService.saveRubricAssociation(RubricsConstants.RBCS_TOOL_ASSIGNMENT, a.getId(), getRubricConfigurationParameters(params, gradeType));
 
                 if (post) {
                     // we need to update the submission
-                    if (bool_change_from_non_point || bool_change_resubmit_option) {
+                    if (switchingGradeType || bool_change_resubmit_option) {
                         Set<AssignmentSubmission> submissions = assignmentService.getSubmissions(a);
                         if (submissions != null) {
                             // assignment already exist and with submissions
                             for (AssignmentSubmission s : submissions) {
                                 if (s != null) {
                                     Map<String, String> sProperties = s.getProperties();
-                                    if (bool_change_from_non_point) {
+                                    if (switchingGradeType) {
                                         // set the grade to be empty for now
                                         s.setGrade("");
                                         s.setGraded(false);
@@ -8336,7 +8377,7 @@ public class AssignmentAction extends PagedResourceActionII {
      * @param params
      * @return
      */
-    private HashMap<String,String> getRubricConfigurationParameters(ParameterParser params){
+    private HashMap<String,String> getRubricConfigurationParameters(ParameterParser params, Assignment.GradeType gradeType){
 
         HashMap<String,String> parametersHash = new HashMap<>();
         //Get the parameters
@@ -8347,6 +8388,12 @@ public class AssignmentAction extends PagedResourceActionII {
                 parametersHash.put(name,params.getString(name));
             }
         }
+
+        // if the grading type is not points (score) remove the rubric association regardless of the posted rubric params
+        if (gradeType != Assignment.GradeType.SCORE_GRADE_TYPE && "1".equals(parametersHash.get("rbcs-associate"))) {
+            parametersHash.put("rbcs-associate", "0");
+        }
+
         return parametersHash;
     }
 
@@ -10025,7 +10072,7 @@ public class AssignmentAction extends PagedResourceActionII {
             AssignmentSubmission s = getSubmission(submissionId, "putSubmissionInfoIntoState", state);
             if (s != null) {
                 state.setAttribute(GRADE_SUBMISSION_FEEDBACK_TEXT, s.getSubmittedText());
-                state.setAttribute(GRADE_SUBMISSION_SUBMITTERS_NAMES, getSubmitterFormattedNames(s, "putSubmissionInfoIntoState"));
+                state.setAttribute(GRADE_SUBMISSION_SUBMITTERS_NAMES, getSubmitterFormattedNames(s, false));
 
                 if ((s.getFeedbackText() == null) || (s.getFeedbackText().length() == 0)) {
                     state.setAttribute(GRADE_SUBMISSION_FEEDBACK_TEXT, s.getSubmittedText());
@@ -10712,6 +10759,9 @@ public class AssignmentAction extends PagedResourceActionII {
             //this is only set during the read only view, so just return
             return false;
         }
+
+	    boolean preExistingAlerts = state.getAttribute(STATE_MESSAGE) != null;
+
         ParameterParser params = data.getParameters();
         String submissionId = params.getString("submissionId");
         if (submissionId != null) {
@@ -10848,8 +10898,8 @@ public class AssignmentAction extends PagedResourceActionII {
                             addAlert(state, rb.getString("peerassessment.alert.savenoscorecomment"));
                         }
                     }
-                    if (("submit".equals(gradeOption) || "save".equals(gradeOption)) && state.getAttribute(STATE_MESSAGE) == null) {
-                        if (changed) {
+                    if (("submit".equals(gradeOption) || "save".equals(gradeOption))) {
+                        if (changed && state.getAttribute(STATE_MESSAGE) == null) {
                             //save this in the DB
                             assignmentPeerAssessmentService.savePeerAssessmentItem(item);
                             if (scoreChanged) {
@@ -10874,8 +10924,8 @@ public class AssignmentAction extends PagedResourceActionII {
                                 state.setAttribute(GRADE_SUBMISSION_SUBMIT, Boolean.TRUE);
                             }
                         }
-                        if (attachmentsChanged) {
-                            //save new attachments to the DB
+                        if (attachmentsChanged && !preExistingAlerts) {
+                            //save new attachments to the DB as long as there weren't any pre-existing alerts from prior to the form validation
                             assignmentPeerAssessmentService.savePeerAssessmentAttachments(item);
                         }
                     }
@@ -11657,6 +11707,7 @@ public class AssignmentAction extends PagedResourceActionII {
         state.removeAttribute(NEW_ASSIGNMENT_DUEYEAR);
         state.removeAttribute(NEW_ASSIGNMENT_DUEHOUR);
         state.removeAttribute(NEW_ASSIGNMENT_DUEMIN);
+        state.removeAttribute(NEW_ASSIGNMENT_PAST_DUE_DATE);
 
         state.removeAttribute(NEW_ASSIGNMENT_VISIBLEMONTH);
         state.removeAttribute(NEW_ASSIGNMENT_VISIBLEDAY);
@@ -11683,6 +11734,8 @@ public class AssignmentAction extends PagedResourceActionII {
         state.removeAttribute(NEW_ASSIGNMENT_SECTION);
         state.removeAttribute(NEW_ASSIGNMENT_SUBMISSION_TYPE);
         state.removeAttribute(NEW_ASSIGNMENT_GRADE_TYPE);
+        state.removeAttribute(NEW_ASSIGNMENT_GRADE_TYPE_SWITCHING);
+        state.removeAttribute(NEW_ASSIGNMENT_GRADE_TYPE_SWITCH_CONFIRM);
         state.removeAttribute(NEW_ASSIGNMENT_GRADE_POINTS);
         state.removeAttribute(NEW_ASSIGNMENT_DESCRIPTION);
         state.removeAttribute(ResourceProperties.NEW_ASSIGNMENT_CHECK_ADD_DUE_DATE);
@@ -14619,17 +14672,23 @@ public class AssignmentAction extends PagedResourceActionII {
         User submittedBy;
         Boolean multiGroup = false;
         AssignmentSubmission submission;
+        Boolean hasVisibleAttachments = false;
 
         SubmitterSubmission(User user, AssignmentSubmission submission) {
-            this.user = user;
-            this.submission = submission;
-            reference = AssignmentReferenceReckoner.reckoner().submission(submission).reckon().getReference();
+            this(user, null, submission);
         }
 
         SubmitterSubmission(Group group, AssignmentSubmission submission) {
+            this(null, group, submission);
+        }
+
+        private SubmitterSubmission(User user, Group group, AssignmentSubmission submission) {
+            this.user = user;
             this.group = group;
             this.submission = submission;
             reference = AssignmentReferenceReckoner.reckoner().submission(submission).reckon().getReference();
+            hasVisibleAttachments = CollectionUtils.emptyIfNull(submission.getAttachments()).stream()
+                    .map(r -> entityManager.newReference(r)).anyMatch(ref -> isVisibleAttachment(ref));
         }
 
         public String getGradeForUser(String id) {

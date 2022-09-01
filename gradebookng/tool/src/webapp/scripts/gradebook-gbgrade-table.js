@@ -433,6 +433,7 @@ GbGradeTable.cellRenderer = function (instance, td, row, col, prop, value, cellP
       type: 'external',
       externalId: column.externalId,
       externalAppName: column.externalAppName,
+      externalToolTitle: column.externalToolTitle,
     });
     // Mark negative scores as invalid
     if (typeof value == 'string' && value[0] == '-') {
@@ -835,7 +836,7 @@ GbGradeTable.renderTable = function (elementId, tableData) {
 
           if (columnModel.externallyMaintained) {
             var flag = th.getElementsByClassName('gb-external-app')[0];
-            flag.title = flag.title.replace('{0}', columnModel.externalAppName);
+            flag.title = flag.title.replace('{0}', columnModel.externalToolTitle);
           }
 
           var dropdownToggle = $th.find('.dropdown-toggle');
@@ -2800,10 +2801,12 @@ GbGradeTable.setupCellMetaDataSummary = function() {
           GbGradeTable.templates.metadata.process(metadata)
         );
 
-        if (metadata.assignment && metadata.assignment.externalAppName) {
-          var externalFlag = $("#"+cellKey).find('.gb-external-app-wrapper');
-          externalFlag.find('.gb-flag-external').addClass(metadata.assignment.externalAppIconCSS);
-          externalFlag.html(externalFlag.html().replace('{0}', metadata.assignment.externalAppName));
+        if (metadata.assignment && metadata.assignment.externalAppName && metadata.assignment.externalAppIconCSS) {
+          const externalFlag = $(`#${cellKey}`).find('.gb-external-app-wrapper');
+          if (externalFlag.length) {
+            externalFlag.find('.gb-flag-external').addClass(metadata.assignment.externalAppIconCSS);
+            externalFlag.html(externalFlag.html().replace('{0}', metadata.assignment.externalToolTitle));
+          }
         }
 
         $("#"+cellKey).hide().on("click", ".gb-metadata-close", function() {

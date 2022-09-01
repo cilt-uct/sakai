@@ -285,16 +285,8 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
     }
 
     @Override
-    public String getToolTitle() {
-        Tool tool = toolManager.getTool(AssignmentServiceConstants.ASSIGNMENT_TOOL_ID);
-        String toolTitle = null;
-
-        if (tool == null)
-            toolTitle = "Assignments";
-        else
-            toolTitle = tool.getTitle();
-
-        return toolTitle;
+    public String getToolId() {
+        return AssignmentServiceConstants.ASSIGNMENT_TOOL_ID;
     }
 
     @Override
@@ -1505,12 +1497,12 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
             eventTrackingService.post(eventTrackingService.newEvent(AssignmentConstants.EVENT_SUBMIT_ASSIGNMENT_SUBMISSION, reference, null, true, NotificationService.NOTI_OPTIONAL, statement));
 
             // only doing the notification for real online submissions
-            if (submission.getAssignment().getTypeOfSubmission() != Assignment.SubmissionType.NON_ELECTRONIC_ASSIGNMENT_SUBMISSION) {
+            if (a.getTypeOfSubmission() != Assignment.SubmissionType.NON_ELECTRONIC_ASSIGNMENT_SUBMISSION) {
                 // instructor notification
-                notificationToInstructors(submission, submission.getAssignment());
+                notificationToInstructors(submission, a);
 
                 // student notification, whether the student gets email notification once he submits an assignment
-                notificationToStudent(submission);
+                notificationToStudent(submission, a);
             }
         }
     }
@@ -4160,7 +4152,7 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
                                     gradebookExternalAssessmentService.addExternalAssessment(nAssignment.getContext()
                                             , nAssignmentRef, null, nAssignment.getTitle()
                                             , nAssignment.getMaxGradePoint() / (double) nAssignment.getScaleFactor()
-                                            , Date.from(nAssignment.getDueDate()), this.getToolTitle()
+                                            , Date.from(nAssignment.getDueDate()), this.getToolId()
                                             , null, false, categoryId.isPresent() ? categoryId.get() : null);
 
                                     nProperties.put(PROP_ASSIGNMENT_ASSOCIATE_GRADEBOOK_ASSIGNMENT, nAssignmentRef);
@@ -4526,17 +4518,30 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
         }
     }
 
-    private void notificationToStudent(AssignmentSubmission submission) {
+    private void notificationToStudent(AssignmentSubmission submission, Assignment assignment) {
         if (serverConfigurationService.getBoolean("assignment.submission.confirmation.email", true)) {
-            Set<String> submitterIds = submission.getSubmitters().stream().map(AssignmentSubmissionSubmitter::getSubmitter).collect(Collectors.toSet());
-            Set<User> users = submitterIds.stream().map(id -> {
-                try {
-                    return userDirectoryService.getUser(id);
-                } catch (UserNotDefinedException e) {
-                    log.warn("Could not find user with id = {}, {}", id, e.getMessage());
-                }
-                return null;
-            }).filter(Objects::nonNull).collect(Collectors.toSet());
+            String siteId = assignment.getContext();
+            Set<String> siteUsers = Collections.emptySet();
+            try {
+                siteUsers = siteService.getSite(siteId).getUsers();
+            } catch (IdUnusedException e) {
+                log.warn("Could not find site: {}", siteId, e);
+            }
+            Set<User> users = submission.getSubmitters()
+                    .stream()
+                    .map(AssignmentSubmissionSubmitter::getSubmitter)
+                    .filter(siteUsers::contains) // this filters active users
+                    .map(id -> {
+                        try {
+                            return userDirectoryService.getUser(id);
+                        } catch (UserNotDefinedException e) {
+                            log.warn("Could not find user with id = {}, {}", id, e.getMessage());
+                        }
+                        return null;
+                    })
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+
             emailService.sendToUsers(users, emailUtil.getHeaders(null, "submission"), emailUtil.getNotificationMessage(submission, "submission"));
         }
     }

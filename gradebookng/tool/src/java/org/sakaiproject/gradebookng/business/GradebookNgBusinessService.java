@@ -111,6 +111,7 @@ import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.time.api.UserTimeService;
+import org.sakaiproject.tool.api.Tool;
 import org.sakaiproject.tool.api.ToolManager;
 import org.sakaiproject.tool.gradebook.Gradebook;
 import org.sakaiproject.tool.gradebook.GradingEvent;
@@ -2182,7 +2183,7 @@ public class GradebookNgBusinessService {
 	 * @param grade
 	 * @return
 	 */
-	public boolean updateUngradedItems(final long assignmentId, final double grade) {
+	public boolean updateUngradedItems(final long assignmentId, final String grade) {
 		return updateUngradedItems(assignmentId, grade, null);
 	}
 
@@ -2194,7 +2195,7 @@ public class GradebookNgBusinessService {
 	 * @param group
 	 * @return
 	 */
-	public boolean updateUngradedItems(final long assignmentId, final double grade, final GbGroup group) {
+	public boolean updateUngradedItems(final long assignmentId, final String grade, final GbGroup group) {
 		final String siteId = getCurrentSiteId();
 		final Gradebook gradebook = getGradebook(siteId);
 		final Assignment assignment = getAssignment(assignmentId);
@@ -2227,7 +2228,7 @@ public class GradebookNgBusinessService {
 
 		// Apply the new grade to the GradeDefinitions to be updated
 		for (GradeDefinition def : defs) {
-			def.setGrade(Double.toString(grade));
+			def.setGrade(grade);
 			log.debug("Setting default grade. Values of assignmentId: {}, studentUuid: {}, grade: {}", assignmentId, def.getStudentUid(), grade);
 		}
 
@@ -2950,17 +2951,23 @@ public class GradebookNgBusinessService {
 	 */
 	public String getIconClass(final Assignment assignment) {
 		final String externalAppName = assignment.getExternalAppName();
-
-		String iconClass = getDefaultIconClass();
-		if (StringUtils.equals(externalAppName, this.toolManager.getLocalizedToolProperty("sakai.assignment", "title"))) {
-			iconClass = getAssignmentsIconClass();
-		} else if (StringUtils.equals(externalAppName, this.toolManager.getLocalizedToolProperty("sakai.samigo", "title"))) {
-			iconClass = getSamigoIconClass();
-		// "Lesson Builder" is currently hardcoded in SimplePageBean.java (no localization required)
-		} else if (StringUtils.equals(externalAppName, "Lesson Builder")) {
-			iconClass = getLessonBuilderIconClass();
-		} else if (StringUtils.equals(externalAppName, "Attendance")) {
-			iconClass = getAttendanceIconClass();
+		String iconClass;
+		switch (externalAppName) {
+			case "sakai.assignment.grades":
+				iconClass = getAssignmentsIconClass();
+				break;
+			case "sakai.samigo":
+				iconClass = getSamigoIconClass();
+				break;
+			case "sakai.lessonbuildertool":
+				iconClass = getLessonBuilderIconClass();
+				break;
+			case "sakai.attendance":
+				iconClass = getAttendanceIconClass();
+				break;
+			default:
+				iconClass = getDefaultIconClass();
+				break;
 		}
 		return iconClass;
 	}
@@ -2973,10 +2980,10 @@ public class GradebookNgBusinessService {
 	public Map<String, String> getIconClassMap() {
 		final Map<String, String> mapping = new HashMap<>();
 
-		mapping.put(this.toolManager.getLocalizedToolProperty("sakai.assignment", "title"), getAssignmentsIconClass());
-		mapping.put(this.toolManager.getLocalizedToolProperty("sakai.samigo", "title"), getSamigoIconClass());
-		mapping.put("Lesson Builder", getLessonBuilderIconClass());
-		mapping.put("Attendance", getAttendanceIconClass());
+		mapping.put("sakai.assignment.grades", getAssignmentsIconClass());
+		mapping.put("sakai.samigo", getSamigoIconClass());
+		mapping.put("sakai.lessonbuildertool", getLessonBuilderIconClass());
+		mapping.put("sakai.attendance", getAttendanceIconClass());
 
 		return mapping;
 	}
@@ -3052,5 +3059,15 @@ public class GradebookNgBusinessService {
 		}
 
 		return userTimeService.dateFormat(date, getUserPreferredLocale(), DateFormat.SHORT);
+	}
+
+	/**
+	 * Get the tool title in the current user language
+	 * @param externalAppId tool id
+	 * @return a tool title in user's current language
+	 */
+	public String getExternalAppName(String externalAppId) {
+		Tool externalTool = toolManager.getTool(externalAppId);
+		return externalTool != null ? externalTool.getTitle() : externalAppId;
 	}
 }
