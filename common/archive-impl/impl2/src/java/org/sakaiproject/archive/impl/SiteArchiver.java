@@ -211,12 +211,12 @@ public class SiteArchiver {
 						transactionStatus -> results
 								.append("<===== Start ")
 								.append(service.getLabel())
-								.append("[").append(serviceName).append("]")
+								.append(" [").append(serviceName).append("]")
 								.append(" =====>\n")
 								.append(service.archive(siteId, doc, stack, storagePath, attachments))
 								.append("<===== End ")
 								.append(serviceName)
-								.append(" =====>\n"));
+								.append(" =====>\n\n"));
 			}
 			catch (Throwable t)
 			{
@@ -253,7 +253,9 @@ public class SiteArchiver {
 			
 			stack.push(root);
 
+			results.append("<===== Attachments =====>\n");
 			results.append(m_contentHostingService.archiveResources(attachments, doc, stack, storagePath));
+			results.append("<===== End =====>\n\n");
 
 			stack.pop();
 
@@ -274,7 +276,9 @@ public class SiteArchiver {
 		
 		stack.push(root);
 
+		results.append("<===== Site =====>\n");
 		results.append(archiveSite(theSite, doc, stack, fromSystem));
+		results.append("<===== End =====>\n\n");
 		
 		stack.pop();
 		Xml.writeDocument(doc, m_storagePath + siteId + "-archive/site.xml");
@@ -292,11 +296,12 @@ public class SiteArchiver {
 		
 		stack.push(root);
 
+		results.append("<===== Users =====>\n");
 		results.append(archiveUsers(theSite, doc, stack));
+		results.append("<===== End =====>\n\n");
 
 		stack.pop();
 		Xml.writeDocument(doc, m_storagePath + siteId + "-archive/user.xml");
-
 
 		String lessonsExportPath = m_storagePath + siteId + "-archive/lessonbuilder.xml";
 		if (new File(lessonsExportPath).exists()) {
