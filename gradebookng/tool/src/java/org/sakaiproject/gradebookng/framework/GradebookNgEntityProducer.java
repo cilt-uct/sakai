@@ -116,12 +116,12 @@ public class GradebookNgEntityProducer implements EntityProducer, EntityTransfer
 		try {
 			site = siteService.getSite(siteId);
 		} catch(IdUnusedException e) {
-			return "ERROR: site does not exist";
+			return "ERROR: site does not exist\n";
 		}
 
 		ToolConfiguration tool = site.getToolForCommonId("sakai.gradebookng");
 		if (tool == null) {
-			return "ERROR: Tool sakai.gradebookng not found in site=" + siteId;
+			return "Gradebook tool not found in site=" + siteId + "\n";
 		}
 
 		threadLocalManager.set(CURRENT_PLACEMENT, tool);
@@ -141,7 +141,7 @@ public class GradebookNgEntityProducer implements EntityProducer, EntityTransfer
 		try {
 			gradebook = (Gradebook) this.gradebookService.getGradebook(siteId);
 		} catch (GradebookNotFoundException e) {
-			return "ERROR: Gradebook not found in site";
+			return "ERROR: Gradebook not found in site\n";
 		}
 
 		GradebookInformation settings = this.gradebookService.getGradebookInformation(gradebook.getUid());
