@@ -35,6 +35,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.apache.commons.io.FileUtils;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.w3c.dom.CDATASection;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -150,7 +151,7 @@ public class SiteArchiver {
 	{
 		StringBuilder results = new StringBuilder();
 
-		log.debug("archive(): site: {}", siteId);
+		log.info("archive(): site: {}", siteId);
 
 		Site theSite = null;
 		try
@@ -159,9 +160,8 @@ public class SiteArchiver {
 		}
 		catch (IdUnusedException e)
 		{
-			results.append("Site: " + siteId + " not found.\n");
-			log.warn("archive(): site not found: " + siteId);
-			return results.toString();
+			log.warn("archive(): site {} not found: ", siteId);
+			throw new RuntimeException("Site not found");
 		}
 
 		// collect all the attachments we need
@@ -201,15 +201,17 @@ public class SiteArchiver {
 			root.setAttribute("date", now.toString());
 			root.setAttribute("system", fromSystem);
 			root.setAttribute("xmlns:sakai", ArchiveService.SAKAI_ARCHIVE_NS);
+			root.setAttribute("xmlns:CHEF", ArchiveService.SAKAI_ARCHIVE_NS.concat("CHEF"));
 			
 			stack.push(root);
 
+			final String serviceName = service.getClass().getCanonicalName();
 			try {
-				final String serviceName = service.getClass().getCanonicalName();
 				transactionTemplate.executeWithoutResult(
 						transactionStatus -> results
 								.append("<===== Start ")
-								.append(serviceName)
+								.append(service.getLabel())
+								.append("[").append(serviceName).append("]")
 								.append(" =====>\n")
 								.append(service.archive(siteId, doc, stack, storagePath, attachments))
 								.append("<===== End ")
@@ -218,8 +220,9 @@ public class SiteArchiver {
 			}
 			catch (Throwable t)
 			{
-				log.error("Uncaught exception", t);
-				results.append(t.toString() + "\n");
+				String failure = String.format("Failure archiving site %s from service %s [%s]: %s", siteId, service.getLabel(), serviceName, t.getMessage());
+				log.error(failure, t);
+				throw new RuntimeException(failure);
 			}
 
 			stack.pop();
@@ -246,6 +249,7 @@ public class SiteArchiver {
 			root.setAttribute("date", now.toString());
 			root.setAttribute("system", fromSystem);
 			root.setAttribute("xmlns:sakai", ArchiveService.SAKAI_ARCHIVE_NS);
+			root.setAttribute("xmlns:CHEF", ArchiveService.SAKAI_ARCHIVE_NS.concat("CHEF"));
 			
 			stack.push(root);
 
@@ -258,7 +262,6 @@ public class SiteArchiver {
 		}
 
 		// *** Site
-
 		
 		Document doc = Xml.createDocument();
 		Stack stack = new Stack();
@@ -288,7 +291,7 @@ public class SiteArchiver {
 		root.setAttribute("xmlns:sakai", ArchiveService.SAKAI_ARCHIVE_NS);
 		
 		stack.push(root);
-		
+
 		results.append(archiveUsers(theSite, doc, stack));
 
 		stack.pop();
@@ -309,8 +312,25 @@ public class SiteArchiver {
 		    new SyllabusRejigger().rewriteSyllabus(syllabusExportPath);
 		}
 
-		return results.toString();
+		// Write an archive.xml file with status about the export
+		doc = Xml.createDocument();
+		stack = new Stack();
+		root = doc.createElement("archive");
+		doc.appendChild(root);
+		root.setAttribute("site", siteId);
+		root.setAttribute("date", now.toString());
+		root.setAttribute("system", fromSystem);
+		root.setAttribute("xmlns:sakai", ArchiveService.SAKAI_ARCHIVE_NS);
 
+		stack.push(root);
+		archiveArchive(theSite, doc, stack, results.toString());
+		stack.pop();
+
+		Xml.writeDocument(doc, m_storagePath + siteId + "-archive/archive.xml");
+
+		log.info("Completed archive of site {}", siteId);
+
+		return results.toString();
 	}	// archive
 
 
@@ -462,5 +482,28 @@ public class SiteArchiver {
 		
 		return "archiving the users for Site: " + site.getId() + "\n";
 	
+	}	// archiveUsers
+
+	/**
+	* Archive the archive results
+	* @param site the site.
+	* @param doc The document to contain the xml.
+	* @param stack The stack of elements, the top of which will be the containing
+	* element of the "site" element.
+	* @param result The results of the archive operation
+	*/
+	protected String archiveArchive(Site site, Document doc, Stack stack, String results)
+	{
+		Element element = doc.createElement("log");
+		((Element)stack.peek()).appendChild(element);
+		stack.push(element);
+
+		// Write log as CDATA
+		CDATASection cdata = doc.createCDATASection(results);
+		element.appendChild(cdata);
+
+		stack.pop();
+
+		return "archived the archive operation log for: " + site.getId() + "\n";
 	}	// archiveUsers
 }
