@@ -398,7 +398,7 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 	element.setAttributeNode(attr);
     }
 
-    protected void addPage(Document doc, Element element, SimplePage page, Site site) {
+    protected void addPage(Document doc, Element element, SimplePage page, Site site, List attachments) {
 
 	long pageId = page.getPageId();
 
@@ -462,9 +462,38 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 		    }
 
 		}
+
+		String html = item.getHtml();
+
+		// check for embedded fckeditor attachments in html content (type 5)
+		if ((attachments != null) && (item.getType() == SimplePageItem.TEXT) && (html != null) && html.contains("/access/content/attachment/")) {
+		    org.jsoup.nodes.Document htmlDoc = Jsoup.parse(html);
+		    Elements media = htmlDoc.select("source[src]");
+		    for (org.jsoup.nodes.Element src : media) {
+			String link = src.attr("abs:src");
+			String linkRef = link.replace(link.substring(0, link.indexOf("/attachment/")), "");
+			log.debug("Found audio embed: {} replacing with {}", link, linkRef);
+			Reference ref = EntityManager.newReference(contentHostingService.getReference(linkRef));
+			attachments.add(ref);
+		    }
+		}
+
+		// check for cross-site video resources (type 7)
+		if ((attachments != null) && (item.getType() == SimplePageItem.MULTIMEDIA)) {
+			if (item.getSakaiId().startsWith("/group/") && (item.getSakaiId().split("/").length >=2)) {
+				String groupId = item.getSakaiId().split("/")[2];
+				log.debug("Lessons multimedia item in siteid {} with resource group id {}", site.getId(), groupId);
+				if (!site.getId().equals(groupId)) {
+					// Append to the attachment reference list for archive
+					Reference ref = EntityManager.newReference(contentHostingService.getReference(item.getSakaiId()));
+					attachments.add(ref);
+				}
+			}
+		}
+
 		// the Sakai ID is good enough for other object types
 		addAttr(doc, itemElement, "name", item.getName());
-		addAttr(doc, itemElement, "html", item.getHtml());
+		addAttr(doc, itemElement, "html", html);
 		addAttr(doc, itemElement, "description", item.getDescription());
 		addAttr(doc, itemElement, "height", item.getHeight());
 		addAttr(doc, itemElement, "width", item.getWidth());
@@ -572,7 +601,7 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 	 if (sitePages != null && !sitePages.isEmpty()) {
 	     for (SimplePage page: sitePages) {
 	       if (!orphanFinder.isOrphan(page.getPageId())) {
-		 addPage(doc, lessonbuilder, page, site);
+		 addPage(doc, lessonbuilder, page, site, attachments);
 	       } else {
 		 orphansSkipped++;
 	       }
@@ -604,7 +633,6 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 		     addAttr(doc, element, "pageId", Long.toString(simplePageToolDao.getTopLevelPageId(config.getPageId())));
 		 else
 		     log.warn("archive site " + siteId + " tool page " + config.getPageId() + " null lesson");
-		 // addPage(doc, element,  simplePageToolDao.getTopLevelPageId(config.getPageId()));
 		 
 		 lessonbuilder.appendChild(element);
 		 count++;
@@ -626,6 +654,8 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
       catch (Exception any)
       {
          log.warn("archive: exception archiving service: " + any + " " +  serviceName());
+         log.warn("Error archiving Lessons content: {}", any.getMessage());
+         throw new RuntimeException(any);
       }
 
       stack.pop();
