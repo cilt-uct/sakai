@@ -471,10 +471,12 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
 		    Elements media = htmlDoc.select("source[src]");
 		    for (org.jsoup.nodes.Element src : media) {
 			String link = src.attr("abs:src");
-			String linkRef = link.replace(link.substring(0, link.indexOf("/attachment/")), "");
-			log.debug("Found audio embed: {} replacing with {}", link, linkRef);
-			Reference ref = EntityManager.newReference(contentHostingService.getReference(linkRef));
-			attachments.add(ref);
+			if (link.contains("/access/content/attachment/")) {
+				String linkRef = link.replace(link.substring(0, link.indexOf("/attachment/")), "");
+				log.debug("Found audio embed: {} replacing with {}", link, linkRef);
+				Reference ref = EntityManager.newReference(contentHostingService.getReference(linkRef));
+				attachments.add(ref);
+			}
 		    }
 		}
 
