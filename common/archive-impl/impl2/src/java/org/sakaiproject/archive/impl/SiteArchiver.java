@@ -262,13 +262,7 @@ public class SiteArchiver {
 		stack.pop();
 		Xml.writeDocument(doc, m_storagePath + siteId + "-archive/user.xml");
 
-		String lessonsExportPath = m_storagePath + siteId + "-archive/lessonbuilder.xml";
-		if (new File(lessonsExportPath).exists()) {
-		    new LessonsRejigger().rewriteLessons(lessonsExportPath);
-		    new SubPageWhacker().whack(lessonsExportPath);
-		    new QuizTitleHappyMaker().makeHappy(lessonsExportPath);
-		}
-
+		// Custom changes inherited from NYU
 		new SiteInfoPoker().pokeAsResource(siteId, m_storagePath + siteId + "-archive");
 
 		String syllabusExportPath = m_storagePath + siteId + "-archive/syllabus.xml";
