@@ -2128,6 +2128,25 @@ public class AssignmentAction extends PagedResourceActionII {
             }
         }
 
+        try {
+            // Get site ID
+            String siteId = toolManager.getCurrentPlacement().getContext();
+            // Get site by ID
+            Site currentSite = siteService.getSite(siteId);
+            // Assignments Tool Configuration
+            ToolConfiguration toolConfig = currentSite.getToolForCommonId(ASSIGNMENT_TOOL_ID);
+                    
+            // Get visibility value of assignments tool
+            String isAssignmentsVisible = toolConfig.getConfig().getProperty(ToolManager.PORTAL_VISIBLE);
+            boolean isVisible = StringUtils.isBlank(isAssignmentsVisible) || StringUtils.equalsIgnoreCase(isAssignmentsVisible, Boolean.TRUE.toString());
+            
+            // Checks if the assignments tool is visible from the LHS Menu.
+            context.put("isAssignmentsToolVisible", isVisible);
+            
+        } catch(IdUnusedException e) {
+            log.error(e.getMessage(), e);
+        }
+                    
         state.removeAttribute(STATE_SUBMITTER);
         String template = (String) getContext(data).get("template");
         return template + TEMPLATE_STUDENT_VIEW_SUBMISSION_CONFIRMATION;
@@ -2562,6 +2581,25 @@ public class AssignmentAction extends PagedResourceActionII {
             addActivity(context, submission.getAssignment());
             context.put("itemHelpers", itemHelpers);
             context.put("taggable", Boolean.valueOf(true));
+        }
+        
+        try {
+            // Get site ID
+            String siteId = toolManager.getCurrentPlacement().getContext();
+            // Get site by ID
+            Site currentSite = siteService.getSite(siteId);
+            // Assignments Tool Configuration
+            ToolConfiguration toolConfig = currentSite.getToolForCommonId(ASSIGNMENT_TOOL_ID);
+                    
+            // Get visibility value of assignments tool
+            String isAssignmentsVisible = toolConfig.getConfig().getProperty(ToolManager.PORTAL_VISIBLE);
+            boolean isVisible = StringUtils.isBlank(isAssignmentsVisible) || StringUtils.equalsIgnoreCase(isAssignmentsVisible, Boolean.TRUE.toString());
+
+            // Checks if the assignments tool is visible from the LHS Menu.
+            context.put("isAssignmentsToolVisible", isVisible);
+            
+        } catch(IdUnusedException e) {
+            log.error(e.getMessage(), e);
         }
 
         // put supplement item into context
@@ -4181,6 +4219,9 @@ public class AssignmentAction extends PagedResourceActionII {
 
         String submissionId = state.getAttribute(GRADE_SUBMISSION_SUBMISSION_ID).toString();
         List<SubmitterSubmission> subs = (List<SubmitterSubmission>) state.getAttribute(STATE_PAGEING_TOTAL_ITEMS);
+        if (!subs.isEmpty() && !(subs.get(0) instanceof SubmitterSubmission)) {
+            return 1;
+        }
         int subIndex = 0;
 
         for (int i = 0; i < subs.size(); ++i) {
@@ -5682,7 +5723,7 @@ public class AssignmentAction extends PagedResourceActionII {
             if (assignmentService.canSubmit(assignment, user.getId())) {
                 AssignmentSubmission submission = getSubmission(assignmentReference, user, "build_student_view_assignment_honorPledge_context", state);
                 if (submission == null) {
-                    String submitter = user.getId();
+                    String submitter;
                     if (assignment.getIsGroup()) {
                         try {
                             Site site = siteService.getSite(assignment.getContext());
@@ -5696,10 +5737,18 @@ public class AssignmentAction extends PagedResourceActionII {
                             doView_assignment_honorPledge(data);
                             return;
                         }
+                    } else {
+                        submitter = user.getId();
                     }
 
                     try {
                         submission = assignmentService.addSubmission(assignment.getId(), submitter);
+                        if (submission != null ) {
+                            submission.setSubmitted(true);
+                            submission.setUserSubmission(false);
+                            submission.setDateModified(Instant.now());
+                            submission.getSubmitters().stream().filter(sb -> sb.getSubmitter().equals(submitter)).findAny().ifPresent(sb -> sb.setSubmittee(false));
+                        }
                     } catch (PermissionException pe) {
                         addAlert(state, rb.getString("notpermis4"));
                         log.warn("User {} could not add submission {}", user.getId(), submission.getId(), pe);
