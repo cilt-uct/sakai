@@ -183,7 +183,7 @@ public class GradeSheetExporter {
             row = sheet.createRow(4);
             row.createCell(0).setCellValue("");
 
-            CellStyle style = wb.createCellStyle();
+            // CellStyle style = wb.createCellStyle();
             Cell cell;
 
             // this is the header row number
@@ -194,12 +194,12 @@ public class GradeSheetExporter {
 
             // user name column
             cell = row.createCell(cellColumnNum++);
-            cell.setCellStyle(style);
+            // cell.setCellStyle(style);
             cell.setCellValue(rb.getString("download.spreadsheet.column.name"));
 
             // user enterprise id column
             cell = row.createCell(cellColumnNum);
-            cell.setCellStyle(style);
+            // cell.setCellStyle(style);
             cell.setCellValue(rb.getString("download.spreadsheet.column.userid"));
 
             // We have to build a Map of the results so that we can sort them afterwards so that we don't expose data
@@ -215,7 +215,7 @@ public class GradeSheetExporter {
                 row = sheet.getRow(rowNum++);
                 cellColumnNum = (index + 2);
                 cell = row.createCell(cellColumnNum); // since the first two column is taken by student id and name
-                cell.setCellStyle(style);
+                // cell.setCellStyle(style);
                 cell.setCellValue(a.getTitle());
 
                 // begin to populate the column for this assignment, iterating through student list
@@ -247,7 +247,7 @@ public class GradeSheetExporter {
                                             final NumberFormat nbFormat = formattedText.getNumberFormat(dec, dec, null);
                                             float f = nbFormat.parse(getGrade(submissionSubmitter)).floatValue();
 
-                                            style = wb.createCellStyle();
+                                            // style = wb.createCellStyle();
                                             String format = "#,##0.";
                                             for (int j = 0; j < dec; j++) {
                                                 format = format.concat("0");
@@ -307,8 +307,8 @@ public class GradeSheetExporter {
 	                                    for (int j = 0; j < dec; j++) {
 	                                        format = format.concat("0");
 	                                    }
-	                                    style.setDataFormat(wb.createDataFormat().getFormat(format));
-	                                    cell.setCellStyle(style);
+	                                    // style.setDataFormat(wb.createDataFormat().getFormat(format));
+	                                    // cell.setCellStyle(style);
 	                                    objects.set(index, new FloatCell(format, f));
 	                                } catch (Exception e) {
 	                                    objects.set(index, grade);
@@ -352,9 +352,9 @@ public class GradeSheetExporter {
 	                            FloatCell floatValue = (FloatCell) rowValue;
 	                            cell = sheetRow.createCell(column++, CellType.NUMERIC);
 	                            cell.setCellValue(floatValue.value);
-	                            style = wb.createCellStyle();
-	                            style.setDataFormat(wb.createDataFormat().getFormat(floatValue.format));
-	                            cell.setCellStyle(style);
+	                            // style = wb.createCellStyle();
+	                            // style.setDataFormat(wb.createDataFormat().getFormat(floatValue.format));
+	                            // cell.setCellStyle(style);
 	                        } else if (rowValue != null) {
 	                            cell = sheetRow.createCell(column++, CellType.STRING);
 	                            cell.setCellValue(rowValue.toString());
