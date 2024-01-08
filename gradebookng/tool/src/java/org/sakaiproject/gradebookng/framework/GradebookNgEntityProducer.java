@@ -17,6 +17,7 @@ package org.sakaiproject.gradebookng.framework;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,7 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 
+import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.entity.api.EntityManager;
 import org.sakaiproject.entity.api.EntityProducer;
@@ -42,6 +44,7 @@ import org.sakaiproject.grading.api.GradebookInformation;
 import org.sakaiproject.grading.api.GradeMappingDefinition;
 import org.sakaiproject.grading.api.GradingCategoryType;
 import org.sakaiproject.gradebookng.business.GradebookNgBusinessService;
+
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.site.api.ToolConfiguration;
@@ -127,7 +130,6 @@ public class GradebookNgEntityProducer implements EntityProducer, EntityTransfer
 
 		// <GradebookConfig>
 		Element gradebookConfigEl = doc.createElement("GradebookConfig");
-
 		Gradebook gradebook =  this.gradingService.getGradebook(siteId);
 		if (gradebook == null) {
 			return "ERROR: Gradebook not found in site\n";
@@ -138,7 +140,7 @@ public class GradebookNgEntityProducer implements EntityProducer, EntityTransfer
 		String configuredGradeMappingId = settings.getSelectedGradeMappingId();
 		GradeMappingDefinition configuredGradeMapping = gradeMappings.stream()
 				.filter(gradeMapping -> StringUtils.equals(gradeMapping.getId(), configuredGradeMappingId))
-				.findAny()
+				.findAny() // findFirst()
 				.get();
 
 		Map<String, Double> gradeMap = settings.getSelectedGradingScaleBottomPercents();
@@ -155,6 +157,7 @@ public class GradebookNgEntityProducer implements EntityProducer, EntityTransfer
 		gradebookConfigEl.appendChild(gradeMappingsEl);
 
 		Element courseGradeDisplayedEl = doc.createElement("CourseGradeDisplayed");
+
 		courseGradeDisplayedEl.setTextContent(String.valueOf(settings.getCourseGradeDisplayed()));
 		gradebookConfigEl.appendChild(courseGradeDisplayedEl);
 
@@ -172,10 +175,12 @@ public class GradebookNgEntityProducer implements EntityProducer, EntityTransfer
 
 		Element courseAverageDisplayedEl = doc.createElement("CourseAverageDisplayed");
 		courseAverageDisplayedEl.setTextContent(String.valueOf(settings.getCourseAverageDisplayed()));
+
 		gradebookConfigEl.appendChild(courseAverageDisplayedEl);
 
 		Element categoryTypeEl = doc.createElement("CategoryType");
 		String categoryCode = null;
+
 		if (settings.getCategoryType() == GradingCategoryType.NO_CATEGORY) {
 			categoryCode = "NO_CATEGORIES";
 		} else if (settings.getCategoryType() == GradingCategoryType.ONLY_CATEGORY) {
@@ -191,6 +196,7 @@ public class GradebookNgEntityProducer implements EntityProducer, EntityTransfer
 		Element gradeTypeEl = doc.createElement("GradeType");
 		String gradeTypeCode = null;
 		switch(settings.getGradeType()) {
+
 			case POINTS:
 				gradeTypeCode = "POINTS";
 				break;
