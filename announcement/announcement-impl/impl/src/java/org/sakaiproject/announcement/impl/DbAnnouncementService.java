@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Stack;
+import java.util.Collections;
 
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -628,5 +629,21 @@ public class DbAnnouncementService extends BaseAnnouncementService
 		});
 
 		return	allAnnouncements;
+	}
+
+	public List<AnnouncementMessage> getViewableAnnouncementsForSite(String channelRef, Integer maxAgeInDays) {
+
+		try {
+			ViewableFilter viewableFilter = new ViewableFilter(null, null, Integer.MAX_VALUE, this);
+			if (maxAgeInDays != null) {
+				long now = Instant.now().toEpochMilli();
+				Time afterDate = m_timeService.newTime(now - (maxAgeInDays * 24 * 60 * 60 * 1000));
+				viewableFilter.setFilter(new MessageSelectionFilter(afterDate, null, false));
+			}
+			return (List<AnnouncementMessage>) getMessages(channelRef, viewableFilter, false, true);
+		} catch (Exception e) {
+			log.warn("Failed to add announcements from site {}", channelRef, e);
+		}
+		return Collections.emptyList();
 	}
 }
