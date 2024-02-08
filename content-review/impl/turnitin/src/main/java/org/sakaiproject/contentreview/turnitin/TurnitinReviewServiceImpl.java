@@ -1741,8 +1741,8 @@ public class TurnitinReviewServiceImpl extends BaseContentReviewService {
 		// Map of objectId to result
 		HashMap<String, Integer> reportTable = new HashMap<String, Integer>();
 
-		// Map of siteId:eid:submissiondate to result
-		HashMap<String, Integer> fuzzyReportTable = new HashMap<String, Integer>();
+		// Map of siteId:eid:submissiondate to objectId
+		HashMap<String, String> fuzzyReportTable = new HashMap<String, String>();
 
 		// Map of siteId
 		HashMap<String, String> siteTable = new HashMap<String, String>();
@@ -1933,15 +1933,14 @@ public class TurnitinReviewServiceImpl extends BaseContentReviewService {
 						String eid = title.substring(0, title.indexOf(':'));
 						String fuzzyKey = currentItem.getSiteId() + ";" + eid + ";" + date_submitted.substring(0,16);
 						log.debug("fuzzyKey: {}", fuzzyKey);
+						fuzzyReportTable.put(fuzzyKey, objectId);
 
 						if (similarityScore.compareTo("-1") != 0) {
 							overlap = ((CharacterData) (((Element) (objects.item(i))).getElementsByTagName("overlap")
 									.item(0).getFirstChild())).getData().trim();
 							reportTable.put(objectId, Integer.valueOf(overlap));
-							fuzzyReportTable.put(fuzzyKey, Integer.valueOf(overlap));
 						} else {
 							reportTable.put(objectId, Integer.valueOf(-1));
-							fuzzyReportTable.put(fuzzyKey, Integer.valueOf(-1));
 						}
 
 						log.debug("objectId: " + objectId + " similarity: " + similarityScore + " overlap: " + overlap);
@@ -1991,20 +1990,20 @@ public class TurnitinReviewServiceImpl extends BaseContentReviewService {
 				boolean keyMatch = false;
 
 				if (fuzzyReportTable.containsKey(fuzzyKey)) {
-					keyMatch = true;
-				} else {
-					// look for one second before
-				}
-
-				if (keyMatch) {
 					log.debug("Match successful for {}", fuzzyKey);
-					reportVal = ((Integer) (fuzzyReportTable.get(fuzzyKey))).intValue();
-					log.debug("reportVal for " + currentItem.getExternalId() + ": " + reportVal);
+
+					String objectId = (String) fuzzyReportTable.get(fuzzyKey);
+
+					// get the actual report
+
+					reportVal = ((Integer) (reportTable.get(objectId))).intValue();
+					log.debug("reportVal for {}: {}", objectId, reportVal);
 					if (reportVal != -1) {
 
 						currentItem.setReviewScore(reportVal);
 						currentItem.setStatus(ContentReviewConstants.CONTENT_REVIEW_SUBMITTED_REPORT_AVAILABLE_CODE);
 						currentItem.setDateReportReceived(new Date());
+						currentItem.setExternalId(objectId);
 						crqs.update(currentItem);
 
 						log.debug("new report received via fuzzy match: " + currentItem.getExternalId() + " -> "
