@@ -20,6 +20,7 @@ import java.net.URLDecoder;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.format.DateTimeFormatter;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -897,18 +898,19 @@ public class TurnitinReviewServiceImpl extends BaseContentReviewService {
 		if (taskId.startsWith("/assignment/")) {
 			try {
 				Reference ref = entityManager.newReference(taskId);
-				log.debug("got ref " + ref + " of type: " + ref.getType());
+				log.debug("got ref {} of type: {}", ref.getId(), ref.getType());
 				EntityProducer ep = ref.getEntityProducer();
 
 				Entity ent = ep.getEntity(ref);
 				log.debug("got entity " + ent);
-				if(ent != null){
+				if(ent != null) {
 					String title = scrubSpecialCharacters(ent.getClass().getMethod("getTitle").invoke(ent).toString());
 					log.debug("Got reflected assignment title from entity " + title);
 					togo = URLDecoder.decode(title, "UTF-8");
 				}
 			} catch (Exception e) {
-				log.error(e.getMessage(), e);
+				log.error("Failed getting assignment title for taskId " + taskId, e);
+				togo = "Assignment_" + taskId;
 			}
 		}
 
@@ -1291,6 +1293,56 @@ public class TurnitinReviewServiceImpl extends BaseContentReviewService {
 
 	}
 
+        /**
+         * Allow Turnitin for this site?
+         */
+        private boolean isSiteActive(String siteId) {
+
+		Site s = null;
+
+		try {
+	                s = siteService.getSite(siteId);
+		} catch (IdUnusedException iue) {
+			return false;
+		}
+
+                if (s == null) {
+                        return false;
+                }
+
+                log.debug("isSiteActive: " +  s.getId() + " / " + s.getTitle());
+
+                // Check site property
+                ResourceProperties properties = s.getProperties();
+
+                String prop = (String) properties.get(TURNITIN_SITE_PROPERTY);
+                if (prop != null) {
+                        log.debug("Checking site property: " + prop);
+			if (Boolean.parseBoolean(prop))
+				return true;
+                }
+
+                // Check list of allowed site types, if defined
+                if (enabledSiteTypes != null && !enabledSiteTypes.isEmpty()) {
+                        log.debug("Checking site type: " + s.getType());
+			if (!enabledSiteTypes.contains(s.getType()))
+				return false;
+                }
+
+		// If a course type, check term
+		if ("course".equals(s.getType())) {
+			String term = (String) properties.get("term");
+			log.debug("Checking course site term: " + term);
+			if (!"2023".equals(term) && !"2024".equals(term)) {
+				log.debug("Course is inactive: disallowing further Turnitin submissions");
+				return false;
+			}
+		}
+
+                // No property set, no restriction on site types, so allow
+                return true;
+        }
+
 	/*
 	 * Get the next item that needs to be submitted
 	 *
@@ -1308,9 +1360,18 @@ public class TurnitinReviewServiceImpl extends BaseContentReviewService {
 		Optional<ContentReviewItem> nextItem = null;
 		while ((nextItem = getNextItemInSubmissionQueue()).isPresent()) {
 			ContentReviewItem item = nextItem.get();
-			
+
 			log.debug("Attempting to submit content: " + item.getContentId() + " for user: "
 					+ item.getUserId() + " and site: " + item.getSiteId());
+
+                        String siteId = item.getSiteId();
+			if (!isSiteActive(siteId)) {
+				log.error("Site " + siteId + " is not active: not submitting to Turnitin");
+				item.setStatus(ContentReviewConstants.CONTENT_REVIEW_SUBMISSION_ERROR_NO_RETRY_CODE);
+				crqs.update(item);
+				errors++;
+				continue;
+			}
 
 			if (item.getRetryCount() == null) {
 				item.setRetryCount(Long.valueOf(0));
@@ -1531,7 +1592,11 @@ public class TurnitinReviewServiceImpl extends BaseContentReviewService {
 				String externalId = ((CharacterData) (root.getElementsByTagName("objectID").item(0).getFirstChild()))
 						.getData().trim();
 				if (externalId != null && externalId.length() > 0) {
-					log.debug("Submission successful");
+					log.debug("Submission successful: externalId {}", externalId);
+					if ("0".equals(externalId)) {
+						log.warn("Missing external id for submission: {}", item.getId());
+					}
+
 					item.setExternalId(externalId);
 					item.setStatus(ContentReviewConstants.CONTENT_REVIEW_SUBMITTED_AWAITING_REPORT_CODE);
 					item.setRetryCount(Long.valueOf(0));
@@ -1541,7 +1606,7 @@ public class TurnitinReviewServiceImpl extends BaseContentReviewService {
 					success++;
 					crqs.update(item);
 				} else {
-					log.warn("invalid external id");
+					log.warn("invalid external id: {}", externalId);
 					setLastError(item, doc->createFormattedMessageXML(doc, "submission.no.external.id"));
 					item.setStatus(ContentReviewConstants.CONTENT_REVIEW_SUBMISSION_ERROR_RETRY_CODE);
 					errors++;
@@ -1672,7 +1737,15 @@ public class TurnitinReviewServiceImpl extends BaseContentReviewService {
 		List<ContentReviewItem> awaitingReport = crqs.getAwaitingReports(getProviderId());
 
 		Iterator<ContentReviewItem> listIterator = awaitingReport.iterator();
+
+		// Map of objectId to result
 		HashMap<String, Integer> reportTable = new HashMap<String, Integer>();
+
+		// Map of siteId:eid:submissiondate to result
+		HashMap<String, Integer> fuzzyReportTable = new HashMap<String, Integer>();
+
+		// Map of siteId
+		HashMap<String, String> siteTable = new HashMap<String, String>();
 
 		log.debug("There are " + awaitingReport.size() + " submissions awaiting reports");
 
@@ -1680,9 +1753,12 @@ public class TurnitinReviewServiceImpl extends BaseContentReviewService {
 		while (listIterator.hasNext()) {
 			currentItem = (ContentReviewItem) listIterator.next();
 
+			log.debug("Fetch report for item: {} externalId {}", currentItem.getId(), currentItem.getExternalId());
+
 			// has the item reached its next retry time?
-			if (currentItem.getNextRetryTime() == null)
+			if (currentItem.getNextRetryTime() == null) {
 				currentItem.setNextRetryTime(new Date());
+			}
 
 			if (currentItem.getNextRetryTime().after(new Date())) {
 				// we haven't reached the next retry time
@@ -1714,10 +1790,12 @@ public class TurnitinReviewServiceImpl extends BaseContentReviewService {
 				continue;
 			}
 
-			if (!reportTable.containsKey(currentItem.getExternalId())) {
-				// get the list from turnitin and see if the review is available
+			if (!siteTable.containsKey(currentItem.getSiteId())) {
+				// get the list from turnitin for this site and see if the review is available
 
 				log.debug("Attempting to update hashtable with reports for site " + currentItem.getSiteId());
+
+				siteTable.put(currentItem.getSiteId(), "true");
 
 				String fcmd = "2";
 				String fid = "10";
@@ -1823,33 +1901,58 @@ public class TurnitinReviewServiceImpl extends BaseContentReviewService {
 				Element root = document.getDocumentElement();
 				if (((CharacterData) (root.getElementsByTagName("rcode").item(0).getFirstChild())).getData().trim()
 						.compareTo("72") == 0) {
-					log.debug("Report list returned successfully");
+					log.debug("Report list returned successfully for site {}", currentItem.getSiteId());
 
 					NodeList objects = root.getElementsByTagName("object");
 					String objectId;
 					String similarityScore;
 					String overlap = "";
+					String title = "";
+					String date_submitted = "";
+
 					log.debug(objects.getLength() + " objects in the returned list");
+
 					for (int i = 0; i < objects.getLength(); i++) {
+
+						// <title>wtstri002:7_Feb_2024_Thesis_Turn_it_in_report.docx</title>
+						// <date_submitted>2024-02-06 20:50:03+0200</date_submitted>
+
 						similarityScore = ((CharacterData) (((Element) (objects.item(i)))
 								.getElementsByTagName("similarityScore").item(0).getFirstChild())).getData().trim();
+
 						objectId = ((CharacterData) (((Element) (objects.item(i))).getElementsByTagName("objectID")
 								.item(0).getFirstChild())).getData().trim();
+
+						title = ((CharacterData) (((Element) (objects.item(i))).getElementsByTagName("title")
+								.item(0).getFirstChild())).getData().trim();
+
+						date_submitted = ((CharacterData) (((Element) (objects.item(i))).getElementsByTagName("date_submitted")
+								.item(0).getFirstChild())).getData().trim();
+
+						// fuzzy match
+						String eid = title.substring(0, title.indexOf(':'));
+						String fuzzyKey = currentItem.getSiteId() + ";" + eid + ";" + date_submitted.substring(0,16);
+						log.debug("fuzzyKey: {}", fuzzyKey);
+
 						if (similarityScore.compareTo("-1") != 0) {
 							overlap = ((CharacterData) (((Element) (objects.item(i))).getElementsByTagName("overlap")
 									.item(0).getFirstChild())).getData().trim();
 							reportTable.put(objectId, Integer.valueOf(overlap));
+							fuzzyReportTable.put(fuzzyKey, Integer.valueOf(overlap));
 						} else {
 							reportTable.put(objectId, Integer.valueOf(-1));
+							fuzzyReportTable.put(fuzzyKey, Integer.valueOf(-1));
 						}
 
 						log.debug("objectId: " + objectId + " similarity: " + similarityScore + " overlap: " + overlap);
 					}
 				} else {
-					log.debug("Report list request not successful");
+					log.debug("Report list request not successful for site {}", currentItem.getSiteId());
 					log.debug(document.getTextContent());
 
 				}
+			} else {
+				log.debug("Skipping site result check for siteid {}: already fetched this run", currentItem.getSiteId());
 			}
 
 			int reportVal;
@@ -1865,6 +1968,48 @@ public class TurnitinReviewServiceImpl extends BaseContentReviewService {
 					crqs.update(currentItem);
 					log.debug("new report received: " + currentItem.getExternalId() + " -> "
 							+ currentItem.getReviewScore());
+				}
+			} else {
+				log.debug("Id {} ObjectId {} not found in reportTable", currentItem.getId(), currentItem.getExternalId());
+
+				// Try a fuzzy match 
+				String currentEid = "";
+				try {
+					currentEid = userDirectoryService.getUserEid(currentItem.getUserId());
+				} catch (UserNotDefinedException e) {
+					currentEid = "unknown";
+				}
+
+				// format date to 2024-02-06 20:50:03+0200
+
+				// DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss+0200");
+				String date_submitted = dform.format(currentItem.getDateSubmitted()) + "+0200";
+				String fuzzyKey = currentItem.getSiteId() + ";" + currentEid + ";" + date_submitted.substring(0,16);
+
+				log.debug("Looking for match for key: {}", fuzzyKey);
+
+				boolean keyMatch = false;
+
+				if (fuzzyReportTable.containsKey(fuzzyKey)) {
+					keyMatch = true;
+				} else {
+					// look for one second before
+				}
+
+				if (keyMatch) {
+					log.debug("Match successful for {}", fuzzyKey);
+					reportVal = ((Integer) (fuzzyReportTable.get(fuzzyKey))).intValue();
+					log.debug("reportVal for " + currentItem.getExternalId() + ": " + reportVal);
+					if (reportVal != -1) {
+
+						currentItem.setReviewScore(reportVal);
+						currentItem.setStatus(ContentReviewConstants.CONTENT_REVIEW_SUBMITTED_REPORT_AVAILABLE_CODE);
+						currentItem.setDateReportReceived(new Date());
+						crqs.update(currentItem);
+
+						log.debug("new report received via fuzzy match: " + currentItem.getExternalId() + " -> "
+								+ currentItem.getReviewScore());
+					}
 				}
 			}
 		}
@@ -2681,19 +2826,20 @@ public class TurnitinReviewServiceImpl extends BaseContentReviewService {
 		String cid = siteId;
 		String uem = getEmail(user);
 		if (uem == null || uem.trim().isEmpty()) {
-			log.debug("User " + userId + " has no email address");
-			throw new SubmissionException ("User has no email address");
+			log.warn("User {} has no email address - ignoring this instructor for site {}", user.getEid(), siteId);
+			return;
 		}
 		String uid = user.getId();
 		String ufn = user.getFirstName();
+
 		if (ufn == null || ufn.trim().isEmpty()) {
-			log.debug("User " + userId + " has no first name");
-			throw new SubmissionException ("User has no first name");
+			log.warn("User {} has no first name", user.getEid());
+			ufn = "Guest";
 		}
 		String uln = user.getLastName();
 		if (uln == null || uln.trim().isEmpty()) {
-			log.debug("User " + userId + " has no last name");
-			throw new SubmissionException ("User has no last name");
+			log.warn("User {} has no last name", user.getEid());
+			uln = "User";
 		}
 		String dis = turnitinConn.isInstructorAccountNotified() ? "0" : "1"; // dis=1 means disable sending email to the user
 
@@ -2849,12 +2995,14 @@ public class TurnitinReviewServiceImpl extends BaseContentReviewService {
 
 		List<String> items = crqs.getContentReviewItemsGroupedBySite(getProviderId());
 		for (String siteId : items) {
-			log.debug("Turnitin roster sync site: {}", siteId);
-			try {
-				syncSiteWithTurnitin(siteId);
-			} catch (Exception e) {
-				log.error("Unable to complete Turnitin Roster Sync for site", e);
-			}
+			if (isSiteActive(siteId)) {
+				log.debug("Turnitin roster sync site: {}", siteId);
+				try {
+					syncSiteWithTurnitin(siteId);
+				} catch (Exception e) {
+					log.error("Unable to complete Turnitin Roster Sync for site", e);
+				}
+ 			}
 		}
 
 		log.info("Completed Turnitin Roster Sync");
