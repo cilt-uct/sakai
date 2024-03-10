@@ -90,6 +90,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.w3c.dom.Node;
+import org.w3c.dom.Text;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -247,6 +248,8 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
 
 	} // published
 
+	// Question Pools
+	results.append(exportQuestionPools(siteId, archivePath, poolIds, resourceIds));
 
 	// Add the attachment references
 	for (String resourceId : resourceIds) {
@@ -265,9 +268,6 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
 		}
 		attachments.add(EntityManager.newReference(resource.getReference()));
 	}
-
-	// Question Pools
-        results.append(exportQuestionPools(siteId, archivePath, poolIds, attachments));
 
 	// Done
         stack.pop();
@@ -489,7 +489,7 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
 		}
 	}
 
-	private String exportQuestionPools(String siteId, String archivePath, Set<String> questionPoolIds, List<Reference> attachments) {
+	private String exportQuestionPools(String siteId, String archivePath, Set<String> questionPoolIds, Set<String> resourceIds) {
 
 		String xmlPath = archivePath + File.separator + "samigo_question_pools.xml";
 		QuestionPoolServiceAPI questionPoolService = (QuestionPoolServiceAPI)ComponentManager.get("org.sakaiproject.tool.assessment.shared.api.questionpool.QuestionPoolServiceAPI");
@@ -545,6 +545,9 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
 			// Export each pool
 			for (Object poolObj : targetPools) {
 
+				// Attachments and inline references
+				Set<String> poolResourceIds = new TreeSet<String>();
+
 				Element questionPool = doc.createElement("QuestionPool");
 				QuestionPoolDataIfc pool = (QuestionPoolDataIfc)poolObj;
 
@@ -553,20 +556,21 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
 					continue;
 				}
 
-				questionPool.setAttribute("title", pool.getTitle());
 				questionPool.setAttribute("id", String.valueOf(pool.getQuestionPoolId()));
+				questionPool.setAttribute("title", pool.getTitle());
 				questionPool.setAttribute("ownerId", pool.getOwnerId());
+
+				log.info("Exporting question pool id {} title '{}' owner {}",
+					pool.getQuestionPoolId(), pool.getTitle(), pool.getOwnerId());
 
 				if (pool.getParentPoolId() != null && pool.getParentPoolId() != 0L) {
 					questionPool.setAttribute("parentId", String.valueOf(pool.getParentPoolId()));
 				}
+
 				questionPool.setAttribute("sourcebank_ref", String.format("%d::%s", pool.getQuestionPoolId(), pool.getTitle()));
 
 				for (Object itemObj : pool.getQuestionPoolItems()) {
 				    try {
-					// Attachments and inline references
-					Set<String> resourceIds = new TreeSet<String>();
-
 					QuestionPoolItemData item = (QuestionPoolItemData)itemObj;
 					Document qpItem = qtiService.getExportedItem(String.valueOf(item.getItemId()), QTI_VERSION);
 					NodeList nodes = qpItem.getChildNodes();
@@ -577,30 +581,8 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
 					}
 
 					// Attachments and inline references
-					resourceIds.addAll(fetchItemAttachmentResourceIds(item.getItemId()));
-					resourceIds.addAll(fetchAllInlineResourceIds(siteId, qpItem));
+					poolResourceIds.addAll(fetchItemAttachmentResourceIds(item.getItemId()));
 
-					for (String resourceId : resourceIds) {
-						ContentResource resource = null;
-						try {
-							resource = ContentHostingService.getResource(resourceId);
-						} catch (PermissionException e) {
-							log.warn("Permission error fetching attachment: {}", resourceId);
-						} catch (TypeException e) {
-							log.warn("TypeException error fetching attachment: {}", resourceId);
-						} catch (IdUnusedException e) {
-							log.warn("IdUnusedException error fetching attachment: {}", resourceId);
-						}
-						if (resource != null) {
-							attachments.add(EntityManager.newReference(resource.getReference()));
-						} else {
-							log.warn("Unable to archive attachment for item {} in question pool (id={}; title={}) for owner {}",
-								item.getItemId(), pool.getQuestionPoolId(), pool.getTitle(), pool.getOwnerId());
-							warnings.append(String.format("WARNING: Attachment not found for item %d in question pool %d (%s) owned by %s: %s\n",
-								item.getItemId(), pool.getQuestionPoolId(), pool.getTitle(), pool.getOwnerId(), resourceId));
-							archive_warnings++;
-						}
-					}
 				    } catch (Exception e) {
 					String poolError = String.format("Caught an exception while exporting question pool (id=%s; title=%s) for owner %s: %s",
 						pool.getQuestionPoolId(), pool.getTitle(), pool.getOwnerId(), e.getMessage());
@@ -609,12 +591,32 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
 				    }
 				}
 
+				// Attachments and inline references
+				poolResourceIds.addAll(fetchAllPoolInlineResourceIds(siteId, questionPool));
+
+				for (String resourceId : poolResourceIds) {
+					ContentResource resource = null;
+					try {
+						resource = ContentHostingService.getResource(resourceId);
+					} catch (PermissionException e) {
+						log.warn("Permission error fetching attachment: {}", resourceId);
+					} catch (TypeException e) {
+						log.warn("TypeException error fetching attachment: {}", resourceId);
+					} catch (IdUnusedException e) {
+						log.warn("IdUnusedException error fetching attachment: {}", resourceId);
+					}
+					if (resource != null) {
+						resourceIds.add(resourceId);
+					} else {
+						log.warn("Unable to archive attachment for resource {} in question pool (id={}; title={}) for owner {}",
+							resourceId, pool.getQuestionPoolId(), pool.getTitle(), pool.getOwnerId());
+					}
+				}
+
 				questionPools.appendChild(questionPool);
 				pools_exported++;
 
 			} // for
-
-
 
 			doc.appendChild(questionPools);
 
@@ -750,25 +752,34 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
     }
 
     /*
-     * Fetch references from inline URLs contained in CDATA blocks
+     * Fetch references from inline URLs contained in mattext elements
+     * @return List of resource references
+     */
+    private List<String> getInlineResourceIds(String siteId, NodeList list) {
+        List<String> result = new ArrayList<>();
+	for (int i = 0; i < list.getLength(); i++) {
+		Element e = (Element) list.item(i);
+		result.addAll(parseInlineResourceRefs(siteId, e.getTextContent()));
+	}
+        return result;
+    }
+
+    /*
+     * Fetch references from mattext elements in an assessment
      * @return List of resource references
      */
     private List<String> fetchAllInlineResourceIds(String siteId, Document assessment) {
+	NodeList list = assessment.getElementsByTagName("mattext");
+	return getInlineResourceIds(siteId, list);
+    }
 
-        List<String> result = new ArrayList<>();
-
-	// Parse all text items
-	NodeList list = assessment.getElementsByTagName("*");
-	for (int i = 0; i < list.getLength(); i++) {
-		Element e = (Element) list.item(i);
-		Node child = e.getFirstChild();
-		if (child instanceof CharacterData) {
-			CharacterData cd = (CharacterData) child;
-			result.addAll(parseInlineResourceRefs(siteId, cd.getData()));
-		}
-	}
-
-        return result;
+    /*
+     * Fetch references from mattext elements in a question pool
+     * @return List of resource references
+     */
+    private List<String> fetchAllPoolInlineResourceIds(String siteId, Element questionPool) {
+	NodeList list = questionPool.getElementsByTagName("mattext");
+	return getInlineResourceIds(siteId, list);
     }
 
     private List<String> fetchAllPublishedAttachmentResourceIds(Long pubAssessmentId) {
