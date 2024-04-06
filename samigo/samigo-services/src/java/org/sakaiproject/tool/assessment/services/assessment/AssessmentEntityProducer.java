@@ -79,12 +79,14 @@ import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentAttachment
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentIfc;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AttachmentIfc;
 import org.sakaiproject.tool.assessment.data.ifc.questionpool.QuestionPoolDataIfc;
-
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentIfc;
 import org.sakaiproject.tool.assessment.facade.AssessmentFacade;
 import org.sakaiproject.tool.assessment.facade.SectionFacade;
 import org.sakaiproject.tool.assessment.shared.api.qti.QTIServiceAPI;
 import org.sakaiproject.tool.assessment.shared.api.questionpool.QuestionPoolServiceAPI;
+import org.sakaiproject.user.api.UserNotDefinedException;
+import org.sakaiproject.user.cover.UserDirectoryService;
+
 import org.w3c.dom.CharacterData;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -733,19 +735,43 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
 			String linkRef = link.replace(link.substring(0, link.indexOf("/attachment/")), "");
 			result.add(linkRef);
 			log.info("Found inline attachment asset: {} adding to attachment list as: {}", link, linkRef);
+			continue;
 		}
 
-		// cross-site references
-		if (link.contains("/access/content/group/") && !link.contains(siteId)) {
-			// URLDecode this to turn it back into a Sakai content ID
-			try {
+		// URLs below may include spaces, so URLDecode to turn back into a Sakai content ID
+		try {
+			// cross-site references
+			if (link.contains("/access/content/group/") && !link.contains(siteId)) {
 				String linkRef = URLDecoder.decode(link.replace(link.substring(0, link.indexOf("/group/")), ""), "UTF-8");
 				result.add(linkRef);
 				log.info("Found inline cross-site asset: {} adding to attachment list as: {}", link, linkRef);
-			} catch (UnsupportedEncodingException e) {
-				log.error("Unable to add link {} to attachment list", link);
 			}
+
+			// references to user workspace files: map the user eid in the path to id
+			if (link.contains("/access/content/user/")) {
+				String linkRef = URLDecoder.decode(link.replace(link.substring(0, link.indexOf("/user/")), ""), "UTF-8");
+				String linkParts[] = linkRef.split("/", 4);
+				String userId = UserDirectoryService.getUserId(linkParts[2]);
+				linkRef = "/user/" + userId + "/" + linkParts[3];
+				result.add(linkRef);
+				log.info("Found inline user workspace asset: {} adding to attachment list as: {}", link, linkRef);
+			}
+
+			// references to public files
+			if (link.contains("/access/content/public/")) {
+				String linkRef = URLDecoder.decode(link.replace(link.substring(0, link.indexOf("/public/")), ""), "UTF-8");
+				result.add(linkRef);
+				log.info("Found inline public asset: {} adding to attachment list as: {}", link, linkRef);
+			}
+
+		} catch (UnsupportedEncodingException e) {
+			// Don't expect this ever to happen
+			log.warn("Unable to add link {} to attachment list: {}", link, e.getMessage());
+		} catch (UserNotDefinedException e) {
+			log.warn("Unable to add link {} to attachment list", link);
+			log.error("Trace", e);
 		}
+
 	}
 
 	return result;
