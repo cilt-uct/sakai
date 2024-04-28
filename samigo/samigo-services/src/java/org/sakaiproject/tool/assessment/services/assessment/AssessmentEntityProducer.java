@@ -573,6 +573,7 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
 
 				for (Object itemObj : pool.getQuestionPoolItems()) {
 				    try {
+
 					QuestionPoolItemData item = (QuestionPoolItemData)itemObj;
 					Document qpItem = qtiService.getExportedItem(String.valueOf(item.getItemId()), QTI_VERSION);
 					NodeList nodes = qpItem.getChildNodes();
@@ -632,7 +633,7 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
 				StreamResult result = new StreamResult(writer);
 				transformer.transform(source, result);
 			} catch (IOException | TransformerException e) {
-				e.printStackTrace();
+				log.error("Unable to write XML to {}: {}", xmlPath, e.getMessage());
 			} finally {
 				if (writer != null) {
 					try {
@@ -642,7 +643,7 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
 				}
 			}
 		} catch (ParserConfigurationException | IdUnusedException e) {
-			e.printStackTrace();
+			log.error("Unable to export question pools for site {}: {}", siteId, e.getMessage());
 		}
 
 		return String.format("archived %d question pool(s) with %d warning(s)\n%s", pools_exported, archive_warnings, warnings.toString());
@@ -659,7 +660,6 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
             }
         }
     }
-
 
     /*
      * Parse a qtimetadatafield/fieldentry plain text list of attachment references, formatted like:
@@ -706,8 +706,7 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
 	}
 
 	if (qText.contains("CDATA")) {
-		qText = qText.replace("<![CDATA[", "");
-		qText = qText.replace("]]>", "");
+		qText = qText.replace("<![CDATA[", "").replace("]]>", "");
 	}
 
         List<String> result = new ArrayList<>();
@@ -786,8 +785,8 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
      */
     private String getChildElementValue(Element e, String childName) {
         NodeList list = e.getElementsByTagName(childName);
-        for (int i = 0; i < list.getLength(); i++) {
-                Element c = (Element) list.item(i);
+	if (list.getLength() > 0) {
+                Element c = (Element) list.item(0);
 		return c.getTextContent();
 	}
 
@@ -838,8 +837,7 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
 			}
 
 		} catch (SQLException e) {
-			log.error(e.getMessage());
-			e.printStackTrace();
+			log.error("Unable to fetch assessment {} pool IDs: {}", assessmentId, e.getMessage());
 		} finally {
 			SqlService.returnConnection(db);
 		}
