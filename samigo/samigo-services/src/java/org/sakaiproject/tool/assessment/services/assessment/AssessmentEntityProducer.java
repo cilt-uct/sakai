@@ -34,6 +34,7 @@ import java.util.TreeSet;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerConfigurationException;
@@ -47,11 +48,8 @@ import org.jsoup.Jsoup;
 import org.jsoup.select.Elements;
 
 import org.sakaiproject.authz.api.Member;
-import org.sakaiproject.component.cover.ComponentManager;
+import org.sakaiproject.content.api.ContentHostingService;
 import org.sakaiproject.content.api.ContentResource;
-import org.sakaiproject.content.cover.ContentHostingService;
-import org.sakaiproject.content.cover.ContentHostingService;
-import org.sakaiproject.db.cover.SqlService;
 import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.entity.api.EntityProducer;
 import org.sakaiproject.entity.api.EntityTransferrer;
@@ -64,13 +62,13 @@ import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.exception.TypeException;
 import org.sakaiproject.section.api.facade.Role;
 import org.sakaiproject.site.api.Site;
-import org.sakaiproject.site.cover.SiteService;
+import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.tool.assessment.data.dao.assessment.*;
-import org.sakaiproject.tool.assessment.data.dao.questionpool.QuestionPoolItemData;
 import org.sakaiproject.tool.assessment.data.dao.assessment.Answer;
 import org.sakaiproject.tool.assessment.data.dao.assessment.AssessmentData;
 import org.sakaiproject.tool.assessment.data.dao.assessment.ItemData;
 import org.sakaiproject.tool.assessment.data.dao.assessment.ItemText;
+import org.sakaiproject.tool.assessment.data.dao.questionpool.QuestionPoolItemData;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentAttachmentIfc;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentIfc;
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AttachmentIfc;
@@ -78,10 +76,10 @@ import org.sakaiproject.tool.assessment.data.ifc.questionpool.QuestionPoolDataIf
 import org.sakaiproject.tool.assessment.data.ifc.assessment.AssessmentIfc;
 import org.sakaiproject.tool.assessment.facade.AssessmentFacade;
 import org.sakaiproject.tool.assessment.facade.SectionFacade;
-import org.sakaiproject.tool.assessment.shared.api.qti.QTIServiceAPI;
 import org.sakaiproject.tool.assessment.shared.api.questionpool.QuestionPoolServiceAPI;
+import org.sakaiproject.tool.assessment.shared.api.qti.QTIServiceAPI;
+import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserNotDefinedException;
-import org.sakaiproject.user.cover.UserDirectoryService;
 
 import org.w3c.dom.CharacterData;
 import org.w3c.dom.Document;
@@ -90,6 +88,8 @@ import org.w3c.dom.NodeList;
 import org.w3c.dom.Node;
 import org.w3c.dom.Text;
 
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -98,6 +98,11 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
     private static final int QTI_VERSION = 1;
     private static final String ARCHIVED_ELEMENT = "assessment";
     private QTIServiceAPI qtiService;
+
+    @Getter @Setter protected ContentHostingService contentHostingService;
+    @Getter @Setter protected QuestionPoolServiceAPI questionPoolService;
+    @Getter @Setter protected SiteService siteService;
+    @Getter @Setter protected UserDirectoryService userDirectoryService;
 
 	public void init() {
 		log.info("init()");
@@ -253,7 +258,7 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
 	for (String resourceId : resourceIds) {
 		ContentResource resource = null;
 		try {
-			resource = ContentHostingService.getResource(resourceId);
+			resource = contentHostingService.getResource(resourceId);
 		} catch (PermissionException e) {
 			log.warn("Permission error fetching attachment: {}", resourceId);
 			continue;
@@ -445,8 +450,6 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
 										//need to save since a ref has been updated:
 										needToUpdate = true;
 										itemText.setText(text);
-									}else{
-										log.info("Migration - now update");
 									}
 								}
 								
@@ -490,7 +493,6 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
 	private String exportQuestionPools(String siteId, String archivePath, Set<String> questionPoolIds, Set<String> resourceIds) {
 
 		String xmlPath = archivePath + File.separator + "samigo_question_pools.xml";
-		QuestionPoolServiceAPI questionPoolService = (QuestionPoolServiceAPI)ComponentManager.get("org.sakaiproject.tool.assessment.shared.api.questionpool.QuestionPoolServiceAPI");
 
 		int pools_exported = 0;
 		int archive_warnings = 0;
@@ -498,7 +500,7 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
 		StringBuilder warnings = new StringBuilder();
 
 		try {
-			Site site = SiteService.getSite(siteId);
+			Site site = siteService.getSite(siteId);
 
 			if (site.getToolForCommonId("sakai.samigo") == null) {
 				return "T&Q not used in this site: skipping Question Pool archive\n";
@@ -594,7 +596,7 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
 				for (String resourceId : poolResourceIds) {
 					ContentResource resource = null;
 					try {
-						resource = ContentHostingService.getResource(resourceId);
+						resource = contentHostingService.getResource(resourceId);
 					} catch (PermissionException e) {
 						log.warn("Permission error fetching attachment: {}", resourceId);
 					} catch (TypeException e) {
@@ -690,8 +692,7 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
 	}
 
 	if (qText.contains("CDATA")) {
-		qText = qText.replace("<![CDATA[", "");
-		qText = qText.replace("]]>", "");
+		qText = qText.replace("<![CDATA[", "").replace("]]>", "");
 	}
 
         List<String> result = new ArrayList<>();
@@ -724,7 +725,7 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
 			if (link.contains("/access/content/user/")) {
 				String linkRef = URLDecoder.decode(link.replace(link.substring(0, link.indexOf("/user/")), ""), "UTF-8");
 				String linkParts[] = linkRef.split("/", 4);
-				String userId = UserDirectoryService.getUserId(linkParts[2]);
+				String userId = userDirectoryService.getUserId(linkParts[2]);
 				linkRef = "/user/" + userId + "/" + linkParts[3];
 				result.add(linkRef);
 				log.info("Found inline user workspace asset: {} adding to attachment list as: {}", link, linkRef);
@@ -737,12 +738,8 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
 				log.info("Found inline public asset: {} adding to attachment list as: {}", link, linkRef);
 			}
 
-		} catch (UnsupportedEncodingException e) {
-			// Don't expect this ever to happen
+		} catch (UnsupportedEncodingException|UserNotDefinedException e) {
 			log.warn("Unable to add link {} to attachment list: {}", link, e.getMessage());
-		} catch (UserNotDefinedException e) {
-			log.warn("Unable to add link {} to attachment list", link);
-			log.error("Trace", e);
 		}
 
 	}
@@ -770,8 +767,8 @@ public class AssessmentEntityProducer implements EntityTransferrer, EntityProduc
      */
     private String getChildElementValue(Element e, String childName) {
         NodeList list = e.getElementsByTagName(childName);
-        for (int i = 0; i < list.getLength(); i++) {
-                Element c = (Element) list.item(i);
+	if (list.getLength() > 0) {
+                Element c = (Element) list.item(0);
 		return c.getTextContent();
 	}
 
