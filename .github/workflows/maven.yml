@@ -29,9 +29,8 @@ jobs:
       - name: Build with Maven
         env:
           MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=WARN -Dorg.slf4j.simpleLogger.showDateTime=true -Djava.awt.headless=true -Dmaven.wagon.http.retryHandler.count=2 -Dmaven.wagon.http.pool=true
-        run: mvn --batch-mode -PskipBrokenTests test
-      - name: Publish Test Report
-        if: ${{ always() }}
-        uses: scacap/action-surefire-report@v1
-        with:
-          skip_publishing: true
+        run: mvn --show-version --batch-mode -PskipBrokenTests test
+      - name: Check Licenses
+        run: mvn -show-version --batch-mode -DskipTests license:check
+
+

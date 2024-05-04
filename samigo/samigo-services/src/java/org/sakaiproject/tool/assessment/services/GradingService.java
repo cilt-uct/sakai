@@ -1615,7 +1615,7 @@ public class GradingService
 	  if (!eventLogDataList.isEmpty()) {
 		  EventLogData eventLogData= (EventLogData) eventLogDataList.get(0);
 		  //will do the i18n issue later.
-		  eventLogData.setErrorMsg("No Errors (Auto submit)");
+		  eventLogData.setErrorMsg("no_error_auto_submit");
 		  final Date endDate = adata.getSubmittedDate() != null ? adata.getSubmittedDate() : new Date();
 		  eventLogData.setEndDate(endDate);
 		  if(eventLogData.getStartDate() != null) {
@@ -1624,7 +1624,7 @@ public class GradingService
 			  eventLogData.setEclipseTime(eclipseTime); 
 		  } else {
 			  eventLogData.setEclipseTime(null); 
-			  eventLogData.setErrorMsg("Error during auto submit");
+			  eventLogData.setErrorMsg("error_auto_submit");
 		  }
 		  eventLogFacade.setData(eventLogData);
 		  eventService.saveOrUpdateEventLog(eventLogFacade);
@@ -2961,6 +2961,43 @@ Here are the definition and 12 cases I came up with (lydia, 01/2006):
 	  String formattedNumber = formatter.format(bdx);
 
 	  return formattedNumber.replace(",",".");
+  }
+
+  /**
+   * CALCULATED_QUESTION
+   * toScientificNotation() Takes a string representation of a number and returns
+   * a string representation of that number, in scientific notation.
+   * Numbers like 100, 0.01 will not be formatted (see values of MAX_THRESHOLD and MIN_THRESHOLD)
+   * @param numberStr
+   * @param decimalPlaces
+   * @param stringCalculate
+   * @return processed number string
+   */
+  public String toScientificNotation(String numberStr, String stringCalculate, int decimalPlaces){
+
+         BigDecimal bdx = new BigDecimal(numberStr);
+         bdx.setScale(decimalPlaces,RoundingMode.HALF_UP);
+
+         NumberFormat formatter;
+
+         if ((bdx.abs().compareTo(DEFAULT_MAX_THRESHOLD) >= 0 || bdx.abs().compareTo(DEFAULT_MIN_THRESHOLD) <= 0
+        || numberStr.contains("e") || numberStr.contains("E") )
+           && bdx.doubleValue() != 0) {
+                 formatter = new DecimalFormat(FORMAT_MASK);
+         } else {
+             if (!numberStr.equals(stringCalculate) && ("0".equals(stringCalculate))) {
+                 formatter = new DecimalFormat(FORMAT_MASK);
+             } else {
+                 formatter = new DecimalFormat("0");
+             }
+         }
+
+         formatter.setRoundingMode(RoundingMode.HALF_UP);
+         formatter.setMaximumFractionDigits(decimalPlaces);
+
+         String formattedNumber = formatter.format(bdx);
+
+         return formattedNumber.replace(",",".");
   }
   
   /**

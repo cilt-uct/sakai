@@ -81,7 +81,6 @@ import org.sakaiproject.gradebookng.tool.panels.ToggleGradeItemsToolbarPanel;
 import org.sakaiproject.portal.util.PortalUtils;
 import org.sakaiproject.grading.api.Assignment;
 import org.sakaiproject.grading.api.GraderPermission;
-import org.sakaiproject.grading.api.GradeType;
 import org.sakaiproject.grading.api.PermissionDefinition;
 import org.sakaiproject.grading.api.SortType;
 import org.sakaiproject.grading.api.model.Gradebook;
@@ -159,6 +158,10 @@ public class GradebookPage extends BasePage {
 					|| (this.permissions.size() == 1 && StringUtils.equals(((PermissionDefinition) this.permissions.get(0)).getFunctionName(), GraderPermission.NONE.toString()))) {
 				sendToAccessDeniedPage(getString("ta.nopermission"));
 			}
+		}
+		// This is not a Student or TA, so it is either custom role or an Instructor.
+		else if (!this.businessService.isUserAbleToEditAssessments()) {
+			sendToAccessDeniedPage(getString("ta.nopermission"));
 		}
 
 		final GbStopWatch stopwatch = new GbStopWatch();
@@ -247,7 +250,7 @@ public class GradebookPage extends BasePage {
 		final boolean categoriesEnabled = this.businessService.categoriesAreEnabled();
 
 		// grading type?
-		final GradeType gradingType = gradebook.getGradeType();
+		final Integer gradingType = gradebook.getGradeType();
 
 		this.tableArea = new WebMarkupContainer("gradeTableArea");
 		if (!this.hasGradebookItems) {

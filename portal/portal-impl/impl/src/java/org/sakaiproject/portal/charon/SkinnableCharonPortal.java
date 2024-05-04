@@ -20,6 +20,8 @@
  **********************************************************************************/
 package org.sakaiproject.portal.charon;
 
+import static org.sakaiproject.user.api.PreferencesService.TUTORIAL_PREFS;
+
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Array;
@@ -63,8 +65,8 @@ import org.sakaiproject.event.cover.UsageSessionService;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.exception.SakaiException;
-import org.sakaiproject.messaging.api.UserNotification;
 import org.sakaiproject.messaging.api.UserMessagingService;
+import org.sakaiproject.messaging.api.model.UserNotification;
 import org.sakaiproject.pasystem.api.PASystem;
 import org.sakaiproject.portal.api.Editor;
 import org.sakaiproject.portal.api.PageFilter;
@@ -985,6 +987,9 @@ public class SkinnableCharonPortal extends HttpServlet implements Portal
 		rcontext.put("includeLatestJQuery", PortalUtils.includeLatestJQuery("Portal"));
 		rcontext.put("pageTop", Boolean.valueOf(true));
 		rcontext.put("rloader", rloader);
+
+        rcontext.put("serviceName", ServerConfigurationService.getString("ui.service"));
+
 		// TODO: This is commented out as the new trinity portal doesn't load the connection manager
 		//rcontext.put("cmLoader", cmLoader);
 
@@ -1072,6 +1077,9 @@ public class SkinnableCharonPortal extends HttpServlet implements Portal
 		// Format properties for MathJax.
 		String [] mathJaxFormat = ServerConfigurationService.getStrings("mathjax.config.format");
 		rcontext.put("mathJaxFormat", mathJaxFormat);
+
+		boolean notificationsPushEnabled = ServerConfigurationService.getBoolean("portal.notifications.push.enabled", true);
+		rcontext.put("notificationsPushEnabled", notificationsPushEnabled);
 
 		boolean debugNotifications = ServerConfigurationService.getBoolean("portal.notifications.debug", false);
 		rcontext.put("debugNotifications", debugNotifications);
@@ -1702,19 +1710,11 @@ public class SkinnableCharonPortal extends HttpServlet implements Portal
 			rcontext.put("neoChatVideo", ServerConfigurationService.getBoolean("portal.chat.video", true));
 			rcontext.put("portalVideoChatTimeout", ServerConfigurationService.getInt("portal.chat.video.timeout", 25));
 
-			if (sakaiTutorialEnabled && thisUser != null) {
-				if (!("1".equals(prefs.getProperties().getProperty("sakaiTutorialFlag")))) {
+            if (sakaiTutorialEnabled && thisUser != null && ! UserDirectoryService.isRoleViewType(thisUser)) {
+                String userTutorialPref = prefs.getProperties(TUTORIAL_PREFS) != null ? prefs.getProperties(TUTORIAL_PREFS).getProperty("tutorialFlag") : "";
+                log.debug("Fetched tutorial config [{}] from user [{}] preferences", userTutorialPref, thisUser);
+                if (!StringUtils.equals("1", userTutorialPref)) {
 					rcontext.put("tutorial", true);
-					//now save this in the user's preferences so we don't show it again
-					PreferencesEdit preferences = null;
-					try {
-						preferences = preferencesService.edit(thisUser);
-						ResourcePropertiesEdit props = preferences.getPropertiesEdit();
-						props.addProperty("sakaiTutorialFlag", "1");
-						preferencesService.commit(preferences);   
-					} catch (SakaiException e1) {
-						log.error(e1.getMessage(), e1);
-					}
 				}
 			}
 

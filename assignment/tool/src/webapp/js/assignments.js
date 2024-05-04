@@ -965,6 +965,26 @@ ASN.changeVisibleDate = function()
 	}
 }
 
+ASN.changeResubmissionDate = function()
+{
+  if(document.getElementById("allowResToggle").checked)
+  {
+    document.getElementById('allowResubmitNumber').style.display = 'block';
+    document.getElementById('allowResubmitTime').style.display = 'block';
+    document.getElementById('resubmitNotification').style.display = 'block';
+    const closeDatePicker = document.getElementById('closedate');
+    const resubmitDatePicker = document.getElementById('resubmissiondate');
+    resubmitDatePicker.isoDate = closeDatePicker.isoDate;
+    ASN.resizeFrame();
+  }
+  else
+  {
+    document.getElementById('allowResubmitNumber').style.display = 'none';
+    document.getElementById('allowResubmitTime').style.display = 'none';
+    document.getElementById('resubmitNotification').style.display = 'none';
+  }
+}
+
 ASN.enableTimesheetSetupSection = function()
 {
     const el = document.getElementById('timesheetsetupsection');
@@ -1008,6 +1028,10 @@ $(document).ready(() => {
     [...document.getElementsByTagName("sakai-rubric-student-button")].forEach(b => promises.push(b.releaseEvaluation()));
     Promise.all(promises).then(() => ASN.submitForm('viewForm', 'releaseGrades', null, null));
   });
+
+  const releaseCommented = document.getElementById("releaseCommented");
+  releaseCommented && releaseCommented.addEventListener("click", ev =>
+      ASN.submitForm('viewForm', 'releaseCommented', null, null));
 
   // If grade is released, rubric must be released too
   const gradeIsReleasedInput = document.getElementById("grade-is-released");

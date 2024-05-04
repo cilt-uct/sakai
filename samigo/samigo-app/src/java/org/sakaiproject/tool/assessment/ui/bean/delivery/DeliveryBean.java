@@ -32,7 +32,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.regex.Pattern;
@@ -124,6 +123,7 @@ public class DeliveryBean implements Serializable {
   //SAM-2517
   private UserTimeService userTimeService = ComponentManager.get(UserTimeService.class);
   private PreferencesService preferencesService = ComponentManager.get(PreferencesService.class);
+  private FormattedText formattedText = ComponentManager.get(FormattedText.class);
   
   private static final String MATHJAX_SRC_PATH_SAKAI_PROP = "portal.mathjax.src.path";
   private static final String MATHJAX_SRC_PATH = ServerConfigurationService.getString(MATHJAX_SRC_PATH_SAKAI_PROP);
@@ -456,8 +456,6 @@ public class DeliveryBean implements Serializable {
 
   private static final String ACCESSBASE = ServerConfigurationService.getAccessUrl();
   private static final String RECPATH = ServerConfigurationService.getString("samigo.recommendations.path");
-
-  private static final ResourceBundle eventLogMessages = ResourceBundle.getBundle("org.sakaiproject.tool.assessment.bundle.EventLogMessages");
 
   private static final String questionProgressUnansweredPath = ServerConfigurationService.getString("samigo.questionprogress.unansweredpath", "/images/whiteBubble15.png");
   private static final String questionProgressAnsweredPath = ServerConfigurationService.getString("samigo.questionprogress.answeredpath", "/images/blackBubble15.png");
@@ -814,9 +812,9 @@ public class DeliveryBean implements Serializable {
 	  if(eventLogDataList != null && eventLogDataList.size() > 0) {
 	 	  EventLogData eventLogData= (EventLogData) eventLogDataList.get(0);
 	 	  if (submitFromTimeoutPopup) {
-	 	    eventLogData.setErrorMsg(eventLogMessages.getString("timer_submit"));
+	 	    eventLogData.setErrorMsg("timer_submit");
 	 	  } else {
-	 	    eventLogData.setErrorMsg(eventLogMessages.getString("no_error"));
+	 	    eventLogData.setErrorMsg("no_error_user_submit");
 	 	  }
 	 	  Date endDate = new Date();
 	 	  eventLogData.setEndDate(endDate);
@@ -826,7 +824,7 @@ public class DeliveryBean implements Serializable {
 	 	      eventLogData.setEclipseTime(eclipseTime);
 	 	  } else {
 	 	      eventLogData.setEclipseTime(null);
-	 	      eventLogData.setErrorMsg(eventLogMessages.getString("error_take"));
+	 	      eventLogData.setErrorMsg("error_take");
 	 	  }
 
 		  String thisIp = ( (HttpServletRequest) FacesContext.getCurrentInstance().getExternalContext().getRequest()).getRemoteAddr();
@@ -857,7 +855,7 @@ public class DeliveryBean implements Serializable {
 		  List eventLogDataList = eventService.getEventLogData(adata.getAssessmentGradingId());
 		  if(eventLogDataList != null && eventLogDataList.size() > 0) {
 			  eventLogData= (EventLogData) eventLogDataList.get(0);
-			  eventLogData.setErrorMsg(eventLogMessages.getString("error_submit"));
+			  eventLogData.setErrorMsg("error_submit");
 			  eventLogData.setEndDate(new Date());
 			  			  
 			  String thisIp = ( (HttpServletRequest) FacesContext.getCurrentInstance().getExternalContext().getRequest()).getRemoteAddr();
@@ -1265,7 +1263,7 @@ public class DeliveryBean implements Serializable {
     if (StringUtils.isBlank(password)) {
     	return "passwordAccessError";
     }
-    if(StringUtils.isNotBlank(getSettings().getPassword()) && !StringUtils.equals(StringUtils.trim(password), StringUtils.trim(getSettings().getPassword()))) {
+    if(StringUtils.isNotBlank(getSettings().getPassword()) && !StringUtils.equals(StringUtils.trim(password), formattedText.convertFormattedTextToPlaintext(StringUtils.trim(getSettings().getPassword())))) {
     	return "passwordAccessError";
     }
 
@@ -1389,7 +1387,7 @@ public class DeliveryBean implements Serializable {
 		 List eventLogDataList = eventService.getEventLogData(adata.getAssessmentGradingId());
 		 if(eventLogDataList != null && eventLogDataList.size() > 0) {
 			 eventLogData= (EventLogData) eventLogDataList.get(0);
-			 eventLogData.setErrorMsg(eventLogMessages.getString("error_access"));
+			 eventLogData.setErrorMsg("error_access");
 		 }
 		 
 		 String thisIp = ( (HttpServletRequest) FacesContext.getCurrentInstance().getExternalContext().getRequest()).getRemoteAddr();
@@ -1491,7 +1489,7 @@ public class DeliveryBean implements Serializable {
 		  agentEid= "N/A";
 	  }
 	  eventLogData.setUserEid(agentEid);
-	  eventLogData.setTitle(ComponentManager.get(FormattedText.class).convertFormattedTextToPlaintext(publishedAssessment.getTitle()));
+	  eventLogData.setTitle(formattedText.convertFormattedTextToPlaintext(publishedAssessment.getTitle()));
 	  String site_id= AgentFacade.getCurrentSiteId();
 	  if(site_id == null) {
 		  //take assessment via url
@@ -1502,7 +1500,7 @@ public class DeliveryBean implements Serializable {
 	  eventLogData.setProcessId(null);
 	  eventLogData.setEndDate(null);
 	  eventLogData.setEclipseTime(null);
-	  eventLogData.setErrorMsg(eventLogMessages.getString(errorMsg));
+	  eventLogData.setErrorMsg(errorMsg);
 	  	  
 	  String thisIp = ( (HttpServletRequest) FacesContext.getCurrentInstance().getExternalContext().getRequest()).getRemoteAddr();
 	  eventLogData.setIpAddress(thisIp);

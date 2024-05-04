@@ -124,7 +124,8 @@ public class ProfileEntityProvider extends AbstractEntityProvider implements Cor
 		
 		final String id = ref.getId();
 
-        boolean wantsBlank = id.equals(ProfileConstants.BLANK);
+        // A role swapped user is not "real" so just use the blank image
+        boolean wantsBlank = id.equals(ProfileConstants.BLANK) || sakaiProxy.isUserRoleSwapped();
 
         String uuid = "";
         String currentUserId = sakaiProxy.getCurrentUserId();
@@ -161,7 +162,7 @@ public class ProfileEntityProvider extends AbstractEntityProvider implements Cor
 		}
 
 		// First of all, check if the current user is admin. If current user is admin, show all the pictures always
-		if (sakaiProxy.isAdminUser()) {
+		if (sakaiProxy.isSuperUser()) {
 			wantsBlank = false;
 		} else if (StringUtils.isBlank(siteId)) {
 			// No site id is specified, checking if both users have any site in common
@@ -300,7 +301,7 @@ public class ProfileEntityProvider extends AbstractEntityProvider implements Cor
 			throw new EntityNotFoundException("Invalid user.", ref.getId());
 		}
         
-		if (sakaiProxy.isAdminUser() || sakaiProxy.getCurrentUserId().equals(uuid)) {
+		if (sakaiProxy.isSuperUser() || sakaiProxy.getCurrentUserId().equals(uuid)) {
 			return new ActionReturn(messagingLogic.getAllUnreadMessagesCount(uuid));
 		} else {
 			throw new SecurityException("You can only view your own message count.");

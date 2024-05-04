@@ -25,7 +25,7 @@ import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.CriteriaUpdate;
 import javax.persistence.criteria.Root;
 
-import org.sakaiproject.messaging.api.UserNotification;
+import org.sakaiproject.messaging.api.model.UserNotification;
 import org.sakaiproject.messaging.api.repository.UserNotificationRepository;
 import org.sakaiproject.springframework.data.SpringCrudRepositoryImpl;
 
@@ -41,7 +41,7 @@ public class UserNotificationRepositoryImpl extends SpringCrudRepositoryImpl<Use
         CriteriaBuilder cb = session.getCriteriaBuilder();
         CriteriaQuery<UserNotification> query = cb.createQuery(UserNotification.class);
         Root<UserNotification> un = query.from(UserNotification.class);
-        query.where(cb.and(cb.equal(un.get("deferred"), false), cb.equal(un.get("toUser"), userId)));
+        query.where(cb.and(cb.equal(un.get("deferred"), false), cb.equal(un.get("toUser"), userId))).orderBy(cb.desc(un.get("eventDate")));
         return session.createQuery(query).list();
     }
 

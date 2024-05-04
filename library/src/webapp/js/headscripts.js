@@ -696,18 +696,21 @@ function includeLatestJQuery(where) {
 	}
 }
 
-function includeWebjarLibrary(library) {
+function includeWebjarLibrary(library, options = {}) {
 	let webjars = (window.portal && window.portal.pageWebjarsPath) ? window.portal.pageWebjarsPath : '/library/webjars/';
 	let ver = (window.portal && window.portal.portalCDNQuery) ? window.portal.portalCDNQuery : '';
 	let libraryVersion = '';
 	const jsReferences = [];
 	const cssReferences = [];
 
+	// Include the CSS if requested
+	const includeCss = options.includeCss || false;
+
 	switch(library) {
 		case 'bootstrap':
 			libraryVersion = "5.2.0";
 			jsReferences.push('/js/bootstrap.bundle.min.js');
-			cssReferences.push('/css/bootstrap.min.css');
+			includeCss && cssReferences.push('/css/bootstrap.min.css');
 			break;
 		case 'bootstrap-multiselect':
 			libraryVersion = "1.1.1";
@@ -753,7 +756,7 @@ function includeWebjarLibrary(library) {
 			document.write(`<script src="${webjars}/datatables.net-rowgroup/js/dataTables.rowGroup.min.js${ver}"></script>`);
 			break;
 		case 'ckeditor4':
-			libraryVersion = "4.21.0";
+			libraryVersion = "4.22.1";
 			jsReferences.push('/ckeditor.js');
 			break;
 		case 'awesomplete':
@@ -827,12 +830,35 @@ function includeWebjarLibrary(library) {
 
 }
 
+// Ensures consistent theming across all Sakai pages by dynamically loading a theme
+// switcher script, which applies a user or system-preferred theme class to the document
+if (!window.themeClassInit) {
+	window.themeClassInit = true;
+	document.addEventListener('DOMContentLoaded', () => {
+		if (window.top === window.self && ![...document.documentElement.classList].some(c => c.startsWith('sakaiUserTheme-'))) {
+			const script = document.createElement('script');
+			script.src = '/library/js/portal/portal.theme.switcher.js';
+			script.onload = async () => {
+				try {
+					portal.addCssClassToMarkup(await portal.getCurrentSetTheme());
+				} catch (error) {
+					console.error('Theme error:', error);
+				}
+			};
+			script.onerror = () => console.error('Failed to load script');
+			document.head.appendChild(script);
+		}
+	});
+}
+
 // Return the breakpoint between small and medium sized displays - for morpheus currently the same
 function portalSmallBreakPoint() { return 800; } 
 function portalMediumBreakPoint() { return 800; } 
 
 // A function to add an icon picker to a text input field
 function fontawesome_icon_picker(selector) {
+	// Set the input's placeholder value
+	$(selector).attr('placeholder', 'Pick an icon...');
 	// Set the input to read only
 	$(selector).prop('readonly', true);
 	// Add the class to make this a form control

@@ -26,6 +26,7 @@ import java.net.URL;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -53,7 +54,6 @@ import org.sakaiproject.calendar.api.CalendarService;
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.content.api.ContentHostingService;
-import org.sakaiproject.content.api.ContentResource;
 import org.sakaiproject.content.api.ContentResourceEdit;
 import org.sakaiproject.content.api.FilePickerHelper;
 import org.sakaiproject.entity.api.Entity;
@@ -237,7 +237,8 @@ public class SyllabusTool
     			attachmentList.add(sa);
     		}
     	}
-      
+    	
+      Collections.sort(attachmentList);
       return attachmentList;
     }
     
@@ -1960,12 +1961,6 @@ public class SyllabusTool
     return "main";
   }
 
-  public String processEditResetRedirect() throws PermissionException {
-      currentRediredUrl = "";
-      processEditSaveRedirect();
-      return "edit_redirect";
-  }
-
   public String processEditSaveRedirect() throws PermissionException
   {
     //log.info(this + ".processEditSaveRedirect() in SyllabusTool");
@@ -2311,10 +2306,11 @@ public class SyllabusTool
     }
     else
     {
+      String id = null;
       try
       {
         SyllabusAttachment sa = syllabusManager.getSyllabusAttachment(removeAttachId);
-        String id = sa.getAttachmentId();
+        id = sa.getAttachmentId();
         boolean deleted = false;
         
         for(int i=0; i<attachments.size(); i++)
@@ -2340,12 +2336,9 @@ public class SyllabusTool
           }
         }
         
-        ContentResource cr = contentHostingService.getResource(id);
         syllabusManager.removeSyllabusAttachmentObject(sa);
         removeCalendarAttachment(entry.getEntry(), sa);
-        if(id.toLowerCase().startsWith("/attachment"))
-          contentHostingService.removeResource(id);
-        
+
         allAttachments.clear();
         for(int i=0; i<attachments.size(); i++)
         {
@@ -2355,12 +2348,12 @@ public class SyllabusTool
         {
           allAttachments.add((SyllabusAttachment)oldAttachments.get(i));
         }
-        
 
+        if(id.toLowerCase().startsWith("/attachment")) contentHostingService.removeResource(id);
       }
       catch(Exception e)
       {
-        log.error(this + ".processRemoveAttach() - " + e);
+        log.warn("Attempting to remove the syllabus attachment [{}:{}], {}", removeAttachId, id, e.toString());
       }
 
       removeAttachId = null;

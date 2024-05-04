@@ -1339,20 +1339,21 @@ public void processChangeSelectView(ValueChangeEvent eve)
 	StringBuilder replyText = new StringBuilder();
     
     // populate replyToBody with the reply text
-	replyText.append("<br /><br />");
+	replyText.append("<p></p><p></p>");
 	replyText.append("<span style=\"font-weight:bold;font-style:italic;\">");
 	replyText.append(getResourceBundleString("pvt_msg_on"));
 	replyText.append(" " + formattedCreateDate + " ");
 	replyText.append(getResourceBundleString("pvt_msg_at"));
 	replyText.append(" " +formattedCreateTime);
 	replyText.append(getResourceBundleString("pvt_msg_comma"));
-    replyText.append(" " + formattedText.escapeHtml(pm.getAuthor(), false) + " ");
-    replyText.append(getResourceBundleString("pvt_msg_wrote")); 
+	replyText.append(" " + formattedText.escapeHtml(pm.getAuthor(), false) + " ");
+	replyText.append(getResourceBundleString("pvt_msg_wrote")); 
 	replyText.append("</span>");
     	
     String origBody = pm.getBody();
     if (origBody != null && origBody.trim().length() > 0) {
-    	replyText.append("<br />" + pm.getBody() + "<br />");
+    	replyText.append("<p></p>");
+    	replyText.append(pm.getBody());
     }
     
     List attachList = getDetailMsg().getAttachList();
@@ -1406,16 +1407,32 @@ public void processChangeSelectView(ValueChangeEvent eve)
 		StringBuilder forwardedText = new StringBuilder();
 	    
 	    // populate replyToBody with the forwarded text
-		forwardedText.append(getResourceBundleString("pvt_msg_fwd_heading") + "<br /><br />" +
-	    	getResourceBundleString("pvt_msg_fwd_authby", new Object[] {formattedText.escapeHtml(pm.getAuthor(), false), formattedCreateDate}) +  "<br />" +
-	    	getResourceBundleString("pvt_msg_fwd_to", new Object[] {pm.getRecipientsAsText()}) + "<br />" +
-	    	getResourceBundleString("pvt_msg_fwd_subject", new Object[] {pm.getTitle()}) + "<br />" +
-	    	getResourceBundleString("pvt_msg_fwd_label", new Object[] {getDetailMsg().getLabel()}) + "<br />");
+		forwardedText.append(getResourceBundleString("pvt_msg_fwd_heading") + "<br /><br />");
+		forwardedText.append("<strong>");
+		forwardedText.append(getResourceBundleString("pvt_msg_fwd_authby"));
+		forwardedText.append("</strong>");
+		forwardedText.append(" " + formattedText.escapeHtml(pm.getAuthor(), false));
+		forwardedText.append(" (" + formattedCreateDate + ")<br />");
+		forwardedText.append("<strong>");
+		forwardedText.append(getResourceBundleString("pvt_msg_fwd_to"));
+		forwardedText.append("</strong>");
+		forwardedText.append(" " + pm.getRecipientsAsText() + "<br />");
+		forwardedText.append("<strong>");
+		forwardedText.append(getResourceBundleString("pvt_msg_fwd_subject"));
+		forwardedText.append("</strong>");
+		forwardedText.append(" " + pm.getTitle() + "<br />");
+		forwardedText.append("<strong>");
+		forwardedText.append(getResourceBundleString("pvt_msg_fwd_label"));
+		forwardedText.append("</strong>");
+		forwardedText.append(" " + getDetailMsg().getLabel());
 	    
 	    List attachList = getDetailMsg().getAttachList();
 	    if (CollectionUtils.isNotEmpty(attachList)) {
-	    	forwardedText.append(getResourceBundleString("pvt_msg_fwd_attachments") + "<br />");
-	    	forwardedText.append("<ul style=\"list-style-type:none;margin:0;padding:0;padding-left:0.5em;\">");
+	    	forwardedText.append("<div>");
+	    	forwardedText.append("<strong>");
+	    	forwardedText.append(getResourceBundleString("pvt_msg_fwd_attachments"));
+	    	forwardedText.append("</strong>");
+	    	forwardedText.append("<ul style=\"list-style-type:none;margin-bottom:1.0em;margin-left:0;margin-right:0;margin-top:0;padding-left:0.5em;padding:0\">");
 	    	for (DecoratedAttachment decoAttach : (List<DecoratedAttachment>) attachList ) {
 	    		if (decoAttach != null) {
 	    			forwardedText.append("<li>");
@@ -1443,9 +1460,11 @@ public void processChangeSelectView(ValueChangeEvent eve)
 	    		}
 	    	}
 	    	forwardedText.append("</ul>");
+	    	forwardedText.append("</div>");
 	    }
 	    String origBody = pm.getBody();
 	    if (origBody != null && origBody.trim().length() > 0) {
+	    	forwardedText.append("<p></p>");
 	    	forwardedText.append(pm.getBody());
 	    }
 	    
@@ -1499,7 +1518,7 @@ public void processChangeSelectView(ValueChangeEvent eve)
 		
 	    
 	    // populate replyToBody with the reply text
-		replyallText.append("<br /><br />");
+		replyallText.append("<p></p><p></p>");
 		replyallText.append("<span style=\"font-weight:bold;font-style:italic;\">");
 		replyallText.append(getResourceBundleString("pvt_msg_on"));
 		replyallText.append(" " + formattedCreateDate + " ");
@@ -1512,7 +1531,8 @@ public void processChangeSelectView(ValueChangeEvent eve)
 	    	
 	    String origBody = pm.getBody();
 	    if (origBody != null && origBody.trim().length() > 0) {
-	    	replyallText.append("<br />" + pm.getBody() + "<br />");
+	    	replyallText.append("<p></p>");
+	    	replyallText.append(pm.getBody());
 	    }
 	    
 	    List attachList = getDetailMsg().getAttachList();

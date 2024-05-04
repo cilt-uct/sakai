@@ -33,17 +33,24 @@ sakai.editor.editors.ckeditor = sakai.editor.editors.ckeditor || {} ;
 //get path of directory ckeditor
 var basePath = "/library/editor/ckextraplugins/";
 var webJars = "/library/webjars/"
+var fmathPath = webJars + 'ckeditor4-fmath-editor/${ckeditor4.fmath.editor.version}/'
 
 // Update properties in one object from another: https://stackoverflow.com/a/12534361/3708872
 // I believe this is available as lodash.merge but don't see that available here yet and this looked like the simplest version of that
 function objectMerge(obj/*, ...*/) {
-    for (var i=1; i<arguments.length; i++) {
+    for (let i = 1; i < arguments.length; i++) {
         for (var prop in arguments[i]) {
             var val = arguments[i][prop];
-            if (typeof val == "object") // this also applies to arrays or null!
+            if (prop === "removePlugins") {
+                const source = obj[prop].split(",");
+                source.push(...val.split(","));
+                obj[prop] = source.join(",");
+            } else if (typeof val === "object") {
+                // this also applies to arrays or null!
                 objectMerge(obj[prop], val);
-            else
+            } else {
                 obj[prop] = val;
+            }
         }
     }
     return obj;
@@ -341,7 +348,8 @@ sakai.editor.editors.ckeditor.launch = function(targetId, config, w, h) {
             (sakai.editor.enableResourceSearch ? 'resourcesearch' : ''),
             (sakai.editor.enableSakaiOpenLink ? 'sakaiopenlink' : ''),
             `${ckeditor-extra-plugins}`,
-            `${ckeditor-a11y-extra-plugins}`
+            `${ckeditor-a11y-extra-plugins}`,
+            `${ckeditor-math-extra-plugins}`,
         ].join(','),
         // These two settings enable the browser's native spell checking and context menus.
         // Control-Right-Click (Windows/Linux) or Command-Right-Click (Mac) on highlighted words
@@ -380,7 +388,7 @@ sakai.editor.editors.ckeditor.launch = function(targetId, config, w, h) {
             ['Styles','Format','Font','FontSize'],
             ['TextColor','BGColor'],
             ['Maximize', 'ShowBlocks']
-            ,['A11ychecker']
+            ,['A11ychecker', 'FMathEditor']
         ].filter(el => el !== undefined),
         toolbar_BasicText:
         [
@@ -425,7 +433,9 @@ sakai.editor.editors.ckeditor.launch = function(targetId, config, w, h) {
         templates_files: [basePath+"templates/default.js"],
         templates: 'customtemplates',
         templates_replaceContent: false,
-        clipboard_handleImages: false
+        clipboard_handleImages: false,
+        // https://ckeditor.com/docs/ckeditor4/latest/api/CKEDITOR_config.html#cfg-versionCheck
+        versionCheck: false,
     };
 
     // Merge config values into ckconfig
@@ -480,6 +490,9 @@ sakai.editor.editors.ckeditor.launch = function(targetId, config, w, h) {
         CKEDITOR.plugins.addExternal('notification',basePath+'notification/', 'plugin.js');
         // Accessibility checker has a dependency on balloonpanel
         CKEDITOR.plugins.addExternal('a11ychecker',webJars+'a11ychecker/${ckeditor.a11ychecker.version}/', 'plugin.js');
+        // FMathEditor plugin
+        CKEDITOR.plugins.addExternal('FMathEditor', fmathPath, 'plugin.js');
+
         /*
            To enable after the deadline uncomment these two lines and add atd-ckeditor to toolbar
            and to extraPlugins. This also needs extra stylesheets.

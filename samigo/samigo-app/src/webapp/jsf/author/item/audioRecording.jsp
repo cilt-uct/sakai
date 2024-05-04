@@ -33,8 +33,7 @@
       <head><%= request.getAttribute("html.head") %>
       <title><h:outputText value="#{authorMessages.item_display_author}"/></title>
       <script src="/samigo-app/js/authoring.js"></script>
-      <script src="/webcomponents/rubrics/sakai-rubrics-utils.js<h:outputText value="#{questionScores.CDNQuery}" />"></script>
-      <script type="module" src="/webcomponents/rubrics/rubric-association-requirements.js<h:outputText value="#{itemauthor.CDNQuery}" />"></script>
+      <script type="module" src="/webcomponents/bundles/rubric-association-requirements.js<h:outputText value="#{studentScores.CDNQuery}" />"></script>
       </head>
 <body onload="<%= request.getAttribute("html.body.onload") %>">
 
@@ -99,18 +98,6 @@
     </div>
 
     <%@ include file="/jsf/author/item/rubricAssociation.jsp" %>
-
-<!-- 1.2 MIN POINTS 
-  Ths is commented out since it doesn't make sense to have a min value for a question that doesn't automatically calculate a score
-   <div class="shorttext">
-    <h:outputLabel value="#{authorMessages.answer_min_point_value}" />
-    <h:inputText id="answerminptr" value="#{itemauthor.currentItem.itemMinScore}" styleClass="ConvertPoint">
-<f:validateDoubleRange/>
-</h:inputText><br/>
-    <h:message for="answerminptr" styleClass="validate"/>
-  </div>
-<br/>
--->
 
     <!-- Extra Credit -->
     <%@ include file="/jsf/author/inc/extraCreditSetting.jspf" %>

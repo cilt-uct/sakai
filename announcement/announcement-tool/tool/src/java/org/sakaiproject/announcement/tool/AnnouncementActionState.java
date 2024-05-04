@@ -607,6 +607,9 @@ public class AnnouncementActionState extends ControllerState implements SessionB
 	// temporary storage for new announcement body
 	private String m_tempBody;
 
+	// temporary storage for announcement highlight
+	private boolean m_tempHighlight = false;
+
 	// temporary storage for new announcement release date
 	private Time m_releaseDate = null;
 	
@@ -621,6 +624,9 @@ public class AnnouncementActionState extends ControllerState implements SessionB
 
 	// temporary storage for announce to groups selection
 	private Collection m_tempAnnounceToGroups;
+	
+	// temporary storage for announce to roles selection
+	private String[] m_tempAnnounceToRoles;
 
 	// temporary storage for local file inputStream, contentType and display name
 	private HashMap m_fileProperties = new HashMap();
@@ -666,6 +672,15 @@ public class AnnouncementActionState extends ControllerState implements SessionB
 	/**
 	 * Get
 	 */
+	public boolean getTempHighlight()
+	{
+		return m_tempHighlight;
+
+	} // getTempHighlight()
+
+	/**
+	 * Get
+	 */
 	public String getTempAnnounceTo()
 	{
 		return m_tempAnnounceTo;
@@ -703,6 +718,22 @@ public class AnnouncementActionState extends ControllerState implements SessionB
 		m_tempAnnounceToGroups = tempAnnounceToGroups;
 
 	} // setTempAnnounceTo()
+	
+	/**
+	 * Get
+	 */
+	public String[] getTempAnnounceToRoles()
+	{
+		return m_tempAnnounceToRoles;
+	} // getTempAnnounceToRoles()
+
+	/**
+	 * set
+	 */
+	public void setTempAnnounceToRoles(String[] tempAnnounceToRoles)
+	{
+		m_tempAnnounceToRoles = tempAnnounceToRoles;
+	} // setTempAnnounceToRoles()
 
 	/**
 	 * Get
@@ -730,6 +761,17 @@ public class AnnouncementActionState extends ControllerState implements SessionB
 		}
 
 	} // setTempBody()
+
+	/**
+	 * Set
+	 */
+	public void setTempHighlight(boolean tempHighlight)
+	{
+		if (tempHighlight != m_tempHighlight)
+		{
+			m_tempHighlight = tempHighlight;
+		}
+	} // setTempHighlight()
 
 	public void setTempReleaseDate(Time tempDate) 
 	{

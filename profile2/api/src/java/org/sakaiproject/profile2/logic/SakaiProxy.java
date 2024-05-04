@@ -121,19 +121,19 @@ public interface SakaiProxy {
 	public boolean isSuperUser();
 
 	/**
-	 * Is the current user the admin user? (ie 'admin')
-	 *
-	 * @return
-	 */
-	public boolean isAdminUser();
-
-	/**
 	 * Is the current user a superUser and are they performing an action on another user's profile?
 	 *
 	 * @param userId - userId of other user
 	 * @return
 	 */
 	public boolean isSuperUserAndProxiedToUser(String userId);
+
+	/**
+	 * Is the current user viewing the site as another role via View Site As
+	 *
+	 * @return
+	 */
+	public boolean isUserRoleSwapped();
 
 	/**
 	 * Get the type of this user's account

@@ -194,6 +194,7 @@ $jumbotron-heading-font-size: $h4-font-size;
 @import "modules/tool/theme-switcher/base";
 @import "modules/tool/multiselect/base";
 @import "modules/tool/sakai-options-menu/sakai-options-menu";
+@import "modules/tool/access";
 
 
 
@@ -217,10 +218,12 @@ $jumbotron-heading-font-size: $h4-font-size;
 
 
 // tool custom styles
-label {
-    margin: 2px;
+.input-group label {
+  margin: 0;
 }
-
+label {
+  margin: 2px;
+}
 
 .form-group {
 	margin-bottom: 15px;
@@ -246,9 +249,23 @@ label {
 	z-index: 1200 !important;
   }
 
-// basic-lti tool 
+// FontAwesome Icon Picker //
 .iconpicker-popover {
     opacity: 1 !important;
+    border-radius: 1px;
+}
+
+.iconpicker-popover .popover-title,
+.iconpicker-popover .iconpicker-items {
+    background-color: var(--sakai-background-color-2) !important;
+}
+
+.iconpicker-popover .iconpicker-item:hover{
+    background-color: var(--site-nav-btn-hover-bg) !important;
+}
+
+.iconpicker-container {
+    align-items: center;
 }
 
 iframe[type="application/pdf"] {

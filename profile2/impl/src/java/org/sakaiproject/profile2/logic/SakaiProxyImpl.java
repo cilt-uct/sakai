@@ -232,16 +232,16 @@ public class SakaiProxyImpl implements SakaiProxy {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public boolean isAdminUser() {
-		return StringUtils.equals(this.sessionManager.getCurrentSessionUserId(), UserDirectoryService.ADMIN_ID);
+	public boolean isSuperUserAndProxiedToUser(final String userId) {
+		return (isSuperUser() && !StringUtils.equals(userId, getCurrentUserId()));
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
 	@Override
-	public boolean isSuperUserAndProxiedToUser(final String userId) {
-		return (isSuperUser() && !StringUtils.equals(userId, getCurrentUserId()));
+	public boolean isUserRoleSwapped() {
+		return this.securityService.isUserRoleSwapped();
 	}
 
 	/**

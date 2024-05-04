@@ -1123,6 +1123,7 @@ public class AssessmentService {
 						for (String attachment : attachments) {
 							String resourceIdOrig = "/" + StringUtils.substringAfter(attachment, "/access/content/");
 							String resourceId = URLDecoder.decode(resourceIdOrig);
+							resourceId = resourceId.trim();
 							String filename = StringUtils.substringAfterLast(attachment, "/");
 
 							try {

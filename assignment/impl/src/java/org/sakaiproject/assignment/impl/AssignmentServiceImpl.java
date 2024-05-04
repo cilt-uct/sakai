@@ -147,7 +147,6 @@ import org.sakaiproject.grading.api.GradingService;
 import org.sakaiproject.messaging.api.Message;
 import org.sakaiproject.messaging.api.MessageMedium;
 import org.sakaiproject.messaging.api.UserMessagingService;
-import org.sakaiproject.rubrics.api.RubricsConstants;
 import org.sakaiproject.rubrics.api.RubricsService;
 import org.sakaiproject.rubrics.api.model.ToolItemRubricAssociation;
 import org.sakaiproject.search.api.SearchService;
@@ -165,7 +164,6 @@ import org.sakaiproject.time.api.UserTimeService;
 import org.sakaiproject.timesheet.api.TimeSheetEntry;
 import org.sakaiproject.timesheet.api.TimeSheetService;
 import org.sakaiproject.tool.api.SessionManager;
-import org.sakaiproject.tool.api.Tool;
 import org.sakaiproject.tool.api.ToolManager;
 import org.sakaiproject.user.api.CandidateDetailProvider;
 import org.sakaiproject.user.api.User;
@@ -1403,32 +1401,58 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
             throw new PermissionException(sessionManager.getCurrentSessionUserId(), SECURE_UPDATE_ASSIGNMENT, null);
         }
 
-        Collection<String> oldGroups = assignmentRepository.findGroupsForAssignmentById(assignment.getId());
+        Collection<String> prevAssignedGroupRefs = assignmentRepository.findGroupsForAssignmentById(assignment.getId());
         switch (assignment.getTypeOfAccess()) {
             case GROUP:
-                oldGroups.removeAll(assignment.getGroups());
-                for (String groupRef : oldGroups) { // remove locks for groups that were removed
-                    try {
-                        AuthzGroup group = authzGroupService.getAuthzGroup(groupRef);
-                        group.setLockForReference(reference, AuthzGroup.RealmLockMode.NONE);
-                        authzGroupService.save(group);
-                    } catch (GroupNotDefinedException | AuthzPermissionException e) {
-                        log.warn("Exception while removing lock for assignment {}, {}", assignment.getId(), e.toString());
+                Collection<String> currentAssignedGroupRefs = assignment.getGroups();
+                // get the unassigned Group References by removing the current ones !
+                prevAssignedGroupRefs.removeAll(currentAssignedGroupRefs);
+
+                Site site = null;
+                try {
+                    site = siteService.getSite(assignment.getContext());
+                } catch (IdUnusedException e) {
+                    log.warn("Could not get the site {} for assignment {} while updating it", assignment.getContext(), assignment.getId());
+                }
+                // on Lessons, a group assignment or one with prereq. will be managed through a single (access) group
+                Group anAssignedGroup = site.getGroup(currentAssignedGroupRefs.stream().findFirst().orElse(null));
+                // we can infer it is an ACCESS group if it has the following property
+                boolean accessGroupAssigned = StringUtils.isNotBlank(anAssignedGroup.getProperties().getProperty("lessonbuilder_ref"));
+
+                // If the assigned group is not an ACCESS group...
+                if (accessGroupAssigned == false) {
+                    for (String groupRef : prevAssignedGroupRefs) { // remove locks for groups that were removed or unassigned
+                        try {
+                            AuthzGroup group = authzGroupService.getAuthzGroup(groupRef);
+                            group.setLockForReference(reference, AuthzGroup.RealmLockMode.NONE);
+                            authzGroupService.save(group);
+                        } catch (GroupNotDefinedException | AuthzPermissionException e) {
+                            log.warn("Exception while removing lock for assignment {}, {}", assignment.getId(), e.toString());
+                        }
                     }
                 }
                 if (!assignment.getDraft()) { // don't add locks for draft assignments
                     if (assignment.getIsGroup()) { // lock mode ALL for group assignments
-                        for (String groupRef : assignment.getGroups()) {
+                        for (String groupRef : currentAssignedGroupRefs) {
                             try {
+                                Group assignedGroup = site.getGroup(groupRef);
+                                boolean isAccessGroup = StringUtils.isNotBlank(assignedGroup.getProperties().getProperty("lessonbuilder_ref"));
+
                                 AuthzGroup group = authzGroupService.getAuthzGroup(groupRef);
-                                group.setLockForReference(reference, AuthzGroup.RealmLockMode.ALL);
+                                if (isAccessGroup) {
+                                    // exception: it's an ACCESS group, membership won't be locked
+                                    // as users are dynamically added to be able to see the related assignment on Lessons
+                                    group.setLockForReference(reference, AuthzGroup.RealmLockMode.DELETE);
+                                } else {
+                                    group.setLockForReference(reference, AuthzGroup.RealmLockMode.ALL);
+                                }
                                 authzGroupService.save(group);
                             } catch (GroupNotDefinedException | AuthzPermissionException e) {
                                 log.warn("Exception while adding lock ALL for assignment {}, {}", assignment.getId(), e.toString());
                             }
                         }
-                    } else { // lock mode DELETE for assignments released to groups
-                        for (String groupRef : assignment.getGroups()) {
+                    } else { // lock mode DELETE for assignments released to groups through Lessons
+                        for (String groupRef : currentAssignedGroupRefs) {
                             try {
                                 AuthzGroup group = authzGroupService.getAuthzGroup(groupRef);
                                 group.setLockForReference(reference, AuthzGroup.RealmLockMode.DELETE);
@@ -1441,7 +1465,7 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
                 }
                 break;
             case SITE:
-                for (String groupRef : oldGroups) { // remove all locks if they exist
+                for (String groupRef : prevAssignedGroupRefs) { // remove all locks if they exist
                     try {
                         AuthzGroup group = authzGroupService.getAuthzGroup(groupRef);
                         group.setLockForReference(reference, AuthzGroup.RealmLockMode.NONE);
@@ -1860,7 +1884,7 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
                 return resourceLoader.getString("grad3");
             case HONOR_ACCEPTED:
                 return resourceLoader.getString("gen.hpsta");
-            case RETURNED_PENDING_RESUBMIT:
+            case RESUBMIT_ALLOWED:
                 return resourceLoader.getString("gen.pending_resubmit");
             default:
                 return "Undefined Status";
@@ -1883,11 +1907,6 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
     private AssignmentConstants.SubmissionStatus getGradersCanonicalSubmissionStatus(AssignmentSubmission submission) {
         if (submission == null) return SubmissionStatus.NO_SUBMISSION;
 
-        String resubmissionString = StringUtils.trimToNull(submission.getProperties().get(AssignmentConstants.ALLOW_RESUBMIT_NUMBER));
-        boolean resubmissionAllowed = NumberUtils.isCreatable(resubmissionString) ?
-                Integer.parseInt(resubmissionString) > 0 || Integer.parseInt(resubmissionString) == -1 : // "-1" means infinite resubmissions allowed
-                false;
-
         Instant submitTime = submission.getDateSubmitted();
         Instant returnTime = submission.getDateReturned();
 
@@ -1903,25 +1922,35 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
                                 return SubmissionStatus.RESUBMITTED;
                             }
                         } else {
-                            return resubmissionAllowed ? SubmissionStatus.RETURNED_PENDING_RESUBMIT : SubmissionStatus.RETURNED;
+                            return canSubmitResubmission(submission, Instant.now()) ? SubmissionStatus.RESUBMIT_ALLOWED : SubmissionStatus.RETURNED;
                         }
                     } else {
                         if (returnTime != null && returnTime.isAfter(submitTime)) {
-                            return resubmissionAllowed ? SubmissionStatus.RETURNED_PENDING_RESUBMIT : SubmissionStatus.RETURNED; 
+                            return canSubmitResubmission(submission, Instant.now()) ? SubmissionStatus.RESUBMIT_ALLOWED : SubmissionStatus.RETURNED;
                         } else {
                             return SubmissionStatus.RETURNED;
                         }
                     }
                 } else if (submission.getGraded()) {
-                    return StringUtils.isNotBlank(submission.getGrade()) ? SubmissionStatus.GRADED : SubmissionStatus.COMMENTED;
-                } else {
-                    return SubmissionStatus.UNGRADED;
+                    if (StringUtils.isNotBlank(submission.getGrade())) {
+                        return SubmissionStatus.GRADED;
+                    } else if (StringUtils.isNotBlank(submission.getFeedbackComment())) {
+                        return SubmissionStatus.COMMENTED;
+                    }
+                } else if (StringUtils.isNotBlank(submission.getFeedbackComment())) {
+                    return SubmissionStatus.COMMENTED;
                 }
             } else {
                 if (submission.getReturned()) {
                     return SubmissionStatus.RETURNED;
                 } else if (submission.getGraded()) {
-                    return StringUtils.isNotBlank(submission.getGrade()) ? SubmissionStatus.GRADED : SubmissionStatus.COMMENTED;
+                    if (StringUtils.isNotBlank(submission.getGrade())) {
+                        return SubmissionStatus.GRADED;
+                    } else if (StringUtils.isNotBlank(submission.getFeedbackComment())) {
+                        return SubmissionStatus.COMMENTED;
+                    }
+                } else if (StringUtils.isNotBlank(submission.getFeedbackComment())) {
+                    return SubmissionStatus.COMMENTED;
                 } else {
                     return SubmissionStatus.NO_SUBMISSION;
                 }
@@ -1933,21 +1962,21 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
                     return SubmissionStatus.RETURNED;
                 } else {
                     // grade saved but not release yet, show this to graders
-                    return StringUtils.isNotBlank(submission.getGrade()) ? AssignmentConstants.SubmissionStatus.GRADED : AssignmentConstants.SubmissionStatus.COMMENTED;
+                    if (StringUtils.isNotBlank(submission.getGrade())) {
+                        return SubmissionStatus.GRADED;
+                    } else if (StringUtils.isNotBlank(submission.getFeedbackComment())) {
+                        return SubmissionStatus.COMMENTED;
+                    }
                 }
-            } else {
-                return SubmissionStatus.UNGRADED;
+            } else if (StringUtils.isNotBlank(submission.getFeedbackComment())) {
+                return SubmissionStatus.COMMENTED;
             }
         }
+        return SubmissionStatus.UNGRADED;
     }
 
     private AssignmentConstants.SubmissionStatus getSubmittersCanonicalSubmissionStatus(AssignmentSubmission submission) {
         if (submission == null) return SubmissionStatus.NOT_STARTED;
-
-        String resubmissionString = StringUtils.trimToNull(submission.getProperties().get(AssignmentConstants.ALLOW_RESUBMIT_NUMBER));
-        boolean resubmissionAllowed = NumberUtils.isCreatable(resubmissionString) ?
-                Integer.parseInt(resubmissionString) > 0 || Integer.parseInt(resubmissionString) == -1 : // "-1" means infinite resubmissions allowed
-                false;
 
         Instant submitTime = submission.getDateSubmitted();
         Instant returnTime = submission.getDateReturned();
@@ -1965,11 +1994,11 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
                                 return SubmissionStatus.RESUBMITTED;
                             }
                         } else {
-                            return resubmissionAllowed ? SubmissionStatus.RETURNED_PENDING_RESUBMIT : SubmissionStatus.RETURNED;
+                            return canSubmitResubmission(submission, Instant.now()) ? SubmissionStatus.RESUBMIT_ALLOWED : SubmissionStatus.RETURNED;
                         }
                     } else {
                         if (returnTime != null && returnTime.isAfter(submitTime)) {
-                            return resubmissionAllowed ? SubmissionStatus.RETURNED_PENDING_RESUBMIT : SubmissionStatus.RETURNED; 
+                            return canSubmitResubmission(submission, Instant.now()) ? SubmissionStatus.RESUBMIT_ALLOWED : SubmissionStatus.RETURNED;
                         } else {
                             return SubmissionStatus.RETURNED;
                         }
@@ -2309,6 +2338,51 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
         return AssignmentReferenceReckoner.reckoner().context(context).id(id).container(assignmentId).subtype("s").reckon().getReference();
     }
 
+    /**
+     * Perform a check to see of a submission can be resubmitted
+     * @param submission the AssignmentSubmission to check
+     * @param time the time to use when calculating
+     * @return true if submission is not null and the user has resubmissions
+     *              and if time bounded the time is before the close date
+     */
+    private boolean canSubmitResubmission(AssignmentSubmission submission, Instant time) {
+        if (submission == null) return false; // false if submission is null
+
+        // check that a submission has been submitted
+        if (submission.getSubmitted() || submission.getDateSubmitted() != null) {
+            // get the resubmit settings from submission object first
+            String allowResubmitNumString = submission.getProperties().get(AssignmentConstants.ALLOW_RESUBMIT_NUMBER);
+            String allowResubmitCloseTimeString = submission.getProperties().get(AssignmentConstants.ALLOW_RESUBMIT_CLOSETIME);
+
+            // -1 = unlimited resubmissions
+            //  0 = no resubmissions left
+            // >0 = number of resubmissions allowed
+            int resubmitNumber = NumberUtils.toInt(allowResubmitNumString, 0);
+            long resubmitCloseTimeMillis = NumberUtils.toLong(allowResubmitCloseTimeString, 0);
+
+            log.debug("Submission {} has: number of resubmits [{}], resubmit close time [{}]", submission.getId(), resubmitNumber, resubmitCloseTimeMillis);
+
+            if (resubmitCloseTimeMillis > 0) { // if a resubmission close time has been set then it is part of the check
+                Instant resubmitCloseTime = Instant.ofEpochMilli(resubmitCloseTimeMillis);
+                Assignment assignment = submission.getAssignment();
+                Instant assignmentCloseDate = assignment.getCloseDate() != null ? assignment.getCloseDate() : assignment.getDueDate();
+                // use whichever time is later the assignment close time or the resubmission close time
+                if (assignmentCloseDate != null && resubmitCloseTime.isBefore(assignmentCloseDate)) {
+                    // otherwise, use assignment close time as the resubmission close time
+                    resubmitCloseTime = assignmentCloseDate;
+                }
+
+                if (time == null) time = Instant.now(); // if a time was not supplied use now
+                // true if the user has more resubmission attempts and current time is before resubmission close time
+                return (resubmitNumber > 0 || resubmitNumber == -1) && time.isBefore(resubmitCloseTime);
+            } else { // otherwise it is an open ended assignment and we just check number of attempts left
+                // true if the user has more resubmission attempts
+                return (resubmitNumber > 0 || resubmitNumber == -1);
+            }
+        }
+        return false;
+    }
+
     @Override
     public boolean canSubmit(Assignment assignment, String userId) {
         if (assignment == null || BooleanUtils.isTrue(assignment.getDeleted())) return false;
@@ -2339,53 +2413,29 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
             }
 
             // whether the current time is after the assignment close date inclusive
-            boolean isBeforeAssignmentCloseDate = !currentTime.isAfter(assignment.getCloseDate());
+            boolean isBeforeAssignmentCloseDate = currentTime.isBefore(assignment.getCloseDate());
 
             AssignmentSubmission submission = getSubmission(AssignmentReferenceReckoner.reckoner().assignment(assignment).reckon().getId(), userId);
 
             if (submission != null) {
 
-                // check for allow resubmission or not
                 // If an Extension exists for the user, we switch out the assignment's overall
-                // Close date for the extension deadline. We do this if the grade has been actually
-                // released, or if the submission object has not actually been submitted yet.
-                // Additionally, we make sure that a Resubmission date is not set [make sure it's null],
+                // close date for the extension deadline but only if the submission object has not been submitted.
+                // Additionally, we make sure that a Resubmission date is not set,
                 // so that this date-switching happens ONLY under Extension-related circumstances.
-                if (submission.getProperties().get(AssignmentConstants.ALLOW_EXTENSION_CLOSETIME) != null
-                        && (submission.getReturned() || !submission.getUserSubmission())) {
+                if (StringUtils.isNotBlank(submission.getProperties().get(AssignmentConstants.ALLOW_EXTENSION_CLOSETIME))
+                        && StringUtils.isBlank(submission.getProperties().get(AssignmentConstants.ALLOW_RESUBMIT_CLOSETIME))) {
                     Instant extensionCloseTime = Instant.ofEpochMilli(Long.parseLong(submission.getProperties().get(AssignmentConstants.ALLOW_EXTENSION_CLOSETIME)));
-                    isBeforeAssignmentCloseDate = !currentTime.isAfter(extensionCloseTime);
+                    isBeforeAssignmentCloseDate = currentTime.isBefore(extensionCloseTime);
                 }
 
-                if (isBeforeAssignmentCloseDate && (submission.getDateSubmitted() == null || !submission.getSubmitted())) {
-                    // before the assignment close date
-                    // and if no date then a submission was never never submitted
-                    // or if there is a submitted date and its a not submitted then it is considered a draft
-                    return true;
-                }
+                // before the assignment close date
+                // and if no date then a submission was never never submitted
+                // or if there is a submitted date and its a not submitted then it is considered a draft
+                if (isBeforeAssignmentCloseDate && (submission.getDateSubmitted() == null || !submission.getSubmitted())) return true;
 
-                // check for allow resubmission or not first
-                // return true if resubmission is allowed and current time is before resubmission close time
-                // get the resubmit settings from submission object first
-                String allowResubmitNumString = submission.getProperties().get(AssignmentConstants.ALLOW_RESUBMIT_NUMBER);
-                if (NumberUtils.isParsable(allowResubmitNumString) && (submission.getSubmitted() || submission.getDateSubmitted() != null)) {
-                    String allowResubmitCloseTime = submission.getProperties().get(AssignmentConstants.ALLOW_RESUBMIT_CLOSETIME);
-                    try {
-                        int allowResubmitNumber = Integer.parseInt(allowResubmitNumString);
-
-                        Instant resubmitCloseTime;
-                        if (NumberUtils.isParsable(allowResubmitCloseTime)) {
-                            // see if a resubmission close time is set on submission level
-                            resubmitCloseTime = Instant.ofEpochMilli(Long.parseLong(allowResubmitCloseTime));
-                        } else {
-                            // otherwise, use assignment close time as the resubmission close time
-                            resubmitCloseTime = assignment.getCloseDate();
-                        }
-                        return (allowResubmitNumber > 0 || allowResubmitNumber == -1) && !currentTime.isAfter(resubmitCloseTime);
-                    } catch (NumberFormatException e) {
-                        log.warn("allowResubmitNumString = {}, allowResubmitCloseTime = {}", allowResubmitNumString, allowResubmitCloseTime, e);
-                    }
-                }
+                // returns true if resubmission is allowed
+                if (canSubmitResubmission(submission, currentTime)) return true;
             } else {
                 // there is no submission yet so only check if before assignment close date
                 return isBeforeAssignmentCloseDate;
@@ -2897,8 +2947,6 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
      * Contains logic to consistently output a String based version of a grade
      * Interprets the grade using the scale for display
      *
-     * This should probably be moved to a static utility class - ern
-     *
      * @param grade
      * @param typeOfGrade
      * @param scaleFactor
@@ -2998,17 +3046,21 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
 
     @Override
     public Collection<User> getSubmissionSubmittersAsUsers(AssignmentSubmission submission) {
-        Objects.requireNonNull(submission, "Submission cannot be null");
-        List<User> submitters = new ArrayList<>();
-        for (AssignmentSubmissionSubmitter submitter : submission.getSubmitters()) {
-            try {
-                User user = userDirectoryService.getUser(submitter.getSubmitter());
-                submitters.add(user);
-            } catch (UserNotDefinedException e) {
-                log.warn("Could not find user with id: {}", submitter.getSubmitter());
-            }
-        }
-        return submitters;
+        if (submission == null) return Collections.emptyList();
+        return submission.getSubmitters().stream()
+                .map(AssignmentSubmissionSubmitter::getSubmitter)
+                .filter(StringUtils::isNotBlank)
+                .map(u -> {
+                    User user = null;
+                    try {
+                        user = userDirectoryService.getUser(u);
+                    } catch (UserNotDefinedException e) {
+                        log.warn("Could not find user with id: {}", u);
+                    }
+                    return user;
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -4615,7 +4667,7 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
                 // send the message immediately
                 userMessagingService.message(filteredUsers,
                         Message.builder().tool(AssignmentConstants.TOOL_ID).type("releasegrade").build(),
-                        Arrays.asList(new MessageMedium[] {MessageMedium.EMAIL}), emailUtil.getReleaseGradeReplacements(assignment, siteId), NotificationService.NOTI_REQUIRED);
+                        Arrays.asList(new MessageMedium[] { MessageMedium.EMAIL }), emailUtil.getReleaseGradeReplacements(assignment, siteId), NotificationService.NOTI_REQUIRED);
             }
         }
         if (StringUtils.isNotBlank(resubmitNumber) && StringUtils.equals(AssignmentConstants.ASSIGNMENT_RELEASERESUBMISSION_NOTIFICATION_EACH, assignmentProperties.get(AssignmentConstants.ASSIGNMENT_RELEASERESUBMISSION_NOTIFICATION_VALUE))) {
@@ -4624,7 +4676,7 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
                 // send the message immidiately
                 userMessagingService.message(filteredUsers,
                         Message.builder().tool(AssignmentConstants.TOOL_ID).type("releaseresubmission").build(),
-                        Arrays.asList(new MessageMedium[] {MessageMedium.EMAIL}), emailUtil.getReleaseResubmissionReplacements(submission), NotificationService.NOTI_REQUIRED);
+                        Arrays.asList(new MessageMedium[] { MessageMedium.EMAIL }), emailUtil.getReleaseResubmissionReplacements(submission), NotificationService.NOTI_REQUIRED);
             }
         }
     }
@@ -4646,7 +4698,7 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
                 // send the message immediately
                 userMessagingService.message(new HashSet<>(receivers),
                     Message.builder().tool(AssignmentConstants.TOOL_ID).type("submission").build(),
-                    Arrays.asList(new MessageMedium[] {MessageMedium.EMAIL}), replacements, NotificationService.NOTI_REQUIRED);
+                    Arrays.asList(new MessageMedium[] { MessageMedium.EMAIL }), replacements, NotificationService.NOTI_REQUIRED);
             } else if (notiOption.equals(AssignmentConstants.ASSIGNMENT_INSTRUCTOR_NOTIFICATIONS_DIGEST)) {
                 // digest the message to each user
                 userMessagingService.message(new HashSet<>(receivers),
@@ -4682,7 +4734,7 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
 
             userMessagingService.message(users,
                 Message.builder().tool(AssignmentConstants.TOOL_ID).type("submission").build(),
-                Arrays.asList(new MessageMedium[] {MessageMedium.EMAIL}), emailUtil.getSubmissionReplacements(submission), NotificationService.NOTI_REQUIRED);
+                Arrays.asList(new MessageMedium[] { MessageMedium.EMAIL }), emailUtil.getSubmissionReplacements(submission), NotificationService.NOTI_REQUIRED);
         }
     }
 
