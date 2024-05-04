@@ -46,7 +46,6 @@
 		<property name="entityManager" ref="org.sakaiproject.entity.api.EntityManager" />
 		<property name="gradingService" ref="org.sakaiproject.grading.api.GradingService" />
 		<property name="businessService" ref="org.sakaiproject.gradebookng.business.GradebookNgBusinessService" />
-		<property name="gradebookFrameworkService" ref="org.sakaiproject.service.gradebook.shared.GradebookFrameworkService" />
 		<property name="siteService" ref="org.sakaiproject.site.api.SiteService" />
 		<property name="threadLocalManager" ref="org.sakaiproject.thread_local.api.ThreadLocalManager"/>
 	</bean>
