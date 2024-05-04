@@ -152,9 +152,6 @@ public class QTIServiceImpl implements QTIServiceAPI
     return null;
   }
 
-    public Document getExportedPublishedAssessment(String assessmentId, int qtiVersion) {
-      throw new RuntimeException("Not supported");
-    }
 
   /**
    * Get an assessment in String form.
@@ -170,9 +167,6 @@ public class QTIServiceImpl implements QTIServiceAPI
       return XmlUtil.getDOMString(getExportedAssessment(assessmentId, qtiVersion));
   }
 
-    public String getExportedPublishedAssessmentAsString(String assessmentId, int qtiVersion) {
-        throw new RuntimeException("Not supported");
-    }
 
 
   /**
