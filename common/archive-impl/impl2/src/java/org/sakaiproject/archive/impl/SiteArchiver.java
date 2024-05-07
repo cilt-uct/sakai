@@ -263,12 +263,6 @@ public class SiteArchiver {
 		stack.pop();
 		Xml.writeDocument(doc, m_storagePath + siteId + "-archive/user.xml");
 
-		// Custom changes inherited from NYU
-		String syllabusExportPath = m_storagePath + siteId + "-archive/syllabus.xml";
-		if (new File(syllabusExportPath).exists()) {
-		    new SyllabusRejigger().rewriteSyllabus(syllabusExportPath);
-		}
-
 		// Write an archive.xml file with status about the export
 		doc = Xml.createDocument();
 		stack = new Stack();
