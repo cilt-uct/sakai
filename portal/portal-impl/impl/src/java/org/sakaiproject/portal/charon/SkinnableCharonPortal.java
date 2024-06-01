@@ -72,6 +72,7 @@ import org.sakaiproject.portal.api.Editor;
 import org.sakaiproject.portal.api.PageFilter;
 import org.sakaiproject.portal.api.Portal;
 import org.sakaiproject.portal.api.PortalChatPermittedHelper;
+import org.sakaiproject.portal.api.PortalConstants;
 import org.sakaiproject.portal.api.PortalHandler;
 import org.sakaiproject.portal.api.PortalRenderContext;
 import org.sakaiproject.portal.api.PortalRenderEngine;
@@ -1084,6 +1085,8 @@ public class SkinnableCharonPortal extends HttpServlet implements Portal
 		boolean debugNotifications = ServerConfigurationService.getBoolean("portal.notifications.debug", false);
 		rcontext.put("debugNotifications", debugNotifications);
 
+        rcontext.put("tasksEnabled" , ServerConfigurationService.getBoolean(PortalConstants.PROP_DASHBOARD_TASKS_ENABLED, false));
+
 		try {
 			Site userSite = SiteService.getSite(SiteService.getUserSiteId(currentUser.getId()));
 			String preferencesToolId = ServerConfigurationService.getString("portal.preferencestool","sakai.preferences");
@@ -1771,6 +1774,10 @@ public class SkinnableCharonPortal extends HttpServlet implements Portal
 			boolean useBullhornAlerts = ServerConfigurationService.getBoolean("portal.bullhorns.enabled", true);
 			rcontext.put("useBullhornAlerts", useBullhornAlerts);
 			rcontext.put("bullhornAlertCount", useBullhornAlerts ? userMessagingService.getNotifications().size() : 0);
+            rcontext.put("chromeInfoUrl", ServerConfigurationService.getString("notifications.chrome.info.url", ""));
+            rcontext.put("firefoxInfoUrl", ServerConfigurationService.getString("notifications.firefox.info.url", ""));
+            rcontext.put("safariInfoUrl", ServerConfigurationService.getString("notifications.safari.info.url", ""));
+            rcontext.put("edgeInfoUrl", ServerConfigurationService.getString("notifications.edge.info.url", ""));
 
 			String faviconURL = ServerConfigurationService.getString("portal.favicon.url");
 			rcontext.put("faviconURL", faviconURL);

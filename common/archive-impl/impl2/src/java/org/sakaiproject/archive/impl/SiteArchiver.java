@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Set;
 import java.util.Stack;
 import java.util.Vector;
 
@@ -62,7 +63,7 @@ import org.sakaiproject.util.Xml;
 
 @Slf4j
 public class SiteArchiver {
-
+	
 	/** Dependency: ServerConfigurationService. */
 	protected ServerConfigurationService m_serverConfigurationService = null;
 	public void setServerConfigurationService(ServerConfigurationService service) {
@@ -73,31 +74,31 @@ public class SiteArchiver {
 	public void setEntityManager(EntityManager service) {
 		m_entityManager = service;
 	}
-
+	
 	/** Dependency: SiteService */
 	protected SiteService m_siteService = null;
 	public void setSiteService(SiteService service) {
 		m_siteService = service;
 	}
-
+	
 	/** Dependency: AuthzService */
 	protected AuthzGroupService m_authzGroupService = null;
 	public void setAuthzGroupService(AuthzGroupService service) {
 		m_authzGroupService = service;
 	}
-
+	
 	/** Dependency: UserDirectoryService */
 	protected UserDirectoryService m_userDirectoryService = null;
 	public void setUserDirectoryService(UserDirectoryService service) {
 		m_userDirectoryService = service;
 	}
-
+	
 	/** Dependency: TimeService */
 	protected TimeService m_timeService = null;
 	public void setTimeService(TimeService service) {
 		m_timeService = service;
 	}
-
+	
 	/** Dependency: ContentHosting */
 	protected ContentHostingService m_contentHostingService = null;
 	public void setContentHostingService(ContentHostingService service) {
@@ -162,7 +163,7 @@ public class SiteArchiver {
 			root.setAttribute("xmlns:sakai", ArchiveService.SAKAI_ARCHIVE_NS);
 			root.setAttribute("xmlns:CHEF", ArchiveService.SAKAI_ARCHIVE_NS.concat("CHEF"));
 			root.setAttribute("xmlns:DAV", ArchiveService.SAKAI_ARCHIVE_NS.concat("DAV"));
-
+			
 			stack.push(root);
 
 			final String serviceName = service.getClass().getCanonicalName();
@@ -186,7 +187,7 @@ public class SiteArchiver {
 			}
 
 			stack.pop();
-
+			
 			String fileName = storagePath + service.getLabel() + ".xml";
 
 			// fileName
@@ -196,6 +197,7 @@ public class SiteArchiver {
 		}
 
 		// archive the collected attachments
+		if (attachments.size() > 0)
 		{
 			Document doc = Xml.createDocument();
 			Stack stack = new Stack();
@@ -208,7 +210,7 @@ public class SiteArchiver {
 			root.setAttribute("xmlns:sakai", ArchiveService.SAKAI_ARCHIVE_NS);
 			root.setAttribute("xmlns:CHEF", ArchiveService.SAKAI_ARCHIVE_NS.concat("CHEF"));
 			root.setAttribute("xmlns:DAV", ArchiveService.SAKAI_ARCHIVE_NS.concat("DAV"));
-
+			
 			stack.push(root);
 
 			results.append("<===== Attachments =====>\n");
@@ -222,7 +224,7 @@ public class SiteArchiver {
 		}
 
 		// *** Site
-
+		
 		Document doc = Xml.createDocument();
 		Stack stack = new Stack();
 		Element root = doc.createElement("archive");
@@ -231,12 +233,13 @@ public class SiteArchiver {
 		root.setAttribute("date", now.toString());
 		root.setAttribute("system", fromSystem);
 		root.setAttribute("xmlns:sakai", ArchiveService.SAKAI_ARCHIVE_NS);
+		
 		stack.push(root);
 
 		results.append("<===== Site =====>\n");
 		results.append(archiveSite(theSite, doc, stack, fromSystem));
 		results.append("<===== End =====>\n\n");
-
+		
 		stack.pop();
 		Xml.writeDocument(doc, m_storagePath + siteId + "-archive/site.xml");
 
@@ -250,6 +253,7 @@ public class SiteArchiver {
 		root.setAttribute("date", now.toString());
 		root.setAttribute("system", fromSystem);
 		root.setAttribute("xmlns:sakai", ArchiveService.SAKAI_ARCHIVE_NS);
+		
 		stack.push(root);
 
 		results.append("<===== Users =====>\n");
@@ -258,14 +262,6 @@ public class SiteArchiver {
 
 		stack.pop();
 		Xml.writeDocument(doc, m_storagePath + siteId + "-archive/user.xml");
-
-		// Custom changes inherited from NYU
-		new SiteInfoPoker().pokeAsResource(siteId, m_storagePath + siteId + "-archive");
-
-		String syllabusExportPath = m_storagePath + siteId + "-archive/syllabus.xml";
-		if (new File(syllabusExportPath).exists()) {
-		    new SyllabusRejigger().rewriteSyllabus(syllabusExportPath);
-		}
 
 		// Write an archive.xml file with status about the export
 		doc = Xml.createDocument();
@@ -296,20 +292,20 @@ public class SiteArchiver {
 	* @param stack The stack of elements, the top of which will be the containing
 	* element of the "site" element.
 	*/
-
+	
 	protected String archiveSite(Site site, Document doc, Stack stack, String fromSystem)
 	{
 		Element element = doc.createElement(SiteService.APPLICATION_ID);
 		((Element)stack.peek()).appendChild(element);
 		stack.push(element);
-
+		
 		Element siteNode = site.toXml(doc, stack);
 
 		// By default, do not include fields that have secret or password in the name
                 String filter = m_serverConfigurationService.getString("archive.toolproperties.excludefilter","password|secret");
 		Pattern pattern = null;
                 if ( ( ! "none".equals(filter) ) && filter.length() > 0 ) {
-			try {
+			try { 
 				pattern = Pattern.compile(filter);
 			}
 			catch (Exception e) {
@@ -335,21 +331,34 @@ public class SiteArchiver {
 				proptag.getParentNode().removeChild(proptag);
 			}
 		}
+	
+		stack.push(siteNode);	
+		
+		String realmId = m_siteService.siteReference(site.getId());
 
-		stack.push(siteNode);
-
-		// to add the realm node with user list into site
-		List roles = new Vector();
-		String realmId = m_siteService.siteReference(site.getId()); //SWG "/site/" + site.getId();
 		try
 		{
+			// Add the site providers
+			Set<String> providerList = m_authzGroupService.getProviderIds(realmId);
+
+			Element providerNode = doc.createElement("providers");
+			((Element)stack.peek()).appendChild(providerNode);
+			for (String provider : providerList) {
+			    Element node = doc.createElement("provider");
+			    node.setAttribute("providerId", provider);
+			    providerNode.appendChild(node);
+			}
+
+			// to add the realm node with user list into site
+			List roles = new Vector();
+
 			Role role = null;
 			AuthzGroup realm = m_authzGroupService.getAuthzGroup(realmId);
-
+			
 			Element realmNode = doc.createElement("roles");
 			((Element)stack.peek()).appendChild(realmNode);
 			stack.push(realmNode);
-
+			
 			roles.addAll(realm.getRoles());
 
             for (int i = 0; i< roles.size(); i++)
@@ -383,11 +392,11 @@ public class SiteArchiver {
 		{
 			log.warn("archve: exception archiving site: {}: {}", site.getId(), any);
 		}
-
+	
 		stack.pop();
-
+		
 		return "archiving Site: " + site.getId() + "\n";
-
+	
 	}	// archiveSite
 
 	/**
@@ -402,7 +411,7 @@ public class SiteArchiver {
 		Element element = doc.createElement(UserDirectoryService.APPLICATION_ID);
 		((Element)stack.peek()).appendChild(element);
 		stack.push(element);
-
+	
 		try
 		{
 			// get the site's user list
@@ -426,17 +435,17 @@ public class SiteArchiver {
 			catch (Exception any) {
 				log.warn(any.getMessage(), any);
 			}
-
+	
 		}
 		catch (Exception any)
 		{
 			log.warn(any.getMessage(), any);
 		}
-
+	
 		stack.pop();
-
+		
 		return "archiving the users for Site: " + site.getId() + "\n";
-
+	
 	}	// archiveUsers
 
 	/**

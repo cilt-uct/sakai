@@ -49,8 +49,8 @@ export class SakaiRubricEdit extends RubricsElement {
           data-bs-target="#edit-rubric-${this.rubric.id}"
           aria-controls="edit-rubric-${this.rubric.id}"
           aria-expanded="false"
-          title="${this.tr("edit_rubric")}"
-          aria-label="${this.tr("edit_rubric")}">
+          title="${this.tr("edit_rubric")} ${this.rubric.title}"
+          aria-label="${this.tr("edit_rubric")} ${this.rubric.title}">
         <i class="si si-edit"></i>
       </button>
 
