@@ -207,13 +207,13 @@ import lombok.extern.slf4j.Slf4j;
  * </p>
  */
 @Slf4j
-public abstract class BaseContentService implements ContentHostingService, CacheRefresher, ContextObserver, EntityTransferrer, 
+public abstract class BaseContentService implements ContentHostingService, CacheRefresher, ContextObserver, EntityTransferrer,
 SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 {
 	protected static final long END_OF_TIME = 8000L * 365L * 24L * 60L * 60L * 1000L;
 	protected static final long START_OF_TIME = 365L * 24L * 60L * 60L * 1000L;
 
-	/** Maximum length of a URL which we allow for redirection 
+	/** Maximum length of a URL which we allow for redirection
 	 * (c/f http://www.boutell.com/newfaq/misc/urllength.html) */
 	protected static final long MAX_URL_LENGTH = 8192;
 
@@ -221,7 +221,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/** sakai.properties setting to enable secure inline html (true by default) */
 	protected static final String SECURE_INLINE_HTML = "content.html.forcedownload";
-	
+
 	private static final String PROP_AVAIL_NOTI = "availableNotified";
 
 	/** MIME multipart separation string */
@@ -268,7 +268,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	List <String> m_ignoreMimeTypes = null;
 
 	private static final Detector DETECTOR = new DefaultDetector(MimeTypes.getDefaultMimeTypes());
-	
+
 	// This is the date format for Last-Modified header
 	public static final String RFC1123_DATE = "EEE, dd MMM yyyy HH:mm:ss zzz";
 	public static final Locale LOCALE_US = Locale.US;
@@ -333,7 +333,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Dependency: MemoryService.
-	 * 
+	 *
 	 * @param service
 	 *        The MemoryService.
 	 */
@@ -351,7 +351,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Dependency: AliasService.
-	 * 
+	 *
 	 * @param service
 	 *        The AliasService.
 	 */
@@ -365,7 +365,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Dependency: SiteService.
-	 * 
+	 *
 	 * @param service
 	 *        The SiteService.
 	 */
@@ -375,17 +375,17 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	}
 
 	protected LinkMigrationHelper linkMigrationHelper;
-	
+
 	public void setLinkMigrationHelper(LinkMigrationHelper linkMigrationHelper) {
 		this.linkMigrationHelper = linkMigrationHelper;
 	}
-	
+
 	/** Dependency: NotificationService. */
 	protected NotificationService m_notificationService = null;
 
 	/**
 	 * Dependency: NotificationService.
-	 * 
+	 *
 	 * @param service
 	 *        The NotificationService.
 	 */
@@ -399,7 +399,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Dependency: ServerConfigurationService.
-	 * 
+	 *
 	 * @param service
 	 *        The ServerConfigurationService.
 	 */
@@ -407,20 +407,20 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	{
 		m_serverConfigurationService = service;
 	}
-	
-	
+
+
 	private IdManager idManager;
-	
+
 	public void setIdManager(IdManager idManager) {
 		this.idManager = idManager;
 	}
-	
+
 	private FunctionManager functionManager;
-	
+
 	public void setFunctionManager(FunctionManager functionManager) {
 		this.functionManager = functionManager;
 	}
-	
+
 	private ThreadLocalManager threadLocalManager;
 	public void setThreadLocalManager(ThreadLocalManager threadLocalManager) {
 		this.threadLocalManager = threadLocalManager;
@@ -431,7 +431,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Dependency: EntityManager.
-	 * 
+	 *
 	 * @param service
 	 *        The EntityManager.
 	 */
@@ -440,20 +440,20 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		m_entityManager = service;
 	}
 
-	
+
 	protected ContentTypeImageService contentTypeImageService;
-	
+
 	public void setContentTypeImageService(ContentTypeImageService contentTypeImageService) {
 		this.contentTypeImageService = contentTypeImageService;
 	}
-	
-	
+
+
 	/** Dependency: AuthzGroupService. */
 	protected AuthzGroupService m_authzGroupService = null;
 
 	/**
 	 * Dependency: AuthzGroupService.
-	 * 
+	 *
 	 * @param service
 	 *        The AuthzGroupService.
 	 */
@@ -462,7 +462,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		m_authzGroupService = service;
 	}
 
-	
+
 	private SessionManager sessionManager;
 	public void setSessionManager(SessionManager sessionManager) {
 		this.sessionManager = sessionManager;
@@ -472,7 +472,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Dependency: SecurityService.
-	 * 
+	 *
 	 * @param service
 	 *        The SecurityService.
 	 */
@@ -512,7 +512,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Set the site quota.
-	 * 
+	 *
 	 * @param quota
 	 *        The site quota (as a string).
 	 */
@@ -523,10 +523,10 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			m_siteQuota = quota;
 		}
 	}
-	
+
 	/**
 	 * Set the dropbox quota.
-	 * 
+	 *
 	 * @param quota
 	 *        The dropbox quota (as a string).
 	 */
@@ -537,7 +537,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			m_dropBoxQuota = quota;
 		}
 	}
-	
+
 	private EventTrackingService eventTrackingService;
 	public void setEventTrackingService(EventTrackingService eventTrackingService) {
 		this.eventTrackingService = eventTrackingService;
@@ -562,8 +562,8 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	protected boolean m_siteAttachments = true; // Default to true for Sakai 2.5 and later
 
 	/**
-	 * Configuration: Do we protect attachments in sites with the site AuthZGroup. 
-	 * 
+	 * Configuration: Do we protect attachments in sites with the site AuthZGroup.
+	 *
 	 * @param value
 	 *        true - We protect the site scoped attachments with the site's AZG
 	 *        false - We use the /content/attachment hierarchy to protect attachments
@@ -583,7 +583,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Configuration: set the external file system path for body storage If set, the resource binary database table will not be used.
-	 * 
+	 *
 	 * @param value
 	 *        The complete path to the root of the external file system storage area for resource body bytes.
 	 */
@@ -593,8 +593,8 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	}
 
 	/**
-	 * Configuration: set the external file system path for body storage for deleted files. 
-	 * 
+	 * Configuration: set the external file system path for body storage for deleted files.
+	 *
 	 * @param value
 	 *        The complete path to the root of the external file system storage area for resource body bytes of deleted resources.
 	 */
@@ -604,11 +604,11 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	}
 
 	/**
-	 * Configuration: set the external file system volume folders (folder just within the bodyPath) as a comma separated list of folder names. 
-	 * If set, files will be distributed over these folders.  A single semicolon (';') can be added to the end of the list of values to indicate 
-	 * that leading and trailing whitespace should be preserved from each volume name.  Without the semicolon, leading and trailing whitespace 
+	 * Configuration: set the external file system volume folders (folder just within the bodyPath) as a comma separated list of folder names.
+	 * If set, files will be distributed over these folders.  A single semicolon (';') can be added to the end of the list of values to indicate
+	 * that leading and trailing whitespace should be preserved from each volume name.  Without the semicolon, leading and trailing whitespace
 	 * will be trimmed from each name in the list.
-	 * 
+	 *
 	 * @param value
 	 *        The comma separated list of folder names within body path to distribute files among.
 	 */
@@ -653,7 +653,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Configuration: set the short refs
-	 * 
+	 *
 	 * @param value
 	 *        The short refs value.
 	 */
@@ -675,7 +675,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Configuration: set the alias for site
-	 * 
+	 *
 	 * @param value
 	 *        The alias for site value.
 	 */
@@ -695,7 +695,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Dependency: allowGroupResources
-	 * 
+	 *
 	 * @param allowGroupResources
 	 *        the setting
 	 */
@@ -705,7 +705,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	}
 	/**
 	 * Get
-	 * 
+	 *
 	 * @return allowGroupResources
 	 */
 	public boolean getAllowGroupResources()
@@ -718,7 +718,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Configuration: set a flag indicating whether entities can be hidden (scheduled or otherwise)
-	 * 
+	 *
 	 * @param value
 	 *        The value indicating whether entities can be hidden.
 	 */
@@ -741,7 +741,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Configuration: set a flag indicating whether custom sort order based on "priority" is enabled
-	 * 
+	 *
 	 * @param value
 	 *        The value indicating whether custom sort order is enabled.
 	 */
@@ -752,7 +752,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Configuration: set a flag indicating whether custom sort order based on "priority" is enabled
-	 * 
+	 *
 	 * @param value
 	 *        The value indicating whether custom sort order is enabled.
 	 */
@@ -764,7 +764,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	/**
 	 * Access flag indicating whether sorting by "priority" is enabled.
 	 * @return true if the custom sort by priority is enabled, false otherwise.
-	 */ 
+	 */
 	public boolean isSortByPriorityEnabled()
 	{
 		return m_prioritySortEnabled;
@@ -822,7 +822,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	/**
 	 * @return the useContextQueryForCollectionSize
 	 */
-	public boolean isUseContextQueryForCollectionSize() 
+	public boolean isUseContextQueryForCollectionSize()
 	{
 		return m_useContextQueryForCollectionSize;
 	}
@@ -830,7 +830,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	/**
 	 * @param useContextQueryForCollectionSize the useContextQueryForCollectionSize to set
 	 */
-	public void setUseContextQueryForCollectionSize(boolean useContextQueryForCollectionSize) 
+	public void setUseContextQueryForCollectionSize(boolean useContextQueryForCollectionSize)
 	{
 		this.m_useContextQueryForCollectionSize = useContextQueryForCollectionSize;
 	}
@@ -840,7 +840,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	/**
 	 * @param convertToContextQueryForCollectionSize the convertToContextQueryForCollectionSize to set
 	 */
-	public void setConvertToContextQueryForCollectionSize(boolean convertToContextQueryForCollectionSize) 
+	public void setConvertToContextQueryForCollectionSize(boolean convertToContextQueryForCollectionSize)
 	{
 		this.convertToContextQueryForCollectionSize = convertToContextQueryForCollectionSize;
 	}
@@ -1016,7 +1016,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Collect the fields that need to be stored outside the XML (for the resource).
-		 * 
+		 *
 		 * @return An array of field values to store in the record outside the XML (for the resource).
 		 */
 		public Object[] storageFields(Entity r)
@@ -1031,7 +1031,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		 */
 		/*
 		 * (non-Javadoc)
-		 * 
+		 *
 		 * @see org.sakaiproject.util.SAXEntityReader#getDefaultHandler(java.util.Map)
 		 */
 		public DefaultEntityHandler getDefaultHandler(final Map<String, Object> services)
@@ -1041,7 +1041,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 				/*
 				 * (non-Javadoc)
-				 * 
+				 *
 				 * @see org.xml.sax.helpers.DefaultHandler#startElement(java.lang.String,
 				 *      java.lang.String, java.lang.String,
 				 *      org.xml.sax.Attributes)
@@ -1075,7 +1075,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/*
 		 * (non-Javadoc)
-		 * 
+		 *
 		 * @see org.sakaiproject.util.SAXEntityReader#getServices()
 		 */
 		public Map<String, Object> getServices()
@@ -1207,7 +1207,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Collect the fields that need to be stored outside the XML (for the resource).
-		 * 
+		 *
 		 * @return An array of field values to store in the record outside the XML (for the resource).
 		 */
 		public Object[] storageFields(Entity r)
@@ -1264,7 +1264,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		 */
 		/*
 		 * (non-Javadoc)
-		 * 
+		 *
 		 * @see org.sakaiproject.util.SAXEntityReader#getDefaultHandler(java.util.Map)
 		 */
 		public DefaultEntityHandler getDefaultHandler(final Map<String, Object> services)
@@ -1274,7 +1274,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 				/*
 				 * (non-Javadoc)
-				 * 
+				 *
 				 * @see org.xml.sax.helpers.DefaultHandler#startElement(java.lang.String,
 				 *      java.lang.String, java.lang.String,
 				 *      org.xml.sax.Attributes)
@@ -1308,7 +1308,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/*
 		 * (non-Javadoc)
-		 * 
+		 *
 		 * @see org.sakaiproject.util.SAXEntityReader#getServices()
 		 */
 		public Map<String, Object> getServices()
@@ -1405,14 +1405,14 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Construct a Storage object.
-	 * 
+	 *
 	 * @return The new storage object.
 	 */
 	protected abstract Storage newStorage();
 
 	/**
-	 * Determine whether the entityId parameter identifies a collection (as opposed to a resource).  
-	 * This method does not necessarily verify that a ContentEntity with this id exists.  
+	 * Determine whether the entityId parameter identifies a collection (as opposed to a resource).
+	 * This method does not necessarily verify that a ContentEntity with this id exists.
 	 * It merely determines whether the id could identify a collection.
 	 * @param entityId
 	 * @return true if the entityId could identify a collection, false otherwise.
@@ -1432,7 +1432,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Access the partial URL that forms the root of resource URLs.
-	 * 
+	 *
 	 * @param relative
 	 *        if true, form within the access path only (i.e. starting with /content)
 	 * @return the partial URL that forms the root of resource URLs.
@@ -1446,7 +1446,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	/**
 	 * If the id is for a resource in a dropbox, change the function to a dropbox check, which is to check for write.<br />
 	 * You have full or no access to a dropbox.
-	 * 
+	 *
 	 * @param lock
 	 *        The lock we are checking.
 	 * @param id
@@ -1459,7 +1459,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		if (id == null) {
 			return null;
 		}
-		
+
 		// if this resource is a dropbox, you need dropbox maintain permission
 		// Changed in SAK-11647 to enable group-aware dropboxes
 		if (id.startsWith(COLLECTION_DROPBOX))
@@ -1483,7 +1483,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 				//Before SAK-11647 any dropbox id asked for dropbox.maintain permission.
 				//Now we must support groups permission, so we ask for this permission too.
-				//Groups permission gives full access to dropboxes of users in current user's groups. 
+				//Groups permission gives full access to dropboxes of users in current user's groups.
 				//A different logic can be achieved here depending of lock parameter received.
 				if (m_securityService.unlock(AUTH_DROPBOX_GROUPS, ref))
 				{
@@ -1505,21 +1505,21 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		return lock;
 	}
-	
+
 	/**
 	 * Checks if a dropbox owner is in any group with current user, so AUTH_DROPBOX_GROUPS is rightly applied.
-	 * @return true if the dropbox owner is in the group, false otherwise. 
+	 * @return true if the dropbox owner is in the group, false otherwise.
 	 */
 	public boolean isDropboxOwnerInCurrentUserGroups(String refString, String userId)
 	{
 		String currentUser = sessionManager.getCurrentSessionUserId();
-		
+
 		List<Group> site_groups = new ArrayList<Group>();
 		Reference ref = m_entityManager.newReference(refString);
 		try
 		{
 			Site site = m_siteService.getSite(ref.getContext());
-	
+
 			site_groups.addAll(site.getGroupsWithMembers(new String[]{currentUser,userId}));
 			if (site_groups.size()>0)
 			{
@@ -1529,20 +1529,20 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		catch (IdUnusedException e)
 		{
 		}
-		
+
 		return false;
 	}
 
 	/**
 	 * Check whether an id would identify an entity in a dropbox.  Does not determine existence of the entity, just whether its id indicates it is a dropbox or contained within a dropbox.
-	 * @return true if the entity is a dropbox or in a dropbox, false otherwise. 
+	 * @return true if the entity is a dropbox or in a dropbox, false otherwise.
 	 */
 	public boolean isInDropbox(String entityId)
 	{
 		return entityId.startsWith("/group-user");
 	}
 
-	public boolean isSiteLevelDropbox(String id) 
+	public boolean isSiteLevelDropbox(String id)
 	{
 		boolean isSiteLevelDropbox = (id != null) && isInDropbox(id);
 		if(isSiteLevelDropbox)
@@ -1553,7 +1553,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		return isSiteLevelDropbox;
 	}
 
-	public boolean isIndividualDropbox(String id) 
+	public boolean isIndividualDropbox(String id)
 	{
 		boolean isIndividualDropbox = (id != null) && isInDropbox(id);
 		if(isIndividualDropbox)
@@ -1564,7 +1564,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		return isIndividualDropbox;
 	}
 
-	public boolean isInsideIndividualDropbox(String id) 
+	public boolean isInsideIndividualDropbox(String id)
 	{
 		boolean isIndividualDropbox = (id != null) && isInDropbox(id);
 		if(isIndividualDropbox)
@@ -1631,7 +1631,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	{
 		// item is available if avaialability checks are <b>NOT</b> enabled OR if it's in /attachment
 		boolean available = (! m_availabilityChecksEnabled) || (isAttachmentResource(id) && !isCollection(id));
-		// while site owners can validly look at attachment collections, it's odd, and there's no 
+		// while site owners can validly look at attachment collections, it's odd, and there's no
 		// way in UI that we know to do it. However admins can definitely see it from resources
 		// so warn except for admins. This check will return true for site owners even though
 		// the warning is issued.
@@ -1683,7 +1683,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		{
 			String creator = entity.getProperties().getProperty(ResourceProperties.PROP_CREATOR);
 			String userId = sessionManager.getCurrentSessionUserId();
-			
+
 			// if we are in a roleswapped state, we want to ignore the creator check since it would not necessarily reflect an alternate role
 			// FIXME - unsafe check (vulnerable to collision of siteids that are the same as path elements in a resource)
 			String[] refs = StringUtil.split(id, Entity.SEPARATOR);
@@ -1697,7 +1697,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			if (roleswap==null)
 			{
 				// available if user is creator
-				available = ( creator != null && userId != null && creator.equals(userId) ) 
+				available = ( creator != null && userId != null && creator.equals(userId) )
 				|| ( creator == null && userId == null );
 			}
 			if(! available)
@@ -1720,11 +1720,11 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	}
 
 	/**
-	 * Determine whether an entity is available to this user at this time, taking into account whether the item is hidden and the user's 
+	 * Determine whether an entity is available to this user at this time, taking into account whether the item is hidden and the user's
 	 * status with respect to viewing hidden entities in this context.
 	 * @param entityId
-	 * @return true if the item is not hidden or it's hidden but the user has permissions to view hidden items in this context (site? folder? group?), 
-	 * and false otherwise. 
+	 * @return true if the item is not hidden or it's hidden but the user has permissions to view hidden items in this context (site? folder? group?),
+	 * and false otherwise.
 	 */
 	public boolean isAvailable(String entityId)
 	{
@@ -1742,7 +1742,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Check security permission.
-	 * 
+	 *
 	 * @param lock
 	 *        The lock id string.
 	 * @param id
@@ -1768,16 +1768,16 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 			if(isAllowed && lock != null && (lock.startsWith("content.") || lock.startsWith("dropbox.")) && m_availabilityChecksEnabled)
 			{
-				try 
+				try
 				{
 					isAllowed = availabilityCheck(id);
-				} 
-				catch (IdUnusedException e) 
+				}
+				catch (IdUnusedException e)
 				{
 					// ignore because we would have caught this earlier.
 					log.debug("BaseContentService.unlockCheck(" + lock + "," + id + ") IdUnusedException " + e);
 				}
-			}	
+			}
 		}
 
 		return isAllowed;
@@ -1786,7 +1786,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Throws a PermissionException if the resource with the given Id is explicitly locked
-	 * 
+	 *
 	 * @param id
 	 * @throws PermissionException
 	 */
@@ -1803,7 +1803,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Check security permission.
-	 * 
+	 *
 	 * @param lock
 	 *        The lock id string.
 	 * @param id
@@ -1833,11 +1833,11 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			throw new PermissionException(sessionManager.getCurrentSessionUserId(), lock, ref);
 		}
 		boolean available = false;
-		try 
+		try
 		{
 			available = availabilityCheck(id);
-		} 
-		catch (IdUnusedException e) 
+		}
+		catch (IdUnusedException e)
 		{
 			// ignore. this was checked earlier in the call
 		}
@@ -1850,7 +1850,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Check security permission for all contained collections of the given collection (if any) (not the collection itself)
-	 * 
+	 *
 	 * @param lock
 	 *        The lock id string.
 	 * @param resource
@@ -1866,7 +1866,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Create the live properties for a collection.
-	 * 
+	 *
 	 * @param c
 	 *        The collection.
 	 */
@@ -1887,7 +1887,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Create the live properties for a collection.
-	 * 
+	 *
 	 * @param c
 	 *        The collection.
 	 */
@@ -1904,7 +1904,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Create the live properties for a resource.
-	 * 
+	 *
 	 * @param r
 	 *        The resource.
 	 */
@@ -1928,7 +1928,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Update the live properties for a resource when modified (for a resource).
-	 * 
+	 *
 	 * @param r
 	 *        The resource.
 	 */
@@ -1949,7 +1949,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Make sure that the entire set of properties are present, adding whatever is needed, replacing nothing that's there already.
-	 * 
+	 *
 	 * @param r
 	 *        The resource.
 	 */
@@ -1989,7 +1989,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Add properties for a resource.
-	 * 
+	 *
 	 * @param r
 	 *        The resource.
 	 * @param props
@@ -2012,14 +2012,14 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		}
 
 	} // addProperties
-	
+
 	/**********************************************************************************************************************************************************************************************************************************************************
 	 * Collections
 	 *********************************************************************************************************************************************************************************************************************************************************/
 
 	/**
 	 * check permissions for addCollection().
-	 * 
+	 *
 	 * @param id
 	 *        The id of the new collection.
 	 * @return true if the user is allowed to addCollection(id), false if not.
@@ -2039,7 +2039,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Create a new collection with the given resource id.
-	 * 
+	 *
 	 * @param id
 	 *        The id of the collection.
 	 * @param properties
@@ -2069,8 +2069,8 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	} // addCollection
 
-	public ContentCollection addCollection(String id, ResourceProperties properties, Collection groups) 
-	throws IdUsedException, IdInvalidException, PermissionException, InconsistentException 
+	public ContentCollection addCollection(String id, ResourceProperties properties, Collection groups)
+	throws IdUsedException, IdInvalidException, PermissionException, InconsistentException
 	{
 		ContentCollectionEdit edit = addCollection(id);
 
@@ -2099,8 +2099,8 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	}
 
-	public ContentCollection addCollection(String id, ResourceProperties properties, Collection groups, boolean hidden, Time releaseDate, Time retractDate) 
-	throws IdUsedException, IdInvalidException, PermissionException, InconsistentException 
+	public ContentCollection addCollection(String id, ResourceProperties properties, Collection groups, boolean hidden, Time releaseDate, Time retractDate)
+	throws IdUsedException, IdInvalidException, PermissionException, InconsistentException
 	{
 		ContentCollectionEdit edit = addCollection(id);
 
@@ -2132,7 +2132,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Create a new collection with the given resource id, locked for update. Must commitCollection() to make official, or cancelCollection() when done!
-	 * 
+	 *
 	 * @param id
 	 *        The id of the collection.
 	 * @exception IdUsedException
@@ -2177,7 +2177,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	 * @exception PermissionException
 	 *            if the user does not have permission to add a resource to the containing collection.
 	 * @exception IdUnusedException
-	 *            if the collectionId does not identify an existing collection. 
+	 *            if the collectionId does not identify an existing collection.
 	 * @exception IdUnusedException
 	 *            if the collection id for the proposed name already exists in this collection.
 	 * @exception IdLengthException
@@ -2186,7 +2186,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	 *            if the resource id is invalid.
 	 */
 	public ContentCollectionEdit addCollection(String collectionId, String name)
-	throws PermissionException, IdUnusedException, IdUsedException, 
+	throws PermissionException, IdUnusedException, IdUsedException,
 	IdLengthException, IdInvalidException, TypeException
 	{
 		// check the id's validity (this may throw IdInvalidException)
@@ -2274,7 +2274,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Create a new collection with the given resource id, locked for update. Must commitCollection() to make official, or cancelCollection() when done!
-	 * 
+	 *
 	 * @param id
 	 *        The id of the collection.
 	 * @exception IdUsedException
@@ -2316,7 +2316,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * check permissions for getCollection().
-	 * 
+	 *
 	 * @param id
 	 *        The id of the collection.
 	 * @return true if the user is allowed to getCollection(id), false if not.
@@ -2329,7 +2329,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Check access to the collection with this local resource id.
-	 * 
+	 *
 	 * @param id
 	 *        The id of the collection.
 	 * @exception IdUnusedException
@@ -2350,7 +2350,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Access the collection with this local resource id. The collection internal members and properties are accessible from the returned Colelction object.
-	 * 
+	 *
 	 * @param id
 	 *        The id of the collection.
 	 * @exception IdUnusedException
@@ -2377,7 +2377,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Access a List of ContentEntity objects (resources and collections) in this path (and below) if the current user has access to the collection.
-	 * 
+	 *
 	 * @param id
 	 *        A collection id.
 	 * @return a List of the ContentEntity objects.
@@ -2414,7 +2414,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Access a List of all the ContentResource objects in this collection (and below).
-	 * 
+	 *
 	 * @param collection
 	 *        The collection.
 	 * @param rv
@@ -2453,13 +2453,13 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Access a List of all the deleted ContentResource objects in this path (and below) which the current user has access.
-	 * 
+	 *
 	 * @param id
 	 *        A collection id.
 	 * @return a List of the ContentResource objects.
-	 * @throws PermissionException 
-	 * @throws TypeException 
-	 * @throws IdUnusedException 
+	 * @throws PermissionException
+	 * @throws TypeException
+	 * @throws IdUnusedException
 	 */
 	public List getAllDeletedResources(String id)
 	{
@@ -2470,7 +2470,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 				return m_storage.getDeletedResources(collection);
 			} else {
 				List l = m_storage.getDeletedResources(collection);
-				String currentUserId = sessionManager.getCurrentSessionUserId(); 
+				String currentUserId = sessionManager.getCurrentSessionUserId();
 				// Check if the file was removed by the current user
 				for (Object o:l) {
 					BaseResourceEdit e = (BaseResourceEdit)o;
@@ -2493,7 +2493,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Access a List of all the ContentResource objects in this path (and below) which the current user has access.
-	 * 
+	 *
 	 * @param id
 	 *        A collection id.
 	 * @return a List of the ContentResource objects.
@@ -2533,7 +2533,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Access a List of all the ContentResource objects in this collection (and below) which the current user has access.
-	 * 
+	 *
 	 * @param collection
 	 *        The collection.
 	 * @param rv
@@ -2578,7 +2578,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Access the collection with this local resource id. Internal find does the guts of finding without security or event tracking. The collection internal members and properties are accessible from the returned Colelction object.
-	 * 
+	 *
 	 * @param id
 	 *        The id of the collection.
 	 * @exception TypeException
@@ -2617,7 +2617,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * check permissions for editCollection()
-	 * 
+	 *
 	 * @param id
 	 *        The id of the collection.
 	 * @return true if the user is allowed to update the collection, false if not.
@@ -2656,32 +2656,32 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			//supper users should always get a 404 rather than a permission exception
 			return true;
 		}
-		
+
 		try
 		{
 			ResourceProperties props = getProperties(id);
 			owner = props.getProperty(ResourceProperties.PROP_CREATOR);
 		}
-		catch (PermissionException e ) 
+		catch (PermissionException e )
 		{
 			// PermissionException can be thrown if not AUTH_RESOURCE_READ
 			return false;
 		} catch (IdUnusedException e) {
 			//Also non admin users should get a permission exception is the resource doesn't exist
 			return false;
-		} 
+		}
 
 		// check security to delete any collection
 		if ( unlockCheck(AUTH_RESOURCE_WRITE_ANY, id) )
 			return true;
 
 		// check security to delete own collection
-		else if ( currentUser != null && currentUser.equals(owner) 
+		else if ( currentUser != null && currentUser.equals(owner)
 				&& unlockCheck(AUTH_RESOURCE_WRITE_OWN, id) )
 			return true;
 
 		// check security to delete own collection for anonymous users
-		else if ( currentUser == null && owner == null && 
+		else if ( currentUser == null && owner == null &&
 				unlockCheck(AUTH_RESOURCE_WRITE_OWN, id) )
 			return true;
 
@@ -2693,7 +2693,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * check permissions for removeCollection(). Note: for just this collection, not the members on down.
-	 * 
+	 *
 	 * @param id
 	 *        The id of the collection.
 	 * @return true if the user is allowed to removeCollection(id), false if not.
@@ -2712,21 +2712,21 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	 */
 	protected boolean allowRemove(String id)
 	{
-		
+
 		String currentUser = sessionManager.getCurrentSessionUserId();
 		String owner = "";
-		
+
 		//Supper users always have the permission
 		if (m_securityService.isSuperUser()) {
 			return true;
 		}
-		
+
 		try
 		{
 			ResourceProperties props = getProperties(id);
 			owner = props.getProperty(ResourceProperties.PROP_CREATOR);
 		}
-		catch ( Exception e ) 
+		catch ( Exception e )
 		{
 			// PermissionException can be thrown if not RESOURCE_AUTH_READ
 			return false;
@@ -2737,12 +2737,12 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			return true;
 
 		// check security to delete own collection
-		else if ( currentUser != null && currentUser.equals(owner) && 
+		else if ( currentUser != null && currentUser.equals(owner) &&
 				unlockCheck(AUTH_RESOURCE_REMOVE_OWN, id) )
 			return true;
 
 		// check security to delete own collection for anonymous users
-		else if ( currentUser == null && owner == null && 
+		else if ( currentUser == null && owner == null &&
 				unlockCheck(AUTH_RESOURCE_REMOVE_OWN, id) )
 			return true;
 
@@ -2754,7 +2754,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Remove just a collection. It must be empty.
-	 * 
+	 *
 	 * @param collection
 	 *        The collection to remove.
 	 * @exception TypeException
@@ -2777,9 +2777,9 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			return;
 		}
 
-		// check security 
+		// check security
 		if ( ! allowRemoveCollection(edit.getId()) )
-			throw new PermissionException(sessionManager.getCurrentSessionUserId(), 
+			throw new PermissionException(sessionManager.getCurrentSessionUserId(),
 					AUTH_RESOURCE_REMOVE_ANY, edit.getReference());
 
 		// clear thread-local cache SAK-12126
@@ -2830,7 +2830,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Remove a collection and all members of the collection, internal or deeper.
-	 * 
+	 *
 	 * @param id
 	 *        The id of the collection.
 	 * @exception IdUnusedException
@@ -2847,9 +2847,9 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	public void removeCollection(String id) throws IdUnusedException, TypeException, PermissionException, InUseException,
 	ServerOverloadException
 	{
-		// check security 
+		// check security
 		if ( ! allowRemoveCollection(id) )
-			throw new PermissionException(sessionManager.getCurrentSessionUserId(), 
+			throw new PermissionException(sessionManager.getCurrentSessionUserId(),
 					AUTH_RESOURCE_REMOVE_ANY, getReference(id) );
 
 		// find the collection
@@ -2894,10 +2894,10 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Commit the changes made, and release the lock. The Object is disabled, and not to be used after this call.
-	 * 
+	 *
 	 * @param edit
 	 *        The ContentCollectionEdit object to commit.
-	 * @throws PermissionException 
+	 * @throws PermissionException
 	 */
 	public void commitCollection(ContentCollectionEdit edit)
 	{
@@ -2931,12 +2931,12 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			// post EVENT_RESOURCE_UPD_VISIBILITY event
 			this.eventTrackingService.post(this.eventTrackingService.newEvent(EVENT_RESOURCE_UPD_VISIBILITY, edit.getReference(), true));
 		}
-		
+
 		if(((BasicGroupAwareEdit) edit).isAccessUpdated()) {
 			// post EVENT_RESOURCE_UPD_ACCESS event
 			this.eventTrackingService.post(this.eventTrackingService.newEvent(EVENT_RESOURCE_UPD_ACCESS, edit.getReference(), true));
 		}
-		
+
 		// update the properties for update
 		addLiveUpdateCollectionProperties(edit);
 
@@ -2963,7 +2963,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	private void postAvailableEvent(GroupAwareEntity entity, String ref, int priority)
 	{
-		// cancel all scheduled available events for this entity. 
+		// cancel all scheduled available events for this entity.
 		eventTrackingService.cancelDelays(ref, EVENT_RESOURCE_AVAILABLE);
 
 		if ( ! entity.isAvailable() )
@@ -2990,14 +2990,14 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			String notified = entity.getProperties().getProperty(PROP_AVAIL_NOTI);
 
 			// do not post an available event for updates
-			if (!Boolean.TRUE.toString().equalsIgnoreCase(notified) && 
+			if (!Boolean.TRUE.toString().equalsIgnoreCase(notified) &&
 					!EVENT_RESOURCE_WRITE.equals(((BaseResourceEdit) entity).getEvent()))
 			{
 				eventTrackingService.post(eventTrackingService.newEvent(EVENT_RESOURCE_AVAILABLE,
 						ref, false, priority));
 				entity.getProperties().addProperty(PROP_AVAIL_NOTI, Boolean.TRUE.toString());
 			}
-			
+
 			// schedule an event to tell when resource becomes unavailable
 			if ( entity.getRetractInstant() != null )
 			{
@@ -3009,13 +3009,13 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	}
 
 	/**
-	 * Recursively traverse the heirarchy of ContentEntity objects contained within a collection and remove access groups if they 
-	 * are not included in the set defined for the initial collection.  The branching stops whenever we verify a ContentCollection 
-	 * with "grouped" access or a ContentResource. 
-	 * @param collection 
+	 * Recursively traverse the heirarchy of ContentEntity objects contained within a collection and remove access groups if they
+	 * are not included in the set defined for the initial collection.  The branching stops whenever we verify a ContentCollection
+	 * with "grouped" access or a ContentResource.
+	 * @param collection
 	 * @param groups
 	 */
-	protected void verifyGroups(ContentCollection collection, Collection groups) 
+	protected void verifyGroups(ContentCollection collection, Collection groups)
 	{
 		Collection members = collection.getMemberResources();
 		if(members == null || members.isEmpty())
@@ -3040,7 +3040,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	}
 
-	protected void adjustGroups(ContentEntity member, Collection groups) 
+	protected void adjustGroups(ContentEntity member, Collection groups)
 	{
 		// check groups and then return
 		Collection subgroups = member.getGroups();
@@ -3063,7 +3063,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			if(member instanceof ContentResource)
 			{
 				ContentResourceEdit edit = m_storage.editResource(member.getId());
-				try 
+				try
 				{
 					if(newgroups.isEmpty())
 					{
@@ -3077,20 +3077,20 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 					m_storage.commitResource(edit);
 					// close the edit object
 					((BaseResourceEdit) edit).closeEdit();
-				} 
-				catch (InconsistentException e) 
+				}
+				catch (InconsistentException e)
 				{
 					// If change of groups is consistent in superfolder, this should not occur here
 					m_storage.cancelResource(edit);
 					log.error("verifyGroups(): ", e);
-				} 
-				catch (PermissionException e) 
+				}
+				catch (PermissionException e)
 				{
 					// If user has permission to change groups in superfolder, this should not occur here
 					m_storage.cancelResource(edit);
 					log.error("verifyGroups(): ", e);
-				} 
-				catch (ServerOverloadException e) 
+				}
+				catch (ServerOverloadException e)
 				{
 					log.error("verifyGroups(): ", e);
 				}
@@ -3098,7 +3098,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			else
 			{
 				ContentCollectionEdit edit = m_storage.editCollection(member.getId());
-				try 
+				try
 				{
 					if(newgroups.isEmpty())
 					{
@@ -3110,14 +3110,14 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 					}
 					// addLiveUpdateCollectionProperties(edit);
 					m_storage.commitCollection(edit);
-				} 
-				catch (InconsistentException e) 
+				}
+				catch (InconsistentException e)
 				{
 					// If change of groups is consistent in superfolder, this should not occur here
 					m_storage.cancelCollection(edit);
 					log.error("verifyGroups(): ", e);
-				} 
-				catch (PermissionException e) 
+				}
+				catch (PermissionException e)
 				{
 					// If user has permission to change groups in superfolder, this should not occur here
 					m_storage.cancelCollection(edit);
@@ -3130,7 +3130,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Cancel the changes made object, and release the lock. The Object is disabled, and not to be used after this call.
-	 * 
+	 *
 	 * @param edit
 	 *        The ContentCollectionEdit object to commit.
 	 */
@@ -3162,7 +3162,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * used to remove any members of a collection whoes add was canceled.
-	 * 
+	 *
 	 * @param parent
 	 */
 	protected void removeRecursive(ContentCollection parent)
@@ -3238,7 +3238,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * check permissions for addResource().
-	 * 
+	 *
 	 * @param id
 	 *        The id of the new resource.
 	 * @return true if the user is allowed to addResource(id), false if not.
@@ -3257,11 +3257,11 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		if(isAllowed)
 		{
 			// check for explicit locks
-			try 
+			try
 			{
 				checkExplicitLock(id);
-			} 
-			catch (PermissionException e) 
+			}
+			catch (PermissionException e)
 			{
 				isAllowed = false;
 			}
@@ -3277,11 +3277,11 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	public ContentResource addResource(String id, String type, byte[] content, ResourceProperties properties, Collection groups, int priority)
 	throws PermissionException, IdUsedException, IdInvalidException, InconsistentException, OverQuotaException,
 	ServerOverloadException {
-	
+
 	ByteArrayInputStream contentStream = new ByteArrayInputStream(content);
 	return addResource(id, type, contentStream, properties, groups, priority);
 	}
-	
+
 	/**
 	* @see org.sakaiproject.content.api.ContentHostingService#addResource(java.lang.String, java.lang.String, java.io.InputStream, org.sakaiproject.entity.api.ResourceProperties, java.util.Collection, int)
 	*/
@@ -3319,7 +3319,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			catch(Exception e1)
 			{
 				// ignore -- no need to remove the resource if it doesn't exist
-				log.debug("Unable to remove partially completed resource: " + edit.getId() + "\n" + e1); 
+				log.debug("Unable to remove partially completed resource: " + edit.getId() + "\n" + e1);
 			}
 			throw e;
 		}
@@ -3333,7 +3333,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			catch(Exception e1)
 			{
 				// ignore -- no need to remove the resource if it doesn't exist
-				log.debug("Unable to remove partially completed resource: " + edit.getId() + "\n" + e1); 
+				log.debug("Unable to remove partially completed resource: " + edit.getId() + "\n" + e1);
 			}
 			throw e;
 		}
@@ -3351,7 +3351,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		ByteArrayInputStream contentStream = new ByteArrayInputStream(content);
 		return addResource(id, type, contentStream, properties, priority);
 	}
-	
+
 	/**
 	 * @see org.sakaiproject.content.api.ContentHostingService#addResource(java.lang.String, java.lang.String, java.io.InputStream, org.sakaiproject.entity.api.ResourceProperties, int)
 	 */
@@ -3367,10 +3367,10 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	 * @see org.sakaiproject.content.api.ContentHostingService#addResource(java.lang.String, java.lang.String, int, java.lang.String, byte[], org.sakaiproject.entity.api.ResourceProperties, java.util.Collection, boolean, org.sakaiproject.time.api.Time, org.sakaiproject.time.api.Time, int)
 	 */
 	public ContentResource addResource(String name, String collectionId, int limit, String type, byte[] content,
-			ResourceProperties properties, Collection groups, boolean hidden, Time releaseDate, Time retractDate, int priority) 
-			throws PermissionException, IdUniquenessException, IdLengthException, IdInvalidException, 
+			ResourceProperties properties, Collection groups, boolean hidden, Time releaseDate, Time retractDate, int priority)
+			throws PermissionException, IdUniquenessException, IdLengthException, IdInvalidException,
 			InconsistentException, OverQuotaException, ServerOverloadException {
-		
+
 		ByteArrayInputStream contentStream = new ByteArrayInputStream(content);
 		return addResource(name, collectionId, limit, type, contentStream, properties, groups,
 				hidden, releaseDate, retractDate, priority);
@@ -3380,8 +3380,8 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	 * @see org.sakaiproject.content.api.ContentHostingService#addResource(java.lang.String, java.lang.String, int, java.lang.String, java.io.InputStream, org.sakaiproject.entity.api.ResourceProperties, java.util.Collection, boolean, org.sakaiproject.time.api.Time, org.sakaiproject.time.api.Time, int)
 	 */
 	public ContentResource addResource(String name, String collectionId, int limit, String type, InputStream content,
-			ResourceProperties properties, Collection groups, boolean hidden, Time releaseDate, Time retractDate, int priority) 
-	 		throws PermissionException, IdUniquenessException, IdLengthException, IdInvalidException, 
+			ResourceProperties properties, Collection groups, boolean hidden, Time releaseDate, Time retractDate, int priority)
+	 		throws PermissionException, IdUniquenessException, IdLengthException, IdInvalidException,
 	InconsistentException, OverQuotaException, ServerOverloadException
 	{
 		try
@@ -3440,7 +3440,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 				catch(Exception e1)
 				{
 					// ignore -- no need to remove the resource if it doesn't exist
-					log.debug("Unable to remove partially completed resource: " + edit.getId() + "\n" + e1); 
+					log.debug("Unable to remove partially completed resource: " + edit.getId() + "\n" + e1);
 				}
 				throw e;
 			}
@@ -3454,7 +3454,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 				catch(Exception e1)
 				{
 					// ignore -- no need to remove the resource if it doesn't exist
-					log.debug("Unable to remove partially completed resource: " + edit.getId() + "\n" + e1); 
+					log.debug("Unable to remove partially completed resource: " + edit.getId() + "\n" + e1);
 				}
 				throw e;
 			}
@@ -3545,8 +3545,8 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	/* (non-Javadoc)
 	 * @see org.sakaiproject.content.api.ContentHostingService#addResource(java.lang.String, java.lang.String, java.lang.String, int)
 	 */
-	public ContentResourceEdit addResource(String collectionId, String basename, String extension, int maximum_tries) 
-	throws PermissionException, IdUniquenessException, IdLengthException, IdInvalidException, 
+	public ContentResourceEdit addResource(String collectionId, String basename, String extension, int maximum_tries)
+	throws PermissionException, IdUniquenessException, IdLengthException, IdInvalidException,
 	IdUnusedException, OverQuotaException, ServerOverloadException
 	{
 		// check the id's validity (this may throw IdInvalidException)
@@ -3667,7 +3667,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	/**
 	 * Create a new resource with the given resource name used as a resource id within the specified collection or (if that id is already in use) with a resource id based on a variation on the name to achieve a unique id, provided a unique id can be found
 	 * before a limit is reached on the number of attempts to achieve uniqueness. Used to create a resource that is not group aware.
-	 * 
+	 *
 	 * @param name
 	 *        The name of the new resource (such as a filename).
 	 * @param collectionId
@@ -3699,8 +3699,8 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	 * @return a new ContentResource object.
 	 */
 	public ContentResource addResource(String name, String collectionId, int limit, String type, byte[] content,
-			ResourceProperties properties, int priority) 
-	throws PermissionException, IdUniquenessException, IdLengthException, IdInvalidException, 
+			ResourceProperties properties, int priority)
+	throws PermissionException, IdUniquenessException, IdLengthException, IdInvalidException,
 	InconsistentException, OverQuotaException, ServerOverloadException
 	{
 		Collection no_groups = new ArrayList();
@@ -3708,7 +3708,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	}
 	/**
 	 * Create a new resource with the given resource id, locked for update. Must commitResource() to make official, or cancelResource() when done!
-	 * 
+	 *
 	 * @param id
 	 *        The id of the new resource.
 	 * @exception PermissionException
@@ -3771,7 +3771,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	/**
 	 * Create a new resource with the given resource name used as a resource id within the specified collection or (if that id is already in use) with a resource id based on a variation on the name to achieve a unique id, provided a unique id can be found
 	 * before a limit is reached on the number of attempts to achieve uniqueness.  Used to create a group-aware resource.
-	 * 
+	 *
 	 * @param name
 	 *        The name of the new resource (such as a filename).
 	 * @param collectionId
@@ -3806,8 +3806,8 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	 * @return a new ContentResource object.
 	 */
 	public ContentResource addResource(String name, String collectionId, int limit, String type, byte[] content,
-			ResourceProperties properties, Collection groups, int priority) 
-	throws PermissionException, IdUniquenessException, IdLengthException, IdInvalidException, 
+			ResourceProperties properties, Collection groups, int priority)
+	throws PermissionException, IdUniquenessException, IdLengthException, IdInvalidException,
 	InconsistentException, OverQuotaException, ServerOverloadException
 	{
 		try
@@ -3865,7 +3865,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 				catch(Exception e1)
 				{
 					// ignore -- no need to remove the resource if it doesn't exist
-					log.debug("Unable to remove partially completed resource: " + edit.getId() + "\n" + e1); 
+					log.debug("Unable to remove partially completed resource: " + edit.getId() + "\n" + e1);
 				}
 				throw e;
 			}
@@ -3879,7 +3879,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 				catch(Exception e1)
 				{
 					// ignore -- no need to remove the resource if it doesn't exist
-					log.debug("Unable to remove partially completed resource: " + edit.getId() + "\n" + e1); 
+					log.debug("Unable to remove partially completed resource: " + edit.getId() + "\n" + e1);
 				}
 				throw e;
 			}
@@ -3969,7 +3969,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * check permissions for addAttachmentResource().
-	 * 
+	 *
 	 * @return true if the user is allowed to addAttachmentResource(), false if not.
 	 */
 	public boolean allowAddAttachmentResource()
@@ -3980,7 +3980,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Check whether a resource id or collection id references an entity in the attachments collection. This method makes no guarantees that a resource actually exists with this id.
-	 * 
+	 *
 	 * @param id
 	 *        Assumed to be a valid resource id or collection id.
 	 * @return true if the id (assuming it is a valid id for an existing resource or collection) references an entity in the hidden attachments area created through one of this class's addAttachmentResource methods.
@@ -3991,7 +3991,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		if (id == null) {
 			return false;
 		}
-		
+
 		// TODO: Should we check whether this is a valid resource id?
 		return id.startsWith(ATTACHMENTS_COLLECTION);
 	}
@@ -4002,11 +4002,11 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	public ContentResource addAttachmentResource(String name, String type, byte[] content, ResourceProperties properties)
 		throws IdInvalidException, InconsistentException, IdUsedException, PermissionException, OverQuotaException,
 		ServerOverloadException {
-		
+
 		ByteArrayInputStream contentStream = new ByteArrayInputStream(content);
 		return addAttachmentResource(name, type, contentStream, properties);
 	}
-	
+
 	/**
 	 * @see org.sakaiproject.content.api.ContentHostingService#addAttachmentResource(java.lang.String, java.lang.String, InputStream, org.sakaiproject.entity.api.ResourceProperties)
 	 */
@@ -4052,7 +4052,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		ByteArrayInputStream contentStream = new ByteArrayInputStream(content);
 		return addAttachmentResource(name, site, tool, type, contentStream, properties);
 	}
-	
+
 	/**
 	 * @see org.sakaiproject.content.api.ContentHostingService#addAttachmentResource(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.io.InputStream, org.sakaiproject.entity.api.ResourceProperties)
 	 */
@@ -4060,7 +4060,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			ResourceProperties properties) throws IdInvalidException, InconsistentException, IdUsedException, PermissionException,
 			OverQuotaException, ServerOverloadException
 	{
-	
+
 		// ignore site if it is not valid
 		if (site == null || site.trim().equals(""))
 		{
@@ -4138,7 +4138,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	/**
 	 * Create a new resource as an attachment to some other resource in the system, locked for update. Must commitResource() to make official, or cancelResource() when done! The new resource will be placed into a newly created collecion in the attachment
 	 * collection, with an auto-generated id, and given the specified resource name within this collection.
-	 * 
+	 *
 	 * @param name
 	 *        The name of the new resource, i.e. a partial id relative to the collection where it will live.
 	 * @exception IdUsedException
@@ -4166,19 +4166,19 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		// form a name based on the attachments collection, a unique folder id, and the given name
 		String collection = ATTACHMENTS_COLLECTION + idManager.createUuid() + Entity.SEPARATOR;
 		String id = collection + name;
-		
+
 		addAndCommitAttachmentCollection(collection, name, null);
 
 		return addResource(id);
 
 	} // addAttachmentResource
-	
+
 	/**
 	 * addAndCommitAttachmentCollection - Helper to Add and Commit an Attachment Collection, used by many methods
 	 * @param collection - Value of collection to create
 	 * @param name - Name of collection
 	 * @param createdBy - Id of user creating or null to leave unchaned
-	 * 
+	 *
 	 * @throws IdUsedException
 	 * @throws IdInvalidException
 	 * @throws PermissionException
@@ -4194,13 +4194,13 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		if (createdBy != null) {
 			edit.getPropertiesEdit().addProperty(ResourceProperties.PROP_CREATOR, createdBy);
 		}
-		
-		commitCollection(edit);	
+
+		commitCollection(edit);
 	}
 
 	/**
 	 * check permissions for updateResource().
-	 * 
+	 *
 	 * @param id
 	 *        The id of the new resource.
 	 * @return true if the user is allowed to updateResource(id), false if not.
@@ -4213,7 +4213,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Update the body and or content type of an existing resource with the given resource id.
-	 * 
+	 *
 	 * @param id
 	 *        The id of the resource.
 	 * @param type
@@ -4252,7 +4252,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Access the resource with this resource id, locked for update. For non-collection resources only. Must commitEdit() to make official, or cancelEdit() when done! The resource content and properties are accessible from the returned Resource object.
-	 * 
+	 *
 	 * @param id
 	 *        The id of the resource.
 	 * @exception PermissionException
@@ -4270,9 +4270,9 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		// check security (throws if not permitted)
 		checkExplicitLock(id);
 
-		// check security 
+		// check security
 		if ( ! allowUpdateResource(id) )
-			throw new PermissionException(sessionManager.getCurrentSessionUserId(), 
+			throw new PermissionException(sessionManager.getCurrentSessionUserId(),
 					AUTH_RESOURCE_WRITE_ANY, getReference(id));
 
 		// check for existance
@@ -4288,7 +4288,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		resource.setEvent(EVENT_RESOURCE_WRITE);
 
 		threadLocalManager.set(String.valueOf(resource), resource);
-		
+
 		ResourceProperties props = resource.getProperties();
 		if(props != null) {
 			resource.setOldDisplayName(props.getProperty(ResourceProperties.PROP_DISPLAY_NAME));
@@ -4300,7 +4300,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Access the resource with this resource id, locked for update. For non-collection resources only. Must commitEdit() to make official, or cancelEdit() when done! The resource content and properties are accessible from the returned Resource object.
-	 * 
+	 *
 	 * @param id
 	 *        The id of the resource.
 	 * @exception PermissionException
@@ -4315,9 +4315,9 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	 */
 	public ContentResourceEdit editDeletedResource(String id) throws PermissionException, IdUnusedException, TypeException, InUseException
 	{
-	  // check security 
+	  // check security
 //      if ( ! allowUpdateResource(id) )
-//		   throw new PermissionException(SessionManager.getCurrentSessionUserId(), 
+//		   throw new PermissionException(SessionManager.getCurrentSessionUserId(),
 //                                       AUTH_RESOURCE_WRITE_ANY, getReference(id));
 
 		// ignore the cache - get the collection with a lock from the info store
@@ -4332,7 +4332,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Access the resource with this resource id, locked for update. For non-collection resources only. Must commitEdit() to make official, or cancelEdit() when done! The resource content and properties are accessible from the returned Resource object.
-	 * 
+	 *
 	 * @param id
 	 *        The id of the resource.
 	 * @exception PermissionException
@@ -4350,9 +4350,9 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		// check security (throws if not permitted)
 		checkExplicitLock(id);
 
-		// check security 
+		// check security
 		if ( ! allowRemoveResource(id) )
-			throw new PermissionException(sessionManager.getCurrentSessionUserId(), 
+			throw new PermissionException(sessionManager.getCurrentSessionUserId(),
 					AUTH_RESOURCE_REMOVE_ANY, getReference(id));
 
 		// check for existance
@@ -4375,7 +4375,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * check permissions for getResource().
-	 * 
+	 *
 	 * @param id
 	 *        The id of the new resource.
 	 * @return true if the user is allowed to getResource(id), false if not.
@@ -4388,7 +4388,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Check access to the resource with this local resource id. For non-collection resources only.
-	 * 
+	 *
 	 * @param id
 	 *        The id of the resource.
 	 * @exception PermissionException
@@ -4410,7 +4410,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Access the resource with this resource id. For non-collection resources only. The resource content and properties are accessible from the returned Resource object.
-	 * 
+	 *
 	 * @param id
 	 *        The resource id.
 	 * @exception PermissionException
@@ -4438,7 +4438,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Access the collection with this local resource id, locked for update. Must commitCollection() to make official, or cancelCollection() when done! The collection internal members and properties are accessible from the returned Collection object.
-	 * 
+	 *
 	 * @param id
 	 *        The id of the collection.
 	 * @exception IdUnusedException
@@ -4456,9 +4456,9 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	{
 		checkExplicitLock(id);
 
-		// check security 
+		// check security
 		if ( ! allowUpdateCollection(id) )
-			throw new PermissionException(sessionManager.getCurrentSessionUserId(), 
+			throw new PermissionException(sessionManager.getCurrentSessionUserId(),
 					AUTH_RESOURCE_WRITE_ANY, getReference(id));
 
 		// check for existance
@@ -4481,7 +4481,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Access the resource with this resource id. For non-collection resources only. Internal find that doesn't do security or event tracking The resource content and properties are accessible from the returned Resource object.
-	 * 
+	 *
 	 * @param id
 	 *        The resource id.
 	 * @exception TypeException
@@ -4514,7 +4514,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			resource = new BaseResourceEdit(resource);
 		}
 
-		
+
 
 
 		return resource;
@@ -4523,7 +4523,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * check permissions for removeResource().
-	 * 
+	 *
 	 * @param id
 	 *        The id of the new resource.
 	 * @return true if the user is allowed to removeResource(id), false if not.
@@ -4551,7 +4551,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Remove a resource. For non-collection resources only.
-	 * 
+	 *
 	 * @param id
 	 *        The resource id.
 	 * @exception PermissionException
@@ -4563,9 +4563,9 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	 * @exception InUseException
 	 *            if the resource is locked by someone else.
 	 */
-	public void removeResource(String id) throws PermissionException, IdUnusedException, 
+	public void removeResource(String id) throws PermissionException, IdUnusedException,
 		TypeException, InUseException
-	
+
 	{
 		BaseResourceEdit edit = (BaseResourceEdit) editResourceForDelete(id);
 		try
@@ -4585,7 +4585,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
      * Remove a resource that is locked for update.
-     * 
+     *
      * @param edit
      *        The ContentResourceEdit object to remove.
      * @exception PermissionException
@@ -4598,7 +4598,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	/**
      * Allows removing a resource while leaving the content alone,
      * this mostly matters for resources copied by reference
-	 * 
+	 *
 	 * @param edit
 	 *        The ContentResourceEdit object to remove.
 	 * @param removeContent if true, removes the content as well (default),
@@ -4621,7 +4621,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		// check security (throws if not permitted)
 		checkExplicitLock(id);
 		if ( ! allowRemoveResource(edit.getId()) )
-			throw new PermissionException(sessionManager.getCurrentSessionUserId(), 
+			throw new PermissionException(sessionManager.getCurrentSessionUserId(),
 					AUTH_RESOURCE_REMOVE_ANY, edit.getReference());
 
 
@@ -4632,9 +4632,9 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			String uuid = this.getUuid(id);
 			String userId = sessionManager.getCurrentSessionUserId().trim();
 			addResourceToDeleteTable(edit, uuid, userId);
-			edit.setContentLength(0);  // we stop removing it entry from the DB 
+			edit.setContentLength(0);  // we stop removing it entry from the DB
 		} catch (ServerOverloadException soe) {
-			log.debug("removeResource: could not save deleted resource, restore for this resource is not possible " + soe );  
+			log.debug("removeResource: could not save deleted resource, restore for this resource is not possible " + soe );
 		}
 
 		// complete the edit
@@ -4681,14 +4681,14 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	public void removeDeletedResource(String id) throws PermissionException, IdUnusedException, TypeException, InUseException
 	{
-		BaseResourceEdit edit = (BaseResourceEdit) editDeletedResource(id); 
+		BaseResourceEdit edit = (BaseResourceEdit) editDeletedResource(id);
 		removeDeletedResource(edit);
-	
+
 	} // removeResource
-	
+
 	/**
 	 * Remove a resource from the deleted table.
-	 * 
+	 *
 	 * @param edit
 	 *        The ContentResourceEdit object to remove.
 	 * @exception PermissionException
@@ -4706,7 +4706,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		// check security (throws if not permitted)
 //		if ( ! allowRemoveResource(edit.getId()) )
-//		   throw new PermissionException(SessionManager.getCurrentSessionUserId(), 
+//		   throw new PermissionException(SessionManager.getCurrentSessionUserId(),
 //                                       AUTH_RESOURCE_REMOVE_ANY, edit.getReference());
 //
 
@@ -4715,7 +4715,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		// close the edit object
 		((BaseResourceEdit) edit).closeEdit();
-		
+
 		((BaseResourceEdit) edit).setRemoved();
 
 		// remove old version of this edit from thread-local cache
@@ -4742,7 +4742,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	} // removeDeletedResource
 
 	public void restoreResource(String id) throws PermissionException, IdUsedException, IdUnusedException,
-		IdInvalidException,	InconsistentException, OverQuotaException, ServerOverloadException, 
+		IdInvalidException,	InconsistentException, OverQuotaException, ServerOverloadException,
 		TypeException, InUseException
 	{
 		ContentResourceEdit deleResource = null;
@@ -4827,10 +4827,10 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			}
 		}
 	}
-	
+
 	/**
 	 * Store the resource in a separate delete table
-	 * 
+	 *
 	 * @param edit
 	 * @param uuid
 	 * @param userId
@@ -4849,15 +4849,15 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		String resource_type = edit.getResourceType();
 
 		// KNL-245 do not read the resource body, as this is not subsequently written out
-		
+
 		ResourceProperties properties = edit.getProperties();
 
 		InputStream content = null;
 		try
 		{
 			content = edit.streamContent();
-			addDeleteResource(id, 
-				content_type, content, resource_type, edit.getReleaseDate(), edit.getRetractDate(), 
+			addDeleteResource(id,
+				content_type, content, resource_type, edit.getReleaseDate(), edit.getRetractDate(),
 				properties, uuid, userId,
 				NotificationService.NOTI_OPTIONAL);
 		}
@@ -4896,7 +4896,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		} catch (Exception ex) {
 			// There is no collision
 		}
-		
+
 		// reserve the resource in storage - it will fail if the id is in use
 		BaseResourceEdit edit = (BaseResourceEdit) m_storage.putDeleteResource(id, uuid, userId);
 		// added for NPE static code review -AZ
@@ -4932,7 +4932,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * check permissions for rename(). Note: for just this collection, not the members on down.
-	 * 
+	 *
 	 * @param id
 	 *        The id of the collection.
 	 * @return true if the user is allowed to rename(id), false if not.
@@ -4960,7 +4960,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Rename a collection or resource.
-	 * 
+	 *
 	 * @param id
 	 *        The id of the collection.
 	 * @param new_id
@@ -4985,14 +4985,14 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	{
 	    throw new UnsupportedOperationException("the rename() method is not properly implemented and should NOT be used - https://jira.sakaiproject.org/browse/KNL-1078");
 	    /* Commented out for https://jira.sakaiproject.org/browse/KNL-1078
-	     * 
+	     *
 		// Note - this could be implemented in this base class using a copy and a delete
 		// and then overridden in those derived classes which can support
 		// a direct rename operation.
 
 		// check security for remove resource (own or any)
 		if ( ! allowRemove(id) )
-			throw new PermissionException(sessionManager.getCurrentSessionUserId(), 
+			throw new PermissionException(sessionManager.getCurrentSessionUserId(),
 					AUTH_RESOURCE_REMOVE_ANY, getReference(id));
 
 		// check security for read resource
@@ -5045,7 +5045,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
     /**
 	 * check permissions for copy().
-	 * 
+	 *
 	 * @param id
 	 *        The id of the new resource.
 	 * @param new_id
@@ -5059,7 +5059,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Copy a collection or resource from one location to another. Creates a new collection with an id similar to new_folder_id and recursively copies all nested collections and resources within thisCollection to the new collection.
-	 * 
+	 *
 	 * @param id
 	 *        The id of the resource.
 	 * @param folder_id
@@ -5148,7 +5148,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Calculate a candidate for a resource id for a resource being copied/moved into a new folder.
-	 * 
+	 *
 	 * @param id
 	 * @param folder_id
 	 * @exception PermissionException
@@ -5176,7 +5176,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	/**
 	 * Move a resource or collection to a (different) folder. This may be accomplished by renaming the resource or by recursively renaming the collection and all enclosed members (no matter how deep) to effectively change their locations. Alternatively,
 	 * it may be accomplished by copying the resource and recursively copying collections from their existing collection to the new collection and ultimately deleting the original resource(s) and/or collections(s).
-	 * 
+	 *
 	 * @param id
 	 *        The id of the resource or collection to be moved.
 	 * @param folder_id
@@ -5210,7 +5210,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		// check security for delete existing resource (any or own)
 		if ( ! allowRemove(id) )
-			throw new PermissionException(sessionManager.getCurrentSessionUserId(), 
+			throw new PermissionException(sessionManager.getCurrentSessionUserId(),
 					AUTH_RESOURCE_REMOVE_ANY, getReference(id));
 
 		// check security for read existing resource
@@ -5261,7 +5261,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	/**
 	 * Move a collection to a new folder. Moves the existing collection or creates a new collection with an id similar to the new_folder_id (in which case the original collection is removed) and recursively moves all nested collections and resources
 	 * within thisCollection to the new collection. When finished, thisCollection no longer exists, but the collection identified by the return value has the same structure and all of the members the original had (or copies of them).
-	 * 
+	 *
 	 * @param thisCollection
 	 *        The collection to be copied
 	 * @param new_folder_id
@@ -5322,7 +5322,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 					{
 						props.addProperty(ResourceProperties.PROP_CREATION_DATE, created);
 					}
-					
+
 					if 	(isPubView(thisCollection.getId()))
 					{
 						collection.setPublicAccess();
@@ -5383,7 +5383,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	/**
 	 * Move a resource to a new folder. Either creates a new resource with an id similar to the new_folder_id and and removes the original resource, or renames the resource with an id similar to the new id, which effectively moves the resource to a new
 	 * location.
-	 * 
+	 *
 	 * @param thisResource
 	 *        The resource to be copied
 	 * @param new_id
@@ -5501,7 +5501,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 				eventTrackingService.post(eventTrackingService.newEvent(EVENT_RESOURCE_ADD, ref, true,
 						NotificationService.NOTI_NONE));
 
-				// TODO - we don't know whether to post a future notification or not 
+				// TODO - we don't know whether to post a future notification or not
 				postAvailableEvent(edit, ref, NotificationService.NOTI_NONE);
 
 				// we need to not remove the content if we just did a reference copy above (or remove the content when there was no reference copy)
@@ -5552,7 +5552,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Copy a resource or collection.
-	 * 
+	 *
 	 * @param id
 	 *        The id of the resource.
 	 * @param new_id
@@ -5576,7 +5576,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	{
 		// Should use copyIntoFolder if possible
 		boolean isCollection = false;
-		
+
 		ContentResource thisResource = null;
 
 		if (log.isDebugEnabled()) log.debug("copy(" + id + "," + new_id + ")");
@@ -5632,7 +5632,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			String propertyValue = properties.getProperty(propertyName);
 			log.debug("copying: " + propertyName + " with value " + propertyValue);
 			resourceProperties.addProperty(propertyName, propertyValue);
-			
+
 		} // while
 		return resourceProperties;
 
@@ -5640,7 +5640,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Copy a resource.
-	 * 
+	 *
 	 * @param resource The resource to be copied
 	 * @param new_id The desired id of the new resource.
 	 * @return The full id of the new copy of the resource.
@@ -5667,7 +5667,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Copy a resource with an option to do a reference copy
-	 * 
+	 *
 	 * @param resource
 	 * @param new_id
 	 * @param referenceCopy if true, then do not copy the actual content (only make a reference copy which points to it),
@@ -5695,7 +5695,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		{
 			log.debug("copyResource: " + resource.getId() + " to " + new_id + ", reference="+referenceCopy);
 		}
-		
+
         if (StringUtils.isBlank(new_id)) {
             throw new IllegalArgumentException("new_id must not be null");
         }
@@ -5803,7 +5803,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Copy a collection.
-	 * 
+	 *
 	 * @param thisCollection
 	 *        The collection to be copied
 	 * @param new_id
@@ -5848,7 +5848,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		try
 		{
 			addCollection(new_id, newProps, null, isHidden, null, null);
-			
+
 			if (log.isDebugEnabled()) log.debug("copyCollection successful");
 		}
 		catch (InconsistentException e)
@@ -5867,10 +5867,10 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	} // copyCollection
 
 	/**
-	 * Make a deep copy of a collection. 
+	 * Make a deep copy of a collection.
 	 * Creates a new collection with an id similar to new_folder_id and recursively copies all nested collections and resources within thisCollection to the new collection.
 	 * Only used in "copyIntoFolder" for now
-	 * 
+	 *
 	 * @param thisCollection
 	 *        The collection to be copied
 	 * @param new_folder_id
@@ -5922,7 +5922,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 				}
 				collection.setAvailability(thisCollection.isHidden(), thisCollection.getReleaseDate(), thisCollection.getReleaseDate());
 				m_storage.commitCollection(collection);
-				
+
 				if (log.isDebugEnabled()) log.debug("deepCopyCollection  top level created successful");
 				still_trying = false;
 			}
@@ -6002,27 +6002,27 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	private boolean hasContentType(String resourceId) {
 
 		String contentType = null;
-		
+
 		try {
 			contentType = getResource(resourceId).getContentType();
 		} catch (PermissionException e) {
 		} catch (IdUnusedException e) {
 		} catch (TypeException e) {
 		}
-		
+
 		return contentType != null && !contentType.isEmpty();
     }
-	
+
 	/**
 	 * Commit the changes made, and release the lock. The Object is disabled, and not to be used after this call.
-	 * 
+	 *
 	 * @param edit
 	 *        The ContentResourceEdit object to commit.
 	 * @exception OverQuotaException
 	 *            if this would result in being over quota (the edit is then cancled).
 	 * @exception ServerOverloadException
 	 *            if the server is configured to write the resource body to the filesystem and the save fails.
-	 * @exception PermissionException 
+	 * @exception PermissionException
 	 * 			 if the user is trying to make a change for which they lack permission.
 	 */
 	public void commitResource(ContentResourceEdit edit) throws OverQuotaException, ServerOverloadException
@@ -6033,7 +6033,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Commit the changes made, and release the lock. The Object is disabled, and not to be used after this call.
-	 * 
+	 *
 	 * @param edit
 	 *        The ContentResourceEdit object to commit.
 	 * @param priority
@@ -6053,9 +6053,9 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			log.error("commitResource(): closed ContentResourceEdit", e);
 			return;
 		}
-		
+
         boolean hasContentTypeAlready = hasContentType(edit.getId());
-        
+
         //use magic to fix mimetype
         //Don't process for special TYPE_URL type
         String currentContentType = edit.getContentType();
@@ -6068,7 +6068,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
                     TikaInputStream buff = TikaInputStream.get(edit.streamContent());
             ) {
                 //we have to make the stream resetable so tika can read some of it and reset for saving.
-                //Also have to give the tika stream to the edit object since tika can invalidate the original 
+                //Also have to give the tika stream to the edit object since tika can invalidate the original
                 //stream and replace it with a new stream.
                 edit.setContent(buff);
 
@@ -6088,7 +6088,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
                     newmatch = DETECTOR.detect(null, metadata).toString();
                   }
                 }
-                
+
                 if (log.isDebugEnabled()) {
                     log.debug("Magic: Setting content type from " + currentContentType + " to " + newmatch);
                 }
@@ -6096,12 +6096,12 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
                 commitResourceEdit(edit, priority);
             } catch (Exception e) {
 				log.warn("Exception when trying to get the resource's data: " + e);
-			} 
+			}
         }
         else {
         	commitResourceEdit(edit, priority);
         }
-        
+
         // Queue up content for virus scanning
         if (virusScanner.getEnabled()) {
             virusScanQueue.add(edit.getId());
@@ -6128,7 +6128,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			}
 			throw new OverQuotaException(edit.getReference());
 		}
-		
+
 		if(! readyToUseFilesizeColumn())
 		{
 			addSizeCache(edit);
@@ -6221,7 +6221,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			{
 				return false;
 			}
-			
+
 			String contentEncoding = edit.getProperties().getProperty(ResourceProperties.PROP_CONTENT_ENCODING);
 			if (contentEncoding == null)
 			{
@@ -6233,8 +6233,8 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			//we don't want the whole file the first couple of bytes should do
 			int len = 1000;
 			byte[] contentBytes = new byte[len];
-			if (content.markSupported()) 
-			{			
+			if (content.markSupported())
+			{
 				detector.setText(content);
 			} else {
 				 content.read(contentBytes);
@@ -6265,8 +6265,8 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 				rpe.removeProperty(ResourceProperties.PROP_CONTENT_ENCODING);
 				rpe.addProperty(ResourceProperties.PROP_CONTENT_ENCODING, encoding);
 				updated = true;
-			} 
-			
+			}
+
 		} catch (IOException e) {
 			log.error(e.getMessage(), e);
 		} catch (ServerOverloadException e) {
@@ -6286,12 +6286,12 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Commit the changes made, and release the lock - no quota check. The Object is disabled, and not to be used after this call.
-	 * 
+	 *
 	 * @param edit
 	 *        The ContentResourceEdit object to commit.
 	 * @param priority
 	 *        The notification priority of this commit.
-	 * @throws PermissionException 
+	 * @throws PermissionException
 	 */
 	protected void commitResourceEdit(ContentResourceEdit edit, int priority) throws ServerOverloadException
 	{
@@ -6334,7 +6334,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		// Now that the data is committed, we can update the encoding if needed.
 		// Check the content type if this is an HTML or TEXT file upload.
-		if (contentUpdated && ResourceType.TYPE_UPLOAD.equals(edit.getResourceType()) && 
+		if (contentUpdated && ResourceType.TYPE_UPLOAD.equals(edit.getResourceType()) &&
 			(ResourceType.MIME_TYPE_HTML.equals(edit.getContentType()) || ResourceType.MIME_TYPE_TEXT.equals(edit.getContentType()))) {
 
 			// Any body bytes lying around erroneously should be thrown away
@@ -6373,7 +6373,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		eventTrackingService.cancelDelays(ref, ((BaseResourceEdit) edit).getEvent());
 
 		// Send a notification with the initial event if this is a revise event and the resource is already available
-		int immediate_priority = (EVENT_RESOURCE_WRITE.equals(((BaseResourceEdit) edit).getEvent()) && edit.isAvailable()) ? 
+		int immediate_priority = (EVENT_RESOURCE_WRITE.equals(((BaseResourceEdit) edit).getEvent()) && edit.isAvailable()) ?
 				priority : NotificationService.NOTI_NONE;
 
 		eventTrackingService.post(eventTrackingService.newEvent(((BaseResourceEdit) edit).getEvent(),
@@ -6392,17 +6392,17 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			// post EVENT_RESOURCE_UPD_TITLE event
 			this.eventTrackingService.post(this.eventTrackingService.newEvent(EVENT_RESOURCE_UPD_TITLE, edit.getReference(), true, priority));
 		}
-		
+
 		if(((BasicGroupAwareEdit) edit).isVisibilityUpdated()) {
 			// post EVENT_RESOURCE_UPD_VISIBILITY event
 			this.eventTrackingService.post(this.eventTrackingService.newEvent(EVENT_RESOURCE_UPD_VISIBILITY, edit.getReference(), true, priority));
 		}
-		
+
 		if(((BasicGroupAwareEdit) edit).isAccessUpdated()) {
 			// post EVENT_RESOURCE_UPD_ACCESS event
 			this.eventTrackingService.post(this.eventTrackingService.newEvent(EVENT_RESOURCE_UPD_ACCESS, edit.getReference(), true, priority));
 		}
-		
+
 	} // commitResourceEdit
 
 	/**
@@ -6426,7 +6426,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Cancel the changes made object, and release the lock. The Object is disabled, and not to be used after this call.
-	 * 
+	 *
 	 * @param edit
 	 *        The ContentResourceEdit object to commit.
 	 */
@@ -6456,7 +6456,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * check permissions for getProperties().
-	 * 
+	 *
 	 * @param id
 	 *        The id of the new resource.
 	 * @return true if the user is allowed to getProperties(id), false if not.
@@ -6469,7 +6469,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Access the properties of a resource with this resource id, either collection or resource.
-	 * 
+	 *
 	 * @param id
 	 *        The resource id.
 	 * @exception PermissionException
@@ -6513,7 +6513,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * check permissions for addProperty().
-	 * 
+	 *
 	 * @param id
 	 *        The id of the new resource.
 	 * @return true if the user is allowed to addProperty(id), false if not.
@@ -6523,11 +6523,11 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		boolean isAllowed = allowUpdate(id);
 		if(isAllowed)
 		{
-			try 
+			try
 			{
 				checkExplicitLock(id);
-			} 
-			catch (PermissionException e) 
+			}
+			catch (PermissionException e)
 			{
 				isAllowed = false;
 			}
@@ -6539,7 +6539,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Add / update a property for a resource, either collection or resource.
-	 * 
+	 *
 	 * @param id
 	 *        The resource id.
 	 * @param name
@@ -6561,10 +6561,10 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	public ResourceProperties addProperty(String id, String name, String value) throws PermissionException, IdUnusedException,
 	TypeException, InUseException, ServerOverloadException
 	{
-		// check security 
+		// check security
 		checkExplicitLock(id);
 		if ( ! allowAddProperty(id) )
-			throw new PermissionException(sessionManager.getCurrentSessionUserId(), 
+			throw new PermissionException(sessionManager.getCurrentSessionUserId(),
 					AUTH_RESOURCE_WRITE_ANY, getReference(id));
 
 		boolean collectionHint = id.endsWith(Entity.SEPARATOR);
@@ -6606,7 +6606,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * check permissions for removeProperty().
-	 * 
+	 *
 	 * @param id
 	 *        The id of the new resource.
 	 * @return true if the user is allowed to removeProperty(id), false if not.
@@ -6633,7 +6633,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Remove a property from a resource, either collection or resource.
-	 * 
+	 *
 	 * @param id
 	 *        The resource id.
 	 * @param name
@@ -6653,10 +6653,10 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	public ResourceProperties removeProperty(String id, String name) throws PermissionException, IdUnusedException, TypeException,
 	InUseException, ServerOverloadException
 	{
-		// check security 
+		// check security
 		checkExplicitLock(id);
 		if ( ! allowRemoveProperty(id) )
-			throw new PermissionException(sessionManager.getCurrentSessionUserId(), 
+			throw new PermissionException(sessionManager.getCurrentSessionUserId(),
 					AUTH_RESOURCE_WRITE_ANY, getReference(id));
 
 		boolean collectionHint = id.endsWith(Entity.SEPARATOR);
@@ -6698,7 +6698,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Access the resource URL from a resource id.
-	 * 
+	 *
 	 * @param id
 	 *        The resource id.
 	 * @return The resource URL.
@@ -6712,7 +6712,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Access the alternate URL which can be used to access the entity.
-	 * 
+	 *
 	 * @param id
 	 *        The resource id.
 	 * @param rootProperty
@@ -6730,7 +6730,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Compute an alternate root for a reference, based on the value of the specified property.
-	 * 
+	 *
 	 * @param rootProperty
 	 *        The property name.
 	 * @return The alternate root, or "" if there is none.
@@ -6771,7 +6771,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Access the internal reference from a resource id.
-	 * 
+	 *
 	 * @param id
 	 *        The resource id.
 	 * @return The internal reference from a resource id.
@@ -6784,7 +6784,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Access the resource id of the collection which contains this collection or resource.
-	 * 
+	 *
 	 * @param id
 	 *        The resource id (reference, or URL) of the ContentCollection or ContentResource
 	 * @return the resource id (reference, or URL, depending on the id parameter) of the collection which contains this resource.
@@ -6797,7 +6797,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Get the depth of the resource/collection object in the hireachy based on the given collection id
-	 * 
+	 *
 	 * @param resourceId
 	 *        The Id of the resource/collection object to be tested
 	 * @param baseCollectionId
@@ -6836,7 +6836,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Test if this id (reference, or URL) refers to the root collection.
-	 * 
+	 *
 	 * @param id
 	 *        The resource id (reference, or URL) of a ContentCollection
 	 * @return true if this is the root collection
@@ -6871,7 +6871,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Construct a stand-alone, not associated with any particular resource, ResourceProperties object.
-	 * 
+	 *
 	 * @return The new ResourceProperties object.
 	 */
 	public ResourcePropertiesEdit newResourceProperties()
@@ -6890,7 +6890,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Return a map of Worksite collections roots that the user has access to.
-	 * 
+	 *
 	 * @return Map of worksite resource root id (String) to worksite title (String)
 	 */
 	public Map<String, String> getCollectionMap()
@@ -6967,7 +6967,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Process the access request for a resource.
-	 * 
+	 *
 	 * @param req
 	 * @param req
 	 * @param res
@@ -7003,7 +7003,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			throw new EntityPermissionException(e.getUser(), e.getLock(), e.getResource());
 		}
 		catch (TypeException e)
-		{	
+		{
 			throw new EntityNotDefinedException(ref.getReference());
 		}
 
@@ -7012,7 +7012,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		{
 			throw new EntityCopyrightException(ref.getReference());
 		}
-		
+
 		// Wrap up the resource if we need to.
 		resource = m_contentFilterService.wrap(resource);
 
@@ -7033,7 +7033,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			} catch (Exception e1) {
 				log.info("Could not retrieve modified time for: " + resource.getId());
 			}
-			
+
 			// KNL-1316 tell the browser when our file was last modified for caching reasons
 			if (lastModTime > 0) {
 				SimpleDateFormat rfc1123Date = new SimpleDateFormat(RFC1123_DATE, LOCALE_US);
@@ -7045,23 +7045,23 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			if (contentType.equalsIgnoreCase(ResourceProperties.TYPE_URL))
 			{
 				if (len < MAX_URL_LENGTH) {
-	
+
 					byte[] content = resource.getContent();
 					if ((content == null) || (content.length == 0))
 					{
 						throw new IdUnusedException(ref.getReference());
 					}
-	
-					// An invalid URI format will get caught by the outermost catch block 
+
+					// An invalid URI format will get caught by the outermost catch block
 					URI uri = new URI(new String(content, "UTF-8"));
 					eventTrackingService.post(eventTrackingService.newEvent(EVENT_RESOURCE_READ, resource.getReference(null), false));
-					
+
 					//SAK-23587 process any macros present in this URL
 					String decodedUrl = URLDecoder.decode(uri.toString(), "UTF-8");
 					decodedUrl = expandMacros(decodedUrl);
-					
+
 					res.sendRedirect(decodedUrl);
-					
+
 				} else {
 					// we have a text/url mime type, but the body is too long to issue as a redirect
 					throw new EntityNotDefinedException(ref.getReference());
@@ -7078,8 +7078,8 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 				{
 					// if this is an html file we have more checks
 				    String lcct = contentType.toLowerCase();
-				    if ( ( lcct.startsWith("text/") || lcct.startsWith("image/") 
-				            || lcct.contains("html") || lcct.contains("script") ) && 
+				    if ( ( lcct.startsWith("text/") || lcct.startsWith("image/")
+				            || lcct.contains("html") || lcct.contains("script") ) &&
 				            m_serverConfigurationService.getBoolean(SECURE_INLINE_HTML, true)) {
 				        // increased checks to handle more mime-types - https://jira.sakaiproject.org/browse/KNL-749
 
@@ -7093,15 +7093,15 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 							// we expect this so nothing to do!
 						}
 
-						if (!fileInline) 
+						if (!fileInline)
 						try
 						{
 							folderInline = resource.getContainingCollection().getProperties().getBooleanProperty(ResourceProperties.PROP_ALLOW_INLINE);
 						}
 						catch (EntityPropertyNotDefinedException e) {
 							// we expect this so nothing to do!
-						}		
-						
+						}
+
 						if (fileInline || folderInline) {
 							disposition = Web.buildContentDisposition(fileName, false);
 						}
@@ -7109,7 +7109,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 						disposition = Web.buildContentDisposition(fileName, false);
 					}
 				}
-				
+
 				// drop through to attachment
 				if (disposition == null)
 				{
@@ -7131,7 +7131,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 				if (headerValue != -1 && (lastModTime < headerValue + 1000)) {
 					// The entity has not been modified since the date specified by the client. This is not an error case.
 					res.setStatus(HttpServletResponse.SC_NOT_MODIFIED);
-					return; 
+					return;
 				}
 
 				// If there is a direct link to the asset, no sense streaming it.
@@ -7149,7 +7149,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 					} else {
 						res.addHeader("Content-Length", Long.toString(len));
 					}
-					
+
 					// SAK-30455: Track event now so the direct link still records a content.read
 					eventTrackingService.post(eventTrackingService.newEvent(EVENT_RESOURCE_READ, resource.getReference(null), false));
 
@@ -7176,7 +7176,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 					// stream the content using a small buffer to keep memory managed
 					InputStream content = null;
 					OutputStream out = null;
-	
+
 					try
 					{
 						content = resource.streamContent();
@@ -7195,9 +7195,9 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 						{
 							res.setBufferSize(STREAM_BUFFER_SIZE);
 						}
-	
+
 						out = res.getOutputStream();
-	
+
 						copyRange(content, out, 0, len-1);
 					}
 					catch (ServerOverloadException e)
@@ -7214,7 +7214,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 						{
 							content.close();
 						}
-	
+
 						if (out != null)
 						{
 							try
@@ -7226,8 +7226,8 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 							}
 						}
 					}
-		        } 
-		        else 
+		        }
+		        else
 		        {
 		            // Output partial content. Adapted from Apache Tomcat 5.5.27 DefaultServlet.java
 		            res.addHeader("Accept-Ranges", "bytes");
@@ -7236,7 +7236,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		            if (ranges.size() == 1) {
 
 		            	// Single response
-		            	
+
 		                Range range = (Range) ranges.get(0);
 		                res.addHeader("Content-Range", "bytes "
 		                                   + range.start
@@ -7259,7 +7259,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 						// stream the content using a small buffer to keep memory managed
 						InputStream content = null;
 						OutputStream out = null;
-		
+
 						try
 						{
 							content = resource.streamContent();
@@ -7277,7 +7277,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 							{
 								res.setBufferSize(STREAM_BUFFER_SIZE);
 							}
-		
+
 							out = res.getOutputStream();
 
 							copyRange(content, out, range.start, range.end);
@@ -7305,7 +7305,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 							{
 								content.close();
 							}
-		
+
 							if (out != null)
 							{
 								try
@@ -7318,7 +7318,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 								}
 							}
 						}
-		              
+
 		            } else {
 
 		            	// Multipart response
@@ -7327,7 +7327,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 						// stream the content using a small buffer to keep memory managed
 						OutputStream out = null;
-		
+
 						try
 						{
 							// set the buffer of the response to match what we are reading from the request
@@ -7339,7 +7339,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 							{
 								res.setBufferSize(STREAM_BUFFER_SIZE);
 							}
-		
+
 							out = res.getOutputStream();
 
 			            	copyRanges(resource, out, ranges.iterator(), contentType);
@@ -7372,10 +7372,10 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 								}
 							}
 						}
-		              
+
 		            } // output multiple ranges
 
-		        } // output partial content 
+		        } // output partial content
 
 			} // output resource
 
@@ -7388,7 +7388,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Process the access request for a collection, producing the "apache" style HTML file directory listing (complete with index.html redirect if found).
-	 * 
+	 *
 	 * @param req
 	 * @param res
 	 * @param ref
@@ -7534,7 +7534,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			}
 			catch (EntityPropertyNotDefinedException ignore)
 			{
-				// do nothing -- it's not a collection unless PROP_IS_COLLECTION is defined 
+				// do nothing -- it's not a collection unless PROP_IS_COLLECTION is defined
 			}
 			catch (EntityPropertyTypeException e)
 			{
@@ -7638,7 +7638,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			//   /content/attachment/guid/filename.pd
 			// New attachment format:
 			//   /content/attachment/siteid/type/guid/filename.pd
-			// But since we need to protect all paths from 
+			// But since we need to protect all paths from
 			//   /content/attachment/siteid/
 			// and below we simply check to see f the guid is a valid site ID.
 			if ( m_siteAttachments && (parts.length >= 3) && (parts[1].equals("attachment")))
@@ -7654,11 +7654,11 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			}
 
 			ContentEntity entity = null;
-			if(ref.getId().endsWith(Entity.SEPARATOR)) 
+			if(ref.getId().endsWith(Entity.SEPARATOR))
 			{
 				entity = findCollection(ref.getId());
-			} 
-			else 
+			}
+			else
 			{
 				entity = findResource(ref.getId());
 			}
@@ -7740,7 +7740,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		return rv;
 	}
 
-	protected Collection getEntityHierarchyAuthzGroups(Reference ref) 
+	protected Collection getEntityHierarchyAuthzGroups(Reference ref)
 	{
 		Collection<String> rv = new TreeSet<String>();
 
@@ -7756,7 +7756,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			rv.add(root);
 			StringBuilder rootBuilder = new StringBuilder();
 			rootBuilder.append(root);
-			
+
 			for (int next = 2; next < paths.length; next++)
 			{
 				rootBuilder.append(paths[next]);
@@ -7844,7 +7844,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Replace the WT user id with the new qualified id
-	 * 
+	 *
 	 * @param el
 	 *        The XML element holding the perproties
 	 * @param useIdTrans
@@ -7906,7 +7906,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Merge the resources from the archive into the given site.
-	 * 
+	 *
 	 * @param siteId
 	 *        The id of the site getting imported into.
 	 * @param root
@@ -8144,7 +8144,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 					rContent = new String(thisResourceContentRaw);
 					StringBuffer saveOldEntity = new StringBuffer(rContent);
 					Iterator contentKeys = transversalMap.keySet().iterator();
-					while(contentKeys.hasNext()){							
+					while(contentKeys.hasNext()){
 						String oldValue = (String) contentKeys.next();
 						if(!oldValue.equals("/fromContext")){
 							String newValue = "";
@@ -8159,7 +8159,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 					} catch (Exception e) {
 						// TODO Auto-generated catch block
 						log.debug ("Forums LinkMigrationHelper.editLinks failed" + e);
-					}					
+					}
 					try {
 						if(!saveOldEntity.toString().equals(rContent)){
 							ContentResourceEdit edit = editResource(tId);
@@ -8175,8 +8175,8 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 						log.error(this + thisKey, e2);
 					} catch (TypeException e3) {
 						log.error(this + thisKey, e3);
-					} 
-	
+					}
+
 				}
 			}
 		} catch (PermissionException e1) {
@@ -8188,14 +8188,14 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		} catch (ServerOverloadException e4) {
 			log.error(this + thisKey, e4);
 		}
-		
+
 	}
-	
+
 	private String siteIdExtract(String ref){
 		String[] components = ref.split("/");
 		return components[2];
 	}
-	
+
 	private String siteIdSplice(String ref, String siteId){
 		String[] components = ref.split("/");
 		StringBuffer splicedString = new StringBuffer();
@@ -8209,7 +8209,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		}
 		return splicedString.toString();
 	}
-	
+
 	/**
 	 * {@inheritDoc}
 	 */
@@ -8228,14 +8228,14 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		catch(IdUnusedException e)
 		{
 			ContentCollectionEdit toCollectionEdit = null;
-			
+
 			// not such collection yet, add one
 			try
 			{
 				toCollectionEdit = addCollection(toContext);
 				m_storage.commitCollection(toCollectionEdit);
 				((BaseCollectionEdit) toCollectionEdit).closeEdit();
-				
+
 				//try this again now to get an activated collection
 				try
 				{
@@ -8429,7 +8429,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			ContentResourceEdit resource = null;
 			ContentCollectionEdit collection = null;
 			String containingCollectionId = null;
-			if (edit instanceof ContentResourceEdit) 
+			if (edit instanceof ContentResourceEdit)
 			{
 				resource = (ContentResourceEdit) edit;
 				containingCollectionId = resource.getContainingCollection().getId();
@@ -8757,7 +8757,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Make sure a home in resources exists for the site.
-	 * 
+	 *
 	 * @param site
 	 *        The site.
 	 */
@@ -8774,7 +8774,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			Site site = m_siteService.getSite(context);
 			try
 			{
-				ContentCollection collection = findCollection(id);	// getCollection(id);	// 
+				ContentCollection collection = findCollection(id);	// getCollection(id);	//
 
 				if(collection == null)
 				{
@@ -8842,7 +8842,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Remove resources area for a site.
-	 * 
+	 *
 	 * @param site
 	 *        The site.
 	 */
@@ -8853,7 +8853,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Make sure a home in resources for dropbox exists for the site.
-	 * 
+	 *
 	 * @param site
 	 *        The site.
 	 */
@@ -8865,7 +8865,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Remove resources area for a site.
-	 * 
+	 *
 	 * @param site
 	 *        The site.
 	 */
@@ -8880,7 +8880,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Archive the collection, then the members of the collection - recursively for collection members.
-	 * 
+	 *
 	 * @param collection
 	 *        The collection whose members are to be archived.
 	 * @param doc
@@ -8925,7 +8925,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Archive a singe resource
-	 * 
+	 *
 	 * @param resource
 	 *        The content resource to archive
 	 * @param doc
@@ -8949,7 +8949,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		String id = resource.getId();
 
-		// AMA-120 Special handling for T&Q attachments to align with QTI representation
+		// SAK-50021 Special handling for T&Q attachments to align with QTI representation
 		if (id.startsWith("/attachment/") && id.contains("/Tests _ Quizzes/")) {
 			// remove spaces
 			String newId = id.replaceAll(" ", "");
@@ -8957,7 +8957,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			el.setAttribute("id", newId);
 		}
 
-		// AMA-1060 Special handling for user workspace files
+		// SAK-50021 Special handling for user workspace files
 		// Use the eid form of the path, otherwise hard to match this to embedded URLs
 		if (id.startsWith("/user/")) {
 			String idParts[] = id.split("/", 4);
@@ -8967,7 +8967,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 				el.setAttribute("canonical-id", id);
 				el.setAttribute("id", newId);
 			} catch (UserNotDefinedException tryEid) {
-				log.warn("Resource {id} owned by orphaned user: not replacing with eid-style path", id);
+				log.warn("Resource [{}] owned by orphaned user: not replacing with eid-style path, {}", id, tryEid.toString());
 			}
 		}
 
@@ -9033,7 +9033,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Merge in a collection from an XML DOM definition. Take whole if not defined already. Ignore if already here.
-	 * 
+	 *
 	 * @param element
 	 *        The XML DOM element containing the collection definition.
 	 * @exception PermissionException
@@ -9092,7 +9092,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Merge in a resource from an XML DOM definition. Ignore if already defined. Take whole if not.
-	 * 
+	 *
 	 * @param element
 	 *        The XML DOM element containing the collection definition.
 	 * @exception PermissionException
@@ -9117,7 +9117,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Merge in a resource from an XML DOM definition and a body bytes array. Ignore if already defined. Take whole if not.
-	 * 
+	 *
 	 * @param element
 	 *        The XML DOM element containing the collection definition.
 	 * @param in
@@ -9198,7 +9198,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Check the fixed type and id infomation: The same or better content type based on the known type for this id's extension, if any. The same or added extension id based on the know MIME type, if any Only if the type is the unknown type already.
-	 * 
+	 *
 	 * @param id
 	 *        The resource id with possible file extension to check.
 	 * @param type
@@ -9212,7 +9212,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		extType.put("id", id);
 		if (type == null) type = "";
 		extType.put("type", type);
-		
+
 		String[] idSegments;
 		idSegments = id.split("/");
 		String filename = idSegments.length > 0 ? idSegments[idSegments.length - 1]:id;
@@ -9259,7 +9259,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Test if this resource edit would place the account" over quota.
-	 * 
+	 *
 	 * @param edit
 	 *        The proposed resource edit.
 	 * @return true if this change would palce the "account" over quota, false if not.
@@ -9356,13 +9356,13 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/*
 	 * Size Cache.
-	 * This caches the size of the collection and all children for 10 miutes from first 
+	 * This caches the size of the collection and all children for 10 miutes from first
 	 * created, keeping a track of addtions and removals to the collection.
-	 * 
-	 * It only works where the same collection id is supplied and does not 
-	 * consider the size under nested collections or update modifcations 
+	 *
+	 * It only works where the same collection id is supplied and does not
+	 * consider the size under nested collections or update modifcations
 	 * on all nested collections.
-	 * 
+	 *
 	 * It is a temporary fix to eliminate GC collection issues with the size calculations
 	 */
 
@@ -9450,7 +9450,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Convert bytes to Kbytes, rounding up, and counting even 0 bytes as 1 k.
-	 * 
+	 *
 	 * @param bytes
 	 *        The size in bytes.
 	 * @return The size in Kbytes, rounded up.
@@ -9521,7 +9521,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 				if (parentCollection!=null) {
 					long siteSpecific = parentCollection.getProperties().getLongProperty(
 							ResourceProperties.PROP_COLLECTION_BODY_QUOTA);
-	
+
 					quota = siteSpecific;
 				}
 			} catch (EntityPropertyTypeException ignoretex) {
@@ -9540,7 +9540,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Attempt to create any collections needed so that the parameter collection exists.
-	 * 
+	 *
 	 * @param target
 	 *        The collection that we want to exist.
 	 */
@@ -9857,7 +9857,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * get all the resources under a given directory.
-	 * 
+	 *
 	 * @param parentId
 	 * @return List of all the ContentResource objects under this directory.
 	 */
@@ -9868,7 +9868,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Eliminate from the collection any duplicates as well as any items that are contained within another item whose resource-id is in the collection.
-	 * 
+	 *
 	 * @param resourceIds
 	 *        A collection of strings (possibly empty) identifying items and/or collections.
 	 */
@@ -9919,7 +9919,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		{
 			ContentResource resource = (ContentResource) i.next();
 			//check for read permissions...
-			if (!checkPerms || unlockCheck(AUTH_RESOURCE_READ, resource.getId())) 
+			if (!checkPerms || unlockCheck(AUTH_RESOURCE_READ, resource.getId()))
 			{
 				String currentType = resource.getProperties().getProperty(ResourceProperties.PROP_STRUCTOBJ_TYPE);
 				String mimeType = resource.getProperties().getProperty(ResourceProperties.PROP_CONTENT_TYPE);
@@ -10043,7 +10043,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	/**
 	 * Access the default dropbox collection display name for the current request. If the current user has permission to modify the site's dropbox collection, this is returned. Otherwise, the current user's collection within the site's dropbox is
 	 * returned.
-	 * 
+	 *
 	 * @return The default dropbox collection display name for the current request.
 	 */
 	public String getDropboxDisplayName()
@@ -10053,7 +10053,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Access the default dropbox collection display name for the site. If the current user has permission to modify the site's dropbox collection, this is returned. Otherwise, the current user's collection within the site's dropbox is returned.
-	 * 
+	 *
 	 * @param siteId
 	 *        the Site id.
 	 * @return The default dropbox collection display name for the site.
@@ -10090,7 +10090,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Create the site's dropbox collection and one for each qualified user that the current user can make.
-	 * 
+	 *
 	 * @param siteId
 	 *        the Site id.
 	 */
@@ -10120,11 +10120,11 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			{
 				ContentCollectionEdit edit = addValidPermittedCollection(dropbox);
 				ResourcePropertiesEdit props = edit.getPropertiesEdit();
-				try 
+				try
 				{
 					Site site = m_siteService.getSite(siteId);
-				} 
-				catch (IdUnusedException e) 
+				}
+				catch (IdUnusedException e)
 				{
 					log.error(e.getMessage(), e);
 				}
@@ -10153,7 +10153,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			log.warn("createDropboxCollection(): InconsistentException: " + e.getMessage());
 			return;
 		}
-		//		catch (PermissionException e) 
+		//		catch (PermissionException e)
 		//		{
 		//			log.warn("createDropboxCollection(): PermissionException: " + dropbox);
 		//			return;
@@ -10183,7 +10183,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			// see if it exists - add if it doesn't
 			try
 			{
-				
+
 				if (!members.remove(userFolder))
 				{
 					if (findCollection(userFolder) == null) // This check it probably redundant
@@ -10248,15 +10248,15 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	/**
 	 * Create an individual dropbox collection for the current user if the site-level dropbox exists
 	 * and the current user has AUTH_DROPBOX_OWN for the site.
-	 * 
+	 *
 	 * @param siteId
 	 *        the Site id.
 	 */
-	public void createIndividualDropbox(String siteId) 
+	public void createIndividualDropbox(String siteId)
 	{
 		String dropbox = COLLECTION_DROPBOX + siteId + "/";
 
-		try 
+		try
 		{
 			if (findCollection(dropbox) == null)
 			{
@@ -10308,15 +10308,15 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 				catch (InconsistentException e)
 				{
 					log.warn("createIndividualDropbox(): InconsistentException: " + userFolder);
-				} 
-				//				catch (PermissionException e) 
+				}
+				//				catch (PermissionException e)
 				//				{
 				//					log.warn("createIndividualDropbox(): PermissionException: " + userFolder);
 				//				}
 			}
 
-		} 
-		catch (TypeException e) 
+		}
+		catch (TypeException e)
 		{
 			log.warn("createIndividualDropbox(): TypeException: " + dropbox);
 		}
@@ -10324,9 +10324,9 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	}
 
 	/**
-	 * Determine whether the default dropbox collection id for this user in this site 
-	 * is the site's entire dropbox collection or just the current user's collection 
-	 * within the site's dropbox.	 
+	 * Determine whether the default dropbox collection id for this user in this site
+	 * is the site's entire dropbox collection or just the current user's collection
+	 * within the site's dropbox.
 	 * @return True if user sees all dropboxes in the site, false otherwise.
 	 */
 	public boolean isDropboxMaintainer()
@@ -10336,7 +10336,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Determine whether the default dropbox collection id for this user in some site is the site's entire dropbox collection or just the current user's collection within the site's dropbox.
-	 * 
+	 *
 	 * @return True if user sees all dropboxes in the site, false otherwise.
 	 */
 	public boolean isDropboxMaintainer(String siteId)
@@ -10353,8 +10353,8 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	}
 
 	/**
-	 * Determine whether the user has the dropbox.groups permission 
-	 * 
+	 * Determine whether the user has the dropbox.groups permission
+	 *
 	 * @return True if user has dropbox.groups permission, false otherwise.
 	 */
 	public boolean isDropboxGroups(String siteId)
@@ -10377,12 +10377,12 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	 *****************************************************************************************************************************************************************************************************************************************************/
 
 	/**
-	 * Access a collection (Group) of groups to which this user has access and whose members have "content.read" permission in the collection. 
-	 * In effect, this method returns a collection that identifies groups that are defined for the collection (locally or inherited) that 
-	 * this user can access. If access to the collection is determined by group-membership, the return is limited to groups that have 
+	 * Access a collection (Group) of groups to which this user has access and whose members have "content.read" permission in the collection.
+	 * In effect, this method returns a collection that identifies groups that are defined for the collection (locally or inherited) that
+	 * this user can access. If access to the collection is determined by group-membership, the return is limited to groups that have
 	 * access to the specified collection. If access is not defined by groups (i.e. it is "site" access), the return includes all groups
 	 * defined in the site for which this user has read permission.
-	 * 
+	 *
 	 * @param collectionId
 	 *        The id for the collection.
 	 */
@@ -10401,12 +10401,12 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	}
 
 	/**
-	 * Access a collection (Group) of groups to which this user has access and whose members have "content.new" permission in the collection. 
-	 * In effect, this method returns a collection that identifies groups that are defined for the collection (locally or inherited) in which 
-	 * this user has permission to add content entities. If access to the collection is determined by group-membership, the return is limited 
-	 * to groups that have "add" permission in the specified collection. If access is not defined by groups (i.e. it is "site" access), the return 
+	 * Access a collection (Group) of groups to which this user has access and whose members have "content.new" permission in the collection.
+	 * In effect, this method returns a collection that identifies groups that are defined for the collection (locally or inherited) in which
+	 * this user has permission to add content entities. If access to the collection is determined by group-membership, the return is limited
+	 * to groups that have "add" permission in the specified collection. If access is not defined by groups (i.e. it is "site" access), the return
 	 * includes all groups defined in the site for which this user has add permission in this collection.
-	 * 
+	 *
 	 * @param collectionId
 	 *        The id for the collection.
 	 */
@@ -10421,16 +10421,16 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		{
 			rv.addAll(groups);
 		}
-		return rv;		
+		return rv;
 	}
 
 	/**
-	 * Access a collection (Group) of groups to which this user has access and whose members have "content.delete" permission in the collection. 
-	 * In effect, this method returns a collection that identifies groups that are defined for the collection (locally or inherited) in which 
-	 * this user has permission to remove content entities. If access to the collection is determined by group-membership, the return is limited 
-	 * to groups that have "remove" permission in the specified collection. If access is not defined by groups (i.e. it is "site" access), the return 
+	 * Access a collection (Group) of groups to which this user has access and whose members have "content.delete" permission in the collection.
+	 * In effect, this method returns a collection that identifies groups that are defined for the collection (locally or inherited) in which
+	 * this user has permission to remove content entities. If access to the collection is determined by group-membership, the return is limited
+	 * to groups that have "remove" permission in the specified collection. If access is not defined by groups (i.e. it is "site" access), the return
 	 * includes all groups defined in the site for which this user has remove permission in this collection.
-	 * 
+	 *
 	 * @param collectionId
 	 *        The id for the collection.
 	 */
@@ -10445,7 +10445,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			ResourceProperties props = getProperties(collectionId);
 			owner = props.getProperty(ResourceProperties.PROP_CREATOR);
 		}
-		catch ( Exception e ) 
+		catch ( Exception e )
 		{
 			// assume user is not owner
 		}
@@ -10465,14 +10465,14 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		{
 			rv.addAll(groups);
 		}
-		return rv;		
+		return rv;
 	}
 
 
 	/**
-	 * Get a collection (Group) of groups that are defined in the containing context of a resource and that this user can access 
+	 * Get a collection (Group) of groups that are defined in the containing context of a resource and that this user can access
 	 * in the way described by a function string.
-	 * 
+	 *
 	 * @param function
 	 *        The function to check
 	 * @param refString
@@ -10583,7 +10583,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		if (id == null) {
 			return null;
 		}
-		
+
 		if (id.startsWith("/user/"))
 		{
 			try
@@ -10622,7 +10622,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		/** When true, the collection has been removed. */
 		protected boolean m_isRemoved = false;
 
-		/** The access mode for this entity (e.g., "group" vs "site") */ 
+		/** The access mode for this entity (e.g., "group" vs "site") */
 		protected AccessMode m_access = AccessMode.INHERITED;
 
 		/** The date/time after which the entity should no longer be generally available */
@@ -10659,7 +10659,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		 * @param context
 		 * @return
 		 */
-		public String getContext() 
+		public String getContext()
 		{
 			String context = null;
 			Matcher contextMatcher = contextPattern.matcher(this.m_id);
@@ -10810,7 +10810,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		/**
 		 * @inheritDoc
 		 */
-		public void setGroupAccess(Collection groups) throws InconsistentException, PermissionException 
+		public void setGroupAccess(Collection groups) throws InconsistentException, PermissionException
 		{
 			if (groups == null || groups.isEmpty())
 			{
@@ -10844,7 +10844,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 				catch (IdUnusedException e)
 				{
 
-				} 
+				}
 			}
 
 			Collection newGroups = new ArrayList();
@@ -10870,17 +10870,17 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 			if(this.m_access != AccessMode.GROUPED || !(newGroups.containsAll(this.m_groups) && this.m_groups.containsAll(newGroups))) {
 				this.m_accessUpdated = true;
-				
+
 				this.m_access = AccessMode.GROUPED;
 				this.m_groups.clear();
 				this.m_groups.addAll(newGroups);
 			}
-			
+
 		}
 
 
 		/**
-		 * Loads a collection of group references. Any items not found aren't 
+		 * Loads a collection of group references. Any items not found aren't
 		 * included in the returned collection;
 		 * @param groupRefs The group references to load.
 		 * @return The group objects corresponding to the group references. Will
@@ -10926,7 +10926,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		 * @inheritDoc
 		 * @see org.sakaiproject.content.api.GroupAwareEntity#getInheritedGroups()
 		 */
-		public Collection getInheritedGroups() 
+		public Collection getInheritedGroups()
 		{
 			Collection groups = new ArrayList();
 			ContentEntity next = ((ContentEntity) this).getContainingCollection();
@@ -10945,7 +10945,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		 * @inheritDoc
 		 * @see org.sakaiproject.content.api.GroupAwareEntity#getInheritedAccess()
 		 */
-		public AccessMode getInheritedAccess() 
+		public AccessMode getInheritedAccess()
 		{
 			AccessMode access = AccessMode.INHERITED;
 			ContentCollection parent = ((ContentEntity) this).getContainingCollection();
@@ -10969,15 +10969,15 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		 * @inheritDoc
 		 * @see org.sakaiproject.content.api.GroupAwareEntity#getInheritedGroupObjects()
 		 */
-		public Collection getInheritedGroupObjects() 
+		public Collection getInheritedGroupObjects()
 		{
 			return findGroupObjects(getInheritedGroups());
 		}
 
-		/** 
+		/**
 		 * Determine whether current user can update the group assignments (add/remove groups) for the current resource.
-		 * This is based on whether the user has adequate rights defined for the group (AUTH_RESOURCE_ADD) or for the 
-		 * containing collection of the resource (AUTH_RESOURCE_ADD).  
+		 * This is based on whether the user has adequate rights defined for the group (AUTH_RESOURCE_ADD) or for the
+		 * containing collection of the resource (AUTH_RESOURCE_ADD).
 		 * @param group The group ionvolved in the query.
 		 * @return true if allowed, false otherwise.
 		 */
@@ -10987,10 +10987,10 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			return allowGroupUpdate(group, resourceRef);
 		}
 
-		/** 
+		/**
 		 * Determine whether current user can update the group assignments (add/remove groups) for a specified resource.
-		 * This is based on whether the user has adequate rights defined for the group (AUTH_RESOURCE_ADD) or for the 
-		 * containing collection of the resource (AUTH_RESOURCE_ADD).  
+		 * This is based on whether the user has adequate rights defined for the group (AUTH_RESOURCE_ADD) or for the
+		 * containing collection of the resource (AUTH_RESOURCE_ADD).
 		 * @param group The group ionvolved in the query.
 		 * @param resourceRef A reference string for the resource.
 		 * @return true if allowed, false otherwise.
@@ -11014,12 +11014,12 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			}
 			return date;
 		}
-		
+
 		public Time getRetractDate()
 		{
 			return m_retractDate;
 		}
-		
+
 		public Date getRetractTime()
 		{
 			Date date = null;
@@ -11028,7 +11028,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			}
 			return date;
 		}
-		
+
 		@Override
 		public Instant getReleaseInstant() {
 			Instant instant = null;
@@ -11050,18 +11050,18 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		@Override
 		public void setReleaseInstant(Instant date) {
 			setReleaseDate(timeService.newTime(date.toEpochMilli()));
-			
+
 		}
 
 		@Override
 		public void setRetractInstant(Instant time) {
 			setRetractDate(timeService.newTime(time.toEpochMilli()));
-			
+
 		}
 
 
 		/**
-		 * @return true if a change has been maded in any settings affecting visibility 
+		 * @return true if a change has been maded in any settings affecting visibility
 		 * for this resource, or false otherwise.
 		 */
 		public boolean isVisibilityUpdated() {
@@ -11069,8 +11069,8 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		}
 
 		/**
-		 * @return true if a change has been made in any settings affecting whether this 
-		 * entity can be accessed publicly, by members of a single site, or by members of 
+		 * @return true if a change has been made in any settings affecting whether this
+		 * entity can be accessed publicly, by members of a single site, or by members of
 		 * one or more authz groups, or false otherwise.
 		 */
 		public boolean isAccessUpdated() {
@@ -11081,7 +11081,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			return StringUtils.equalsIgnoreCase("true", entity.getProperties().getProperty(ConditionService.PROP_CONDITIONAL_RELEASE));
 		}
 
-		public boolean isAvailable() 
+		public boolean isAvailable()
 		{
 			boolean available = !this.isHidden();
 			boolean isHiddenWebFolder = false;
@@ -11093,7 +11093,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			}
 
 			while (available && currentEntity != null) {
-			
+
 				if(available && (currentEntity.getReleaseDate() != null || currentEntity.getRetractDate() != null || isConditionallyReleased(currentEntity)))
 				{
 					Time now = timeService.newTime();
@@ -11133,7 +11133,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			return (available && isHiddenWebFolder && this.getId().endsWith(Entity.SEPARATOR))?!available:available;
 		}
 
-		public boolean isHidden() 
+		public boolean isHidden()
 		{
 			return this.m_hidden;
 		}
@@ -11161,7 +11161,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		{
 			setReleaseDate(timeService.newTime(date.getTime()));
 		}
-		
+
 		public void setRetractDate(Time time)
 		{
 			if(time == null)
@@ -11185,8 +11185,8 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		{
 			setRetractDate(timeService.newTime(time.getTime()));
 		}
-		
-		public void setAvailability(boolean hidden, Time releaseDate, Time retractDate) 
+
+		public void setAvailability(boolean hidden, Time releaseDate, Time retractDate)
 		{
 			if(m_hidden != hidden) {
 				this.m_visibilityUpdated = true;
@@ -11233,10 +11233,10 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		@Override
 		public void setAvailabilityInstant(boolean hidden, Instant releaseDate, Instant retractDate) {
-			setAvailability(hidden, timeService.newTime(releaseDate.toEpochMilli()), timeService.newTime(retractDate.toEpochMilli()));	
+			setAvailability(hidden, timeService.newTime(releaseDate.toEpochMilli()), timeService.newTime(retractDate.toEpochMilli()));
 		}
-		
-		public void setHidden() 
+
+		public void setHidden()
 		{
 			if(!m_hidden) {
 				this.m_visibilityUpdated = true;
@@ -11279,19 +11279,19 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 				int count = 1;
 				if(containingCollectionId != null)
 				{
-					try 
+					try
 					{
 						count = getCollectionSize(containingCollectionId) + 1;
-					} 
-					catch (IdUnusedException e) 
+					}
+					catch (IdUnusedException e)
 					{
 						log.error(e.getMessage(), e);
-					} 
-					catch (TypeException e) 
+					}
+					catch (TypeException e)
 					{
 						log.error(e.getMessage(), e);
-					} 
-					catch (PermissionException e) 
+					}
+					catch (PermissionException e)
 					{
 						log.error(e.getMessage(), e);
 					}
@@ -11352,7 +11352,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		private boolean m_sessionBound = false;
 		/**
 		 * Construct with an id.
-		 * 
+		 *
 		 * @param id
 		 *        The unique channel id.
 		 */
@@ -11379,7 +11379,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			{
 				/*
 				 * (non-Javadoc)
-				 * 
+				 *
 				 * @see org.sakaiproject.util.DefaultEntityHandler#startElement(java.lang.String,
 				 *      java.lang.String, java.lang.String,
 				 *      org.xml.sax.Attributes)
@@ -11477,7 +11477,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Construct as a copy of another.
-		 * 
+		 *
 		 * @param other
 		 *        The other to copy.
 		 */
@@ -11490,7 +11490,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Construct from info in XML in a DOM element.
-		 * 
+		 *
 		 * @param el
 		 *        The XML DOM element.
 		 */
@@ -11512,7 +11512,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			//			}
 			//			catch (IdUnusedException e)
 			//			{
-			//				
+			//
 			//			}
 
 			// the children (properties)
@@ -11534,14 +11534,14 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 					    setPriority();
 					}
 				}
-				// look for groups 
+				// look for groups
 				else if(element.getTagName().equals(GROUP_LIST))
 				{
 					String groupRef = element.getAttribute(GROUP_NAME);
 					if(groupRef != null)
 					{
 						m_groups.add(groupRef);
-					} 
+					}
 				}
 				else if(element.getTagName().equals("rightsAssignment"))
 				{
@@ -11593,7 +11593,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		} // BaseCollectionEdit
 
 		/**
-		 * 
+		 *
 		 */
 		public BaseCollectionEdit()
 		{
@@ -11602,7 +11602,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Take all values from this object.
-		 * 
+		 *
 		 * @param user
 		 *        The other object to take values from.
 		 */
@@ -11666,7 +11666,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Access the URL which can be used to access the resource.
-		 * 
+		 *
 		 * @return The URL which can be used to access the resource.
 		 */
 		public String getUrl()
@@ -11677,7 +11677,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Access the internal reference which can be used to access the resource from within the system.
-		 * 
+		 *
 		 * @return The the internal reference which can be used to access the resource from within the system.
 		 */
 		public String getReference()
@@ -11704,7 +11704,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Access the id of the resource.
-		 * 
+		 *
 		 * @return The id.
 		 */
 		public String getId()
@@ -11715,7 +11715,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Access a List of the collection's internal members, each a resource id string.
-		 * 
+		 *
 		 * @return a List of the collection's internal members, each a resource id string (may be empty).
 		 */
 		public List getMembers()
@@ -11746,7 +11746,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Access the size of all the resource body bytes within this collection in Kbytes.
-		 * 
+		 *
 		 * @return The size of all the resource body bytes within this collection in Kbytes.
 		 */
 		public long getBodySizeK()
@@ -11797,7 +11797,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Access a List of the collections' internal members as full ContentResource or ContentCollection objects.
-		 * 
+		 *
 		 * @return a List of the full objects of the members of the collection.
 		 */
 		public List<ContentEntity> getMemberResources()
@@ -11819,7 +11819,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			// sort %%%
 			// Collections.sort(mbrs);
 
-			cacheEntities(mbrs); 
+			cacheEntities(mbrs);
 
 			return mbrs;
 
@@ -11853,7 +11853,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Access the collection's properties.
-		 * 
+		 *
 		 * @return The collection's properties.
 		 */
 		public ResourceProperties getProperties()
@@ -11907,7 +11907,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Serialize the resource into XML, adding an element to the doc under the top of the stack element.
-		 * 
+		 *
 		 * @param doc
 		 *        The DOM doc to contain the XML (or null for a string return).
 		 * @param stack
@@ -11941,7 +11941,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			collection.setAttribute(HIDDEN, Boolean.toString(m_hidden));
 			if(!m_hidden && m_releaseDate != null)
 			{
-				// add release-date 
+				// add release-date
 				collection.setAttribute(RELEASE_DATE, m_releaseDate.toString());
 			}
 			if(!m_hidden && m_retractDate != null)
@@ -11977,7 +11977,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Access the event code for this edit.
-		 * 
+		 *
 		 * @return The event code for this edit.
 		 */
 		protected String getEvent()
@@ -11987,7 +11987,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Set the event code for this edit.
-		 * 
+		 *
 		 * @param event
 		 *        The event code for this edit.
 		 */
@@ -11998,7 +11998,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Access the resource's properties for modification
-		 * 
+		 *
 		 * @return The resource's properties.
 		 */
 		public ResourcePropertiesEdit getPropertiesEdit()
@@ -12018,7 +12018,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Check to see if the edit is still active, or has already been closed.
-		 * 
+		 *
 		 * @return true if the edit is active, false if it's been closed.
 		 */
 		public boolean isActiveEdit()
@@ -12078,7 +12078,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			return true;
 		}
 
-		public void setPriorityMap(Map<String, Integer> priorities) 
+		public void setPriorityMap(Map<String, Integer> priorities)
 		{
 			if(m_prioritySortEnabled)
 			{
@@ -12090,7 +12090,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 					Entry entry = (Entry) nameIt.next();
 					String name = (String) entry.getKey();
 					Integer priority = (Integer) entry.getValue();
-					
+
 					try
 					{
 						if(name.endsWith(Entity.SEPARATOR))
@@ -12132,23 +12132,23 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 					{
 						// TODO Auto-generated catch block
 						log.error("TypeException",e);
-					} 
-					catch (IdUnusedException e) 
+					}
+					catch (IdUnusedException e)
 					{
 						// TODO Auto-generated catch block
 						log.error("IdUnusedException",e);
-					} 
-					catch (PermissionException e) 
+					}
+					catch (PermissionException e)
 					{
 						// TODO Auto-generated catch block
 						log.error("PermissionException",e);
-					} 
-					catch (InUseException e) 
+					}
+					catch (InUseException e)
 					{
 						// TODO Auto-generated catch block
 						log.error("InUseException",e);
-					} 
-					catch (ServerOverloadException e) 
+					}
+					catch (ServerOverloadException e)
 					{
 						// TODO Auto-generated catch block
 						log.error("ServerOverloadException",e);
@@ -12158,7 +12158,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			}
 		}
 
-		public int getMemberCount() 
+		public int getMemberCount()
 		{
 			int count = 0;
 			Integer countObj = (Integer) threadLocalManager.get("getMemberCount@" + this.m_id);
@@ -12332,7 +12332,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			if ( !m_sessionBound && m_active ) {
 				//log.warn("Edit Object not closed correctly, Cancelling "+this.getId());
 				cancelCollection(this);
-			}			
+			}
 		}
 
 
@@ -12376,7 +12376,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
          * Indicates this resource is a reference copy of an existing resource,
          * this id will be the resource it is a copy of
          * WARNING: this will null out the content values (stream and body)
-		 * 
+		 *
 		 * @param referenceCopy the id of the resource this is a copy of
 		 */
         public void setReferenceCopy(String referenceCopy) {
@@ -12387,7 +12387,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Construct.
-		 * 
+		 *
 		 * @param id
 		 *        The local resource id.
 		 */
@@ -12410,7 +12410,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Construct as a copy of another
-		 * 
+		 *
 		 * @param other
 		 *        The other to copy.
 		 */
@@ -12425,7 +12425,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Set the file path for this resource
-		 * 
+		 *
 		 * @param time
 		 *        The time on which to based the path.
 		 */
@@ -12446,7 +12446,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Take all values from this object
-		 * 
+		 *
 		 * @param other
 		 *        The other object to take values from.
 		 */
@@ -12456,9 +12456,9 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Set the values in this edit to equal the values in the passing object
-		 * 
+		 *
 		 * @param other the object to take values from.
-		 * @param reference if true then make a reference copy (i.e. do not duplicate the actual 
+		 * @param reference if true then make a reference copy (i.e. do not duplicate the actual
 		 */
         protected void set(ContentResource other, boolean reference) {
 			m_id = other.getId();
@@ -12522,7 +12522,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		} // set
 
 		/**
-		 * 
+		 *
 		 */
 		public BaseResourceEdit()
 		{
@@ -12531,7 +12531,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		}
 		/**
 		 * Construct from information in XML in a DOM element. Limited to body size of <= 2G.
-		 * 
+		 *
 		 * @param el
 		 *        The XML DOM element.
 		 */
@@ -12572,7 +12572,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 					{
 						log.error(e.getMessage(), e);
 					}
-					
+
 					m_body = new byte[(int) m_contentLength];
 					System.arraycopy(decoded, 0, m_body, 0, (int) m_contentLength);
 				}
@@ -12602,7 +12602,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 				// look for groups
 				else if(element.getTagName().equals(GROUP_LIST))
 				{
-					m_groups.add(element.getAttribute(GROUP_NAME)); 
+					m_groups.add(element.getAttribute(GROUP_NAME));
 				}
 
 				// extract access
@@ -12664,7 +12664,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			{
 				/*
 				 * (non-Javadoc)
-				 * 
+				 *
 				 * @see org.sakaiproject.util.DefaultEntityHandler#startElement(java.lang.String,
 				 *      java.lang.String, java.lang.String,
 				 *      org.xml.sax.Attributes)
@@ -12825,7 +12825,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		 */
 		public String getUrl(boolean relative, String rootProperty)
 		{
-			return (relative ? m_serverConfigurationService.getAccessPath() : m_serverConfigurationService.getAccessUrl()) 
+			return (relative ? m_serverConfigurationService.getAccessPath() : m_serverConfigurationService.getAccessUrl())
 			+ Web.escapeUrl(getAlternateReferenceRoot(rootProperty) + m_relativeAccessPoint
 			+ convertIdToUserEid(m_id));
 		}
@@ -12848,7 +12848,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Compute an alternate root for a reference, based on the value of the specified property.
-		 * 
+		 *
 		 * @param rootProperty
 		 *        The property name.
 		 * @return The alternate root, or "" if there is none.
@@ -12890,7 +12890,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Access the id of the resource.
-		 * 
+		 *
 		 * @return The id.
 		 */
 		public String getId()
@@ -12901,7 +12901,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Access the content byte length.
-		 * 
+		 *
 		 * @return The content byte length.
 		 */
 		public long getContentLength()
@@ -12919,7 +12919,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Access the resource MIME type.
-		 * 
+		 *
 		 * @return The resource MIME type.
 		 */
 		public String getContentType()
@@ -12934,7 +12934,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		 * Access the content bytes of the resource. As this reads the entire content into memory, only use this method
 		 * when the resource is known to be relatively small. For larger files and all files that exceed 2G in size, use
 		 * streamContent() instead.
-		 * 
+		 *
 		 * @return An array containing the bytes of the resource's content.
 		 * @exception ServerOverloadException
 		 *            if server is configured to store resource body in filesystem and error occurs trying to read from filesystem,
@@ -12954,7 +12954,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 				if (m_contentLength == 0)
 				{
 					rv = new byte[0];
-				} 
+				}
 				else if (m_contentLength > 0)
 				{
 					// TODO: we do not store the body with the object, so as not to cache the body bytes -ggolden
@@ -12969,7 +12969,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Access the content as a stream. Please close the stream when done as it may be holding valuable system resources.
-		 * 
+		 *
 		 * @return an InputStream through which the bytes of the resource can be read.
 		 */
 		public InputStream streamContent() throws ServerOverloadException
@@ -12994,7 +12994,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Access the resource's properties.
-		 * 
+		 *
 		 * @return The resource's properties.
 		 */
 		public ResourceProperties getProperties()
@@ -13014,7 +13014,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Set the content byte length.
-		 * 
+		 *
 		 * @param length
 		 *        The content byte length.
 		 */
@@ -13026,7 +13026,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Set the resource MIME type.
-		 * 
+		 *
 		 * @param type
 		 *        The resource MIME type.
 		 */
@@ -13039,7 +13039,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Set the resource content.
-		 * 
+		 *
 		 * @param content
 		 *        An array containing the bytes of the resource's content.
 		 */
@@ -13076,13 +13076,13 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			}
 
 			m_contentStream = stream;
-			// m_contentLength = 
+			// m_contentLength =
 		}
 
 
 		/**
 		 * Serialize the resource into XML, adding an element to the doc under the top of the stack element.
-		 * 
+		 *
 		 * @param doc
 		 *        The DOM doc to contain the XML (or null for a string return).
 		 * @param stack
@@ -13140,7 +13140,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			resource.setAttribute(HIDDEN, Boolean.toString(m_hidden));
 			if(!m_hidden && m_releaseDate != null)
 			{
-				// add release-date 
+				// add release-date
 				resource.setAttribute(RELEASE_DATE, m_releaseDate.toString());
 			}
 			if(!m_hidden && m_retractDate != null)
@@ -13173,7 +13173,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Access the event code for this edit.
-		 * 
+		 *
 		 * @return The event code for this edit.
 		 */
 		protected String getEvent()
@@ -13183,7 +13183,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Set the event code for this edit.
-		 * 
+		 *
 		 * @param event
 		 *        The event code for this edit.
 		 */
@@ -13194,7 +13194,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Access the resource's properties for modification
-		 * 
+		 *
 		 * @return The resource's properties.
 		 */
 		public ResourcePropertiesEdit getPropertiesEdit()
@@ -13214,7 +13214,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Check to see if the edit is still active, or has already been closed.
-		 * 
+		 *
 		 * @return true if the edit is active, false if it's been closed.
 		 */
 		public boolean isActiveEdit()
@@ -13441,7 +13441,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		 */
 		public void setSerializableAccess(AccessMode access)
 		{
-			m_access = access;			
+			m_access = access;
 		}
 
 
@@ -13455,7 +13455,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			if ( body != null ) {
 				log.warn("Body serialization from Entity, this is bad and will slow Sakai right down ");
 			}
-			m_body = body;			
+			m_body = body;
 		}
 
 
@@ -13546,7 +13546,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		 */
 		public void setSerializableResourceType(String resourceType)
 		{
-			m_resourceType = resourceType;			
+			m_resourceType = resourceType;
 		}
 
 
@@ -13565,7 +13565,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			if ( !m_sessionBound && m_active ) {
 				//log.warn("Edit Object not closed correctly, Cancelling "+this.getId());
 				cancelResource(this);
-			}			
+			}
 		}
 
 		/**
@@ -13604,13 +13604,13 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Get a count of all members of a collection, where 'member' means the collection
-		 * is the immediate parent of the item.  The count is not recursive and it will 
+		 * is the immediate parent of the item.  The count is not recursive and it will
 		 * include all resources and collections whose immediate parent is the collection
 		 * identified by the parameter.
 		 */
 		public int getMemberCount(String collectionId);
 
-		/** 
+		/**
 		 * Access a collection of string identifiers for all ContentResource entities
 		 * that are members of the ContentCollection identified by the parameter.
 		 * @param collectionId
@@ -13618,7 +13618,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		 */
 		public Collection<String> getMemberResourceIds(String collectionId);
 
-		/** 
+		/**
 		 * Access a collection of string identifiers for all ContentCollection entities
 		 * that are members of the ContentCollection identified by the parameter.
 		 * @param collectionId
@@ -13673,7 +13673,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Return the identified resource, or null if not found.
-		 * @throws TypeException 
+		 * @throws TypeException
 		 */
 		public ContentResource getResource(String id) throws TypeException;
 
@@ -13688,7 +13688,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		public List<ContentResourceEdit> getResources(ContentCollection collection);
 
 		/**
-		 * 
+		 *
 		 * @param collectionId
 		 * @return
 		 */
@@ -13716,14 +13716,14 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Forget about a resource (and associated content).
-		 * 
+		 *
 		 * @param resource the resource to remove
 		 */
 		public void removeResource(ContentResourceEdit resource);
 
 		/**
          * Forget about a resource with the option to leave the content in place
-		 * 
+		 *
          * @param resource the resource to remove
 		 * @param removeContent if true, then also remove the content
 		 */
@@ -13731,7 +13731,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Read the resource's body.
-		 * 
+		 *
 		 * @exception ServerOverloadException
 		 *            if server is configured to save resource body in filesystem and an error occurs while trying to access the filesystem.
 		 */
@@ -13739,7 +13739,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/*
 		 * Stream the resource's body for deleted resource.
-		 * 
+		 *
 		 * @exception ServerOverloadException
 		 *            if server is configured to save resource body in filesystem and an error occurs while trying to access the filesystem.
 		 */
@@ -13747,7 +13747,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		/**
 		 * Stream the resource's body.
-		 * 
+		 *
 		 * @exception ServerOverloadException
 		 *            if server is configured to save resource body in filesystem and an error occurs while trying to access the filesystem.
 		 */
@@ -13757,7 +13757,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		 * Return a single character representing the access mode of the resource or collection identified by the parameter, or null if not found.
 		 * @param id
 		 * @return A character identifying the access mode for the content entity, one of 's' for site, 'p' for public or 'g' for group.
-		 * @throws ServerOverloadException 
+		 * @throws ServerOverloadException
 
 		 */
 		//public char getAccessMode(String id);
@@ -13767,19 +13767,19 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		public ContentResourceEdit putDeleteResource(String resourceId, String uuid, String userId);
 
-		public List getDeletedResources(ContentCollection collection);      
-		public ContentResourceEdit editDeletedResource(String resourceId);      
-		public void removeDeletedResource(ContentResourceEdit edit); 
+		public List getDeletedResources(ContentCollection collection);
+		public ContentResourceEdit editDeletedResource(String resourceId);
+		public void removeDeletedResource(ContentResourceEdit edit);
 		public void cancelDeletedResource(ContentResourceEdit edit);
-		
+
 		/**
-		 * Retrieve a collection of ContentResource objects pf a particular resource-type.  The collection will 
-		 * contain no more than the number of items specified as the pageSize, where pageSize is a non-negative 
+		 * Retrieve a collection of ContentResource objects pf a particular resource-type.  The collection will
+		 * contain no more than the number of items specified as the pageSize, where pageSize is a non-negative
 		 * number less than or equal to 1028. The resources will be selected in ascending order by resource-id.
-		 * If the resources of the specified resource-type in the ContentHostingService in ascending order by 
-		 * resource-id are indexed from 0 to M and this method is called with parameters of N for pageSize and 
+		 * If the resources of the specified resource-type in the ContentHostingService in ascending order by
+		 * resource-id are indexed from 0 to M and this method is called with parameters of N for pageSize and
 		 * I for page, the resources returned will be those with indexes (I*N) through ((I+1)*N - 1).  For example,
-		 * if pageSize is 1028 and page is 0, the resources would be those with indexes of 0 to 1027.  
+		 * if pageSize is 1028 and page is 0, the resources would be those with indexes of 0 to 1027.
 		 *
 		 * @param resourceType select resources where CONTENT_RESOURCE.RESOURCE_TYPE_ID equals resourceType
 		 * @param pageSize (page) size of results
@@ -13787,7 +13787,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		 * @return collection of ContentResource
 		 */
 		public Collection<ContentResource> getResourcesOfType(String resourceType, int pageSize, int page);
-      
+
 		/**
 		 * Retrieve a collection of ContentResource objects of a particular resource-type in a set of contexts.
 		 *
@@ -13796,7 +13796,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		 * @return collection of ContentResource
 		 */
 		public Collection<ContentResource> getContextResourcesOfType(String resourceType, Set<String> contextIds);
-		
+
 	} // Storage
 
 	/**********************************************************************************************************************************************************************************************************************************************************
@@ -13805,7 +13805,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	/**
 	 * Get a new value for this key whose value has already expired in the cache.
-	 * 
+	 *
 	 * @param key
 	 *        The key whose value has expired and needs to be refreshed.
 	 * @param oldValue
@@ -13875,7 +13875,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	 */
 	public void registerSiteContentAdvisorProvidor(SiteContentAdvisorProvider advisor, String type)
 	{
-		siteContentAdvisorsProviders.put(type, advisor);		
+		siteContentAdvisorsProviders.put(type, advisor);
 	}
 
 	/**
@@ -13911,7 +13911,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	}
 
 
-	protected long getSizeForContext(String context) 
+	protected long getSizeForContext(String context)
 	{
 		return 0;
 	}
@@ -13966,7 +13966,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 								log.debug("remove folders resources" + ee);
 							}
 						}
-						else 
+						else
 						{
 							try
 							{
@@ -13990,14 +13990,14 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			log.debug("BaseContentService Resources transferCopyEntities Error" + e);
 		}
 		transversalMap.putAll(transferCopyEntities(fromContext, toContext, ids, null));
-		
+
 		return transversalMap;
 	}
 
 	// Code lightly adapted from Apache Tomcat 5.5.27 catalina default servlet
-	
+
 	/**
-	 * Range inner class. From Apache Tomcat DefaultServlet.java 
+	 * Range inner class. From Apache Tomcat DefaultServlet.java
 	 *
 	 */
     protected class Range {
@@ -14038,7 +14038,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
     	/* Commented out pending implementation of last-modified / if-modified.
     	 * See http://jira.sakaiproject.org/jira/browse/SAK-3916
-    	
+
         // Checking If-Range
 
     	String headerValue = request.getHeader("If-Range");
@@ -14073,9 +14073,9 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
             }
 
         }
-        
+
     	*/
-    	
+
         if (fileLength == 0)
             return null;
 
@@ -14169,7 +14169,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
     /**
      * Copy the partial contents of the specified input stream to the specified
      * output stream.
-     * 
+     *
      * @param istream The input stream to read from
      * @param ostream The output stream to write to
      * @param start Start of the range which will be copied
@@ -14212,7 +14212,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
         return exception;
     }
 
-  
+
     /**
      * Copy the contents of the specified input stream to the specified
      * output stream in a set of chunks as per the specified ranges.
@@ -14228,11 +14228,11 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
         throws IOException {
 
         IOException exception = null;
-                        
+
         while ( (exception == null) && (ranges.hasNext()) ) {
 
             Range currentRange = (Range) ranges.next();
-                  
+
             // Writing MIME header.
             IOUtils.write("\r\n--" + MIME_SEPARATOR + "\r\n", out);
             if (contentType != null)
@@ -14250,10 +14250,10 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 				exception = new IOException("ServerOverloadException reported getting inputstream");
 				throw exception;
 			}
-			
+
             InputStream istream =
                 new BufferedInputStream(in, STREAM_BUFFER_SIZE);
-          
+
             exception = copyRange(istream, out, currentRange.start, currentRange.end);
 
             try {
@@ -14264,7 +14264,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
         }
 
         IOUtils.write("\r\n--" + MIME_SEPARATOR + "--\r\n", out);
-        
+
         // Rethrow any exception that has occurred
         if (exception != null) {
             throw exception;
@@ -14299,7 +14299,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			}
 		}
 	}
-    
+
     /**
      * Expand the supplied resource under its parent collection.
      * If the zip is bigger than the max zip size specified in properties extraction will
@@ -14341,8 +14341,8 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
             cancelResource(resource); //commitResource(resource); // KNL-1220
         }
     }
-    
-    
+
+
 	private static final String MACRO_USER_ID             = "${USER_ID}";
 	private static final String MACRO_USER_EID            = "${USER_EID}";
 	private static final String MACRO_USER_FIRST_NAME     = "${USER_FIRST_NAME}";
@@ -14351,43 +14351,43 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	private static final String MACRO_DEFAULT_ALLOWED = "${USER_ID},${USER_EID},${USER_FIRST_NAME},${USER_LAST_NAME}";
 
 	/**
-     * Expands a URL that may contain a set of predefined macros, into the full URL. 
+     * Expands a URL that may contain a set of predefined macros, into the full URL.
      * This should only ever happen when its about to be redirected to, ie never stored and never displayed
      * so that people dont accidentally send an expanded URL containing personally identifying information to someone else, for example.
      * @param url original url that may contain macros
      * @return url with macros expanded
-     * 
+     *
      * Note that much of this is from the web content tool though site related properties have been removed. This is actually called from /access/ which has no site context so
      * any lookups of site_id or user role (which infers a site) will not work. The site_id may be able to be passed in, as the original resource does have context,
      * however that needs to be more fully explored for security reasons and as such, has not been included.
-     * 
+     *
      * See SAK-23587
      */
     public String expandMacros(String url) {
-    	
+
     	if(log.isDebugEnabled()){
     		log.debug("Original url: " + url);
     	}
-    	
+
     	if (!StringUtils.contains(url, "${")) {
 			return url;
 		}
-    	
+
     	//handled explicitly like this for backwards compatibility since comma separated strings from SCS are not supported in all versions of Sakai yet.
     	String allowedMacros = m_serverConfigurationService.getString("content.allowed.macros", MACRO_DEFAULT_ALLOWED);
     	List<String> macros = new ArrayList<String>();
     	if(StringUtils.isNotBlank(allowedMacros)) {
     		macros = Arrays.asList(StringUtils.split(allowedMacros, ','));
     	}
-    	
+
     	for(String macro: macros) {
     		url = StringUtils.replace(url, macro, getMacroValue(macro));
     	}
-    	
+
     	if(log.isDebugEnabled()){
     		log.debug("Expanded url: " + url);
     	}
-    	
+
     	return url;
     }
 
@@ -14470,7 +14470,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			log.error("Error resolving macro:" + macroName + ": " + e.getClass() + ": " + e.getCause());
 			return "";
 		}
-		
+
 		//unsupported, use macro name as is.
 		return macroName;
 	}
@@ -14486,12 +14486,12 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
      * Implementation of HardDeleteAware to allow content to be fully purged
      */
     public void hardDelete(String siteId) {
-    	
+
 		/* Needs to cater for both db and filesystem storage, and there are a couple of situations to be handled
 		 * 1. FS storage. File content is actually deleted so we can just issue a delete on the files and we are done.
 		 * 2. FS storage + restore function enabled. File is deleted as per 1 however a copy of file is retained in bodyPathDeleted location
 		 * 3. DB storage. Binary is (meant to be) deleted. Backup binary is created.
-		 * 
+		 *
 		 * Therefore we need to delete the files (1 handled), then get any backed up files and delete them also (2 and 3 handled). Then delete the collection to finalise things.
 		 */
 
@@ -14529,7 +14529,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		} catch (Exception e) {
 			log.warn("Failed to remove some content.", e);
 		}
-		
+
 		//cleanup
 		try {
 			log.debug("Removing collection: {}", collectionId);
