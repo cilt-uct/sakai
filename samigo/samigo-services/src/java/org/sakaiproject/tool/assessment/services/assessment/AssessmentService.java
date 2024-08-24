@@ -1052,7 +1052,7 @@ public class AssessmentService {
 		return result;
 	}
 
-	public List<AssessmentData> getAllActiveAssessmentsbyAgent(String fromContext) {
+	public List getAllActiveAssessmentsbyAgent(String fromContext) {
 		try {
 			return PersistenceService.getInstance().getAssessmentFacadeQueries()
 					.getAllActiveAssessmentsByAgent(fromContext);
