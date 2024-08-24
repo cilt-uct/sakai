@@ -401,41 +401,43 @@ export const graderRenderingMixin = Base => class extends Base {
             ${this._renderGradeInputs(this.i18n["gen.assign.gra"])}
             <!-- start hasAssociatedRubric -->
             ${this.hasAssociatedRubric === "true" ? html`
-              <div class="d-flex align-items-center mt-3">
-                <div>
-                  <button id="grader-rubric-button"
-                      class="btn btn-link"
-                      @click=${this._toggleRubric}
-                      aria-label="${this.i18n.grading_rubric}"
-                      title="${this.i18n.grading_rubric}"
-                      aria-controls="grader-rubric-block grader-controls-block">
-                    ${this.i18n.rubric}
-                  </button>
+              ${!this._rubricShowing ? html`
+                <div class="d-flex align-items-center mt-3">
+                  <div>
+                    <button id="grader-rubric-button"
+                        class="btn btn-link"
+                        @click=${this._toggleRubric}
+                        aria-label="${this.i18n.grading_rubric}"
+                        title="${this.i18n.grading_rubric}"
+                        aria-controls="grader-rubric-block grader-controls-block">
+                      ${this.i18n.rubric}
+                    </button>
+                  </div>
+                  <div>
+                    <sakai-rubric-grading-button
+                        id="grader-rubric-link"
+                        aria-label="${this.i18n.grading_rubric}"
+                        title="${this.i18n.grading_rubric}"
+                        @click=${this._toggleRubric}
+                        site-id="${portal.siteId}"
+                        tool-id="${this.toolId}"
+                        entity-id="${this.entityId}"
+                        evaluated-item-id="${this._submission.id}"
+                        aria-controls="grader-rubric-block grader-controls-block"
+                        only-show-if-evaluated>
+                    </sakai-rubric-grading-button>
+                    <sakai-rubric-evaluation-remover
+                        class="ms-2"
+                        site-id="${portal.siteId}"
+                        tool-id="${this.toolId}"
+                        entity-id="${this.entityId}"
+                        evaluated-item-id="${this._submission.id}"
+                        @evaluation-removed=${this._onEvaluationRemoved}
+                        only-show-if-evaluated>
+                    </sakai-rubric-evaluation-remover>
+                  </div>
                 </div>
-                <div>
-                  <sakai-rubric-grading-button
-                      id="grader-rubric-link"
-                      aria-label="${this.i18n.grading_rubric}"
-                      title="${this.i18n.grading_rubric}"
-                      @click=${this._toggleRubric}
-                      site-id="${portal.siteId}"
-                      tool-id="${this.toolId}"
-                      entity-id="${this.entityId}"
-                      evaluated-item-id="${this._submission.id}"
-                      aria-controls="grader-rubric-block grader-controls-block"
-                      only-show-if-evaluated>
-                  </sakai-rubric-grading-button>
-                  <sakai-rubric-evaluation-remover
-                      class="ms-2"
-                      site-id="${portal.siteId}"
-                      tool-id="${this.toolId}"
-                      entity-id="${this.entityId}"
-                      evaluated-item-id="${this._submission.id}"
-                      @evaluation-removed=${this._onEvaluationRemoved}
-                      only-show-if-evaluated>
-                  </sakai-rubric-evaluation-remover>
-                </div>
-              </div>
+              ` : nothing}
 
               <div id="grader-rubric-block" class="ms-2 ${this._rubricShowing ? "d-block" : "d-none"}">
                 <sakai-rubric-grading
@@ -455,7 +457,7 @@ export const graderRenderingMixin = Base => class extends Base {
                 <button class="btn btn-primary"
                     title="${this.i18n.rubric_done_tooltip}"
                     aria-label="${this.i18n.rubric_done_tooltip}"
-                    @click=${this._doneWithRubric}>
+                    @click=${this._closeRubric}>
                   ${this.i18n["gen.don"]}
                 </button>
               </div>
@@ -516,7 +518,7 @@ export const graderRenderingMixin = Base => class extends Base {
                     </button>
                   </div>
                 </div>
-                <div class="mt-2 ms-3 ${this._showRemoveFeedbackComment ? "d-block" : "d-none"}">
+                <div class="mt-2 ms-3 ${!this._feedbackCommentEditorShowing ? "d-block" : "d-none"}">
                   <button class="btn btn-transparent text-decoration-underline"
                       @click=${this._removeFeedbackComment}>
                     ${this.i18n["gen.remove"]}
@@ -619,14 +621,12 @@ export const graderRenderingMixin = Base => class extends Base {
                     </button>
                   </div>
                 </div>
-                ${!this.modified || this._submission.privateNotes === this._nonEditedSubmission.privateNotes ? html`
                 <div class="mt-2 ms-3 ${this._privateNotesEditorShowing ? "d-none" : "d-block"}">
                   <button class="btn btn-transparent text-decoration-underline"
                       @click=${this._removePrivateNotes}>
                     ${this.i18n["gen.remove"]}
                   </button>
                 </div>
-                ` : nothing }
               ` : nothing }
 
               <div id="private-notes-block" class="ms-2 ${this._privateNotesEditorShowing ? "d-block" : "d-none"}">

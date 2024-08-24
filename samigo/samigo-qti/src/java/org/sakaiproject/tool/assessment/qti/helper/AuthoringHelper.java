@@ -40,6 +40,9 @@ import javax.xml.transform.stream.StreamSource;
 import javax.xml.validation.*;
 
 import lombok.extern.slf4j.Slf4j;
+import org.sakaiproject.tool.assessment.data.dao.assessment.*;
+import org.sakaiproject.tool.assessment.facade.*;
+import org.sakaiproject.tool.assessment.services.assessment.PublishedAssessmentService;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;

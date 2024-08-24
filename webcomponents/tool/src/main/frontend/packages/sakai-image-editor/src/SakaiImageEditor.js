@@ -44,12 +44,11 @@ export class SakaiImageEditor extends SakaiDialogContent {
 
   done() {
 
-    this.cropper.getCroppedCanvas().toBlob(blob => {
-
+    const croppedCanvas = this.cropper.getCroppedCanvas({ maxWidth: 1920, maxHeight: 1080 });
+    croppedCanvas.toBlob(blob => {
       const url = URL.createObjectURL(blob);
       this.dispatchEvent(new CustomEvent("image-edited", { detail: { url, blob }, composed: true, bubbles: true }));
-    });
-
+    }, "image/webp", 0.75);
     this.close();
   }
 
@@ -75,7 +74,7 @@ export class SakaiImageEditor extends SakaiDialogContent {
   content() {
 
     return html`
-      <input type="file" accept="image/*" value="Choose an image" @change=${this.filePicked} />
+      <input type="file" accept="image/*" aria-label="${this._i18n.image_picker_label}" @change=${this.filePicked} />
       <img id="image" src="${this.imageUrl}" width="200" />
       <div id="controls">
         <sakai-button @click=${this.zoomIn} type="small" title="${this._i18n.zoom_in}" arial-label="${this._i18n.zoom_in}">
@@ -118,6 +117,9 @@ export class SakaiImageEditor extends SakaiDialogContent {
     SakaiDialogContent.styles,
     cropperStyles,
     css`
+      input[type='file'] {
+        margin-bottom: 10px;
+      }
       #controls {
         margin-top: 10px;
       }
