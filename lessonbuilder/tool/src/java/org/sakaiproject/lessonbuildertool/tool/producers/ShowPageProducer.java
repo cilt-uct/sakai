@@ -3238,9 +3238,10 @@ public class ShowPageProducer implements ViewComponentProducer, DefaultView, Nav
 						    responseCounts.put(total.getResponseId(), total.getCount());
 						
 						for(int j = 0; j < answers.size(); j++) {
+							char letter = (char) ('A' + j); // Convert number to corresponding letter
 							UIBranchContainer pollContainer = UIBranchContainer.make(tableRow, "questionPollData:", String.valueOf(j));
-							UIOutput.make(pollContainer, "questionPollText", Integer.toString(j+1));
-							UIOutput.make(pollContainer, "questionPollLegend", Integer.toString(j+1) + ":" + answers.get(j).getText());
+							UIOutput.make(pollContainer, "questionPollText", String.valueOf(letter));
+							UIOutput.make(pollContainer, "questionPollLegend", letter + ":" + answers.get(j).getText());
 							UIOutput.make(pollContainer, "questionPollNumber", String.valueOf(responseCounts.get(answers.get(j).getId())));
 						}
 					}
@@ -4640,6 +4641,9 @@ public class ShowPageProducer implements ViewComponentProducer, DefaultView, Nav
 		UILink.make(tofill, "mm-additional-website-instructions", messageLocator.getMessage("simplepage.additional-website-instructions-label"), 
 			    getLocalizedURL( "website.html", true));
 
+		
+		
+		UIOutput.make(tofill, "mm-max-file-upload-size", String.valueOf(uploadMax));
 		UIForm form = UIForm.make(tofill, "add-multimedia-form");
 		makeCsrf(form, "csrf9");
 

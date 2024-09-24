@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -150,7 +151,7 @@ public class PortalServiceImpl implements PortalService, Observer
 				boolean justLoggedIn = BooleanUtils.toBoolean((Boolean) sakaiSession.getAttribute(Session.JUST_LOGGED_IN));
 				String userId = sakaiSession.getUserId();
 				if (justLoggedIn && userId != null && userId.equals(event.getUserId())) {
-					syncUserSitesWithFavoriteSites(userId);
+					syncUserSitesWithPortalNav(userId);
 				}
 				break;
 			}
@@ -196,7 +197,7 @@ public class PortalServiceImpl implements PortalService, Observer
 							List<RecentSite> recentSites = recentSiteRepository.findByUserId(u);
 							for (RecentSite recentSite : recentSites) {
 								if (StringUtils.equals(recentSite.getSiteId(), siteId)) {
-									recentSiteRepository.deleteByUserIdAndSiteId(u, siteId);
+									removeRecentSite(u, siteId);
 									break;
 								}
 							}
@@ -824,7 +825,7 @@ public class PortalServiceImpl implements PortalService, Observer
 		pinnedSiteRepository.save(pin);
 
 		if (!isPinned) {
-			addRecentSite(siteId);
+			addRecentSite(userId, siteId);
 			List<PinnedSite> pinnedSites = pinnedSiteRepository.findByUserIdOrderByPosition(userId);
 			for (int i = 0; i < pinnedSites.size(); i++) {
 				PinnedSite pinnedSite = pinnedSites.get(i);
@@ -860,26 +861,17 @@ public class PortalServiceImpl implements PortalService, Observer
 
 	@Transactional
 	@Override
-	public void savePinnedSites(List<String> siteIds) {
-
-		String userId = sessionManager.getCurrentSessionUserId();
-
-		if (StringUtils.isBlank(userId)) {
-			return;
-		}
+	public void savePinnedSites(String userId, List<String> siteIds) {
+		if (StringUtils.isBlank(userId)) return;
 
 		// We never want the user's home site to be pinned. This is just a backup for that as the 
 		// UI should not be presenting a pin icon for the home site.
-		siteIds.removeIf(siteService::isUserSite);
+		siteIds.removeIf(siteService::isSpecialSite);
 
-		List<String> currentPinned = getPinnedSites();
-		currentPinned.forEach(cp -> {
-
-			// Check if the user has unpinned a previously pinned site
-			if (!siteIds.contains(cp)) {
-				addPinnedSite(userId, cp, false);
-			}
-		});
+		List<String> currentPinned = getPinnedSites(userId);
+		currentPinned.stream()
+				.filter(Predicate.not(siteIds::contains))
+				.forEach(cp -> addPinnedSite(userId, cp, false));
 
 		// We've unpinned, now removed the currently pinned from the requested siteIds. This
 		// will leave only the newly requested sites.
@@ -887,7 +879,7 @@ public class PortalServiceImpl implements PortalService, Observer
 
 		// Now, siteIds will contain only the newly pinned sites, so we can add them on the top
 		// of the remaining pinned sites.
-		int start = getPinnedSites().size();
+		int start = getPinnedSites(userId).size();
 		for (int i = 0; i < siteIds.size(); i++) {
 			String siteId = siteIds.get(i);
 			PinnedSite pin = pinnedSiteRepository.findByUserIdAndSiteId(userId, siteId).orElseGet(() -> new PinnedSite(userId, siteId));
@@ -899,13 +891,8 @@ public class PortalServiceImpl implements PortalService, Observer
 
 	@Transactional
 	@Override
-	public void reorderPinnedSites(List<String> siteIds) {
-
-		String userId = sessionManager.getCurrentSessionUserId();
-
-		if (StringUtils.isBlank(userId)) {
-			return;
-		}
+	public void reorderPinnedSites(String userId, List<String> siteIds) {
+		if (StringUtils.isBlank(userId)) return;
 
 		pinnedSiteRepository.deleteByUserId(userId);
 
@@ -950,13 +937,8 @@ public class PortalServiceImpl implements PortalService, Observer
 	}
 
 	@Override
-	public List<String> getRecentSites() {
-
-		String userId = sessionManager.getCurrentSessionUserId();
-
-		if (StringUtils.isBlank(userId)) {
-			return Collections.<String>emptyList();
-		}
+	public List<String> getRecentSites(String userId) {
+		if (StringUtils.isBlank(userId)) return Collections.emptyList();
 
 		return recentSiteRepository.findByUserId(userId).stream()
 				.map(RecentSite::getSiteId)
@@ -965,23 +947,17 @@ public class PortalServiceImpl implements PortalService, Observer
 
 	@Transactional
 	@Override
-	public void addRecentSite(String siteId) {
+	public void addRecentSite(String userId, String siteId) {
 
-		if (SiteService.SITE_ERROR.equals(siteId)) {
-			return;
-		}
-
-		String userId = sessionManager.getCurrentSessionUserId();
-
-		if (StringUtils.isBlank(userId)
-				|| siteId.equals(siteService.getUserSiteId(userId))
-				|| !(canUserUpdateSite(userId, siteId) || isUserActiveMemberInPublishedSite(userId, siteId))) {
+		if (StringUtils.isAnyBlank(userId, siteId)
+				|| siteService.isUserSite(siteId)
+				|| SiteService.SITE_ERROR.equals(siteId)) {
 			return;
 		}
 
 		recentSiteRepository.deleteByUserIdAndSiteId(userId, siteId);
 
-		List<String> current = getRecentSites();
+		List<String> current = getRecentSites(userId);
 
 		if (current.size() == 3) {
 			// Oldest is last
@@ -996,13 +972,35 @@ public class PortalServiceImpl implements PortalService, Observer
 		recentSiteRepository.save(recentSite);
 	}
 
-	private void syncUserSitesWithFavoriteSites(final String userId) {
+	@Transactional
+	@Override
+	public void removeSitesfromPinnedAndRecent(String userId, List<String> siteIds) {
+
+		if (StringUtils.isBlank(userId) || siteIds.isEmpty()) return;
+
+		pinnedSiteRepository.deleteByUserIdAndSiteIds(userId, siteIds);
+		recentSiteRepository.deleteByUserIdAndSiteIds(userId, siteIds);
+	}
+
+	@Transactional
+	@Override
+	public void removeRecentSite(String userId, String siteId) {
+
+		if (StringUtils.isAnyBlank(userId, siteId)) return;
+
+		recentSiteRepository.deleteByUserIdAndSiteId(userId, siteId);
+	}
+
+	@Override
+	@Transactional
+	public void syncUserSitesWithPortalNav(final String userId) {
 		if (StringUtils.isBlank(userId) || securityService.isSuperUser(userId)) return;
 
 		List<String> excludedSites = Collections.emptyList();
 		List<String> favoriteSiteIds = Collections.emptyList();
 		List<String> seenSiteIds = Collections.emptyList();
 
+		// get all site data from preferences
 		Preferences prefs = preferencesService.getPreferences(userId);
 		if (prefs != null) {
 			ResourceProperties props = prefs.getProperties(PreferencesService.SITENAV_PREFS_KEY);
@@ -1013,51 +1011,59 @@ public class PortalServiceImpl implements PortalService, Observer
 
 		List<String> pinnedSites = getPinnedSites(userId);
 		List<String> unPinnedSites =  getUnpinnedSites(userId);
-		Set<String> combinedSiteIds = Stream.concat(pinnedSites.stream(), unPinnedSites.stream()).collect(Collectors.toSet());
+		List<String> recentSites = getRecentSites(userId);
+
+		Set<String> sitesToPin = new HashSet<>();
+		Set<String> sitesToRemove = new HashSet<>(excludedSites);
+		Set<String> combinedSiteIds = new HashSet<>(excludedSites);
+		combinedSiteIds.addAll(pinnedSites);
+		combinedSiteIds.addAll(unPinnedSites);
+		combinedSiteIds.addAll(recentSites);
 
 		// when the user has no sites it is most likely their first login since pinning was introduced
 		if (combinedSiteIds.isEmpty()) {
 			log.debug("User has no pinned site data performing favorites migration for user [{}]", userId);
-			// look to the users favorites stored in preferences
-			favoriteSiteIds.stream()
-					.filter(siteId -> canAccessSite(siteId, userId))
-					.forEach(siteId -> {
-						log.debug("Adding site [{}] from favorites to pinned sites for user [{}]", siteId, userId);
-						addPinnedSite(userId, siteId, true);
-						combinedSiteIds.add(siteId);
-					});
-
-			seenSiteIds.stream()
-					.filter(Predicate.not(favoriteSiteIds::contains))
-					.filter(siteId -> canAccessSite(siteId, userId))
-					.forEach(siteId -> {
-						log.debug("Adding site [{}] from unseen to unpinned sites for user [{}]", siteId, userId);
-						addPinnedSite(userId, siteId, false);
-						combinedSiteIds.add(siteId);
-					});
+			// check to see if favorites migration is needed
+			log.debug("Adding {} sites from favorites to pinned sites for user [{}]", favoriteSiteIds.size(), userId);
+			combinedSiteIds.addAll(favoriteSiteIds);
+			log.debug("Adding {} sites from unseen to unpinned sites for user [{}]", seenSiteIds.size(), userId);
+			combinedSiteIds.addAll(seenSiteIds);
 
 			if (!favoriteSiteIds.isEmpty() || !seenSiteIds.isEmpty()) {
+				// delete favorite sites data from preferences
 				removeFavoriteSiteData(userId);
 			}
 		}
 
-		// Remove newly hidden sites from pinned and unpinned sites
-		combinedSiteIds.stream().filter(excludedSites::contains).forEach(siteId -> removePinnedSite(userId, siteId));
-		combinedSiteIds.addAll(excludedSites);
-
-		// Remove any sites that are user sites from pinned or recent
-		combinedSiteIds.stream().filter(siteService::isUserSite).forEach(siteId -> {
-			removePinnedSite(userId, siteId);
-			recentSiteRepository.deleteByUserIdAndSiteId(userId, siteId);
-		});
-
 		// This should not call getUserSites(boolean, boolean) because the property is variable, while the call is cacheable otherwise
 		List<String> userSiteIds = siteService.getSiteIds(SiteService.SelectionType.MEMBER, null, null, null, SiteService.SortType.CREATED_ON_DESC, null);
-		userSiteIds.stream()
-				.filter(Predicate.not(combinedSiteIds::contains))
-				.filter(siteId -> canAccessSite(siteId, userId))
-				.peek(id -> log.debug("Adding pinned site [{}] for user [{}]", id, userId))
-				.forEach(id -> addPinnedSite(userId, id, true));
+		combinedSiteIds.addAll(userSiteIds);
+
+		// all the possible sites the user has access to have been collected into combinedSiteIds
+		// next test each site to see if the user can access them sorting them into 2 sets
+		for (String id : combinedSiteIds) {
+			if (canAccessSite(id, userId)) sitesToPin.add(id);
+			else sitesToRemove.add(id);
+		}
+
+		// add seen sites as unpinned, as long as they're not in sites to remove or favorites
+		seenSiteIds.stream()
+				.filter(Predicate.not(favoriteSiteIds::contains))
+				.filter(sitesToPin::contains)
+				.forEach(id -> {
+					addPinnedSite(userId, id, false);
+					sitesToPin.remove(id);
+				});
+
+		// any remaining sites should be auto pinned
+		savePinnedSites(userId, new ArrayList<>(sitesToPin));
+
+		// Remove any special sites from pinned or recent
+		combinedSiteIds.stream()
+				.filter(siteService::isSpecialSite)
+				.forEach(sitesToRemove::add);
+
+		removeSitesfromPinnedAndRecent(userId, new ArrayList<>(sitesToRemove));
 	}
 
 	/**

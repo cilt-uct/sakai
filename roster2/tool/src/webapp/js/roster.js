@@ -38,11 +38,6 @@ roster.setupPrintButton = function () {
       },
     });
   });
-
-  // Exit "printMode" after print is done
-  window.addEventListener('afterprint', event => {
-    roster.renderMembership({ renderAll: true, printMode: false });
-  });
 };
 
 /**
@@ -327,7 +322,6 @@ roster.renderMembership = function (options) {
           anyStudentNumberPresent: roster.members.findIndex(m => m.studentNumber) > -1,
           viewProfile: roster.currentUserPermissions.viewProfile,
           viewGroup : roster.currentUserPermissions.viewGroup,
-          viewPicture: true,
           viewSiteVisits: roster.currentUserPermissions.viewSiteVisits,
           viewConnections: ((undefined !== window.friendStatus) && roster.viewConnections),
           enrollmentsMode: enrollmentsMode,
@@ -619,7 +613,6 @@ roster.renderMembers = function (members, target, enrollmentsMode, options) {
       anyStudentNumberPresent: roster.members.findIndex(m => m.studentNumber) > -1,
       viewProfile: roster.currentUserPermissions.viewProfile,
       viewGroup : roster.currentUserPermissions.viewGroup,
-      viewPicture: true,
       currentUserId: roster.userId,
       viewOfficialPhoto: roster.currentUserPermissions.viewOfficialPhoto,
       enrollmentsMode: enrollmentsMode,
