@@ -22,6 +22,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.format.DateTimeFormatter;
 import java.time.Instant;
+import java.time.Year;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -1333,7 +1334,13 @@ public class TurnitinReviewServiceImpl extends BaseContentReviewService {
 		if ("course".equals(s.getType())) {
 			String term = (String) properties.get("term");
 			log.debug("Checking course site term: " + term);
-			if (!"2023".equals(term) && !"2024".equals(term)) {
+			int currentYear = Year.now().getValue();
+    			int previousYear = currentYear - 1;
+			int nextYear = currentYear + 1;
+
+			if (!String.valueOf(previousYear).equals(term) &&
+			    !String.valueOf(currentYear).equals(term) &&
+			    !String.valueOf(nextYear).equals(term)) {
 				log.debug("Course is inactive: disallowing further Turnitin submissions");
 				return false;
 			}
