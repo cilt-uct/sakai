@@ -40,6 +40,7 @@ import java.util.Set;
 import java.util.Stack;
 import java.util.Vector;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.stream.Collectors;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -108,8 +109,11 @@ import org.sakaiproject.util.Resource;
 import org.sakaiproject.util.ResourceLoader;
 import org.sakaiproject.util.StringUtil;
 import org.sakaiproject.util.Validator;
+import org.sakaiproject.util.Xml;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -1974,51 +1978,22 @@ public abstract class BaseSiteService implements SiteService, Observer
 		}
 	}
 
-	/**
-	 * @inheritDoc
-	 */
-	public boolean allowUnjoinSite(String id)
-	{
-		// basic unjoin AuthzGroup test
-		if (!authzGroupService().allowUnjoinGroup(siteReference(id))) return false;
+    @Override
+    public boolean allowUnjoinSite(String id) {
+        // First check if the user has basic permission to unjoin the AuthzGroup
+        if (!authzGroupService().allowUnjoinGroup(siteReference(id))) return false;
 
-		// one more check - don't let a maintain role user unjoin a non-joinable site, or
-		// a joinable site that does not have the maintain role as the joiner role.
-		try
-		{
-			// get the site
-			Site site = getDefinedSite(id);
+        try {
+            // Get the site
+            Site site = getDefinedSite(id);
 
-			// get the AuthGroup
-			AuthzGroup azg = authzGroupService().getAuthzGroup(siteReference(id));
-
-			String user = sessionManager().getCurrentSessionUserId();
-			if (user == null) return false;
-
-			if ((StringUtil.different(site.getJoinerRole(), azg.getMaintainRole())) || (!site.isJoinable()))
-			{
-				Role role = azg.getUserRole(user);
-				if (role == null)
-				{
-					return false;
-				}
-				if (role.getId().equals(azg.getMaintainRole()))
-				{
-					return false;
-				}
-			}
-		}
-		catch (IdUnusedException e)
-		{
-			return false;
-		}
-		catch (GroupNotDefinedException e)
-		{
-			return false;
-		}
-
-		return true;
-	}
+            // Only joinable sites can be unjoined
+            return site.isJoinable();
+        } catch (Exception e) {
+            log.debug("User cannot unjoin site {}, {}", id, e.toString());
+        }
+        return false;
+    }
 
 	/**
 	 * @inheritDoc
@@ -2963,30 +2938,54 @@ public abstract class BaseSiteService implements SiteService, Observer
 		User mockUser;
 		try {
 			mockUser = userDirectoryService().getUserByEid(eid);
+			if (authzGroupService().getUserRole(mockUser.getId(), siteReference) == null) {
+				mockUser = addMockUserInSite(mockUser, siteReference, eid, role);
+			}
 		} catch (UserNotDefinedException e) {
-			mockUser = addMockUserInSite(siteReference, eid, role);
+			mockUser = addMockUserInSite(null, siteReference, eid, role);
 		}
 		return mockUser;
 	}
 
-	public User addMockUserInSite(String siteReference, String eid, String role) throws SakaiException {
-		User newUser = null;
-		if (StringUtils.isNoneBlank(siteReference, eid, role)) {
-			try {
-				String mockUserEmail = eid + "@" + serverConfigurationService().getServerName();
-				newUser = userDirectoryService().addUser(null, eid, role, role, mockUserEmail, eid, UserDirectoryService.ROLEVIEW_USER_TYPE, null);
-				AuthzGroup realmEdit = authzGroupService().getAuthzGroup(siteReference);
-				if (authzGroupService().allowUpdate(siteReference) || allowUpdateSiteMembership(siteId(siteReference))) {
-					realmEdit.addMember(newUser.getId(), role, true, false);
-					authzGroupService().save(realmEdit);
-				}
-			} catch (Exception e) {
-				log.warn("Could not add a mock user [{}] with role [{}] in site [{}], {}", eid, role, siteReference, e.toString());
-				throw new SakaiException(e);
-			}
-		}
-		return newUser;
-	}
+    private User addMockUserInSite(User user, String siteReference, String eid, String role) throws SakaiException {
+
+        User newUser = null;
+        if (StringUtils.isNoneBlank(siteReference, eid, role)) {
+            try {
+                AuthzGroup realm = authzGroupService().getAuthzGroup(siteReference);
+                if (realm != null) {
+                    SecurityAdvisor sa = (userId, function, reference) -> {
+                        if (reference.endsWith(siteReference)
+                                && (AuthzGroupService.SECURE_UPDATE_AUTHZ_GROUP.equals(function) || UserDirectoryService.SECURE_ADD_USER.equals(function))) {
+                            return SecurityAdvisor.SecurityAdvice.ALLOWED;
+                        }
+                        return SecurityAdvisor.SecurityAdvice.PASS;
+                    };
+                    try {
+                        securityService().pushAdvisor(sa);
+                        if (user == null) {
+                            String mockUserEmail = eid + "@" + serverConfigurationService().getServerName();
+                            newUser = userDirectoryService().addUser(null, eid, role, role, mockUserEmail, null, UserDirectoryService.ROLEVIEW_USER_TYPE, null);
+                        } else {
+                            newUser = user;
+                        }
+                        realm.addMember(newUser.getId(), role, true, false);
+                        authzGroupService().save(realm);
+                    } catch (Exception e) {
+                        log.warn("Can't activate roleview user [{}] in site [{}], {}", eid, siteReference, e);
+                    } finally {
+                        securityService().popAdvisor(sa);
+                    }
+                } else {
+                    throw new SakaiException("Can't activate roleview mode on site [" + siteReference + "] and role [" + role + "]");
+                }
+            } catch (Exception e) {
+                log.warn("Could not add a mock user [{}] with role [{}] in site [{}], {}", eid, role, siteReference, e.toString());
+                throw new SakaiException(e);
+            }
+        }
+        return newUser;
+    }
 
 	/**********************************************************************************************************************************************************************************************************************************************************
 	 * Storage
@@ -3566,6 +3565,47 @@ public abstract class BaseSiteService implements SiteService, Observer
 			catch (PermissionException ignore)
 			{
 			}
+		}
+
+		// Add any pages not already in the site - this is needed
+		// when we are importing into an existing site.  When
+		// we are creating a new site (above) all the pages and tools
+		// are added by the "new BaseSite()" with the el parameter.
+		// For sites that were created and then the import happened
+		// the code below makes sure the pages exist and do not get
+		// added twice.
+		try
+		{
+			Site site = getSite(siteId);
+			boolean changed = false;
+			List<SitePage> pages = site.getOrderedPages();
+			Set<String> pageNames = pages.stream().map(SitePage::getTitle).collect(Collectors.toCollection(LinkedHashSet::new));
+
+			NodeList pageNodes = el.getElementsByTagName("page");
+			for (int i = 0; i < pageNodes.getLength(); ++i) {
+				Element pageEl = (Element) pageNodes.item(i);
+				String pageTitle = pageEl.getAttribute("title");
+				if ( pageTitle == null ) continue;
+				if ( pageNames.contains(pageTitle) ) continue;
+
+				// addPage
+				BaseSitePage page = new BaseSitePage(this, pageEl, site);
+				site.getPages().add(page);
+				changed = true;
+			}
+
+			if ( changed ) {
+				site.regenerateIds();
+				save(site);
+			}
+		}
+		catch (IdUnusedException e)
+		{
+			msg.append(this + "cannot find site to add pages: " + siteId);
+		}
+		catch (PermissionException e)
+		{
+			msg.append(this + "permission exception while adding pages to: " + siteId);
 		}
 
 		return msg.toString();

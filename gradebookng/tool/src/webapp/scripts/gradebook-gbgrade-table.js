@@ -8,15 +8,18 @@ GbGradeTable.dropdownShownHandler = e => {
   e.target.nextElementSibling.querySelector("li:not(.d-none) a").focus();
 };
 
-var addHiddenGbItemsCallback = function (hiddenItems) {
-
-  GbGradeTable._onReadyCallbacks.push(function () {
-
-    hiddenItems.forEach(i => {
-
-      $(".gb-filter :input:checked[value='" + i + "']")
-        .attr("data-suppress-update-view-preferences", "true")
-        .trigger("click", [true]);
+const addHiddenGbItemsCallback = (hiddenItems) => {
+  GbGradeTable._onReadyCallbacks.push(() => {
+    hiddenItems.forEach((item) => {
+      document.querySelectorAll('.gb-filter input:checked').forEach((element) => {
+        if (element.value === item) {
+          element.setAttribute('data-suppress-update-view-preferences', 'true');
+          element.dispatchEvent(new Event('click', { 
+            bubbles: true,
+            detail: [true]
+          }));
+        }
+      });
     });
   });
 };
@@ -792,7 +795,7 @@ GbGradeTable.renderTable = function (elementId, tableData) {
 
   GbGradeTable.calculateIdealWidth = function() {
     if (GbGradeTable.columns.length > 0) {
-        return MorpheusViewportHelper.isPhone() ? $("#pageBody").width() - 40 : $("#pageBody").width() - $("#toolMenuWrap").width() - 60;
+        return MorpheusViewportHelper.isPhone() ? $("#pageBody").width() - 40 : $("#pageBody").width() - $("#toolMenu").width() - 70;
     }
 
     var scrollbarWidth = GbGradeTable.students.length > 0 ? 16 : 0;
@@ -1027,6 +1030,14 @@ GbGradeTable.renderTable = function (elementId, tableData) {
     resizeTimeout = setTimeout(function() {
       GbGradeTable.instance.updateSettings({
         height: GbGradeTable.calculateIdealHeight(),
+        width: GbGradeTable.calculateIdealWidth(),
+      });
+    }, 200);
+  });
+
+  $("#sidebar-collapse-button").on("click", function () {
+    setTimeout(() => {
+      GbGradeTable.instance.updateSettings({
         width: GbGradeTable.calculateIdealWidth(),
       });
     }, 200);
@@ -2441,7 +2452,12 @@ GbGradeTable.setupConcurrencyCheck = function() {
   // Check for concurrent editors.. and again every 20 seconds
   // (note: there's a 10 second cache)
   performConcurrencyCheck();
-  var concurrencyCheckInterval = setInterval(performConcurrencyCheck, 20 * 1000);
+  
+  // Store the interval ID so we can clear it if needed
+  if (GbGradeTable.concurrencyCheckInterval) {
+    clearInterval(GbGradeTable.concurrencyCheckInterval);
+  }
+  GbGradeTable.concurrencyCheckInterval = setInterval(performConcurrencyCheck, 20 * 1000);
 };
 
 
@@ -2756,6 +2772,14 @@ GbGradeTable.setupKeyboardNavigation = function() {
   });
 
   GbGradeTable.instance.addHook("beforeKeyDown", function(event) {
+    // If the wicket modal is displaying, prevent event propagation and return
+    if (document.getElementsByClassName('wicket-modal').length > 0) {
+      // The next line prevents behaviors such as keystroking tab that navigates to other handsontable cells
+      // instead of navigating to the next tabbable control in the modal.
+      event.stopImmediatePropagation();
+      return;
+    }
+
     let handled = false;
 
     function iGotThis(allowDefault) {
@@ -3017,6 +3041,11 @@ GbGradeTable.setupCellMetaDataSummary = function() {
   });
 
   GbGradeTable.instance.addHook("beforeKeyDown", function(event) {
+      // If the wicket modal is displaying, bypass the remainder of this hook
+      if (document.getElementsByClassName('wicket-modal').length > 0) {
+        return;
+      }
+
       // get the last and visible, as may be multiple due to fixed columns
       var $current = $(GbGradeTable.instance.rootElement).find("td.current:visible:last");
 
@@ -3583,14 +3612,16 @@ GbGradeTable.saveNewPrediction = function(prediction) {
  */
 GradebookAPI = {};
 
-
 GradebookAPI.isAnotherUserEditing = function(siteId, timestamp, onSuccess, onError) {
-  var endpointURL = "/direct/gbng/isotheruserediting/" + siteId + ".json";
-  var params = {
-    since: timestamp,
-    auto: true // indicate that the request is automatic, not from a user action
-  };
-  GradebookAPI._GET(endpointURL, params, onSuccess, onError);
+  const url = `/direct/gbng/isotheruserediting/${siteId}.json`;
+  GradebookAPI._GET(url, { since: timestamp, auto: true }, "json", onSuccess, () => {
+    // If this was an automated check (from the interval), stop the checks
+    if (GbGradeTable.concurrencyCheckInterval) {
+      clearInterval(GbGradeTable.concurrencyCheckInterval);
+      GbGradeTable.concurrencyCheckInterval = null;
+      console.warn('Concurrent editing checks stopped due to error');
+    }
+  });
 };
 
 
@@ -3624,6 +3655,23 @@ GradebookAPI.updateAssignmentOrder = function(siteId, assignmentId, order, onSuc
                                                       onSuccess, onError, onComplete)
 };
 
+GradebookAPI._GET = function (url, data, responseType, onSuccess, onError) {
+  const params = Object.entries(data).reduce(
+    (params, entry) => { params.append(entry[0], entry[1]); return params; }, new URLSearchParams());
+
+  const fullUrl = `${url}?${params}`;
+
+  fetch(fullUrl, { cache: "no-store" })
+    .then(r => {
+      if (!r.ok) {
+        throw new Error(`Network error while getting ${fullUrl}`);
+      }
+      return responseType === "text" ? r.text() : r.json();
+    })
+    .then(data => onSuccess(data))
+    .catch(() => onError && onError());
+};
+
 
 GradebookAPI.updateCategorizedAssignmentOrder = function(siteId, assignmentId, categoryId, order, onSuccess, onError, onComplete) {
   GradebookAPI._POST("/direct/gbng/categorized-assignment-order", {
@@ -3633,19 +3681,6 @@ GradebookAPI.updateCategorizedAssignmentOrder = function(siteId, assignmentId, c
                                                         order: order
                                                       },
                                                       onSuccess, onError, onComplete)
-};
-
-
-GradebookAPI._GET = function(url, data, onSuccess, onError, onComplete) {
-  $.ajax({
-    type: "GET",
-    url: url,
-    data: data,
-    cache: false,
-    success: onSuccess || $.noop,
-    error: onError || $.noop,
-    complete: onComplete || $.noop
-  });
 };
 
 

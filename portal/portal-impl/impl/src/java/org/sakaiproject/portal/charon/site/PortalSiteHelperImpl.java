@@ -384,7 +384,7 @@ public class PortalSiteHelperImpl implements PortalSiteHelper
 		pageMap.put("hidden", toolList.size() > 0 && toolManager.isHidden(toolList.get(0)));
 		pageMap.put("locked", !toolManager.isFirstToolVisibleToAnyNonMaintainerRole(page));
 		pageMap.put("isPopup", page.isPopUp());
-		pageMap.put("title", page.getTitle());
+		pageMap.put("title", formattedText.escapeHtml(page.getTitle()));
 		pageMap.put("description", getPageDescription(page));
 		return pageMap;
 	}
@@ -453,7 +453,7 @@ public class PortalSiteHelperImpl implements PortalSiteHelper
 
 		} else {
 			//Get gateway site
-			Site gatewaySite = getSite(serverConfigurationService.getGatewaySiteId());
+			Site gatewaySite = getSite(currentSiteId);
 			if (!gatewaySite.isEmpty()) {
 				contextSites.put("gatewaySite", getSiteMap(gatewaySite, currentSiteId, null,false, false, true));
 			}

@@ -42,6 +42,7 @@ import org.sakaiproject.authz.api.SecurityAdvisor;
 import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.basiclti.util.SakaiBLTIUtil;
 import org.sakaiproject.component.cover.ServerConfigurationService;
+import org.sakaiproject.archive.api.ArchiveService;
 import org.sakaiproject.content.api.ContentCollection;
 import org.sakaiproject.content.api.ContentCollectionEdit;
 import org.sakaiproject.content.api.ContentEntity;
@@ -294,6 +295,8 @@ public class SimplePageBean {
 
 	private String height, width;
 
+	@Setter private Boolean importArchive = false;
+
 	private String description;
 	private String name;
 	private String names;
@@ -474,6 +477,7 @@ public class SimplePageBean {
     @Setter private FormattedText formattedText;
     @Setter private UserTimeService userTimeService;
     @Getter @Setter private TaskService taskService;
+    @Getter @Setter private ArchiveService archiveService;
 
     private LessonEntity forumEntity = null;
     	public void setForumEntity(Object e) {
@@ -5073,23 +5077,10 @@ public class SimplePageBean {
 	}
 
 	// there's one of these in Validator, but it isn't quite right, because it doesn't look at /
-        // return lowercase version, since we want uppercase versiosns to match
+	// return lowercase version, since we want uppercase versions to match
 	public static String getExtension(String name) {
-
-		// starts after last /
-		int i = name.lastIndexOf("/");
-		if (i >= 0)
-			name = name.substring(i+1);
-	    
-		String extension = "";
-		i = name.lastIndexOf(".");
-		if (i > 0)
-		    extension = name.substring(i+1);
-
-		extension = extension.trim();
-		extension = extension.toLowerCase();
-	    
-		return extension;
+		String extension = org.springframework.util.StringUtils.getFilenameExtension(name);
+		return StringUtils.trimToEmpty(extension).toLowerCase();
 	}
 
 	public boolean isPDFType(SimplePageItem item) {
@@ -6406,12 +6397,8 @@ public class SimplePageBean {
 		if (i >= 0)
 		    name = name.substring(i+1);
 		String base = name;
-		String extension = "";
-		i = name.lastIndexOf(".");
-		if (i > 0) {
-		    base = name.substring(0, i);
-		    extension = name.substring(i+1);
-		}
+		String extension = org.springframework.util.StringUtils.getFilenameExtension(name);
+		base = StringUtils.removeEnd(name, "." + extension);
 
 		base = Validator.escapeResourceName(base);
 		extension = Validator.escapeResourceName(extension);
@@ -6644,13 +6631,7 @@ public class SimplePageBean {
 	}
 
 	public boolean isHtml(SimplePageItem i) {
-		StringTokenizer token = new StringTokenizer(i.getSakaiId(), ".");
-
-		String extension = "";
-					    
-		while (token.hasMoreTokens()) {
-			extension = token.nextToken().toLowerCase();
-		}
+		String extension = org.springframework.util.StringUtils.getFilenameExtension(i.getSakaiId());
 					    
 	    // we are just starting to store the MIME type for resources now. So existing content
 	    // won't have them.
@@ -7099,6 +7080,27 @@ public class SimplePageBean {
 		    bos.close();
 
 		    CartridgeLoader cartridgeLoader = ZipLoader.getUtilities(cc, root.getCanonicalPath());
+
+		    // Force the unzip to happen as it would have happened anyways
+			if ( importArchive ) {
+				log.debug("checking for embedded site archive");
+				cartridgeLoader.unzip();
+				String unzipPath = cartridgeLoader.getUnzipPath();
+
+				log.debug("unzipPath={}", unzipPath);
+
+				// Check if this is a CC + sakai_archive
+				String archivePath = unzipPath + "/sakai_archive/";
+				File archive = new File(archivePath);
+				if ( archive.isDirectory() ) {
+					String userId = userDirectoryService.getCurrentUser().getId();
+					String siteId = getCurrentSiteId();
+					log.debug("archive.merge( {}, {}, {})", archivePath, userId, siteId);
+					archiveService.merge(archivePath, siteId, userId);
+					return 0;
+				}
+			}
+
 		    Parser parser = Parser.createCartridgeParser(cartridgeLoader);
 
 		    LessonEntity quizobject = quizEntity;
@@ -7773,7 +7775,7 @@ public class SimplePageBean {
 		// so this should be safe.
 		if(questionAnswers == null) {
 			questionAnswers = new HashMap<>();
-			log.info("setAddAnswer: it was null");
+			log.debug("setAddAnswer: it was null");
 		}
 		
 		// We store with the index so that we can maintain the order

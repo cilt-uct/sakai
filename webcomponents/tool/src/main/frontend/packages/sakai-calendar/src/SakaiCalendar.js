@@ -13,7 +13,6 @@ export class SakaiCalendar extends LionCalendar {
     userId: { attribute: "user-id", type: String },
     siteId: { attribute: "site-id", type: String },
     defer: { type: Boolean },
-    _i18n: { state: true },
     _daysEvents: { state: true },
     _events: { state: true },
   };
@@ -131,7 +130,7 @@ export class SakaiCalendar extends LionCalendar {
       ${super.__renderNavigation()}
       <div class="sakai-calendar__navigation__today">
         <div>
-          <a id="today-button" href="javascript:;" @click=${this._todayClicked}>${this._i18n.today}</a>
+          <a id="today-button" href="javascript:;" @click=${this._todayClicked}>${this._i18n?.today}</a>
         </div>
       </div>
     `;
@@ -149,21 +148,25 @@ export class SakaiCalendar extends LionCalendar {
       </div>
       ` : nothing}
 
-      <div class="calendar-msg">${this._i18n.pinned_sites_message}</div>
+      <div class="calendar-msg">${this._i18n?.pinned_sites_message}</div>
 
       <div id="container">
         ${super.render()}
         ${this._daysEvents?.length > 0 ? html`
         <div id="days-events">
           <div id="days-events-title">
-            ${this._i18n.events_for} ${new Date(this._daysEvents[0].start).toLocaleDateString(undefined, { dateStyle: "medium" })}
+            ${this._i18n?.events_for} ${new Date(this._daysEvents[0].start).toLocaleDateString(undefined, { dateStyle: "medium" })}
           </div>
           ${this._daysEvents.map(e => html`
             <div>
-              <a href="${e.url}">
-                <sakai-icon type="${e.tool}" size="small"></sakai-icon>
+              <sakai-icon type="${e.tool}" size="small"></sakai-icon>
+              ${e.url ? html`
+                <a href="${e.url}" role="link" aria-label="${e.title}">
+                  <span>${e.title}</span><span> (${e.siteTitle})</span>
+                </a>
+              ` : html`
                 <span>${e.title}</span><span> (${e.siteTitle})</span>
-              </a>
+              `}
             </div>
           `)}
         </div>

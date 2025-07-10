@@ -553,7 +553,7 @@ public class DateManagerServiceImpl implements DateManagerService {
 					if (dueDate == null) {
 						errors.add(new DateManagerError(DateManagerConstants.JSON_DUEDATE_PARAM_NAME,rb.getString("error.due.date.not.found.accept.until"),"assessments", toolTitle, idx));
 						errored = true;
-					} else if (acceptUntil.isBefore(dueDate)) {
+					} else if (acceptUntil.isBefore(dueDate) && lateHandling) {
 						errors.add(new DateManagerError(DateManagerConstants.JSON_ACCEPTUNTIL_PARAM_NAME,rb.getString("error.accept.until.before.due.date.open.date"),"assessments", toolTitle, idx));
 						errored = true;
 					}
@@ -621,6 +621,10 @@ public class DateManagerServiceImpl implements DateManagerService {
 					Date lateDateTemp =
 							update.acceptUntilDate != null ? Date.from(update.acceptUntilDate) : null;
 					control.setRetractDate(lateDateTemp);
+				} else {
+					if (control.getRetractDate() != null) {
+						control.setRetractDate(dueDateTemp);
+					}
 				}
 				if (AssessmentFeedbackIfc.FEEDBACK_BY_DATE.equals(assessment.getAssessmentFeedback().getFeedbackDelivery())) {
 					control.setFeedbackDate(Date.from(update.feedbackStartDate));
@@ -643,6 +647,10 @@ public class DateManagerServiceImpl implements DateManagerService {
 					Date lateDateTemp =
 							update.acceptUntilDate != null ? Date.from(update.acceptUntilDate) : null;
 					control.setRetractDate(lateDateTemp);
+				} else {
+					if (control.getRetractDate() != null) {
+						control.setRetractDate(dueDateTemp);
+					}
 				}
 				if (AssessmentFeedbackIfc.FEEDBACK_BY_DATE.equals(assessment.getAssessmentFeedback().getFeedbackDelivery())) {
 					control.setFeedbackDate(Date.from(update.feedbackStartDate));
@@ -1258,7 +1266,13 @@ public class DateManagerServiceImpl implements DateManagerService {
 				fobj.put(DateManagerConstants.JSON_DUEDATE_PARAM_NAME, null);
 				fobj.put(DateManagerConstants.JSON_OPENDATE_PARAM_NAME, null);
 			}
-			fobj.put(DateManagerConstants.JSON_EXTRAINFO_PARAM_NAME, rb.getString("itemtype.forum"));
+			
+			String forumExtraInfo = rb.getString("itemtype.forum");
+			if (forum.getDraft()) {
+				forumExtraInfo = forumExtraInfo + " " + rb.getString("itemtype.draft"); 
+			}
+			
+			fobj.put(DateManagerConstants.JSON_EXTRAINFO_PARAM_NAME, forumExtraInfo);
 			fobj.put(DateManagerConstants.JSON_TOOLTITLE_PARAM_NAME, toolTitle);
 			fobj.put(DateManagerConstants.JSON_URL_PARAM_NAME, url);
 			for (Object o : forum.getTopicsSet()) {
@@ -1275,7 +1289,13 @@ public class DateManagerServiceImpl implements DateManagerService {
 					tobj.put(DateManagerConstants.JSON_DUEDATE_PARAM_NAME, null);
 					tobj.put(DateManagerConstants.JSON_OPENDATE_PARAM_NAME, null);
 				}
-				tobj.put(DateManagerConstants.JSON_EXTRAINFO_PARAM_NAME, rb.getString("itemtype.topic"));
+				
+				String extraInfo = rb.getString("itemtype.topic");
+				if (topic.getDraft()) {
+					extraInfo = extraInfo + " " + rb.getString("itemtype.draft"); 
+				}
+				
+				tobj.put(DateManagerConstants.JSON_EXTRAINFO_PARAM_NAME, extraInfo);
 				tobj.put(DateManagerConstants.JSON_TOOLTITLE_PARAM_NAME, toolTitle);
 				tobj.put(DateManagerConstants.JSON_URL_PARAM_NAME, url);
 				jsonForums.add(tobj);

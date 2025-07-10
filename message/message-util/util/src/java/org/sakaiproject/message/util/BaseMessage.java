@@ -38,7 +38,6 @@ import java.util.Set;
 import java.util.Stack;
 import java.util.Vector;
 
-
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -524,11 +523,43 @@ public abstract class BaseMessage implements MessageService, DoubleStorageUser
 	 *        The channel reference.
 	 * @return true if the user is allowed to getChannel(channelId), false if not.
 	 */
+	@Override
 	public boolean allowGetChannel(String ref)
 	{
 		return unlockCheck(SECURE_READ, ref);
 
 	} // allowGetChannel
+
+	@Override
+	public boolean isMessageViewable(Message message) {
+		if (message.getHeader().getDraft()) return false;
+		ResourceProperties messageProps = message.getProperties();
+
+		Instant now = Instant.now();
+		try {
+			Instant releaseDate = messageProps.getInstantProperty(RELEASE_DATE);
+
+			if (now.isBefore(releaseDate)) {
+				return false;
+			}
+		} catch (Exception e) {
+			// Just not using/set Release Date
+			log.debug("isMessageViewable: exception getting release date for message: {}", message.getId());
+		}
+
+		try {
+			Instant retractDate = messageProps.getInstantProperty(RETRACT_DATE);
+
+			if (now.isAfter(retractDate)) {
+				return false;
+			}
+		} catch (Exception e) {
+			// Just not using/set Retract Date
+			log.debug("isMessageViewable: exception getting retract date for message: {}", message.getId());
+		}
+
+		return true;
+	}
 
 	/**
 	 * Return a specific channel.

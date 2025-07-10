@@ -212,6 +212,47 @@ export const criteria2 = [
   },
 ];
 
+export const criteria3 = [
+  {
+    id: 5,
+    title: "C1",
+    description: "First criterion",
+    ratings: [
+      {
+        id: 5,
+        title: "Rating1",
+        description: "First rating",
+        points: 1,
+      },
+      {
+        id: 6,
+        title: "Rating2",
+        description: "Second rating",
+        points: 2,
+      },
+    ]
+  },
+  {
+    id: 6,
+    title: "C2",
+    description: "Second criterion",
+    ratings: [
+      {
+        id: 7,
+        title: "Rating1",
+        description: "First rating",
+        points: 1,
+      },
+      {
+        id: 8,
+        title: "Rating2",
+        description: "Second rating",
+        points: 2,
+      },
+    ],
+  },
+];
+
 export const rubric1 = {
   id: "1",
   title: "Rubric 1",
@@ -232,12 +273,35 @@ export const rubric2 = {
   criteria: criteria2,
 };
 
+export const rubric3 = {
+  id: "3",
+  title: "Rubric 3",
+  ownerId,
+  siteTitle,
+  creatorDisplayName,
+  formattedModifiedDate,
+  criteria: criteria1,
+  locked: true
+};
+
+export const rubric4 = {
+  id: "4",
+  title: "Rubric 4",
+  ownerId,
+  siteTitle,
+  creatorDisplayName,
+  formattedModifiedDate,
+  criteria: criteria3
+};
+
 export const evaluatedItemOwnerId = "fisha";
 
 export const rubricsUrl = /api\/sites\/xyz\/rubrics[\?\w=]*$/;
 export const rubrics = [ rubric1, rubric2 ];
 
 export const rubric1Url = `/api/sites/${siteId}/rubrics/${rubric1.id}`;
+export const rubric1OwnerUrl = `/api/sites/${ownerId}/rubrics/${rubric1.id}`;
+export const rubric3OwnerUrl = `/api/sites/${ownerId}/rubrics/${rubric3.id}`;
 
 export const associationUrl = `/api/sites/${siteId}/rubric-associations/tools/${toolId}/items/${entityId}`;
 
@@ -256,3 +320,8 @@ export const evaluation = {
     { criterionId: 1, selectedRatingId: 2, comments: "Rubbish", points: 2 }
   ],
 };
+
+export const rubric4OwnerUrl = `/api/sites/${ownerId}/rubrics/${rubric4.id}`;
+export const rubric4CriteriaSortUrl = `/api/sites/${ownerId}/rubrics/${rubric4.id}/criteria/sort`;
+export const rubric4Criteria5Url = `/api/sites/${ownerId}/rubrics/${rubric4.id}/criteria/5`;
+export const rubric4Criteria6Url = `/api/sites/${ownerId}/rubrics/${rubric4.id}/criteria/6`;

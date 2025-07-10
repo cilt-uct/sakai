@@ -34,8 +34,6 @@ export class SakaiRubric extends RubricsElement {
       credentials: "include",
       headers: { "Content-Type": "application/json-patch+json" },
     };
-
-    this.enablePdfExport = false;
   }
 
   set rubric(value) {
@@ -161,7 +159,7 @@ export class SakaiRubric extends RubricsElement {
                   aria-label="${this.draftLabel}"
                   @keyup=${this.openEditWithKeyboard}
                   @click=${this.draftChange}>
-                <span class="fa ${this.draftIcon}"></span>
+                <span class="fa ${this.draftIcon}" aria-hidden="true"></span>
               </button>
             </div>
             <div class="action-container">
@@ -171,7 +169,7 @@ export class SakaiRubric extends RubricsElement {
                   aria-label="${this.weightLabel}"
                   @keyup=${this.openEditWithKeyboard}
                   @click=${this.weightedChange}>
-                <span class="fa ${this._weightedIcon}"></span>
+                <span class="fa ${this._weightedIcon}" aria-hidden="true"></span>
               </button>
             </div>`
             : ""
@@ -183,7 +181,7 @@ export class SakaiRubric extends RubricsElement {
                 aria-label="${this.tr(this.shareTitleKey, [ this.rubric.title ])}"
                 @keyup=${this.openEditWithKeyboard}
                 @click=${this.sharingChange}>
-              <span class="fa ${this._shareIcon}"></span>
+              <span class="fa ${this._shareIcon}" aria-hidden="true"></span>
             </button>
           </div>
           <div class="action-container">
@@ -193,7 +191,7 @@ export class SakaiRubric extends RubricsElement {
                 aria-label="${this.tr("copy")} ${this.rubric.title}"
                 @keyup=${this.openEditWithKeyboard}
                 @click=${this.cloneRubric}>
-              <span class="fa fa-copy"></span>
+              <span class="fa fa-copy" aria-hidden="true"></span>
             </button>
           </div>
           ${!this.rubric.locked ? html`
@@ -256,8 +254,9 @@ export class SakaiRubric extends RubricsElement {
 
       if (r.ok) {
         this.rubric.title = e.detail;
+        this.rubric.new = false;
         this.requestUpdate();
-        this.updateItemDelete();
+        this.updateOtherItems();
         this.dispatchEvent(new SharingChangeEvent());
       } else {
         throw new Error("Network error while updating rubric title");
@@ -340,10 +339,8 @@ export class SakaiRubric extends RubricsElement {
     this._minPoints = this.getMinPoints(this.rubric.criteria);
   }
 
-  draftChange(e) {
+  draftChange() {
 
-    e.stopPropagation();
-    e.preventDefault();
     // Draft mode can't be turned off if the total weight doesn't match 100%,
     // this way (+css) also prevents the rubric to be toggled when pressing the disabled button.
     if (this.rubric.draft && this.rubric.weighted && !this._validWeight) {
@@ -366,8 +363,6 @@ export class SakaiRubric extends RubricsElement {
 
   weightedChange(e) {
 
-    e.stopPropagation();
-    e.preventDefault();
     this.rubric.weighted = !this.rubric.weighted;
     if (this.rubric.weighted) {
       this.rubric.criteria.forEach(cr => cr.weight = 0);
@@ -393,9 +388,8 @@ export class SakaiRubric extends RubricsElement {
     });
   }
 
-  sharingChange(e) {
+  sharingChange() {
 
-    e.stopPropagation();
 
     this.rubric.shared = !this.rubric.shared;
 
@@ -462,13 +456,18 @@ export class SakaiRubric extends RubricsElement {
     this.shareValues = this.rubric.title;
   }
 
-  updateItemDelete() {
+  updateOtherItems() {
 
     const sakaiItemDelete = this.querySelector("sakai-item-delete");
     if (sakaiItemDelete) {
-      sakaiItemDelete.requestUpdate("item", this.rubric);
-      sakaiItemDelete.requestUpdate("rubric", this.rubric);
+      sakaiItemDelete.requestUpdate();
     }
+
+    const sakaiRubricEdit = this.querySelector("sakai-rubric-edit");
+    sakaiRubricEdit && sakaiRubricEdit.requestUpdate();
+
+    const sakaiRubricPdf = this.querySelector("sakai-rubric-pdf");
+    sakaiRubricPdf && sakaiRubricPdf.requestUpdate();
   }
 
   openEditWithKeyboard(e) {

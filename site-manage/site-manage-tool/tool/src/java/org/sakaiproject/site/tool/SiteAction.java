@@ -31,6 +31,8 @@ import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.Year;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -2603,6 +2605,7 @@ public class SiteAction extends PagedResourceActionII {
 			if(daysafter > 0){
 				context.put("daysafter",daysafter);
 			}
+			DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 			if (site != null) {
 				// editing existing site
 				context.put("site", site);
@@ -2636,9 +2639,14 @@ public class SiteAction extends PagedResourceActionII {
 					ZoneId localZoneId = userTimeService.getLocalTimeZone().toZoneId();
 
 					termPublishDate = new Date(courseStartTime - (ONE_DAY_IN_MS * daysbefore));
-					context.put("termStartDate", termPublishDate.toInstant().atZone(localZoneId).toString());
-					context.put("termEndDate", new Date(courseEndTime).toInstant().atZone(localZoneId).toString());
-					context.put("termUnpublishDate", new Date(courseEndTime + (ONE_DAY_IN_MS * daysafter)).toInstant().atZone(localZoneId).toString());
+
+					ZonedDateTime termStartDate = termPublishDate.toInstant().atZone(localZoneId);
+					ZonedDateTime termEndDate = new Date(courseEndTime).toInstant().atZone(localZoneId);
+					ZonedDateTime termUnpublishDate = new Date(courseEndTime + (ONE_DAY_IN_MS * daysafter)).toInstant().atZone(localZoneId);
+
+					context.put("termStartDate", termStartDate.format(formatter));
+					context.put("termEndDate", termEndDate.format(formatter));
+					context.put("termUnpublishDate", termUnpublishDate.format(formatter));
 					context.put("readableTermStartDate", userTimeService.dateFormat(termPublishDate, rb.getLocale(), DateFormat.LONG));	//create readable versions of all dates
 					context.put("readableTermStartDateTime", userTimeService.dateTimeFormat(termPublishDate, rb.getLocale(), DateFormat.SHORT));
 					context.put("readableTermEndDate", userTimeService.dateFormat(academicSession.getEndDate(), rb.getLocale(), DateFormat.LONG));
@@ -2765,9 +2773,13 @@ public class SiteAction extends PagedResourceActionII {
 					long courseEndTime = academicSession.getEndDate().getTime();
 					ZoneId localZoneId = userTimeService.getLocalTimeZone().toZoneId();
 
-					context.put("termStartDate", new Date(courseStartTime - (ONE_DAY_IN_MS * daysbefore)).toInstant().atZone(localZoneId).toString());
-					context.put("termEndDate", new Date(courseEndTime).toInstant().atZone(localZoneId).toString());
-					context.put("termUnpublishDate", new Date(courseEndTime + (ONE_DAY_IN_MS * daysafter)).toInstant().atZone(localZoneId).toString());
+					ZonedDateTime termStartDate = new Date(courseStartTime - (ONE_DAY_IN_MS * daysbefore)).toInstant().atZone(localZoneId);
+					ZonedDateTime termEndDate = new Date(courseEndTime).toInstant().atZone(localZoneId);
+					ZonedDateTime termUnpublishDate = new Date(courseEndTime + (ONE_DAY_IN_MS * daysafter)).toInstant().atZone(localZoneId);
+
+					context.put("termStartDate", termStartDate.format(formatter));
+					context.put("termEndDate", termEndDate.format(formatter));
+					context.put("termUnpublishDate", termUnpublishDate.format(formatter));
 					context.put("readableTermStartDate", userTimeService.dateFormat(new Date(courseStartTime - (ONE_DAY_IN_MS * daysbefore)), rb.getLocale(), DateFormat.LONG));	//create readable versions of all dates
 					context.put("readableTermEndDate", userTimeService.dateFormat(academicSession.getEndDate(), rb.getLocale(), DateFormat.LONG));
 					context.put("readableTermUnpublishDate", userTimeService.dateFormat(new Date(courseEndTime + (ONE_DAY_IN_MS * daysafter)), rb.getLocale(), DateFormat.LONG));
@@ -4526,6 +4538,15 @@ public class SiteAction extends PagedResourceActionII {
 	}
 
 	public void doDateManagerHelper(RunData data) {
+		SessionState state = ((JetspeedRunData) data)
+				.getPortletSessionState(((JetspeedRunData) data).getJs_peid());
+
+		// Check if the user has appropriate permissions
+		if (!siteService.allowUpdateSite(toolManager.getCurrentPlacement().getContext())) {
+			addAlert(state, rb.getString("java.notaccess"));
+			return;
+		}
+
 		startHelper(data.getRequest(), "sakai.datemanager");
 	}
 
@@ -4552,6 +4573,15 @@ public class SiteAction extends PagedResourceActionII {
 	 * 
 	 */
 	public void doManageGroupHelper(RunData data) {
+		SessionState state = ((JetspeedRunData) data)
+				.getPortletSessionState(((JetspeedRunData) data).getJs_peid());
+
+		// Check if the user has appropriate permissions
+		if (!siteService.allowUpdateSite(toolManager.getCurrentPlacement().getContext())) {
+			addAlert(state, rb.getString("java.notaccess"));
+			return;
+		}
+
 		startHelper(data.getRequest(), "sakai-site-group-manager");
 	}
 
@@ -4564,6 +4594,12 @@ public class SiteAction extends PagedResourceActionII {
 	public void doLinkHelper(RunData data) {
 		SessionState state = ((JetspeedRunData) data)
 				.getPortletSessionState(((JetspeedRunData) data).getJs_peid());
+
+		// Check if the user has appropriate permissions
+		if (!siteService.allowUpdateSite(toolManager.getCurrentPlacement().getContext())) {
+			addAlert(state, rb.getString("java.notaccess"));
+			return;
+		}
 
 		// pass in the siteId of the site to be ordered (so it can configure
 		// sites other then the current site)
@@ -4578,6 +4614,13 @@ public class SiteAction extends PagedResourceActionII {
 	 */
 	public void doManageOverviewFromHome(RunData data) {
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
+
+		// Check if the user has appropriate permissions
+		if (!siteService.allowUpdateSite(toolManager.getCurrentPlacement().getContext())) {
+			addAlert(state, rb.getString("java.notaccess"));
+			return;
+		}
+
 		state.setAttribute("fromHome", true);
 		doManageOverview(data);
 	}
@@ -4588,6 +4631,12 @@ public class SiteAction extends PagedResourceActionII {
 	public void doManageOverview(RunData data) {
 		SessionState state = ((JetspeedRunData) data)
 				.getPortletSessionState(((JetspeedRunData) data).getJs_peid());
+
+		// Check if the user has appropriate permissions
+		if (!siteService.allowUpdateSite(toolManager.getCurrentPlacement().getContext())) {
+			addAlert(state, rb.getString("java.notaccess"));
+			return;
+		}
 
 		siteToolsIntoState(state);
 
@@ -4617,6 +4666,12 @@ public class SiteAction extends PagedResourceActionII {
 		SessionState state = ((JetspeedRunData) data)
 				.getPortletSessionState(((JetspeedRunData) data).getJs_peid());
 
+		// Check if the user has appropriate permissions
+		if (!siteService.allowUpdateSite(toolManager.getCurrentPlacement().getContext())) {
+			addAlert(state, rb.getString("java.notaccess"));
+			return;
+		}
+
 		// pass in the siteId of the site to be ordered (so it can configure
 		// sites other then the current site)
 		sessionManager.getCurrentToolSession().setAttribute(HELPER_ID + ".siteId", getStateSite(state).getId());
@@ -4635,6 +4690,12 @@ public class SiteAction extends PagedResourceActionII {
 	public void doAttachmentsMtrlFrmFile(RunData data) {
 		SessionState state = ((JetspeedRunData) data)
 				.getPortletSessionState(((JetspeedRunData) data).getJs_peid());
+
+		// Check if the user has appropriate permissions
+		if (!siteService.allowUpdateSite(toolManager.getCurrentPlacement().getContext())) {
+			addAlert(state, rb.getString("java.notaccess"));
+			return;
+		}
 
 		// state.setAttribute(FILE_UPLOAD_MAX_SIZE,
 		// serverConfigurationService.getString("content.upload.max", "1"));
@@ -8219,6 +8280,12 @@ private Map<String, List<MyTool>> getTools(SessionState state, String type, Site
 		SessionState state = ((JetspeedRunData) data)
 				.getPortletSessionState(((JetspeedRunData) data).getJs_peid());
 
+		// Check if the user has appropriate permissions
+		if (!siteService.allowUpdateSite(toolManager.getCurrentPlacement().getContext())) {
+			addAlert(state, rb.getString("java.notaccess"));
+			return;
+		}
+
 		// get the tools
 		siteToolsIntoState(state);
 
@@ -8234,6 +8301,12 @@ private Map<String, List<MyTool>> getTools(SessionState state, String type, Site
 	public void doMenu_siteInfo_import(RunData data) {
 		SessionState state = ((JetspeedRunData) data)
 				.getPortletSessionState(((JetspeedRunData) data).getJs_peid());
+
+		// Check if the user has appropriate permissions
+		if (!siteService.allowUpdateSite(toolManager.getCurrentPlacement().getContext())) {
+			addAlert(state, rb.getString("java.notaccess"));
+			return;
+		}
 
 		// get the tools
 		siteToolsIntoState(state);
@@ -8251,6 +8324,12 @@ private Map<String, List<MyTool>> getTools(SessionState state, String type, Site
 		SessionState state = ((JetspeedRunData) data)
 				.getPortletSessionState(((JetspeedRunData) data).getJs_peid());
 
+		// Check if the user has appropriate permissions
+		if (!siteService.allowUpdateSite(toolManager.getCurrentPlacement().getContext())) {
+			addAlert(state, rb.getString("java.notaccess"));
+			return;
+		}
+
 		if (state.getAttribute(STATE_MESSAGE) == null) {
 			state.setAttribute(STATE_TEMPLATE_INDEX, "61");	// import users
 		}
@@ -8260,6 +8339,12 @@ private Map<String, List<MyTool>> getTools(SessionState state, String type, Site
 	public void doMenu_siteInfo_importMigrate(RunData data) {
 		SessionState state = ((JetspeedRunData) data)
 				.getPortletSessionState(((JetspeedRunData) data).getJs_peid());
+
+		// Check if the user has appropriate permissions
+		if (!siteService.allowUpdateSite(toolManager.getCurrentPlacement().getContext())) {
+			addAlert(state, rb.getString("java.notaccess"));
+			return;
+		}
 
 		// get the tools
 		siteToolsIntoState(state);
@@ -8276,6 +8361,13 @@ private Map<String, List<MyTool>> getTools(SessionState state, String type, Site
 	 */
 	public void doMenu_siteInfo_manageParticipants(RunData data) {
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
+
+		// Check if the user has appropriate permissions
+		if (!siteService.allowUpdateSite(toolManager.getCurrentPlacement().getContext())) {
+			addAlert(state, rb.getString("java.notaccess"));
+			return;
+		}
+
 		state.setAttribute(STATE_TEMPLATE_INDEX, STATE_TEMPLATE_INDEX_MANAGE_PARTICIPANTS);
 	}
 
@@ -8299,6 +8391,12 @@ private Map<String, List<MyTool>> getTools(SessionState state, String type, Site
 		SessionState state = ((JetspeedRunData) data)
 				.getPortletSessionState(((JetspeedRunData) data).getJs_peid());
 
+		// Check if the user has appropriate permissions
+		if (!siteService.allowUpdateSite(toolManager.getCurrentPlacement().getContext())) {
+			addAlert(state, rb.getString("java.notaccess"));
+			return;
+		}
+
 		state.setAttribute(STATE_TEMPLATE_INDEX, "43");
 
 	} // doMenu_siteInfo_editClass
@@ -8309,6 +8407,12 @@ private Map<String, List<MyTool>> getTools(SessionState state, String type, Site
 	public void doMenu_siteInfo_addClass(RunData data) {
 		SessionState state = ((JetspeedRunData) data)
 				.getPortletSessionState(((JetspeedRunData) data).getJs_peid());
+
+		// Check if the user has appropriate permissions
+		if (!siteService.allowUpdateSite(toolManager.getCurrentPlacement().getContext())) {
+			addAlert(state, rb.getString("java.notaccess"));
+			return;
+		}
 
 		Site site = getStateSite(state);
 		String termEid = site.getProperties().getProperty(Site.PROP_SITE_TERM_EID);
@@ -8386,11 +8490,17 @@ private Map<String, List<MyTool>> getTools(SessionState state, String type, Site
 
 	/**
 	 * doMenu_edit_site_info
-	 * 
+	 *
 	 */
 	public void doMenu_edit_site_info(RunData data) {
 		SessionState state = ((JetspeedRunData) data)
 				.getPortletSessionState(((JetspeedRunData) data).getJs_peid());
+
+		// Check if the user has appropriate permissions
+		if (!siteService.allowUpdateSite(toolManager.getCurrentPlacement().getContext())) {
+			addAlert(state, rb.getString("java.notaccess"));
+			return;
+		}
 
 		sitePropertiesIntoState(state);
 
@@ -8402,11 +8512,17 @@ private Map<String, List<MyTool>> getTools(SessionState state, String type, Site
 
 	/**
 	 * doMenu_edit_site_tools
-	 * 
+	 *
 	 */
 	public void doMenu_edit_site_tools(RunData data) {
 		SessionState state = ((JetspeedRunData) data)
 				.getPortletSessionState(((JetspeedRunData) data).getJs_peid());
+
+		// Check if the user has appropriate permissions
+		if (!siteService.allowUpdateSite(toolManager.getCurrentPlacement().getContext())) {
+			addAlert(state, rb.getString("java.notaccess"));
+			return;
+		}
 
 		// Clean up state on our first entry from a shortcut
 		String panel = data.getParameters().getString("panel");
@@ -8436,11 +8552,17 @@ private Map<String, List<MyTool>> getTools(SessionState state, String type, Site
 
 	/**
 	 * doMenu_edit_site_access
-	 * 
+	 *
 	 */
 	public void doMenu_edit_site_access(RunData data) {
 		SessionState state = ((JetspeedRunData) data)
 				.getPortletSessionState(((JetspeedRunData) data).getJs_peid());
+
+		// Check if the user has appropriate permissions
+		if (!siteService.allowUpdateSite(toolManager.getCurrentPlacement().getContext())) {
+			addAlert(state, rb.getString("java.notaccess"));
+			return;
+		}
 
 		try {
 			Site site = getStateSite(state);
@@ -9408,16 +9530,16 @@ private Map<String, List<MyTool>> getTools(SessionState state, String type, Site
 					}
 					if(state.getAttribute(SITE_UNPUBLISH_DATE) != null){
 						unpublishingDate = sdf.parse(String.valueOf(state.getAttribute(SITE_UNPUBLISH_DATE)));
-						if(unpublishingDate.toInstant().isBefore(publishingDate.toInstant())){	//make sure unpublish date is actually after publish date
+						if(publishingDate != null && unpublishingDate.toInstant().isBefore(publishingDate.toInstant())){	//make sure unpublish date is actually after publish date
 							addAlert(state, rb.getString("ediacc.errorafter"));
 						}
 					}
-                    if(Instant.now().isAfter(publishingDate.toInstant()) && (unpublishingDate == null || Instant.now().isBefore(unpublishingDate.toInstant()))){
+					if(publishingDate != null && Instant.now().isAfter(publishingDate.toInstant()) && (unpublishingDate == null || Instant.now().isBefore(unpublishingDate.toInstant()))){
 						sEdit.setPublished(true);	//publish right now if we're between the dates, or without unpublishing
-					} else {
-                        publishingSiteScheduleService.schedulePublishing(publishingDate.toInstant(), sEdit.getId());	//make future publishing event
+					} else if(publishingDate != null) {
+						publishingSiteScheduleService.schedulePublishing(publishingDate.toInstant(), sEdit.getId());	//make future publishing event
 					}
-                    if(unpublishingDate!=null) {
+					if(unpublishingDate!=null) {
 						if (Instant.now().isAfter(unpublishingDate.toInstant())) {
 							sEdit.setPublished(false);    //unpublish now if it's after the closing date
 						} else {

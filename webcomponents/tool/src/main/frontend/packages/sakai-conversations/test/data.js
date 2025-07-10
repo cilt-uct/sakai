@@ -48,6 +48,9 @@ community_guidelines=Community Guidelines
 community_guidelines_instruction=Before you can participate in this online community, you need to \
 read through and agree to these community guidelines
 community_guidelines_preview_heading=PREVIEW
+community_guidelines_sample=Be respectful and constructive in all conversations. Personal attacks, discriminatory language,\
+or disruptive behaviors are not permitted. Uphold academic integrity and privacy by ensuring discussions remain relevant,\
+courteous, and aligned with our educational mission.
 confirm_comment_delete=Are you sure you want to delete this comment?
 confirm_post_delete=Are you sure you want to delete this post?
 confirm_topic_delete=Are you sure you want to delete this topic?
@@ -195,13 +198,11 @@ type_discussion=Discussion
 type_question=Question
 unanswered=Unanswered
 unanswered_tooltip=This question topic does not have an accepted answer yet
-unbookmark=Unbookmark
 unbookmark_tooltip=Click to un-bookmark this topic
 ungoodanswer_tooltip=Click this to remove your good answer indication
 ungoodquestion_tooltip=Click this to remove your good question indication
 unlock=Unlock
 unlock_topic_tooltip=Unlock this topic
-unpin=Unpin
 unpin_tooltip=Unpin this topic. This will stop the topic appearing at the top of any user's topic lists
 acceptuntildate=Accept late responses until
 acceptuntildate_explanation=Topic locked after this time

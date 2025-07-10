@@ -1,7 +1,8 @@
 import { SakaiElement } from "@sakai-ui/sakai-element";
-import { html } from "lit";
+import { html, nothing } from "lit";
 import { ifDefined } from "lit/directives/if-defined.js";
-import "@sakai-ui/sakai-profile";
+import { getSiteId } from "@sakai-ui/sakai-portal-utils";
+import "@sakai-ui/sakai-profile/sakai-profile.js";
 
 /**
  * A simple wrapper for Sakai's user profile picture.
@@ -27,12 +28,10 @@ export class SakaiUserPhoto extends SakaiElement {
     profilePopup: { attribute: "profile-popup", type: String },
     official: { type: Boolean },
     blank: { type: Boolean },
-    siteId: { attribute: "site-id", type: String },
     label: { type: String },
     print: { type: Boolean },
     online: { type: Boolean },
-
-    _generatedId: { state: true },
+    url: { state: true },
   };
 
   constructor() {
@@ -43,42 +42,40 @@ export class SakaiUserPhoto extends SakaiElement {
     this.profilePopup = SakaiUserPhoto.OFF;
   }
 
-  attributeChangedCallback(name, oldValue, newValue) {
+  close() {
+    bootstrap.Popover.getInstance(this.querySelector("div"))?.hide();
+  }
 
-    super.attributeChangedCallback(name, oldValue, newValue);
+  willUpdate(changedProperties) {
 
-    if (this.userId) {
-      this._generatedId = `sakai-user-photo-${this.userId}-${Math.floor(Math.random() * 100)}`;
-
+    if (changedProperties.has("userId") || changedProperties.has("official") || changedProperties.has("blank")) {
       if (this.blank) {
         this.url = "/direct/profile/blank/image";
       } else {
         this.url = `/direct/profile/${this.userId}/image/${this.official ? "official" : "thumb"}`
-                    + (this.siteId ? `?siteId=${this.siteId}` : "");
+                    + (getSiteId() ? `?siteId=${getSiteId()}` : "");
       }
     }
-  }
-
-  shouldUpdate() {
-    return this.userId;
   }
 
   firstUpdated() {
 
-    if (this.profilePopup == SakaiUserPhoto.ON) {
-      const el = document.getElementById(this._generatedId);
-      if (el) {
-        const sakaiProfile = this.querySelector("sakai-profile");
+    if (this.profilePopup !== SakaiUserPhoto.ON || this.print) return;
 
-        new bootstrap.Popover(el, {
-          content: sakaiProfile,
-          html: true,
-        });
-        el.addEventListener("show.bs.popover", () => {
-          sakaiProfile.fetchProfileData(); // Trigger the JSON load for this user
-        });
-      }
-    }
+    const el = this.querySelector("div");
+    const sakaiProfile = this.querySelector("sakai-profile");
+
+    new bootstrap.Popover(el, {
+      content: sakaiProfile,
+      html: true,
+      trigger: "focus",
+    });
+
+    el.addEventListener("show.bs.popover", () => {
+
+      this.dispatchEvent(new CustomEvent("profile-shown", { detail: { userId: this.userId }, bubbles: true }));
+      sakaiProfile.fetchProfileData(); // Trigger the JSON load for this user
+    });
   }
 
   render() {
@@ -90,19 +87,21 @@ export class SakaiUserPhoto extends SakaiElement {
     }
 
     return html`
-      <div id="${ifDefined(this._generatedId)}"
-          data-user-id="${this.userId}"
+      <div data-user-id="${this.userId}"
           class="sakai-user-photo ${this.classes}"
           data-bs-toggle="popover"
+          data-bs-trigger="focus"
           aria-label="${ifDefined(this.label)}"
           title="${ifDefined(this.label)}"
+          tabindex="0"
+          role="button"
           style="background-image:url(${this.url}) ${this.profilePopup === SakaiUserPhoto.OFF ? "" : ";cursor: pointer;"}">
         ${this.online ? html`
         <span></span>
-        ` : ""}
+        ` : nothing}
       </div>
       <div class="d-none">
-      <sakai-profile user-id="${this.userId}"></sakai-profile>
+        <sakai-profile user-id="${this.userId}"></sakai-profile>
       </div>
     `;
   }

@@ -18,6 +18,8 @@ fetchMock
   .get(data.sharedRubricsUrl, data.sharedRubrics, { overwriteRoutes: true })
   .get(data.rubricsUrl, data.rubrics, { overwriteRoutes: true })
   .get(data.rubric1Url, data.rubric1, { overwriteRoutes: true })
+  .patch(data.rubric1OwnerUrl, 200, { overwriteRoutes: true })
+  .patch(data.rubric3OwnerUrl, 200, { overwriteRoutes: true })
   .get(data.associationUrl, data.association, { overwriteRoutes: true })
   .get(data.evaluationUrl, data.evaluation, { overwriteRoutes: true })
   .post(`/api/sites/${data.siteId}/rubric-evaluations`, (url, opts) => {
@@ -29,6 +31,10 @@ fetchMock
         creatorDisplayName: "Adrian Fish",
       }, JSON.parse(opts.body));
     }, { overwriteRoutes: true })
+  .put(data.rubric4CriteriaSortUrl, 200, { overwriteRoutes: true })
+  .patch(data.rubric4OwnerUrl, 200, { overwriteRoutes: true })
+  .patch(data.rubric4Criteria5Url, 200, { overwriteRoutes: true })
+  .patch(data.rubric4Criteria6Url, 200, { overwriteRoutes: true })
   .get("*", 500, { overwriteRoutes: true });
 
 window.sakai = window.sakai || {
@@ -40,8 +46,6 @@ window.sakai = window.sakai || {
 describe("sakai-rubrics tests", () => {
 
   it ("renders a rubric association correctly", async () => {
-
-    console.debug("association test");
 
     let el = await fixture(html`
       <sakai-rubric-association site-id="${data.siteId}"
@@ -202,7 +206,7 @@ describe("sakai-rubrics tests", () => {
     await el.updateComplete;
     expect(totalPoints.value).to.equal("1.8");
   });
-  
+
   it ("manager renders correctly", async () => {
 
     let el = await fixture(html`
@@ -220,7 +224,7 @@ describe("sakai-rubrics tests", () => {
     let el = await fixture(html`
       <sakai-rubric-criterion-edit
           site-id="${data.siteId}"
-          rubric-id="${data.rubric1.Id}"
+          rubric-id="${data.rubric1.id}"
           .criterion=${data.criterion1}
           textarea>
       </sakai-rubric-criterion-edit>
@@ -230,15 +234,120 @@ describe("sakai-rubrics tests", () => {
     expect(el.querySelector(`#edit-criterion-${data.criterion1.id}`)).to.exist;
     expect(el.querySelector("sakai-editor")).to.exist;
     const button = el.querySelector("button.edit-criterion-button");
-    expect(button.getAttribute("title")).to.equal(el._i18n.edit_criterion);
+    expect(button.getAttribute("title")).to.equal(el._i18n.edit_criterion + " " + data.criterion1.title);
     let modal = el.querySelector(`#edit-criterion-${data.criterion1.id}`);
 
     const listener = oneEvent(modal, "shown.bs.modal");
     button.click();
     await listener;
 
-    modal = document.querySelector(".modal.show");
+    modal = el.querySelector(".modal.show");
     expect(modal).to.exist;
+  });
+
+  it ("rubric edit does not keep data changes in the modal after cancel", async () => {
+
+    let el = await fixture(html`
+      <sakai-rubric-edit
+          id="rubric-edit-${data.rubric1.id}"
+          .rubric="${data.rubric1}"
+          class="icon-spacer">
+      </sakai-rubric-edit>
+    `);
+
+    await waitUntil(() => el.querySelector("button.edit-button"), "edit button does not exist");
+    expect(el.querySelector(`#edit-rubric-${data.rubric1.id}`)).to.exist;
+
+    const button = el.querySelector("button.edit-button");
+    expect(button.getAttribute("title")).to.equal(el._i18n.edit_rubric + " " + data.rubric1.title);
+    let modal = el.querySelector(`#edit-rubric-${data.rubric1.id}`);
+
+    const listener = oneEvent(modal, "shown.bs.modal");
+    button.click();
+    await listener;
+
+    modal = el.querySelector(".modal.show");
+    expect(modal).to.exist;
+
+    let titleInput = modal.querySelector("input[type='text']");
+    expect(titleInput.getAttribute("value")).to.equal(data.rubric1.title);
+    titleInput.value = 'foobar';
+    titleInput.dispatchEvent(new Event("input"));
+    await el.updateComplete;
+
+    expect(titleInput.value).to.not.equal(data.rubric1.title);
+
+    let cancelButton = modal.querySelector(`#rubric-cancel-${data.rubric1.id}`);
+
+    const cancelListener = oneEvent(modal, "hidden.bs.modal");
+    cancelButton.click();
+    await cancelListener;
+
+    //Open modal again
+    button.click();
+    await listener;
+
+    titleInput = modal.querySelector("input[type='text']");
+    expect(titleInput.value).to.equal(data.rubric1.title);
+  });
+
+  it ("criterion edit does not keep data changes in the modal after cancel", async () => {
+
+    let el = await fixture(html`
+      <sakai-rubric-criterion-edit
+          site-id="${data.siteId}"
+          rubric-id="${data.rubric1.id}"
+          .criterion=${data.criterion1}
+          textarea>
+      </sakai-rubric-criterion-edit>
+    `);
+
+    await waitUntil(() => el.querySelector("button.edit-criterion-button"), "edit button does not exist");
+    expect(el.querySelector(`#edit-criterion-${data.criterion1.id}`)).to.exist;
+    expect(el.querySelector("sakai-editor")).to.exist;
+    const button = el.querySelector("button.edit-criterion-button");
+    expect(button.getAttribute("title")).to.equal(el._i18n.edit_criterion + " " + data.criterion1.title);
+    let modal = el.querySelector(`#edit-criterion-${data.criterion1.id}`);
+
+    const listener = oneEvent(modal, "shown.bs.modal");
+    button.click();
+    await listener;
+
+    modal = el.querySelector(".modal.show");
+    expect(modal).to.exist;
+
+    let titleInput = modal.querySelector(`#criterion-title-edit-${data.criterion1.id}`);
+    expect(titleInput.getAttribute("value")).to.equal(data.criterion1.title);
+    titleInput.value = 'foobar';
+    titleInput.dispatchEvent(new Event("input"));
+    await el.updateComplete;
+
+    expect(titleInput.value).to.not.equal(data.criterion1.title);
+
+    let descriptionInput = modal.querySelector(`#criterion-description-edit-${data.criterion1.id}`);
+
+    expect(descriptionInput.getContent()).to.equal(data.criterion1.description);
+    descriptionInput.setContent('qwerty');
+    descriptionInput.dispatchEvent(new Event("input"));
+    await el.updateComplete;
+
+    expect(descriptionInput.getContent()).to.not.equal(data.criterion1.description);
+
+    let cancelButton = modal.querySelector(`#criterion-cancel-${data.criterion1.id}`);
+
+    const cancelListener = oneEvent(modal, "hidden.bs.modal");
+    cancelButton.click();
+    await cancelListener;
+
+    //Open modal again
+    button.click();
+    await listener;
+
+    titleInput = modal.querySelector(`#criterion-title-edit-${data.criterion1.id}`);
+    expect(titleInput.value).to.equal(data.criterion1.title);
+
+    descriptionInput = modal.querySelector(`#criterion-description-edit-${data.criterion1.id}`);
+    expect(descriptionInput.getContent()).to.equal(data.criterion1.description);
   });
 
   it ("criterion preview renders correctly", async () => {
@@ -266,5 +375,121 @@ describe("sakai-rubrics tests", () => {
     await waitUntil(() => el._i18n);
 
     expect(el).to.be.accessible();
+  });
+
+  it ("updating rubric title updates the UI in all appropriate places for an unlocked rubric", async () => {
+    await checkRubricTitleChanges(data.rubric1);
+  });
+
+  it ("updating rubric title updates the UI in all appropriate places for a locked rubric", async () => {
+    await checkRubricTitleChanges(data.rubric3);
+  });
+
+  /**
+   * Perform a title update and make sure all places are changed
+   **/
+  async function checkRubricTitleChanges(rubricData) {
+    let el = await fixture(html`
+      <sakai-rubric site-id="${data.siteId}"
+                    .rubric=${rubricData}
+                    enable-pdf-export=true>
+      </sakai-rubric>
+    `);
+
+    await waitUntil(() => el._i18n);
+    await el.updateComplete;
+
+    // Validate that current data is the original title
+    validateRubricTitle(rubricData, el, rubricData.title);
+
+    const newTitle = 'UPDATED TITLE';
+    const editElement = el.querySelector(`#rubric-edit-${rubricData.id}`);
+
+    // Call update-rubric-title event
+    editElement.dispatchEvent(new CustomEvent("update-rubric-title", { detail: newTitle }));
+
+
+    await elementUpdated(editElement);
+    await elementUpdated(el);
+
+    // Validate that current data is the updated title
+    validateRubricTitle(rubricData, el, newTitle);
+
+  }
+
+  /**
+   * Look for all places in the dom that should render any sort of rubric title
+   **/
+  function validateRubricTitle(rubricData, el, titleToCheck) {
+    console.debug(`Validating for '${titleToCheck}'`);
+
+    expect(el.querySelector(".rubric-name").textContent).to.equal(titleToCheck);
+    expect(el.querySelector(`#rubric-toggle-${rubricData.id}`).title).to.equal(`${el._i18n.toggle_details} ${titleToCheck}`);
+
+    if (rubricData.locked) {
+      console.debug("Checking locked elements...");
+      elementChecks(el, "span.locked", titleToCheck);
+    }
+
+    elementChecks(el, "button.share", titleToCheck);
+    elementChecks(el, "button.clone", titleToCheck);
+    elementChecks(el, "button.edit-button", titleToCheck);
+    elementChecks(el, "a.pdf", titleToCheck);
+
+    if (!rubricData.locked) {
+      console.debug("Checking delete elements...");
+      elementChecks(el, `button[aria-controls="delete-rubric-${rubricData.id}"]`, titleToCheck);
+    }
+  }
+
+  /**
+   * Check that the element exists, the title matches, and the ariaLabel matches
+   **/
+  function elementChecks(el, elementSelector, titleToCheck) {
+    expect(el.querySelector(elementSelector)).to.exist;
+    expect(el.querySelector(elementSelector).title).to.contain(titleToCheck);
+    expect(el.querySelector(elementSelector).ariaLabel).to.contain(titleToCheck);
+  }
+
+  it ("Criterion reorder, then mark as draft", async () => {
+    let el = await fixture(html`
+      <sakai-rubric site-id="${data.siteId}"
+                    .rubric=${data.rubric4}
+                    enable-pdf-export=true>
+      </sakai-rubric>
+    `);
+
+    await waitUntil(() => el._i18n);
+    await el.updateComplete;
+
+    // Check initial ordering (should be id 5 then 6)
+    let reorderableRows = el.querySelectorAll("div.criterion-row");
+    expect(reorderableRows[0].getAttribute('data-criterion-id')).to.equal(String(data.criteria3[0].id));
+    expect(reorderableRows[1].getAttribute('data-criterion-id')).to.equal(String(data.criteria3[1].id));
+
+    // Reorder criteria
+    let eventData = { detail: { reorderedIds: [ data.criteria3[1].id, data.criteria3[0].id],
+                                        data: {'criterionId': data.criteria3[1].id, 'reorderableId': data.criteria3[1].id} }
+    };
+
+    let reorderer = el.querySelector("sakai-reorderer[drop-class='criterion-row']");
+    reorderer.dispatchEvent(new CustomEvent("reordered", eventData));
+
+    await reorderer.updateComplete;
+
+    // Check new ordering (should be 6 then 5)
+    reorderableRows = el.querySelectorAll("div.criterion-row");
+    expect(reorderableRows[0].getAttribute('data-criterion-id')).to.equal(String(data.criteria3[1].id));
+    expect(reorderableRows[1].getAttribute('data-criterion-id')).to.equal(String(data.criteria3[0].id));
+
+    // Mark rubric as draft
+    el.querySelectorAll("button.draft")[0].click();
+    await reorderer.updateComplete;
+
+    // Verify criteria are still in correct (new) order
+    reorderableRows = el.querySelectorAll("div.criterion-row");
+    expect(reorderableRows[0].getAttribute('data-criterion-id')).to.equal(String(data.criteria3[1].id));
+    expect(reorderableRows[1].getAttribute('data-criterion-id')).to.equal(String(data.criteria3[0].id));
+
   });
 });

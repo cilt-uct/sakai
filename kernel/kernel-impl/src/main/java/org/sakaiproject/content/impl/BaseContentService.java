@@ -68,20 +68,22 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tika.detect.DefaultDetector;
 import org.apache.tika.detect.Detector;
-import org.apache.tika.io.TikaInputStream;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.metadata.TikaCoreProperties;
-import org.apache.tika.mime.MimeTypes;
+import org.apache.tika.mime.MediaType;
 import org.apache.tika.parser.txt.CharsetDetector;
 import org.apache.tika.parser.txt.CharsetMatch;
 import org.sakaiproject.alias.api.AliasService;
@@ -266,10 +268,10 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 	private boolean m_useMimeMagic = true;
 
-	List <String> m_ignoreExtensions = null;
-	List <String> m_ignoreMimeTypes = null;
+	private List<String> m_ignoreExtensions;
+	private List<String> m_ignoreMimeTypes;
 
-	private static final Detector DETECTOR = new DefaultDetector(MimeTypes.getDefaultMimeTypes());
+	private Detector tikaDetector;
 	
 	// This is the date format for Last-Modified header
 	public static final String RFC1123_DATE = "EEE, dd MMM yyyy HH:mm:ss zzz";
@@ -828,6 +830,16 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			String resourceBundle = m_serverConfigurationService.getString(RESOURCEBUNDLE, DEFAULT_RESOURCEBUNDLE);
 			rb = Resource.getResourceLoader(resourceClass, resourceBundle);
 
+			m_useMimeMagic = m_serverConfigurationService.getBoolean("content.useMimeMagic", m_useMimeMagic);
+			m_ignoreExtensions = Optional.ofNullable(m_serverConfigurationService.getStrings("content.mimeMagic.ignorecontent.extensions"))
+					.map(Arrays::asList)
+					.orElse(Collections.emptyList());
+			m_ignoreMimeTypes = Optional.ofNullable(m_serverConfigurationService.getStrings("content.mimeMagic.ignorecontent.mimetypes"))
+					.map(Arrays::asList)
+					.orElse(Collections.emptyList());
+
+			tikaDetector = new DefaultDetector(this.getClass().getClassLoader());
+
 			m_relativeAccessPoint = REFERENCE_ROOT;
 
 			// construct a storage helper and read
@@ -904,7 +916,11 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			m_siteQuota = Long.parseLong(m_serverConfigurationService.getString("content.quota", Long.toString(m_siteQuota)));
             m_dropBoxQuota = Long.parseLong(m_serverConfigurationService.getString("content.dropbox.quota", Long.toString(m_dropBoxQuota)));
 
-			log.info("init(): site quota: " + m_siteQuota + ", dropbox quota: " + m_dropBoxQuota + ", body path: " + m_bodyPath + " volumes: "+ buf.toString());
+			log.info("site quota: {}, dropbox quota: {}, body path: {} volumes: {}",
+					m_siteQuota,
+					m_dropBoxQuota,
+					m_bodyPath,
+					m_bodyVolumes != null ? String.join(", ", m_bodyVolumes) : "");
 
 			int virusScanPeriod = m_serverConfigurationService.getInt(VIRUS_SCAN_CHECK_PERIOD_PROPERTY, VIRUS_SCAN_PERIOD);
 			int virusScanDelay = m_serverConfigurationService.getInt(VIRUS_SCAN_START_DELAY_PROPERTY, VIRUS_SCAN_DELAY);
@@ -5891,12 +5907,11 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		
 		try {
 			contentType = getResource(resourceId).getContentType();
-		} catch (PermissionException e) {
-		} catch (IdUnusedException e) {
-		} catch (TypeException e) {
+		} catch (Exception e) {
+			log.warn("Could not determine content type for [{}], {}", resourceId, e.toString());
 		}
 		
-		return contentType != null && !contentType.isEmpty();
+		return StringUtils.isNotBlank(contentType);
     }
 	
 	/**
@@ -5933,86 +5948,87 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 	{
 
 		// check for closed edit
-		if (!edit.isActiveEdit())
-		{
-			Exception e = new Exception();
-			log.error("commitResource(): closed ContentResourceEdit", e);
+		if (!edit.isActiveEdit()) {
+			log.error("resource [{}] is a closed ContentResourceEdit", edit.getId());
 			return;
 		}
 		
-        boolean hasContentTypeAlready = hasContentType(edit.getId());
-        
-        //use magic to fix mimetype
-        //Don't process for special TYPE_URL type
         String currentContentType = edit.getContentType();
-        m_useMimeMagic = m_serverConfigurationService.getBoolean("content.useMimeMagic", m_useMimeMagic);
-        m_ignoreExtensions = Arrays.asList(ArrayUtils.nullToEmpty(m_serverConfigurationService.getStrings("content.mimeMagic.ignorecontent.extensions")));
-        m_ignoreMimeTypes = Arrays.asList(ArrayUtils.nullToEmpty(m_serverConfigurationService.getStrings("content.mimeMagic.ignorecontent.mimetypes")));
+        String detectedByName = "";
+        String detectedByMagic = "";
 
-        if (m_useMimeMagic && DETECTOR != null && !ResourceProperties.TYPE_URL.equals(currentContentType) && !hasContentTypeAlready) {
-            try (
-                    TikaInputStream buff = TikaInputStream.get(edit.streamContent());
-            ) {
-                //we have to make the stream resetable so tika can read some of it and reset for saving.
-                //Also have to give the tika stream to the edit object since tika can invalidate the original 
-                //stream and replace it with a new stream.
-                edit.setContent(buff);
+        if (!hasContentType(edit.getId())) {
+            // this might not want to be set as it would advise the detector
+            final Metadata metadata = new Metadata();
+            metadata.set(TikaCoreProperties.RESOURCE_NAME_KEY, edit.getId());
+            metadata.set(Metadata.CONTENT_TYPE, currentContentType);
 
-                final Metadata metadata = new Metadata();
-                //This might not want to be set as it would advise the detector
-                metadata.set(TikaCoreProperties.RESOURCE_NAME_KEY, edit.getId());
-                metadata.set(Metadata.CONTENT_TYPE, currentContentType);
-                String newmatch = "";
-                //If we are ignoring the content for this extension, don't give it any data
-                if (m_ignoreExtensions != null && m_ignoreExtensions.contains(FilenameUtils.getExtension(edit.getId()))) {
-                    newmatch = DETECTOR.detect(null, metadata).toString();
+            // tika name detection
+            try {
+                detectedByName = tikaDetector.detect(null, metadata).toString();
+            } catch (IOException e) {
+                log.debug("performing tika name detection for resource [{}], {}", edit.getId(), e.toString());
+            }
+
+            // tika magic and name detection
+            if (m_useMimeMagic
+                    && !m_ignoreExtensions.contains(org.springframework.util.StringUtils.getFilenameExtension(edit.getId()))
+                    && !CollectionUtils.containsAny(m_ignoreMimeTypes, currentContentType, detectedByName)) {
+                try {
+                    // tika detect doesn't modify the original stream but stream must support reset
+                    InputStream stream = new BufferedInputStream(edit.streamContent());
+                    edit.setContent(stream);
+                    detectedByMagic = tikaDetector.detect(stream, metadata).toString();
+                } catch (Exception e) {
+                    log.warn("tika mimetype detection failed when trying to get the resource data: {}", e.toString());
                 }
-                else {
-                  newmatch = DETECTOR.detect(TikaInputStream.get(buff), metadata).toString();
-                  //Redetect without the content as we're ignoring this mime type
-                  if (m_ignoreMimeTypes != null && m_ignoreMimeTypes.contains(newmatch)) {
-                    newmatch = DETECTOR.detect(null, metadata).toString();
-                  }
-                }
-                
-                if (log.isDebugEnabled()) {
-                    log.debug("Magic: Setting content type from " + currentContentType + " to " + newmatch);
-                }
-                edit.setContentType(newmatch);
-                commitResourceEdit(edit, priority);
-            } catch (Exception e) {
-				log.warn("Exception when trying to get the resource's data: " + e);
-			} 
+            }
         }
-        else {
-        	commitResourceEdit(edit, priority);
+
+        // detection order preference is
+        // 1. tika magic and name detection
+        //    magic detection may give a false mimetype if the file is unknown and has plain text
+        // 2. tika name only detection
+        //    name only is more reliable if magic fails
+        // 3. resources default content type
+        String newContentType = "";
+        if (StringUtils.isNotBlank(detectedByMagic)) {
+            // if magic chose text/plain this is a default for text files returned by TextDetector
+            if (MediaType.TEXT_PLAIN.toString().equals(detectedByMagic)
+                    && !MediaType.TEXT_PLAIN.toString().equals(detectedByName)) {
+                newContentType = detectedByName;
+            } else {
+                newContentType = detectedByMagic;
+            }
+        } else if (StringUtils.isNotBlank(detectedByName)
+                && !detectedByName.equals(currentContentType)) {
+            newContentType = detectedByName;
         }
-        
+
+        // change the content type
+        if (StringUtils.isNotBlank(newContentType)) {
+            log.debug("setting content type for [{}] from [{}] to [{}]", edit.getId(), currentContentType, newContentType);
+            edit.setContentType(newContentType);
+        }
+        commitResourceEdit(edit, priority);
+
         // Queue up content for virus scanning
         if (virusScanner.getEnabled()) {
             virusScanQueue.add(edit.getId());
         }
 
-        /**
-		 *  check for over quota.
-		 *  We do this after the commit so we can actual tell its size
-		 */
+		// check for over quota.
+		// do this after the commit to actually determine its size
 		if (overQuota(edit))
 		{
 			try {
 				//the edit is closed so we need to refetch it
 				ContentResourceEdit edit2 = editResource(edit.getId());
 				removeResource(edit2);
-			} catch (PermissionException e1) {
-				log.error(e1.getMessage(), e1);
-			} catch (IdUnusedException e1) {
-				log.error(e1.getMessage(), e1);
-			} catch (TypeException e1) {
-				log.error(e1.getMessage(), e1);
-			} catch (InUseException e1) {
-				log.error(e1.getMessage(), e1);
+			} catch (Exception e) {
+				log.error("over quota checked, failed to remove [{}], {}", edit.getId(), e.toString());
 			}
-			throw new OverQuotaException(edit.getReference());
+            throw new OverQuotaException(edit.getReference());
 		}
 		
 	} // commitResource
@@ -6952,7 +6968,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 			else
 			{
 				// use the last part, the file name part of the id, for the download file name
-				String fileName = FilenameUtils.getName(ref.getId());
+				String fileName = org.springframework.util.StringUtils.getFilename(ref.getId());
 				String disposition = null;
 
 				if (Validator.letBrowserInline(contentType))
@@ -8018,7 +8034,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 				ContentResource thisContentResource = (ContentResource) sourceResourceIterator.next();
 				tId = thisContentResource.getId();
 				String sourceType = thisContentResource.getContentType();
-				if(sourceType.startsWith("text/html")){
+				if(sourceType.startsWith(ResourceType.MIME_TYPE_HTML) || sourceType.startsWith(ResourceType.MIME_TYPE_URL)){
 					String oldReference = tId;
 					tId = siteIdSplice(tId, toContext);
 					ContentResource oldSiteContentResource = getResource(oldReference);
@@ -8860,23 +8876,41 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 		// write the content to a file
 		String fileName = idManager.createUuid();
 		InputStream stream = null;
+		DigestInputStream dis = null;
+		String sha256 = null;
 		FileOutputStream out = null;
 		try
 		{
+			sha256 = null;
 			stream = resource.streamContent();
+			// Create a message digest object for calculating the hash
+			MessageDigest md = MessageDigest.getInstance("SHA-256");
+			// Create a digest input stream, wrapping the file input stream
+			dis = new DigestInputStream(stream, md);
+
 			out = new FileOutputStream(storagePath + fileName);
 			byte[] chunk = new byte[STREAM_BUFFER_SIZE];
 			int lenRead;
-			while ((lenRead = stream.read(chunk)) != -1)
+			while ((lenRead = dis.read(chunk)) != -1)
 			{
 				out.write(chunk, 0, lenRead);
 			}
+			byte[] digest = md.digest();
+			// Convert the digest to a hexadecimal string
+			StringBuilder hexString = new StringBuilder();
+			for (byte b : digest) {
+				hexString.append(String.format("%02x", b));
+			}
+			sha256 = hexString.toString();
 		}
 		catch (IOException e)
 		{
 			log.warn("archiveResource(): while writing body for: " + resource.getId() + " : " + e);
 		} catch (ServerOverloadException e) {
 			log.warn("archiveResource(): while writing body for: " + resource.getId() + " : " + e);
+		} catch (NoSuchAlgorithmException e) {
+			// Unlikely
+			log.error("NoSuchAlgorithmException ", e);
 		}
 		finally
 		{
@@ -8885,6 +8919,18 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 				try
 				{
 					stream.close();
+				}
+				catch (IOException e)
+				{
+					log.error("IOException ", e);
+				}
+			}
+
+			if (dis != null)
+			{
+				try
+				{
+					dis.close();
 				}
 				catch (IOException e)
 				{
@@ -8907,6 +8953,7 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
 
 		// store the file name in the xml
 		el.setAttribute("body-location", fileName);
+		if ( sha256 != null ) el.setAttribute("sha256", sha256);
 
 		// store the relative file id in the xml
 		if (siteCollectionId != null)
@@ -14162,8 +14209,8 @@ SiteContentAdvisorProvider, SiteContentAdvisorTypeRegistry, HardDeleteAware
      * @exception Exception Anything thrown by ZipContentUtil gets passed upwards.
      */
     public void expandZippedResource(String resourceId) throws Exception {
-        int maxZipExtractSize = ZipContentUtil.getMaxZipExtractFiles();
-        ZipContentUtil extractZipArchive = new ZipContentUtil();
+        ZipContentUtil extractZipArchive = new ZipContentUtil(this, m_serverConfigurationService, sessionManager);
+        int maxZipExtractSize = extractZipArchive.getMaxZipExtractFiles();
 
         // KNL-900 Total size of files should be checked before unzipping (KNL-273)
 		Map<String, Long> zipManifest = extractZipArchive.getZipManifest(resourceId);

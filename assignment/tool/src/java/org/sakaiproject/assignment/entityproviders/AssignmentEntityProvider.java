@@ -710,10 +710,6 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
                 submission.put("grade", assignmentService.getGradeDisplay(as.getGrade(), assignment.getTypeOfGrade(), assignment.getScaleFactor()));
             }
 
-            if (StringUtils.isNotBlank(as.getGrade())) {
-                submission.put("grade", as.getGrade());
-            }
-
             boolean draft = assignmentToolUtils.isDraftSubmission(as);
             if (draft) {
                 submission.put("draft", draft);
@@ -807,7 +803,7 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
                     && assignmentService.isPeerAssessmentClosed(assignment)) {
                 List<PeerAssessmentItem> reviews = assignmentPeerAssessmentService.getPeerAssessmentItems(as.getId(), assignment.getScaleFactor());
                 if (reviews != null) {
-                    List<PeerAssessmentItem> completedReviews = new ArrayList<>();
+                    List<SimplePeerAssessmentItem> completedReviews = new ArrayList<>();
                     for (PeerAssessmentItem review : reviews) {
                         if (!review.getRemoved() && (review.getScore() != null || (StringUtils.isNotBlank(review.getComment())))) {
                             //only show peer reviews that have either a score or a comment saved
@@ -843,13 +839,12 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
                                         log.warn("Exception while creating reference: {}", e.toString());
                                     }
                                 }
-                                if (!attachmentRefList.isEmpty())
-                                    review.setAttachmentRefList(attachmentRefList);
+                                if (!attachmentRefList.isEmpty()) review.setAttachmentRefList(attachmentRefList);
                             }
-                            completedReviews.add(review);
+                            completedReviews.add(new SimplePeerAssessmentItem(review));
                         }
                     }
-                    if (completedReviews.size() > 0) {
+                    if (!completedReviews.isEmpty()) {
                         submission.put("peerReviews", completedReviews);
                     }
                 }
@@ -931,9 +926,6 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
                 }).filter(Objects::nonNull).collect(Collectors.toList());
 
             if (!feedbackAttachments.isEmpty()) submission.put("feedbackAttachments", feedbackAttachments);
-
-            String grade = assignmentService.getGradeForSubmitter(as, as.getSubmitters().isEmpty() ? null : as.getSubmitters().stream().findAny().get().getSubmitter());
-            if (StringUtils.isNotBlank(grade)) submission.put("grade", grade);
 
             String status = assignmentService.getSubmissionStatus(as.getId(), true);
             if (StringUtils.isNotBlank(status)) submission.put("status", status);
@@ -1126,6 +1118,58 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
             reviewCounting++;
         }
         return props;
+    }
+
+    @EntityCustomAction(action = "getGrade", viewKey = EntityView.VIEW_LIST)
+    public ActionReturn getGrade(Map<String, Object> params) {
+
+        String userId = getCheckedCurrentUser();
+
+        String courseId = (String) params.get("courseId");
+        String gradableId = (String) params.get("gradableId");
+        String studentId = (String) params.get("studentId");
+        String submissionId = (String) params.get("submissionId");
+        if (StringUtils.isBlank(courseId) || StringUtils.isBlank(gradableId)
+                || StringUtils.isBlank(studentId) || StringUtils.isBlank(submissionId)) {
+            throw new EntityException("You need to supply the courseId, gradableId, studentId and grade", "", HttpServletResponse.SC_BAD_REQUEST);
+        }
+
+        AssignmentSubmission submission = null;
+        try {
+            submission = assignmentService.getSubmission(submissionId);
+        } catch (IdUnusedException iue) {
+            throw new EntityException("submissionId not found.", "", HttpServletResponse.SC_BAD_REQUEST);
+        } catch (PermissionException pe) {
+            throw new EntityException("You don't have permissions read submission " + submissionId, "", HttpServletResponse.SC_FORBIDDEN);
+        }
+
+        Site site = null;
+        try {
+            site = siteService.getSite(courseId);
+        } catch (IdUnusedException iue) {
+            throw new EntityException("The courseId (site id) you supplied is invalid", "", HttpServletResponse.SC_BAD_REQUEST);
+        }
+
+        Assignment assignment = submission.getAssignment();
+
+        Map<String, Object> retval = new HashMap<>();
+        retval.put("id", submission.getId());
+
+        // Return the default representation of a grade if we don't return a formatted version
+        // See similar code in submissionToMap which does this in a different order
+        if (StringUtils.isNotBlank(submission.getGrade())) {
+            retval.put("grade", submission.getGrade());
+        }
+
+        if (assignment.getTypeOfGrade() == Assignment.GradeType.PASS_FAIL_GRADE_TYPE) {
+            retval.put("grade", StringUtils.isBlank(submission.getGrade()) ? AssignmentConstants.UNGRADED_GRADE_STRING : submission.getGrade());
+        } else if (StringUtils.isNotBlank(submission.getGrade())) {
+            retval.put("grade", assignmentService.getGradeDisplay(submission.getGrade(), assignment.getTypeOfGrade(), assignment.getScaleFactor()));
+        }
+
+        if (StringUtils.isNotBlank(submission.getFeedbackComment())) retval.put("feedbackComment", submission.getFeedbackComment());
+
+        return new ActionReturn(retval);
     }
 
     @EntityCustomAction(action = "setGrade", viewKey = EntityView.VIEW_NEW)
@@ -2147,6 +2191,43 @@ public class AssignmentEntityProvider extends AbstractEntityProvider implements 
             this.reference = g.getReference();
             this.title = g.getTitle();
             this.users = g.getUsers();
+        }
+    }
+
+    @Getter
+    public class SimplePeerAssessmentItem {
+
+        private String assessorUserId;
+        private String submissionId;
+        private String assignmentId;
+        private Integer score;
+        private String scoreDisplay;
+        private String comment;
+        private Boolean removed;
+        private Boolean submitted;
+        private List<String> attachmentUrlList;
+        private String assessorDisplayName;
+        private Integer scaledFactor;
+        private boolean draft;
+
+        public SimplePeerAssessmentItem(PeerAssessmentItem item) {
+            this.assessorUserId = item.getId().getAssessorUserId();
+            this.submissionId = item.getId().getSubmissionId();
+            this.assignmentId = item.getAssignmentId();
+            this.score = item.getScore();
+            this.scoreDisplay = item.getScoreDisplay();
+            this.comment = item.getComment();
+            this.removed = item.getRemoved();
+            this.submitted = item.getSubmitted();
+            this.assessorDisplayName = item.getAssessorDisplayName();
+            this.scaledFactor = item.getScaledFactor();
+            this.draft = item.isDraft();
+
+            this.attachmentUrlList = Optional.ofNullable(item.getAttachmentRefList())
+                    .orElseGet(Collections::emptyList)
+                    .stream()
+                    .map(Reference::getUrl)
+                    .collect(Collectors.toList());
         }
     }
 }

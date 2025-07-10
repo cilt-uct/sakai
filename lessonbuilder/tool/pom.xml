@@ -161,6 +161,10 @@
             <type>war</type>
         </dependency>
         <dependency>
+          <groupId>org.sakaiproject.common</groupId>
+          <artifactId>archive-api</artifactId>
+        </dependency>
+        <dependency>
             <groupId>commons-fileupload</groupId>
             <artifactId>commons-fileupload</artifactId>
         </dependency>
@@ -186,9 +190,6 @@
 
     <build>
         <resources>
-            <resource>
-                <directory>${basedir}/src/resources</directory>
-            </resource>
             <resource>
                 <directory>${basedir}/src/java</directory>
                 <includes>

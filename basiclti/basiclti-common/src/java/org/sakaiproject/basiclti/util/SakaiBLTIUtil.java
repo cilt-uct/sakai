@@ -612,30 +612,29 @@ public class SakaiBLTIUtil {
 		}
 	}
 
-	public static String getCurrentUserSakaiRole(User user, String context, String roleMapProp) {
+	public static String getCurrentUserSakaiRole(User user, String context) {
+		if (user == null) return null;
 
 		String realmId = SiteService.siteReference(context);
-		Map<String, String> toolRoleMap = convertOutboundRoleMapPropToMap(roleMapProp);
-		Map<String, String> propRoleMap = convertOutboundRoleMapPropToMap(
-			ServerConfigurationService.getString(LTI_OUTBOUND_ROLE_MAP)
-		);
-		Map<String, String> defaultRoleMap = convertOutboundRoleMapPropToMap(LTI_OUTBOUND_ROLE_MAP_DEFAULT);
 
 		try {
-			if (user != null) {
-				Role role = null;
-				String sakaiRole = null;
-				AuthzGroup realm = ComponentManager.get(AuthzGroupService.class).getAuthzGroup(realmId);
-				if (realm != null) {
-					role = realm.getUserRole(user.getId());
+            Role role = null;
+            String sakaiRole = null;
+            AuthzGroup realm = ComponentManager.get(AuthzGroupService.class).getAuthzGroup(realmId);
+            if (realm != null) {
+                role = realm.getUserRole(user.getId());
+
+				// Handle a delegated access user
+				if (role == null && SiteService.allowUpdateSite(context)) {
+					role = realm.getRole(realm.getMaintainRole());
 				}
-				if (role != null) {
-					sakaiRole = role.getId();
-				}
-				if (StringUtils.isNotBlank(sakaiRole)) return sakaiRole;
-			}
-		} catch (GroupNotDefinedException e) {
-			log.error("SiteParticipantHelper.getExternalRealmId: site realm not found {}", e.getMessage());
+            }
+            if (role != null) {
+                sakaiRole = role.getId();
+            }
+            if (StringUtils.isNotBlank(sakaiRole)) return sakaiRole;
+        } catch (GroupNotDefinedException e) {
+			log.error("site realm not found {}", e.getMessage());
 		}
 		return null;
 	}
@@ -653,7 +652,7 @@ public class SakaiBLTIUtil {
 
 	public static void addRoleInfo(Properties props, Properties lti13subst, User user, String context, String roleMapProp) {
 
-		String sakaiRole = SecurityService.isSuperUser() ? "admin" : getCurrentUserSakaiRole(user, context, roleMapProp);
+		String sakaiRole = SecurityService.isSuperUser() ? "admin" : getCurrentUserSakaiRole(user, context);
 
 		String outboundRole = null;
 		if (StringUtils.isNotBlank(sakaiRole)) {
@@ -919,29 +918,24 @@ public class SakaiBLTIUtil {
 				setProperty(props, "ext_sakai_eid", user.getEid());
 			}
 
+			String allowRoster = (String) normalProps.get(LTIService.LTI_ALLOWROSTER);
+			String result_sourcedid = getSourceDID(user, placement, config);
+			String theRole = props.getProperty(BasicLTIConstants.ROLES);
+
+			// If the server configuration says "no" that is it
+			// If the server configuration says "yes" and the tool configuration says "no" then it is "no"
+			String allowOutcomes = "false";
 			String gradebookColumn = null;
-			// TODO: Figure this out
-			// It is a little tricky - the tool configuration on/off decides whether
-			// We check the serverCongigurationService true/false
-			// We use the tool configuration to force outcomes off regardless of
-			// server settings (i.e. an external tool never wants the outcomes
-			// UI shown because it simply does not handle outcomes).
-			String allowOutcomes = toNull(getCorrectProperty(config, LTIService.LTI_ALLOWOUTCOMES, placement));
-			if (!BASICLTI_PORTLET_OFF.equals(allowOutcomes)) {
+
+			String allowOutcomesTool = toNull(getCorrectProperty(config, LTIService.LTI_ALLOWOUTCOMES, placement));
+			if ( outcomesEnabled() && !BASICLTI_PORTLET_OFF.equals(allowOutcomesTool) ) {
+				allowOutcomes = "true";
 				gradebookColumn = toNull(getCorrectProperty(config, "assignment", placement));
-				if (!outcomesEnabled()) {
-					allowOutcomes = null;
-				}
 			}
 
-			String allowRoster = (String) normalProps.get(LTIService.LTI_ALLOWROSTER);
 			String allowSettings = (String) normalProps.get(LTIService.LTI_ALLOWSETTINGS_EXT);
 
-			String result_sourcedid = getSourceDID(user, placement, config);
-
-			String theRole = props.getProperty(BasicLTIConstants.ROLES);
 			if (result_sourcedid != null) {
-
 				if ("true".equals(allowOutcomes) && gradebookColumn != null) {
 					if (theRole.contains(LTICustomVars.MEMBERSHIP_ROLE_LEARNER)) {
 						setProperty(props, BasicLTIConstants.LIS_RESULT_SOURCEDID, result_sourcedid);
@@ -2596,11 +2590,16 @@ public class SakaiBLTIUtil {
 		}
 
 		// Now read, set, or delete the non-assignment grade...
+		// For LTI 1.1 columns we don't need to mark them for AGS LineItems retrieval
+		Long tool_id = null;
+		Map<String, Object> content = null;
+
 		Session sess = SessionManager.getCurrentSession();
 
 		SakaiLineItem lineItem = new SakaiLineItem();
 		lineItem.scoreMaximum = 100.0D;
-		org.sakaiproject.grading.api.Assignment gradebookColumn = getGradebookColumn(site, user_id, title, lineItem);
+
+		org.sakaiproject.grading.api.Assignment gradebookColumn = getGradebookColumn(site, user_id, title, lineItem, tool_id, content);
 		if (gradebookColumn == null) {
 			log.warn("gradebookColumn or Id is null, cannot proceed with grading in site {} for column {}", siteId, title);
 			return "Grade failure siteId=" + siteId;
@@ -2687,7 +2686,7 @@ public class SakaiBLTIUtil {
 				log.error("Could not determine content title {}", content.get(LTIService.LTI_ID));
 				return "Could not determine content title key="+content.get(LTIService.LTI_ID);
 			}
-			gradebookColumn = getGradebookColumn(site, userId, title, lineItem);
+			gradebookColumn = getGradebookColumn(site, userId, title, lineItem, tool_id, content);
 		} else {
 			gradebookColumn = LineItemUtil.getColumnByKeyDAO(siteId, tool_id, lineitem_key);
 			if ( gradebookColumn == null || gradebookColumn.getName() == null ) {
@@ -2915,7 +2914,7 @@ public class SakaiBLTIUtil {
 		return keyPrefix + next;
 	}
 
-	public static org.sakaiproject.grading.api.Assignment getGradebookColumn(Site site, String userId, String title, SakaiLineItem lineItem) {
+	public static org.sakaiproject.grading.api.Assignment getGradebookColumn(Site site, String userId, String title, SakaiLineItem lineItem, Long tool_id, Map<String, Object> content) {
 		// Look up the gradebook column so we can find the max points
 		GradingService g = (GradingService) ComponentManager
 				.get("org.sakaiproject.grading.api.GradingService");
@@ -2951,6 +2950,11 @@ public class SakaiBLTIUtil {
 				returnColumn.setPoints(scoreMaximum);
 				returnColumn.setExternallyMaintained(false);
 				returnColumn.setName(title);
+				if ( tool_id != null && content != null ) {
+					String external_id = LineItemUtil.constructExternalId(tool_id, content, lineItem);
+					returnColumn.setExternalAppName(LineItemUtil.GB_EXTERNAL_APP_NAME);
+					returnColumn.setExternalId(external_id);
+				}
 				// SAK-40043
 				Boolean releaseToStudent = lineItem.releaseToStudent == null ? Boolean.TRUE : lineItem.releaseToStudent; // Default to true
 				Boolean includeInComputation = lineItem.includeInComputation == null ? Boolean.TRUE : lineItem.includeInComputation; // Default true
@@ -3699,4 +3703,31 @@ public class SakaiBLTIUtil {
 		}
 		return key;
 	}
+
+  	public static Long toLong(Object o, Long defaultValue) {
+		if (o instanceof String) {
+			try {
+				return Long.valueOf((String) o);
+			} catch (NumberFormatException e) {
+				return defaultValue;
+			}
+		}
+		if (o instanceof Number) {
+			return Long.valueOf(((Number) o).longValue());
+		}
+		return defaultValue;
+	}
+
+	public static Long toLong(Object key) {
+		return toLong(key, -1L);
+	}
+
+	public static Long toLongKey(Object key) {
+		return toLong(key, -1L);
+	}
+
+	public static Long toLongNull(Object key) {
+		return toLong(key, null);
+	}
+
 }

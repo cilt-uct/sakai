@@ -750,8 +750,11 @@ public interface AssignmentService extends EntityProducer {
     public String getMaxPointGradeDisplay(int factor, int maxGradePoint);
 
     /**
-     * @param submission
-     * @return
+     * Finds the submitter for this submission. This will check the submittee field if there are multiple submitters
+     * in the case of groups submissions.
+     *
+     * @param submission to check
+     * @return an Optional that contains the submitter if one exists
      */
     public Optional<AssignmentSubmissionSubmitter> getSubmissionSubmittee(AssignmentSubmission submission);
 
@@ -886,11 +889,15 @@ public interface AssignmentService extends EntityProducer {
     public boolean isTimeSheetEnabled(String siteId);
 
     /**
-     * The the name of the content review service being used e.g. Turnitin
+     * The name of the content review service being used e.g. Turnitin
      * @return A String containing the name of the content review service
      */
     public String getContentReviewServiceName();
     
     public String getAssignmentModifier(String modifier);
-    
+
+    /**
+     * Returns true if the submission contains instructor feedback, whether as comment text (inline) or attachments.
+     */
+    public boolean doesSubmissionHaveInstructorFeedback(AssignmentSubmission submission);
 }

@@ -44,7 +44,7 @@
     <sakai.httpmime.version>4.5.14</sakai.httpmime.version>
     <sakai.httpclient5.version>5.2.3</sakai.httpclient5.version>
     <sakai.httpcore5.version>5.2.3</sakai.httpcore5.version>
-    <sakai.ignite.version>2.15.0</sakai.ignite.version>
+    <sakai.ignite.version>2.16.0</sakai.ignite.version>
     <sakai.ignite.spring.ext.version>1.0.0</sakai.ignite.spring.ext.version>
     <sakai.ignite.hibernate.version>5.3.0</sakai.ignite.hibernate.version>
     <sakai.jackson.version>2.14.1</sakai.jackson.version>
@@ -151,7 +151,7 @@
             -->
             <groupId>org.owasp</groupId>
             <artifactId>dependency-check-maven</artifactId>
-            <version>6.2.2</version>
+            <version>9.0.9</version>
             <dependencies>
               <dependency>
                 <groupId>org.sakaiproject</groupId>
@@ -2501,7 +2501,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-javadoc-plugin</artifactId>
-          <version>3.1.1</version>
+          <version>3.6.3</version>
           <configuration>
             <links>
               <link>http://docs.oracle.com/javase/8/docs/api/</link>
@@ -2518,8 +2518,34 @@
             <maxmemory>2048m</maxmemory>
             <doclint>none</doclint>
             <failOnError>false</failOnError>
+            <failOnWarnings>false</failOnWarnings>
+            <additionalOptions>
+              <additionalOption>--add-modules</additionalOption>
+              <additionalOption>java.xml</additionalOption>
+              <additionalOption>--add-exports=java.xml/com.sun.org.apache.xml.internal.serializer=ALL-UNNAMED</additionalOption>
+              <additionalOption>--add-exports=java.xml/com.sun.org.apache.xml.internal.utils=ALL-UNNAMED</additionalOption>
+            </additionalOptions>
+            <additionalDependencies>
+              <!-- these wicket dependencies can be removed once this version of wicket is no longer needed (delegatedaccess) -->
+              <additionalDependency>
+                <groupId>org.apache.wicket</groupId>
+                <artifactId>wicket-core</artifactId>
+                <version>6.30.0</version>
+              </additionalDependency>
+              <additionalDependency>
+                <groupId>org.apache.wicket</groupId>
+                <artifactId>wicket-extensions</artifactId>
+                <version>6.30.0</version>
+              </additionalDependency>
+              <additionalDependency>
+                <groupId>org.apache.wicket</groupId>
+                <artifactId>wicket-util</artifactId>
+                <version>6.30.0</version>
+              </additionalDependency>
+            </additionalDependencies>
           </configuration>
         </plugin>
+
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-clean-plugin</artifactId>
@@ -2548,7 +2574,14 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-surefire-plugin</artifactId>
-          <version>3.1.0</version>
+          <version>3.2.5</version>
+          <dependencies>
+            <dependency>
+              <groupId>org.apache.maven.surefire</groupId>
+              <artifactId>surefire-junit4</artifactId>
+              <version>3.2.5</version>
+            </dependency>
+          </dependencies>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -2618,7 +2651,7 @@
             <dependency>
               <groupId>com.github.spotbugs</groupId>
               <artifactId>spotbugs</artifactId>
-               <version>4.7.2</version>
+               <version>4.8.2</version>
              </dependency>
           </dependencies>
         </plugin>
@@ -2743,7 +2776,7 @@
                   <version>3.1.1</version>
                 </requireMavenVersion>
                 <requireJavaVersion>
-                  <version>${sakai.jdk.version}</version>
+                  <version>[${sakai.jdk.version},12)</version>
                 </requireJavaVersion>
               </rules>
             </configuration>
@@ -2817,6 +2850,12 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
+          <properties>
+            <property>
+              <name>junit</name>
+              <value>org.apache.maven.surefire.junit4.JUnit4Provider</value>
+            </property>
+          </properties>
           <testFailureIgnore>false</testFailureIgnore>
           <forkCount>1</forkCount>
           <reuseForks>false</reuseForks>
@@ -2880,12 +2919,6 @@
         <groupId>net.sourceforge.maven-taglib</groupId>
         <artifactId>maven-taglib-plugin</artifactId>
       </plugin>
-      <!-- javadoc plugin requires more than 1GB to run - disabling by default -->
-      <!-- Disabled since it fails on OSX -https://jira.codehaus.org/browse/MCOBERTURA-180
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>cobertura-maven-plugin</artifactId>
-      </plugin>-->
       <!-- Code analysis report - fails to find the rulesets
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>

@@ -1,5 +1,16 @@
 .#{$namespace}sakai-signup {
 
+	.alertMessageInline {
+		@extend .alert;
+		@extend .alert-danger;
+	}
+
+	.alertMessage {
+		display: block;
+		@extend .alert;
+		@extend .alert-danger;
+	}
+
 	.form-required{
 		&:after{
 			content: "*";
@@ -51,11 +62,6 @@
 		}
 		
 		&\:until\.year{
-			margin-left: 0.5em;
-		}
-		
-		&\:emailAttendeeOnly{
-			margin-top: 0.5em;
 			margin-left: 0.5em;
 		}
 		

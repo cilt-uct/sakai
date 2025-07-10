@@ -2587,7 +2587,9 @@ public abstract class BaseCalendarService implements CalendarService, DoubleStor
 			edit.setDescription(description);
 			edit.setType(type);
 			edit.setLocation(location);
-		    edit.setSiteId(m_toolManager.getCurrentPlacement().getContext());
+			if (m_toolManager.getCurrentPlacement() != null && m_toolManager.getCurrentPlacement().getContext() != null) {
+				edit.setSiteId(m_toolManager.getCurrentPlacement().getContext());
+			}
 			edit.setCreator();
 			
 			// for site...
@@ -2858,7 +2860,7 @@ public abstract class BaseCalendarService implements CalendarService, DoubleStor
 
 					// add an exclusion for where this one would have been %%% we are changing it, should it be immutable? -ggolden
 					List exclusions = ((ExclusionSeqRecurrenceRule) bedit.getExclusionRule()).getExclusions();
-					exclusions.add(Integer.valueOf(sequence));
+					exclusions.add(sequence);
 
 					// complete the edit
 					m_storage.commitEvent(this, edit);
@@ -2953,6 +2955,7 @@ public abstract class BaseCalendarService implements CalendarService, DoubleStor
 		 * @exception InUseException
 		 *            if the event is locked for edit by someone else.
 		 */
+		@Override
 		public CalendarEventEdit getEditEvent(String eventId, String editType)
 			throws IdUnusedException, PermissionException, InUseException
 		{
@@ -2970,7 +2973,7 @@ public abstract class BaseCalendarService implements CalendarService, DoubleStor
 				}
 				catch (Exception ex)
 				{
-					log.warn("getEditEvent: exception parsing eventId: " + eventId + " : " + ex);
+					log.warn("getEditEvent: exception parsing eventId: {} : {}", eventId, ex.toString());
 				}
 			}
 
@@ -3035,21 +3038,21 @@ public abstract class BaseCalendarService implements CalendarService, DoubleStor
 			// check for closed edit
 			if (!edit.isActiveEdit())
 			{
-				log.warn("commitEvent(): closed CalendarEventEdit " + edit.getId());
+				log.warn("commitEvent(): closed CalendarEventEdit {}", edit.getId());
 				return;
 			}
 
 			BaseCalendarEventEdit bedit = (BaseCalendarEventEdit) edit;
-			         
-         // If creator doesn't exist, set it now (backward compatibility)
-         if ( edit.getCreator() == null || edit.getCreator().equals("") )
-            edit.setCreator(); 
-         
+
+			// If creator doesn't exist, set it now (backward compatibility)
+			if ( edit.getCreator() == null || edit.getCreator().isEmpty())
+				edit.setCreator(); 
+
 			// update modified-by properties for event
-         edit.setModifiedBy(); 
+			edit.setModifiedBy(); 
 
 			// if the id has a time range encoded, as for one of a sequence of recurring events, separate that out
-         	String indivEventEntityRef = null;
+			String indivEventEntityRef = null;
 			TimeRange timeRange = null;
 			int sequence = 0;
 			if (bedit.m_id.startsWith("!"))

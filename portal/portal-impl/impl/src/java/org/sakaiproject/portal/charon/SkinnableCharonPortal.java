@@ -120,6 +120,7 @@ import org.sakaiproject.portal.util.PortalUtils;
 import org.sakaiproject.portal.util.ToolURLManagerImpl;
 import org.sakaiproject.portal.util.ToolUtils;
 import org.sakaiproject.portal.util.URLUtils;
+import org.sakaiproject.profile2.service.ProfileImageService;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SitePage;
 import org.sakaiproject.site.api.ToolConfiguration;
@@ -136,7 +137,6 @@ import org.sakaiproject.tool.api.ToolURL;
 import org.sakaiproject.tool.cover.ActiveToolManager;
 import org.sakaiproject.tool.cover.SessionManager;
 import org.sakaiproject.user.api.Preferences;
-import org.sakaiproject.user.api.PreferencesEdit;
 import org.sakaiproject.user.api.PreferencesService;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserNotDefinedException;
@@ -195,6 +195,7 @@ public class SkinnableCharonPortal extends HttpServlet implements Portal
 
 	//Get user preferences
 	private PreferencesService preferencesService;
+    private ProfileImageService profileImageService;
 
 	/**
 	 * Keyword to look for in sakai.properties copyright message to replace
@@ -1072,8 +1073,7 @@ public class SkinnableCharonPortal extends HttpServlet implements Portal
 
 		rcontext.put("homeToolTitle", rloader.getString("sitenav_home_tool_title"));
 		
-		//SAK-32224. Ability to disable the animated tool menu by property
-		rcontext.put("scrollingToolbarEnabled", ServerConfigurationService.getBoolean("portal.scrolling.toolbar.enabled",true));
+        rcontext.put("profileImageUrl", profileImageService.getProfileImageURL(currentUser.getId(), currentUser.getEid(), true));
 
 		// Format properties for MathJax.
 		String [] mathJaxFormat = ServerConfigurationService.getStrings("mathjax.config.format");
@@ -1314,6 +1314,7 @@ public class SkinnableCharonPortal extends HttpServlet implements Portal
 		String [] parts = getParts(req);
 		if ((parts.length > 2) && (parts[1].equals("tool"))) {
 			headJs.append("<script src=\""+PortalUtils.getWebjarsPath()+"momentjs/"+PortalUtils.MOMENTJS_VERSION+"/min/moment-with-locales.min.js"+PortalUtils.getCDNQuery()+"\"></script>\n");
+            headJs.append("<script type=\"module\" src=\"/webcomponents/bundles/sakai-date-picker.js?version=" + PortalUtils.getCDNQuery() + "\"></script>");
 		}
 
 		headJs.append("<script type=\"text/javascript\">var sakai = sakai || {}; sakai.editor = sakai.editor || {}; " +
@@ -1996,6 +1997,7 @@ public class SkinnableCharonPortal extends HttpServlet implements Portal
 		securityService = (SecurityService) ComponentManager.get("org.sakaiproject.authz.api.SecurityService");
 		chatHelper = org.sakaiproject.portal.api.cover.PortalChatPermittedHelper.getInstance();
 		preferencesService = ComponentManager.get(PreferencesService.class);
+        profileImageService = ComponentManager.get(ProfileImageService.class);
 
 		log.info("init()");
 

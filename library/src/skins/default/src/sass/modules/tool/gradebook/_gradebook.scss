@@ -93,7 +93,7 @@
     padding: 4px;
   }
   #gradeTableWrapper .handsontable th > .relative > * {
-    white-space: normal;
+    white-space: nowrap;
   }
   #gradeTableWrapper .handsontable th {
     background-color: var(--sakai-background-color-2);
@@ -136,26 +136,22 @@
   }
   #gradeTableWrapper .gb-title {
     font-weight: bold;
-    white-space: normal;
     text-align: left;
     line-height: 1.2em;
-    display: inline-block;
     cursor: pointer;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
   #gradeTableWrapper .gb-title.gb-sorted-asc:after {
     font-family: 'bootstrap-icons';
     content: '\F573';
     position: absolute;
-    right: 5px;
+    right: 1px;
     top: 5px;
   }
   #gradeTableWrapper .gb-title.gb-sorted-desc:after {
     font-family: 'bootstrap-icons';
     content: '\F571';
     position: absolute;
-    right: 5px;
+    right: 1px;
     top: 5px;
   }
   #gradeTableWrapper .gb-title .gb-category {
@@ -172,7 +168,8 @@
   #gradeTableWrapper .gb-grade-section,
   #gradeTableWrapper .gb-due-date,
   #gradeTableWrapper .gb-category,
-  #gradeTableWrapper .gb-drop-info {
+  #gradeTableWrapper .gb-drop-info,
+  #gradeTableWrapper .gb-uncategorized {
     text-align: left;
     font-size: 0.9em;
     line-height: 1.3em;
@@ -272,13 +269,6 @@
     text-align: center;
     font-style: normal;
   }
-  .gb-flag-not-counted:before {
-    content: '\F1DF';
-    text-decoration-line: line-through;
-  }
-  .gb-flag-not-released:before {
-    content: '\F33F';
-  }
   .gb-flag-counted,
   .gb-flag-released {
     display: none;
@@ -289,12 +279,6 @@
     color:var(--sakai-color-gold--darker-5);
     background-color: var(--sakai-color-gold--lighter-5) !important;
   }
-  .gb-flag-equal-weight:before {
-    content: '\2696';
-  }
-  .gb-flag-extra-credit:before {
-    content: '\F4FC';
-  }
   #gradeTableWrapper .gb-notification.gb-flag-extra-credit:before {
     color:var(--sakai-color-gold--darker-1);
   }
@@ -303,12 +287,7 @@
     color: var(--sakai-text-color-dimmed);
   }
 
-  .gb-flag-excused::before {
-    content: '\F1DF';
-    text-decoration-line: line-through;
-  }
-
-   .gb-flag-external:before {
+  .gb-flag-external:before {
     content: '\F140';
   }
   .gb-flag-read-only:before {
@@ -537,6 +516,18 @@
     overflow: auto;
     clip: auto;
   }
+  #gradeTableWrapper .gb-item-title-1,
+  #gradeTableWrapper .gb-category-title-1 {
+    width: calc(100% - 11px);
+  }
+  #gradeTableWrapper .gb-item-title-2,
+  #gradeTableWrapper .gb-category-title-2 {
+    width: calc(100% - 29px);
+  }
+  #gradeTableWrapper .gb-item-title-3,
+  #gradeTableWrapper .gb-category-title-3 {
+    width: calc(100% - 49px);
+  }
   .handsontable th {
     overflow: visible; /* to allow visual cue to be rendered nicely */
   }
@@ -627,6 +618,10 @@
   .handsontable.ht_master thead {
       visibility: hidden;
   }
+  .ht_master tr th .gb-dropdown-menu {
+      visibility: visible;
+  }
+
   /* **************************************************************** *
    *                      Gradebook Grade comparison styles           *
    * **************************************************************** */
@@ -994,17 +989,8 @@
     text-align: left;
   }
 
-  .gb-summary-grade-score-dropped
-  {
-    background-image: repeating-linear-gradient(135deg, var(--sakai-background-color-2), var(--sakai-background-color-2) 5px, var(--sakai-background-color-1) 5px, var(--sakai-background-color-1) 10px);
-    position: relative;
-  }
 
-  .gb-summary-grade-score-dropped .gb-summary-grade-score-raw,
-  .gb-summary-grade-score-excused .gb-summary-grade-score-raw
-  {
-    text-decoration: line-through;
-  }
+
 
   .gb-summary-grade-category-dropInfo
   {
@@ -1279,34 +1265,6 @@
     padding-bottom: 20px;
     border-bottom: 1px solid var(--sakai-border-color);
   }
-  /* **************************************************************** *
-   *                      Gradebook Print styles                      *
-   * **************************************************************** */
-   
-  @media print {
-  
-  .gb-summary-expand-all,
-  .gb-summary-collapse-all,
-  .gb-summary-category-toggle,
-  #toggleCategories,
-  #gradeSummaryTable-sticky .tablesorter-icon {
-    display: none;
-  }
-
-  .gb-summary-grade-panel {
-    height: auto !important;
-  }
-
-  #gradeSummaryTable {
-    page-break-inside: auto;
-  }
-
-  #gradeSummaryTable tr {
-    page-break-inside: avoid;
-    page-break-after:auto;
-  }
-  
-}
 
   /* ********************************************************************* *
    *                      Gradebook Settings styles                        *
@@ -1503,12 +1461,6 @@
 }
 
 div.wicket-modal, .#{$namespace}sakai-gradebookng {
-  /* Bootstrap > Morpheus overrides */
-  .checkbox input[type="checkbox"][disabled],
-  .radio input[type="radio"][disabled]{
-    background-color: var(--sakai-background-color-3);
-    cursor: not-allowed;  
-  }
   .checkbox input[type="checkbox"][disabled]+span,
   .radio input[type="radio"][disabled]+span,
   .checkbox input[type="checkbox"][disabled]+label,
@@ -1618,6 +1570,10 @@ div.wicket-modal {
   z-index: 999 !important;
   max-width: 100%;
   position: absolute;
+}
+
+div.wicket-modal .awesomplete {
+  width: 100%;
 }
 
 div.wicket-mask-transparent, div.wicket-mask-dark {
@@ -1794,3 +1750,30 @@ max-height:100px;
 .w_blue .w_content_container {
   max-height: 450px;
 }
+
+.gb-summary-grade-score-dropped
+{
+  background-image: repeating-linear-gradient(135deg, var(--sakai-background-color-2), var(--sakai-background-color-2) 5px, var(--sakai-background-color-1) 5px, var(--sakai-background-color-1) 10px);
+  position: relative;
+}
+
+.gb-summary-grade-score-dropped .gb-summary-grade-score-raw,
+.gb-summary-grade-score-excused .gb-summary-grade-score-raw
+{
+  text-decoration: line-through;
+}
+
+.gb-flag-not-counted:before, .gb-flag-excused:before {
+  content: '\F1DF';
+  text-decoration: line-through;
+}
+.gb-flag-not-released:before {
+  content: '\F33F';
+}
+.gb-flag-extra-credit:before {
+  content: '\F4FC';
+}
+.gb-flag-equal-weight:before {
+  content: '\2696';
+}
+
