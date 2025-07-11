@@ -1920,7 +1920,7 @@ public class SakaiScript extends AbstractWebService {
             allSites.addAll(moreSites);
 
             return getSiteListXml(allSites);
-
+            
         } catch (Exception e) {
             log.error("WS getSitesCurrentUserCanAccess(): " + e.getClass().getName() + " : " + e.getMessage());
             return "<exception/>";
@@ -2938,7 +2938,7 @@ public class SakaiScript extends AbstractWebService {
 
    /**
      * Add a new single calendar event
-     *
+     * 
      * @param sessionid    			the id of a valid session
      * @param sourceSiteId 			the id of the site containing the calendar entries you want copied from
      * @param startTime 			start time in java milliseconds
@@ -2950,7 +2950,7 @@ public class SakaiScript extends AbstractWebService {
      * @param type					calendar type (must match defined types)
      * @param location				calendar location
      * @param descriptionFormatted	formatted description
-     * @param recurrenceFrequency 	recurrence frequency, must match a recurrence rule defined in RecurrenceRule.java
+     * @param recurrenceFrequency 	recurrence frequency, must match a recurrence rule defined in RecurrenceRule.java 
      * @param recurrenceInterval	recurrence interval
      * @return success or exception
      * @throws RuntimeException
@@ -2963,7 +2963,7 @@ public class SakaiScript extends AbstractWebService {
             @WebParam(name = "sessionid", partName = "sessionid") @QueryParam("sessionid") String sessionid,
             @WebParam(name = "sourceSiteId", partName = "sourceSiteId") @QueryParam("sourceSiteId") String sourceSiteId,
             @WebParam(name = "startTime", partName = "startTime") @QueryParam("startTime") long startTime,
-            @WebParam(name = "endTime", partName = "endTime") @QueryParam("endTime") long endTime,
+            @WebParam(name = "endTime", partName = "endTime") @QueryParam("endTime") long endTime, 
             @WebParam(name = "startIncluded", partName = "startIncluded") @QueryParam("startIncluded") boolean startIncluded,
             @WebParam(name = "endIncluded", partName = "endIncluded") @QueryParam("endIncluded") boolean endIncluded,
             @WebParam(name = "displayName", partName = "displayName") @QueryParam("displayName") String displayName,
@@ -3053,7 +3053,7 @@ public class SakaiScript extends AbstractWebService {
                 cedit.setDescriptionFormatted(cEvent.getDescriptionFormatted());
                 cedit.setRecurrenceRule(cEvent.getRecurrenceRule());
                 calendar2.commitEvent(cedit);
-                //log.warn(cEvent.getDisplayName());
+                //log.warn(cEvent.getDisplayName()); 
             }
             //save calendar 2
             calendarService.commitCalendar(calendar2);
@@ -3122,7 +3122,7 @@ public class SakaiScript extends AbstractWebService {
             @WebParam(name = "popup", partName = "popup") @QueryParam("popup") boolean popup) {
         Session session = establishSession(sessionid);
 
-        //check that ONLY admin is accessing this
+        //check that ONLY admin is accessing this	
         if (!securityService.isSuperUser(session.getUserId())) {
             log.warn("WS addNewToolToAllWorkspaces() failed. Restricted to admin users.");
             throw new RuntimeException("WS failed. Restricted to admin users.");
@@ -3225,7 +3225,7 @@ public class SakaiScript extends AbstractWebService {
         boolean createRole = false;
         Role role2;
 
-        //check that ONLY super user's are accessing this
+        //check that ONLY super user's are accessing this	
         if (!securityService.isSuperUser(session.getUserId())) {
             log.warn("WS copyRole2(): Permission denied. Restricted to super users.");
             throw new RuntimeException("WS copyRole(): Permission denied. Restricted to super users.");
@@ -3378,7 +3378,7 @@ public class SakaiScript extends AbstractWebService {
             @WebParam(name = "sessionid", partName = "sessionid") @QueryParam("sessionid") String sessionid) {
         Session session = establishSession(sessionid);
 
-        //check that ONLY admin is accessing this
+        //check that ONLY admin is accessing this	
         if (!securityService.isSuperUser(session.getUserId())) {
             log.warn("WS getAllUsers() failed. Restricted to admin users.");
             throw new RuntimeException("WS failed. Restricted to admin users.");
@@ -3464,7 +3464,7 @@ public class SakaiScript extends AbstractWebService {
 
         Session session = establishSession(sessionid);
 
-        //check that ONLY super user's are accessing this
+        //check that ONLY super user's are accessing this	
         if (!securityService.isSuperUser(session.getUserId())) {
             log.warn("WS getSessionForUser(): Permission denied. Restricted to super users.");
             throw new RuntimeException("WS getSessionForUser(): Permission denied. Restricted to super users.");
@@ -3618,7 +3618,7 @@ public class SakaiScript extends AbstractWebService {
             @WebParam(name = "eid", partName = "eid") @QueryParam("eid") String eid) {
         Session session = establishSession(sessionid);
 
-        //if eids don't match and we aren't a super user, abort
+        //if eids don't match and we aren't a super user, abort	
         if (!StringUtils.equals(eid, session.getUserEid()) && !securityService.isSuperUser(session.getUserId())) {
             log.warn("WS getUserId(): Permission denied. Restricted to super users or own user.");
             throw new RuntimeException("WS getUserId(): Permission denied. Restricted to super users or own user.");
@@ -4232,7 +4232,7 @@ public class SakaiScript extends AbstractWebService {
         }
         return siteIDs;
     }
-
+    
     /**
      * Get the placement ID for a given tool in the given site
      *
@@ -4420,7 +4420,7 @@ public class SakaiScript extends AbstractWebService {
 
         }
     }
-
+    
     /**
      * Get the parent siteId for a site, if it is a child site.
      *
@@ -4443,10 +4443,10 @@ public class SakaiScript extends AbstractWebService {
         }
         return parent;
     }
-
+    
     /**
      * Renders a list of sites as XML to ensure consistency amongst webservice requests
-     *
+     * 
      * @param sites List of sites
      * @return XML string
      */
@@ -4471,13 +4471,13 @@ public class SakaiScript extends AbstractWebService {
     }
 
 /**
-     * Adds LTI tool to a site
+     * Adds LTI tool to a site 
      *
      * @param    sessionid    a valid session id
      * @param    siteId        site identifier where to add the LTI tool
-     * @param    toolTitle    custom title for the tool. May be empty for default value
+     * @param    toolTitle    custom title for the tool. May be empty for default value 
      * @param    properties    comma separated list of LTI properties. Example : final.allowlori:false,final.allowroster:false,imsti.allowlori:,imsti.allowroster:on,imsti.allowoutcomes:,final.allowoutcomes:false,imsti.allowsettings:,final.allowsettings:false,imsti.contentlink:,final.contentlink:false,imsti.custom:,final.custom:false,final.debug:false,imsti.encryptedsecret:,imsti.frameheight:,final.frameheight:false,imsti.key:KEY,final.key:false,imsti.launch:http://MYURL,final.launch:false,final.maximize:false,final.newpage:false,imsti.pagetitle:Virtual Meeting,final.pagetitle:false,final.releaseemail:false,final.releasename:false,imsti.secret:SECRETKEY,final.secret:false,imsti.splash:,final.splash:false,imsti.tooltitle:Virtual Meeting,final.tooltitle:false,imsti.xml:,final.xml:false,imsti.maximize:,imsti.newpage:,imsti.debug:,imsti.releaseemail:on,imsti.releasename:on
-     * @return    Success or exception message
+     * @return    Success or exception message    
      *
      */
     @WebMethod
@@ -4490,7 +4490,7 @@ public class SakaiScript extends AbstractWebService {
             @WebParam(name = "toolTitle", partName = "toolTitle") @QueryParam("toolTitle") String toolTitle,
             @WebParam(name = "properties", partName = "properties") @QueryParam("properties") String properties
         ){
-
+        
         Session session = establishSession(sessionid);
 
         boolean customTitle = false;
@@ -4546,7 +4546,7 @@ public class SakaiScript extends AbstractWebService {
 
             //add the tool
             ToolConfiguration tool = sitePageEdit.addTool();
-
+            
             //set LTI properties
             setToolProperties(tool, properties);
 
@@ -4567,7 +4567,7 @@ public class SakaiScript extends AbstractWebService {
             return e.getClass().getName() + " : " + e.getMessage();
         }
     }
-
+    
     private void setToolProperties(ToolConfiguration tool, String propList) {
         if(propList != null) {
             for(String prop : propList.split(",")) {
@@ -4577,7 +4577,7 @@ public class SakaiScript extends AbstractWebService {
                         try {
                             String propName = prop.substring(0, index);
                             String propValue = prop.substring(index+1);
-
+                            
                             if(StringUtils.isNotEmpty(propValue)) {
                                 Properties propsedit = tool.getPlacementConfig();
                                 propsedit.setProperty(propName, propValue);

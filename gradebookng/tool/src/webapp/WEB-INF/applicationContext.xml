@@ -38,7 +38,7 @@
 		<property name="userDirectoryService" ref="org.sakaiproject.user.api.UserDirectoryService" />
 		<property name="formattedText" ref="org.sakaiproject.util.api.FormattedText" />
 	</bean>
-
+	
 	<bean
 		id="org.sakaiproject.gradebookng.framework.GradebookNgEntityProducer"
 		class="org.sakaiproject.gradebookng.framework.GradebookNgEntityProducer"
