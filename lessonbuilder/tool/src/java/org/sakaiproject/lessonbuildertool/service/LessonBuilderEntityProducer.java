@@ -689,8 +689,6 @@ public class LessonBuilderEntityProducer extends AbstractEntityProvider
       catch (Exception any)
       {
          log.warn("archive: exception archiving service: " + any + " " +  serviceName());
-         log.warn("Error archiving Lessons content: {}", any.getMessage());
-         throw new RuntimeException(any);
       }
 
       stack.pop();

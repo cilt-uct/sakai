@@ -57,7 +57,7 @@ public class EntityHandlerImplTest extends TestCase {
         td = new TestData();
 
         entityHandler = new ServiceTestManager(td).entityRequestHandler;
-        Locale.setDefault(Locale.ENGLISH);
+        Locale.setDefault(new Locale("en", "US"));
     }
 
     /**

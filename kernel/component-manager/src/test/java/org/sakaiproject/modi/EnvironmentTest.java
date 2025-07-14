@@ -3,7 +3,6 @@ package org.sakaiproject.modi;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.Ignore;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
@@ -95,33 +94,29 @@ public class EnvironmentTest {
     }
 
     @Test
-    @Ignore
     public void givenUnwritableParentOfSakaiHome_whenInitialized_thenInitializationFails() throws IOException {
         tmpDir.newFolder("components");
         File file = tmpDir.newFolder("readonly");
-        if (file.setReadOnly()) {
-            System.setProperty("catalina.base", tmp.toString());
-            System.setProperty("sakai.home", tmp.resolve("readonly/sakai").toString());
+        file.setReadOnly();
+        System.setProperty("catalina.base", tmp.toString());
+        System.setProperty("sakai.home", tmp.resolve("readonly/sakai").toString());
 
-            assertThatExceptionOfType(InitializationException.class)
-                    .isThrownBy(Environment::initialize)
-                    .withMessageContaining("could not create sakai.home");
-        }
+        assertThatExceptionOfType(InitializationException.class)
+                .isThrownBy(Environment::initialize)
+                .withMessageContaining("could not create sakai.home");
     }
 
     @Test
-    @Ignore
     public void givenUnwritableSakaiHome_whenInitialized_thenInitializationFails() throws IOException {
         tmpDir.newFolder("components");
         File file = tmpDir.newFolder("readonly/sakai");
-        if (file.setReadOnly()) {
-            System.setProperty("catalina.base", tmp.toString());
-            System.setProperty("sakai.home", tmp.resolve("readonly/sakai").toString());
+        file.setReadOnly();
+        System.setProperty("catalina.base", tmp.toString());
+        System.setProperty("sakai.home", tmp.resolve("readonly/sakai").toString());
 
-            assertThatExceptionOfType(InitializationException.class)
-                    .isThrownBy(Environment::initialize)
-                    .withMessageContaining("sakai.home is missing or unreadable");
-        }
+        assertThatExceptionOfType(InitializationException.class)
+                .isThrownBy(Environment::initialize)
+                .withMessageContaining("sakai.home is missing or unreadable");
     }
 
     @Test
