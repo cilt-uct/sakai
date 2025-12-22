@@ -25,12 +25,13 @@ import java.io.InputStream;
 import java.io.Reader;
 import java.io.StringReader;
 
-import org.apache.commons.imaging.ImageReadException;
+import org.apache.commons.imaging.ImagingException;
 import org.apache.commons.imaging.Imaging;
 import org.apache.commons.imaging.common.ImageMetadata;
 import org.apache.commons.imaging.formats.jpeg.JpegImageMetadata;
 import org.apache.commons.imaging.formats.tiff.TiffField;
 import org.apache.commons.imaging.formats.tiff.TiffImageMetadata;
+import org.apache.commons.imaging.formats.tiff.TiffImageMetadata.GpsInfo;
 import org.apache.commons.imaging.formats.tiff.constants.ExifTagConstants;
 import org.apache.commons.imaging.formats.tiff.constants.TiffTagConstants;
 import org.apache.commons.imaging.formats.tiff.taginfos.TagInfo;
@@ -53,9 +54,13 @@ public class SanslanContentDigester extends BaseContentDigester {
             contentStream = contentResource.streamContent();
             ResourceProperties resourceProperties = contentResource.getProperties();
             String fileName = resourceProperties.getProperty(resourceProperties.getNamePropDisplayName());
+            
+            // Start with a StringBuffer that includes the filename for searching
+            StringBuffer sb = new StringBuffer();
+            sb.append(fileName).append("\n");
+            
             try {
                 metadata = Imaging.getMetadata(contentStream, fileName);
-                StringBuffer sb = new StringBuffer();
                 if (metadata instanceof JpegImageMetadata) {
                     JpegImageMetadata jpegMetadata = (JpegImageMetadata) metadata;
                     sb.append(getFieldValue(jpegMetadata, TiffTagConstants.TIFF_TAG_MAKE));
@@ -67,7 +72,7 @@ public class SanslanContentDigester extends BaseContentDigester {
                     TiffImageMetadata exifMetadata = jpegMetadata.getExif();
                     if (exifMetadata != null) {
                         try {
-                            TiffImageMetadata.GPSInfo gpsInfo = exifMetadata.getGPS();
+                            GpsInfo gpsInfo = exifMetadata.getGpsInfo();
                             if (null != gpsInfo) {
                                 double longitude = gpsInfo.getLongitudeAsDegreesEast();
                                 double latitude = gpsInfo.getLatitudeAsDegreesNorth();
@@ -75,30 +80,28 @@ public class SanslanContentDigester extends BaseContentDigester {
                                 sb.append("GPS Longitude: " + longitude + "\n");
                                 sb.append("GPS Latitude: " + latitude + "\n");
                             }
-                        } catch (ImageReadException e) {
+                        } catch (ImagingException e) {
                             log.error(e.getMessage(), e);
                         }
-
                     }    
                 }
                 log.debug("got metadata: {}", sb.toString());
                 return sb.toString();
-            } catch (ImageReadException e) {
-                log.error(e.getMessage(), e);
             } catch (IOException e) {
-                log.error(e.getMessage(), e);
+                log.error("Failed to extract metadata from image file {}, returning only filename for searchability", fileName, e);
+                // Even if we can't get metadata, return the filename for searchability
+                return sb.toString();
             }
         } catch (ServerOverloadException e) {
             log.error(e.getMessage(), e);
         }
-        
         
         return null;
     }
 
     private String getFieldValue(JpegImageMetadata metadata,
             TagInfo tagInfo) {
-            TiffField field = metadata.findEXIFValue(tagInfo);
+            TiffField field = metadata.findExifValue(tagInfo);
             if (field == null) {
                return "";
             } else {

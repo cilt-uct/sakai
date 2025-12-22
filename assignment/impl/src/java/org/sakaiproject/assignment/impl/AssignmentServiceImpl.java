@@ -1568,20 +1568,21 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
 
         assignment.setDateModified(Instant.now());
         assignment.setModifier(sessionManager.getCurrentSessionUserId());
-        Assignment updatedAssingment = assignmentRepository.merge(assignment);
+        Assignment updatedAssignment = assignmentRepository.merge(assignment);
 
         Task task = new Task();
-        task.setSiteId(updatedAssingment.getContext());
+        task.setSiteId(updatedAssignment.getContext());
         task.setReference(reference);
         task.setSystem(true);
-        task.setDescription(updatedAssingment.getTitle());
-        task.getGroups().addAll(updatedAssingment.getGroups());
+        task.setDescription(updatedAssignment.getTitle());
+        task.getGroups().addAll(updatedAssignment.getGroups());
+        task.setStarts(updatedAssignment.getOpenDate());
 
-        if (!updatedAssingment.getHideDueDate()) {
-            task.setDue(updatedAssingment.getDueDate());
+        if (!updatedAssignment.getHideDueDate()) {
+            task.setDue(updatedAssignment.getDueDate());
         }
 
-        if (!updatedAssingment.getDraft()) {
+        if (!updatedAssignment.getDraft()) {
             taskService.createTask(task, allowAddSubmissionUsers(reference)
                     .stream().map(User::getId).collect(Collectors.toSet()),
                     Priorities.HIGH);
@@ -2439,7 +2440,7 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
         if (submission == null) return false; // false if submission is null
 
         // check that a submission has been submitted
-        if (submission.getSubmitted() || submission.getDateSubmitted() != null) {
+        if (submission.getDateSubmitted() != null) {
             // get the resubmit settings from submission object first
             String allowResubmitNumString = submission.getProperties().get(AssignmentConstants.ALLOW_RESUBMIT_NUMBER);
             String allowResubmitCloseTimeString = submission.getProperties().get(AssignmentConstants.ALLOW_RESUBMIT_CLOSETIME);
@@ -2518,8 +2519,7 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
 
                 // before the assignment close date
                 // and if no date then a submission was never truly submitted by the student
-                // or if there is a submitted date and it is not submitted, then it is considered a draft
-                if (isBeforeAssignmentCloseDate && (submission.getDateSubmitted() == null || !submission.getSubmitted())) return true;
+                if (isBeforeAssignmentCloseDate && submission.getDateSubmitted() == null) return true;
 
                 // returns true if resubmission is allowed
                 if (canSubmitResubmission(submission, currentTime)) return true;
@@ -4014,12 +4014,11 @@ public class AssignmentServiceImpl implements AssignmentService, EntityTransferr
                         realName = candidateName;
                         done.put(candidateName, 1);
                     } else {
-                        String fileName = FilenameUtils.removeExtension(candidateName);
+                        String fileName = org.springframework.util.StringUtils.stripFilenameExtension(candidateName);
                         String fileExt = org.springframework.util.StringUtils.getFilenameExtension(candidateName);
-                        if (!"".equals(fileExt.trim())) {
-                            fileExt = "." + fileExt;
-                        }
-                        realName = fileName + "+" + already + fileExt;
+                        realName = org.springframework.util.StringUtils.hasText(fileExt)
+                                ?  fileName + "+" + already + "." + fileExt
+                                :  fileName + "+" + already;
                         done.put(candidateName, already + 1);
                     }
 
