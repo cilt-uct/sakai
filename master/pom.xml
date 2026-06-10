@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
-  <!-- Include Sakai OSS parent, includes information for release management and project information common to all projects --> 
+  <!-- Include Sakai OSS parent, includes information for release management and project information common to all projects -->
   <parent>
       <groupId>org.sakaiproject</groupId>
       <artifactId>oss-parent</artifactId>
@@ -57,7 +57,7 @@
     <sakai.jstl.version>1.2</sakai.jstl.version>
     <sakai.lombok.version>1.18.28</sakai.lombok.version>
     <sakai.lucene.version>8.10.1</sakai.lucene.version>
-    <sakai.netty.version>4.1.77.Final</sakai.netty.version>
+    <sakai.netty.version>4.1.135.Final</sakai.netty.version>
     <sakai.org.json.version>20210307</sakai.org.json.version>
     <sakai.pluto.version>1.1.7</sakai.pluto.version>
     <sakai.quartz.version>2.3.2</sakai.quartz.version>
@@ -100,7 +100,7 @@
 
     <!-- Sakai modules that are versioned separately -->
     <!-- lessonbuilder tool pom depends on msgcntr ver prop. Need to add a profile to the LB tool pom to mark change between 10.x master and earlier versions -->
-    <sakai.msgcntr.version>${sakai.version}</sakai.msgcntr.version> 
+    <sakai.msgcntr.version>${sakai.version}</sakai.msgcntr.version>
     <!-- Set the source encoding to avoid maven warnings -->
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <sakai.jdk.version>11</sakai.jdk.version>
@@ -1110,7 +1110,7 @@
          <artifactId>backport-util-concurrent</artifactId>
          <version>3.1</version>
          <scope>provided</scope>
-      </dependency> 
+      </dependency>
       <dependency>
         <groupId>jaxen</groupId>
         <artifactId>jaxen</artifactId>
@@ -1476,13 +1476,13 @@
         <artifactId>lucene-backward-codecs</artifactId>
         <version>${sakai.lucene.version}</version>
         <scope>provided</scope>
-      </dependency>      
+      </dependency>
       <dependency>
         <groupId>org.apache.lucene</groupId>
         <artifactId>lucene-grouping</artifactId>
         <version>${sakai.lucene.version}</version>
         <scope>provided</scope>
-      </dependency>      
+      </dependency>
       <dependency>
         <groupId>org.apache.lucene</groupId>
         <artifactId>lucene-queries</artifactId>
@@ -1865,7 +1865,7 @@
         <artifactId>delegatedaccess-api</artifactId>
         <version>${sakai.version}</version>
         <scope>provided</scope>
-      </dependency> 
+      </dependency>
       <dependency>
         <groupId>org.sakaiproject.edu-services.course-management</groupId>
         <artifactId>coursemanagement-api</artifactId>
@@ -1900,7 +1900,7 @@
         <artifactId>hierarchy-api</artifactId>
         <version>${sakai.version}</version>
         <scope>provided</scope>
-      </dependency> 
+      </dependency>
       <dependency>
         <groupId>org.sakaiproject.mailarchive</groupId>
         <artifactId>sakai-mailarchive-api</artifactId>
