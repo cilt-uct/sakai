@@ -135,6 +135,7 @@ import org.sakaiproject.authz.api.Role;
 import org.sakaiproject.authz.api.SecurityAdvisor;
 import org.sakaiproject.authz.api.SecurityService;
 import org.tsugi.basiclti.BasicLTIUtil;
+import org.tsugi.lti13.LTICustomVars;
 import org.tsugi.lti13.DeepLinkResponse;
 import org.sakaiproject.calendar.api.Calendar;
 import org.sakaiproject.calendar.api.CalendarEvent;
@@ -1941,6 +1942,16 @@ public class AssignmentAction extends PagedResourceActionII {
                 context.put("value_ContentLaunchURL", content_launch);
                 context.put("placement", "assignment_launch_"+contentKey);
 
+                // Figure out if this is a submission in context of a group - there
+                // should only be one group for the current user
+                String courseGroupId = null;
+                try {
+                    courseGroupId = assignment.getIsGroup() ?
+                        assignmentService.getSubmission(assignment.getId(), user.getId()).getGroupId() : null;
+                } catch(PermissionException e) {
+                    courseGroupId = null;
+                }
+
                 // Copy title, description, and dates from Assignment to content if mis-match
                 int protect = SakaiBLTIUtil.getInt(content.get(LTIService.LTI_PROTECT));
                 String assignmentTitle = StringUtils.trimToEmpty(assignment.getTitle());
@@ -1983,10 +1994,13 @@ public class AssignmentAction extends PagedResourceActionII {
                     // SAK-43709 - Prior to Sakai-21 - also copy these in the settings area
                     content_json.put(LTIService.LTI_DESCRIPTION, assignmentDesc);
                     content_json.put(LTIService.LTI_PROTECT, new Integer(1));
+
+                    // Copy assignment specific custom parameter substitutions to pass into SakaiBLTIUtil
                     content_json.put(DeepLinkResponse.RESOURCELINK_AVAILABLE_STARTDATETIME, assignmentVisibleDate);
                     content_json.put(DeepLinkResponse.RESOURCELINK_SUBMISSION_STARTDATETIME, assignmentOpenDate);
                     content_json.put(DeepLinkResponse.RESOURCELINK_AVAILABLE_ENDDATETIME, assignmentDueDate);
                     content_json.put(DeepLinkResponse.RESOURCELINK_SUBMISSION_ENDDATETIME, assignmentCloseDate);
+                    content_json.put(LTICustomVars.COURSEGROUP_ID, courseGroupId);
                     updates.put(LTIService.LTI_SETTINGS, content_json.toString());
 
                     // This uses the Dao access since 99% of the time we are launching as a student
@@ -6818,6 +6832,9 @@ public class AssignmentAction extends PagedResourceActionII {
                         setResubmissionProperties(a, submission);
                     }
 
+                    // Preserve the student submission time before replacing it with the resubmission time below.
+                    Instant previousSubmissionDate = submission.getDateSubmitted();
+
                     // update submission info after resubmission which prevents updating resubmission count for the first submission
                     submission.setUserSubmission(true);
                     submission.setSubmittedText(text);
@@ -6889,8 +6906,11 @@ public class AssignmentAction extends PagedResourceActionII {
                     // following involves content, not grading, so always do on resubmit, not just if graded
                     if (StringUtils.isNotBlank(submission.getFeedbackText())) {
                         // keep the history of assignment feed back text
+                        String prevSubmittedDate = previousSubmissionDate == null
+                                ? prevGradedDate
+                                : userTimeService.dateTimeFormat(previousSubmissionDate, FormatStyle.LONG, FormatStyle.LONG);
                         String feedbackTextHistory = StringUtils.trimToEmpty(properties.get(ResourceProperties.PROP_SUBMISSION_PREVIOUS_FEEDBACK_TEXT));
-                        feedbackTextHistory = "<h4>" + prevGradedDate + "</h4>" + "<div style=\"margin:0;padding:0\">" + submission.getFeedbackText() + "</div>" + feedbackTextHistory;
+                        feedbackTextHistory = "<h4>" + prevSubmittedDate + "</h4>" + "<div style=\"margin:0;padding:0\">" + submission.getFeedbackText() + "</div>" + feedbackTextHistory;
                         properties.put(ResourceProperties.PROP_SUBMISSION_PREVIOUS_FEEDBACK_TEXT, feedbackTextHistory);
                     }
 
