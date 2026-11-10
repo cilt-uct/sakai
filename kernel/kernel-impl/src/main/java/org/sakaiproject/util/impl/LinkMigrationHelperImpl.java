@@ -54,7 +54,7 @@ public class LinkMigrationHelperImpl implements LinkMigrationHelper {
 	 */
 	public String bracketAndNullifySelectedLinks(String m) throws Exception {
 		
-		String lbTmp = serverConfigurationService.getString("LinkMigrationHelper.linksToBracket","assignment,forum");
+		String lbTmp = serverConfigurationService.getString("LinkMigrationHelper.linksToBracket", "");
 		String[] linksToBracket = lbTmp.split(",");
 		String lnTmp = serverConfigurationService.getString("LinkMigrationHelper.linksToNullify","sam_pub,/posts/");
 		String[] linksToNullify = lnTmp.split(",");
@@ -66,15 +66,18 @@ public class LinkMigrationHelperImpl implements LinkMigrationHelper {
 			boolean bracketIt = matchLink(nextLink, linksToBracket);
 			boolean nullIt = matchLink(nextLink, linksToNullify);
 			if(bracketIt | nullIt){
+				int li = m.indexOf(nextLink);
+				String before = m.substring(0, li);
+				String after = m.substring(li+nextLink.length());
+				if (isAlreadyBracketed(before, after)) {
+					continue;
+				}
 				String replacementForLink = null;
 				if(bracketIt){
 					replacementForLink = nextLink;
 				}else{
 					replacementForLink = findLinkContent(nextLink);
 				}
-				int li = m.indexOf(nextLink);
-				String before = m.substring(0, li);
-				String after = m.substring(li+nextLink.length());
 				StringBuffer replacementBuffer = new StringBuffer();
 				replacementBuffer.append(before);
 				replacementBuffer.append(" [");
@@ -85,6 +88,10 @@ public class LinkMigrationHelperImpl implements LinkMigrationHelper {
 			}
 		}
 		return m;
+	}
+
+	private boolean isAlreadyBracketed(String before, String after) {
+		return before.endsWith(" [") && after.startsWith("] ");
 	}
 
 	private boolean matchLink(String link, String[] matches){
